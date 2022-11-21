@@ -5,6 +5,7 @@ import 'contact_me.dart';
 import 'education.dart';
 import 'experience.dart';
 import 'home.dart';
+import 'event.dart';
 import 'join.dart';
 import 'projects.dart';
 
@@ -20,9 +21,6 @@ export 'scroll_controller.dart';
 List<Widget> widgetList = [
   const HomePage(),
   Join(),
-  //Education(),
-  //Experience(),
-  //Projects(),
-  //Achievements(),
+  const Event(),
   const ContactMe(),
 ];

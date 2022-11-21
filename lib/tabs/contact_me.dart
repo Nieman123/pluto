@@ -65,17 +65,6 @@ class _ContactMeState extends State<ContactMe> {
                       text: 'CONTACT',
                       fontSize: 28,
                       color: Theme.of(context).primaryColorLight),
-                  // Padding(
-                  //   padding: const EdgeInsets.symmetric(vertical: 5.0),
-                  //   child: Container(
-                  //       decoration: BoxDecoration(
-                  //           shape: BoxShape.circle,
-                  //           border: Border.all(
-                  //             width: 7,
-                  //             color: CustomTheme.darkTheme.cardColor,
-                  //           )),
-                  //       child: imageWidget(2.7)),
-                  // ),
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 5.0),
                     child: CustomText(
@@ -95,32 +84,12 @@ class _ContactMeState extends State<ContactMe> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // if (data[0] != '')
-                        //   Image.asset(
-                        //       currentTheme.currentTheme == ThemeMode.dark
-                        //           ? 'assets/contact_me/constant/location-dark.png'
-                        //           : 'assets/contact_me/constant/location.png',
-                        //       scale: 4)
-                        // else
-                        //   const Center(),
                         CustomText(
                             text: ' ${data[0]}',
                             fontSize: 18,
                             color: Theme.of(context).primaryColorLight),
                       ],
                     ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(
-                      bottom: 10.0,
-                      top: 5.0,
-                    ),
-                    child: data[1] != ''
-                        ? CustomText(
-                            text: 'Open for opportunities: ${data[1]}',
-                            fontSize: 18,
-                            color: Theme.of(context).primaryColorLight)
-                        : const Center(),
                   ),
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10.0),
