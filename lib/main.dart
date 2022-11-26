@@ -41,8 +41,6 @@ class _MyAppState extends State<MyApp> {
             localizationsDelegates: const [
               FormBuilderLocalizations.delegate,
             ],
-            supportedLocales:
-                FormBuilderLocalizations.delegate.supportedLocales,
             home: const App(),
           )
         : const Center(child: CircularProgressIndicator());

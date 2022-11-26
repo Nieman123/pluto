@@ -1,3 +1,4 @@
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:form_builder_validators/form_builder_validators.dart';
@@ -5,8 +6,6 @@ import 'package:phone_form_field/phone_form_field.dart';
 import 'package:smsalert/smsalert.dart';
 
 import '../src/custom/custom_text.dart';
-import '../src/nav_bar/nav_bar_btn.dart';
-import '../src/nav_bar/title_bar.dart';
 import '../src/whatIDo/data.dart';
 
 class Join extends StatelessWidget {
@@ -174,6 +173,13 @@ class Join extends StatelessWidget {
   }
 
   Future signupSMS(String name, String phoneNumber) async {
+    await FirebaseAnalytics.instance.logEvent(
+      name: 'sms_signup',
+      parameters: {
+        'name': name,
+        'phone_number': phoneNumber,
+      },
+    );
     var message1 = await sms.messages.createcontact(
         {'grpname': 'pluto', 'name': name, 'number': phoneNumber});
     var message = await sms.messages.sendsms({
@@ -183,7 +189,14 @@ class Join extends StatelessWidget {
       'mobileno': phoneNumber, // your destination phone number
       'route': 'demo' //to select route
     });
-    print(message.toString());
+    await FirebaseAnalytics.instance.logEvent(
+      name: 'sms_signup_response',
+      parameters: {
+        'name': name,
+        'phone_number': phoneNumber,
+        'message': message.toString()
+      },
+    );
   }
 
   PhoneNumberInputValidator? _getValidator(bool mobileOnly) {

@@ -50,7 +50,7 @@ class _HomePageState extends State<HomePage> {
                     padding: EdgeInsets.only(top: height * 0.07),
                     child: const Introduction(
                         word:
-                            'Private events for dance music fanatics near Asheville, NC',
+                            'Private events for dance music fanatics near Asheville, NC. \nScroll down to sign up for event notices!',
                         textScaleFactor: 1.5),
                   ),
                   Roll(
@@ -103,7 +103,7 @@ class _HomePageState extends State<HomePage> {
                       children: [
                         const Introduction(
                             word:
-                                'Private events for dance music fanatics near Asheville, NC',
+                                'Private events for dance music fanatics near Asheville, NC. \nScroll down to sign up for event notices!',
                             textScaleFactor: 1.5),
                         Roll(
                           crinkle: Crinkle.vivacious,
