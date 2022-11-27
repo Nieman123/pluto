@@ -75,7 +75,7 @@ class _ContactMeState extends State<ContactMe> {
                             .primaryColorLight
                             .withOpacity(0.7)),
                   ),
-                  MyBio(fontSize: 15),
+                  //MyBio(fontSize: 15),
                   Padding(
                     padding: const EdgeInsets.only(
                       bottom: 5.0,
@@ -130,7 +130,7 @@ class _ContactMeState extends State<ContactMe> {
                                       .primaryColorLight
                                       .withOpacity(0.7)),
                             ),
-                            MyBio(fontSize: 15),
+                            //MyBio(fontSize: 15),
                             Padding(
                               padding:
                                   const EdgeInsets.symmetric(vertical: 10.0),
@@ -156,22 +156,14 @@ class _ContactMeState extends State<ContactMe> {
                           ],
                         ),
                       ),
-                      // Column(
-                      //   mainAxisAlignment: MainAxisAlignment.center,
-                      //   children: [
-                      //     Container(
-                      //         decoration: BoxDecoration(
-                      //             shape: BoxShape.circle,
-                      //             border: Border.all(
-                      //               width: 7,
-                      //               color: CustomTheme.darkTheme.cardColor,
-                      //             )),
-                      //         child: imageWidget(2.5)),
-                      //     SocialMediaBar(
-                      //       height: height,
-                      //     ),
-                      //   ],
-                      // ),
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SocialMediaBar(
+                            height: height,
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ],

@@ -54,8 +54,8 @@ class _ArtistState extends State<Artist> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 15.0, vertical: 15.0),
                         child: Container(
-                          width: 150.0,
-                          height: 150.0,
+                          width: 250.0,
+                          height: 250.0,
                           decoration: const BoxDecoration(
                               shape: BoxShape.circle,
                               image: DecorationImage(
@@ -72,8 +72,8 @@ class _ArtistState extends State<Artist> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 15.0, vertical: 15.0),
                         child: Container(
-                          width: 150.0,
-                          height: 150.0,
+                          width: 250.0,
+                          height: 250.0,
                           decoration: const BoxDecoration(
                               shape: BoxShape.circle,
                               image: DecorationImage(
@@ -90,8 +90,8 @@ class _ArtistState extends State<Artist> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 15.0, vertical: 15.0),
                         child: Container(
-                          width: 150.0,
-                          height: 150.0,
+                          width: 250.0,
+                          height: 250.0,
                           decoration: const BoxDecoration(
                               shape: BoxShape.circle,
                               image: DecorationImage(
@@ -108,8 +108,8 @@ class _ArtistState extends State<Artist> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 15.0, vertical: 15.0),
                         child: Container(
-                          width: 150.0,
-                          height: 150.0,
+                          width: 250.0,
+                          height: 250.0,
                           decoration: const BoxDecoration(
                               shape: BoxShape.circle,
                               image: DecorationImage(
@@ -152,8 +152,8 @@ class _ArtistState extends State<Artist> {
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 15.0, vertical: 15.0),
                                       child: Container(
-                                        width: 150.0,
-                                        height: 150.0,
+                                        width: 350.0,
+                                        height: 350.0,
                                         decoration: const BoxDecoration(
                                             shape: BoxShape.circle,
                                             image: DecorationImage(
@@ -171,8 +171,8 @@ class _ArtistState extends State<Artist> {
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 15.0, vertical: 15.0),
                                       child: Container(
-                                        width: 150.0,
-                                        height: 150.0,
+                                        width: 350.0,
+                                        height: 350.0,
                                         decoration: const BoxDecoration(
                                             shape: BoxShape.circle,
                                             image: DecorationImage(
@@ -194,8 +194,8 @@ class _ArtistState extends State<Artist> {
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 15.0, vertical: 15.0),
                                       child: Container(
-                                        width: 150.0,
-                                        height: 150.0,
+                                        width: 350.0,
+                                        height: 350.0,
                                         decoration: const BoxDecoration(
                                             shape: BoxShape.circle,
                                             image: DecorationImage(
@@ -213,8 +213,8 @@ class _ArtistState extends State<Artist> {
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 15.0, vertical: 15.0),
                                       child: Container(
-                                        width: 150.0,
-                                        height: 150.0,
+                                        width: 350.0,
+                                        height: 350.0,
                                         decoration: const BoxDecoration(
                                             shape: BoxShape.circle,
                                             image: DecorationImage(

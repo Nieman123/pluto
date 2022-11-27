@@ -29,7 +29,7 @@
         "picture": "picture.png"
     },
     "about": "Pluto is a orgization of local DJs and producers who bring people together with music.",
-    "bio": "Bringing amazing events in unique locations. Neque porro quisquam est qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit...",
+    "bio": "",
     "what_i_do": {
         "tools": [
             "flutter.png",
