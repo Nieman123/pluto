@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:sa3_liquid/sa3_liquid.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
+
 import 'src/nav_bar/nav_bar.dart';
+import 'tabs/calendar_event.dart';
 import 'tabs/tabs.dart';
 
-class App extends StatelessWidget {
-  const App({Key? key}) : super(key: key);
-  static const String route = '/';
+class App2 extends StatelessWidget {
+  App2({Key? key}) : super(key: key);
+  static const String route = '/event';
+
+  List<Widget> a2WidgetList = [
+    const CalendarEvent(),
+  ];
   @override
   Widget build(BuildContext context) {
     final double height = MediaQuery.of(context).size.height;
@@ -35,19 +41,16 @@ class App extends StatelessWidget {
                   physics: const BouncingScrollPhysics(),
                   minCacheExtent: double.infinity,
                   shrinkWrap: true,
-                  itemCount: widgetList.length,
+                  itemCount: a2WidgetList.length,
                   itemScrollController: scroll,
                   itemBuilder: (context, index) {
-                    return widgetList[index];
+                    return a2WidgetList[index];
                   }),
             ],
           ),
         );
       } else {
         return Scaffold(
-          appBar: PreferredSize(
-              preferredSize: Size(width, height * 0.07),
-              child: const NavBar(isDarkModeBtnVisible: true)),
           body: Stack(
             children: [
               const PlasmaRenderer(
@@ -69,10 +72,10 @@ class App extends StatelessWidget {
                   physics: const BouncingScrollPhysics(),
                   minCacheExtent: double.infinity,
                   shrinkWrap: true,
-                  itemCount: widgetList.length,
+                  itemCount: a2WidgetList.length,
                   itemScrollController: scroll,
                   itemBuilder: (context, index) {
-                    return widgetList[index];
+                    return a2WidgetList[index];
                   }),
             ],
           ),

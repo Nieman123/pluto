@@ -1,13 +1,17 @@
+//import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:form_builder_validators/localization/l10n.dart';
+
 import 'app.dart';
+import 'app2.dart';
 import 'src/configure_web.dart';
 import 'src/json_service.dart';
 import 'src/theme/config.dart';
 import 'src/theme/custom_theme.dart';
 
-void main() {
+Future<void> main() async {
   configureApp();
+  //await Firebase.initializeApp();
   runApp(const MyApp());
 }
 
@@ -42,6 +46,11 @@ class _MyAppState extends State<MyApp> {
               FormBuilderLocalizations.delegate,
             ],
             home: const App(),
+            initialRoute: App.route,
+            routes: {
+              //App.route: (context) => const App(),
+              App2.route: (context) => App2(),
+            },
           )
         : const Center(child: CircularProgressIndicator());
   }
