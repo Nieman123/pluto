@@ -1,9 +1,11 @@
 //import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:form_builder_validators/localization/l10n.dart';
 
 import 'app.dart';
 import 'app2.dart';
+import 'firebase_options.dart';
 import 'src/configure_web.dart';
 import 'src/json_service.dart';
 import 'src/theme/config.dart';
@@ -11,7 +13,9 @@ import 'src/theme/custom_theme.dart';
 
 Future<void> main() async {
   configureApp();
-  //await Firebase.initializeApp();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const MyApp());
 }
 

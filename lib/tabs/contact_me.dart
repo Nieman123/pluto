@@ -58,7 +58,7 @@ class _ContactMeState extends State<ContactMe> {
             builder: (BuildContext context, BoxConstraints constraints) {
           if (constraints.maxWidth < 1000) {
             return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10.0),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 50),
               child: Column(
                 children: [
                   CustomText(
@@ -101,75 +101,81 @@ class _ContactMeState extends State<ContactMe> {
               ),
             );
           } else {
-            return Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    SizedBox(
-                      width: width / 2,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          CustomText(
-                              text: 'CONTACT',
-                              fontSize: 35,
-                              color: Theme.of(context).primaryColorLight),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
-                            child: CustomText(
-                                text:
-                                    'WANT TO HOST AN EVENT? INTERESTED IN PLAYING? \nHIT US UP.',
-                                fontSize: 18,
-                                color: Theme.of(context)
-                                    .primaryColorLight
-                                    .withOpacity(0.7)),
-                          ),
-                          MyBio(fontSize: 15),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 10.0),
-                            child: Row(
-                              children: [
-                                // if (data[0] != '')
-                                //   Image.asset(
-                                //       currentTheme.currentTheme ==
-                                //               ThemeMode.dark
-                                //           ? 'assets/contact_me/constant/location-dark.png'
-                                //           : 'assets/contact_me/constant/location.png',
-                                //       scale: 4)
-                                // else
-                                //   const Center(),
-                                CustomText(
-                                    text: ' ${data[0]}',
-                                    fontSize: 18,
-                                    color: Theme.of(context).primaryColorLight),
-                              ],
+            return Padding(
+              padding: EdgeInsets.all(50),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      SizedBox(
+                        width: width / 2,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            CustomText(
+                                text: 'CONTACT',
+                                fontSize: 35,
+                                color: Theme.of(context).primaryColorLight),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 8.0),
+                              child: CustomText(
+                                  text:
+                                      'WANT TO HOST AN EVENT? INTERESTED IN PLAYING? \nHIT US UP.',
+                                  fontSize: 18,
+                                  color: Theme.of(context)
+                                      .primaryColorLight
+                                      .withOpacity(0.7)),
                             ),
-                          ),
-                        ],
+                            MyBio(fontSize: 15),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 10.0),
+                              child: Row(
+                                children: [
+                                  // if (data[0] != '')
+                                  //   Image.asset(
+                                  //       currentTheme.currentTheme ==
+                                  //               ThemeMode.dark
+                                  //           ? 'assets/contact_me/constant/location-dark.png'
+                                  //           : 'assets/contact_me/constant/location.png',
+                                  //       scale: 4)
+                                  // else
+                                  //   const Center(),
+                                  CustomText(
+                                      text: ' ${data[0]}',
+                                      fontSize: 18,
+                                      color:
+                                          Theme.of(context).primaryColorLight),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    // Column(
-                    //   mainAxisAlignment: MainAxisAlignment.center,
-                    //   children: [
-                    //     Container(
-                    //         decoration: BoxDecoration(
-                    //             shape: BoxShape.circle,
-                    //             border: Border.all(
-                    //               width: 7,
-                    //               color: CustomTheme.darkTheme.cardColor,
-                    //             )),
-                    //         child: imageWidget(2.5)),
-                    //     SocialMediaBar(
-                    //       height: height,
-                    //     ),
-                    //   ],
-                    // ),
-                  ],
-                ),
-              ],
+                      // Column(
+                      //   mainAxisAlignment: MainAxisAlignment.center,
+                      //   children: [
+                      //     Container(
+                      //         decoration: BoxDecoration(
+                      //             shape: BoxShape.circle,
+                      //             border: Border.all(
+                      //               width: 7,
+                      //               color: CustomTheme.darkTheme.cardColor,
+                      //             )),
+                      //         child: imageWidget(2.5)),
+                      //     SocialMediaBar(
+                      //       height: height,
+                      //     ),
+                      //   ],
+                      // ),
+                    ],
+                  ),
+                ],
+              ),
             );
           }
         }),

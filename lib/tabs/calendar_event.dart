@@ -25,7 +25,6 @@ class _CalendarEventState extends State<CalendarEvent> {
   Widget build(BuildContext context) {
     final double width = MediaQuery.of(context).size.width;
     final double height = MediaQuery.of(context).size.height;
-
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -150,9 +149,9 @@ class _CalendarEventState extends State<CalendarEvent> {
   }
 
   Future<void> downloadWaterStreetICS() async {
-    // await FirebaseAnalytics.instance.logEvent(
-    //   name: 'cal_download_clicked',
-    // );
+    await FirebaseAnalytics.instance.logEvent(
+      name: 'cal_download_clicked_waterstreet',
+    );
     final rawData = await rootBundle
         .load(r'assets/experience/HouseNightsAtWaterStreet.ics');
     final content = base64Encode(rawData.buffer.asUint8List());

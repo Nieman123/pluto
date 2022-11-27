@@ -25,6 +25,7 @@ dependencies:
   foil: ^0.9.0+1
   sa3_liquid: ^1.0.1
   firebase_analytics: ^10.0.6
+  firebase_core: ^2.3.0
 
 dev_dependencies:
   flutter_test:
