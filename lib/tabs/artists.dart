@@ -210,7 +210,7 @@ class _ArtistState extends State<Artist> {
                                             child: RichText(
                                               text: const TextSpan(
                                                 text:
-                                                    'Divine Thud is a DJ, producer and visual artist from Asheville, NC.',
+                                                    "Divine Thud style takes inspiration from Desert Hearts and brings amazing house tunes you've probably heard at festival.",
                                                 style: TextStyle(
                                                     color: Colors.white),
                                               ),
