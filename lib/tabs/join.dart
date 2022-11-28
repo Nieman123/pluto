@@ -87,7 +87,7 @@ class Join extends StatelessWidget {
                                   helperStyle:
                                       TextStyle(color: Colors.white30)),
                               cursorColor: Colors.white,
-                              keyboardType: TextInputType.phone,
+                              keyboardType: TextInputType.name,
                               validator: FormBuilderValidators.compose([
                                 FormBuilderValidators.required(),
                                 FormBuilderValidators.max(64),
