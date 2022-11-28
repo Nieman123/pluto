@@ -44,7 +44,7 @@ class Join extends StatelessWidget {
           padding: EdgeInsets.only(bottom: height * 0.1),
           child: LayoutBuilder(
               builder: (BuildContext context, BoxConstraints constraints) {
-            return Expanded(
+            return Center(
                 child: Container(
               constraints: const BoxConstraints(minWidth: 300, maxWidth: 700),
               child: Column(
