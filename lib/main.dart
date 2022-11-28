@@ -1,4 +1,3 @@
-//import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:form_builder_validators/localization/l10n.dart';
@@ -52,7 +51,6 @@ class _MyAppState extends State<MyApp> {
             home: const App(),
             initialRoute: App.route,
             routes: {
-              //App.route: (context) => const App(),
               App2.route: (context) => App2(),
             },
           )
