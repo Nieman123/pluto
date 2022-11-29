@@ -171,17 +171,17 @@ class _ArtistState extends State<Artist> {
                                               fontSize: 18,
                                               color: Theme.of(context)
                                                   .primaryColorLight),
-                                          Padding(
-                                            padding: const EdgeInsets.all(8.0),
-                                            child: RichText(
-                                              text: const TextSpan(
-                                                text:
-                                                    'RHiNO is a DJ, producer and visual artist from Asheville, NC.',
-                                                style: TextStyle(
-                                                    color: Colors.white),
-                                              ),
-                                            ),
-                                          )
+                                          // Padding(
+                                          //   padding: const EdgeInsets.all(8.0),
+                                          //   child: RichText(
+                                          //     text: const TextSpan(
+                                          //       text:
+                                          //           'RHiNO is a DJ, producer and visual artist from Asheville, NC.',
+                                          //       style: TextStyle(
+                                          //           color: Colors.white),
+                                          //     ),
+                                          //   ),
+                                          // )
                                         ],
                                       ),
                                       Padding(
@@ -205,17 +205,17 @@ class _ArtistState extends State<Artist> {
                                               fontSize: 18,
                                               color: Theme.of(context)
                                                   .primaryColorLight),
-                                          Padding(
-                                            padding: const EdgeInsets.all(8.0),
-                                            child: RichText(
-                                              text: const TextSpan(
-                                                text:
-                                                    "Divine Thud style takes inspiration from Desert Hearts and brings amazing house tunes you've probably heard at festival.",
-                                                style: TextStyle(
-                                                    color: Colors.white),
-                                              ),
-                                            ),
-                                          )
+                                          // Padding(
+                                          //   padding: const EdgeInsets.all(8.0),
+                                          //   child: RichText(
+                                          //     text: const TextSpan(
+                                          //       text:
+                                          //           "Divine Thud style takes inspiration from Desert Hearts and brings amazing house tunes you've probably heard at festival.",
+                                          //       style: TextStyle(
+                                          //           color: Colors.white),
+                                          //     ),
+                                          //   ),
+                                          // )
                                         ],
                                       ),
                                     ],
@@ -246,17 +246,17 @@ class _ArtistState extends State<Artist> {
                                               fontSize: 18,
                                               color: Theme.of(context)
                                                   .primaryColorLight),
-                                          Padding(
-                                            padding: const EdgeInsets.all(8.0),
-                                            child: RichText(
-                                              text: const TextSpan(
-                                                text:
-                                                    'Inspired by Dirty Bird and Off the Grid records, Nieman is a DJ and producer from Asheville, NC.',
-                                                style: TextStyle(
-                                                    color: Colors.white),
-                                              ),
-                                            ),
-                                          )
+                                          // Padding(
+                                          //   padding: const EdgeInsets.all(8.0),
+                                          //   child: RichText(
+                                          //     text: const TextSpan(
+                                          //       text:
+                                          //           'Inspired by Dirty Bird and Off the Grid records, Nieman is a DJ and producer from Asheville, NC.',
+                                          //       style: TextStyle(
+                                          //           color: Colors.white),
+                                          //     ),
+                                          //   ),
+                                          // )
                                         ],
                                       ),
                                       Padding(
@@ -280,17 +280,17 @@ class _ArtistState extends State<Artist> {
                                               fontSize: 18,
                                               color: Theme.of(context)
                                                   .primaryColorLight),
-                                          Padding(
-                                            padding: const EdgeInsets.all(8.0),
-                                            child: RichText(
-                                              text: const TextSpan(
-                                                text:
-                                                    'Originally from Orlando, FL, DJ Dagget is spinning every thing from throwbacks, to the latest tech house tunes.',
-                                                style: TextStyle(
-                                                    color: Colors.white),
-                                              ),
-                                            ),
-                                          )
+                                          // Padding(
+                                          //   padding: const EdgeInsets.all(8.0),
+                                          //   child: RichText(
+                                          //     text: const TextSpan(
+                                          //       text:
+                                          //           'Originally from Orlando, FL, DJ Dagget is spinning every thing from throwbacks, to the latest tech house tunes.',
+                                          //       style: TextStyle(
+                                          //           color: Colors.white),
+                                          //     ),
+                                          //   ),
+                                          // )
                                         ],
                                       ),
                                     ],
