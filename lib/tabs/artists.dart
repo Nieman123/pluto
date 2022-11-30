@@ -1,12 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../src/contact_me/data.dart';
-import '../src/contact_me/my_bio.dart';
 import '../src/custom/custom_text.dart';
-import '../src/home/social_media_bar.dart';
-import '../src/html_open_link.dart';
-import '../src/theme/config.dart';
-import '../src/theme/custom_theme.dart';
 
 class Artist extends StatefulWidget {
   const Artist({Key? key}) : super(key: key);

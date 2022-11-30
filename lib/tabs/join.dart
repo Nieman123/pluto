@@ -4,6 +4,7 @@ import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:form_builder_validators/form_builder_validators.dart';
 import 'package:phone_form_field/phone_form_field.dart';
 import 'package:smsalert/smsalert.dart';
+import 'package:webviewx/webviewx.dart';
 
 import '../src/custom/custom_text.dart';
 import '../src/whatIDo/data.dart';
@@ -14,6 +15,13 @@ class Join extends StatelessWidget {
   final _formKey = GlobalKey<FormBuilderState>();
   late PhoneController controller = PhoneController(
       const PhoneNumber(isoCode: IsoCode.US, nsn: '8280000000'));
+  late WebViewXController webviewController;
+  final initialContent =
+      '<h4> This is some hardcoded HTML code embedded inside the webview <h4> <h2> Hello world! <h2>';
+  final executeJsErrorMessage =
+      'Failed to execute this task because the current content is (probably) URL that allows iframe embedding, on Web.\n\n'
+      'A short reason for this is that, when a normal URL is embedded in the iframe, you do not actually own that content so you cant call your custom functions\n'
+      '(read the documentation to find out why).';
 
   SMSAlert sms = const SMSAlert('nieman', 'x&nem!ZcVhNXL8');
 
@@ -22,6 +30,10 @@ class Join extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    webviewController.loadContent(
+      'https://docs.google.com/forms/d/e/1FAIpQLSfPHI_EBqKYohinzlwr6FwwHa5ieRsg0AnGQLc6F_rzFZlbtA/viewform?embedded=true',
+      SourceType.url,
+    );
     final double height = MediaQuery.of(context).size.height;
     final double width = MediaQuery.of(context).size.width;
     return Padding(
@@ -67,102 +79,102 @@ class Join extends StatelessWidget {
                       },
                       child: Column(
                         children: [
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(0, 10, 0, 20),
-                            child: FormBuilderTextField(
-                              name: 'phone',
-                              autovalidateMode: AutovalidateMode.always,
-                              style: const TextStyle(color: Colors.white),
-                              decoration: const InputDecoration(
-                                  labelText: 'NAME',
-                                  labelStyle: TextStyle(color: Colors.white),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(color: Colors.white),
-                                  ),
-                                  border: OutlineInputBorder(
-                                    borderSide: BorderSide(color: Colors.white),
-                                  ),
-                                  helperText: 'INPUT YOUR NAME/NICKNAME',
-                                  fillColor: Colors.white,
-                                  helperStyle:
-                                      TextStyle(color: Colors.white30)),
-                              cursorColor: Colors.white,
-                              keyboardType: TextInputType.name,
-                              validator: FormBuilderValidators.compose([
-                                FormBuilderValidators.required(),
-                                FormBuilderValidators.max(64),
-                              ]),
-                            ),
-                          ),
-                          PhoneFormField(
-                            controller: controller,
-                            key: const Key('phone-field'),
-                            style: const TextStyle(color: Colors.white),
-                            decoration: const InputDecoration(
-                                labelText: 'PHONE', // default to null
-                                labelStyle: TextStyle(color: Colors.white),
-                                helperText: 'USA NUMBERS ONLY',
-                                helperStyle: TextStyle(color: Colors.white30),
-                                enabledBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(color: Colors.white),
-                                ),
-                                border: OutlineInputBorder(
-                                  borderSide: BorderSide(color: Colors.white),
-                                )),
-                            validator: _getValidator(true),
-                            isCountrySelectionEnabled: false, // default
-                            // countrySelectorNavigator:
-                            //     const CountrySelectorNavigator.bottomSheet(),
-                            showFlagInInput: false, // default
-                            autofillHints: const [
-                              AutofillHints.telephoneNumber
-                            ], // default
-                            //onSaved: (PhoneNumber p) => print('saved $p'),   // default null
-                            //onChanged: (PhoneNumber p) => print('saved $p'),
-                          ),
+                          // Padding(
+                          //   padding: const EdgeInsets.fromLTRB(0, 10, 0, 20),
+                          //   child: FormBuilderTextField(
+                          //     name: 'phone',
+                          //     autovalidateMode: AutovalidateMode.always,
+                          //     style: const TextStyle(color: Colors.white),
+                          //     decoration: const InputDecoration(
+                          //         labelText: 'NAME',
+                          //         labelStyle: TextStyle(color: Colors.white),
+                          //         enabledBorder: OutlineInputBorder(
+                          //           borderSide: BorderSide(color: Colors.white),
+                          //         ),
+                          //         border: OutlineInputBorder(
+                          //           borderSide: BorderSide(color: Colors.white),
+                          //         ),
+                          //         helperText: 'INPUT YOUR NAME/NICKNAME',
+                          //         fillColor: Colors.white,
+                          //         helperStyle:
+                          //             TextStyle(color: Colors.white30)),
+                          //     cursorColor: Colors.white,
+                          //     keyboardType: TextInputType.name,
+                          //     validator: FormBuilderValidators.compose([
+                          //       FormBuilderValidators.required(),
+                          //       FormBuilderValidators.max(64),
+                          //     ]),
+                          //   ),
+                          // ),
+                          // PhoneFormField(
+                          //   controller: controller,
+                          //   key: const Key('phone-field'),
+                          //   style: const TextStyle(color: Colors.white),
+                          //   decoration: const InputDecoration(
+                          //       labelText: 'PHONE', // default to null
+                          //       labelStyle: TextStyle(color: Colors.white),
+                          //       helperText: 'USA NUMBERS ONLY',
+                          //       helperStyle: TextStyle(color: Colors.white30),
+                          //       enabledBorder: OutlineInputBorder(
+                          //         borderSide: BorderSide(color: Colors.white),
+                          //       ),
+                          //       border: OutlineInputBorder(
+                          //         borderSide: BorderSide(color: Colors.white),
+                          //       )),
+                          //   validator: _getValidator(true),
+                          //   isCountrySelectionEnabled: false, // default
+                          //   // countrySelectorNavigator:
+                          //   //     const CountrySelectorNavigator.bottomSheet(),
+                          //   showFlagInInput: false, // default
+                          //   autofillHints: const [
+                          //     AutofillHints.telephoneNumber
+                          //   ], // default
+                          //   //onSaved: (PhoneNumber p) => print('saved $p'),   // default null
+                          //   //onChanged: (PhoneNumber p) => print('saved $p'),
+                          // ),
                         ],
                       ),
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 25.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        Column(
-                          children: [
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                  primary:
-                                      Theme.of(context).scaffoldBackgroundColor,
-                                  shadowColor:
-                                      const Color.fromARGB(255, 175, 174, 174),
-                                  textStyle: const TextStyle(
-                                      fontSize: 30,
-                                      color:
-                                          Color.fromARGB(255, 192, 190, 190))),
-                              onPressed: () async {
-                                var validator = _getValidator(true);
-                                if (_formKey.currentState != null) {
-                                  if (_formKey.currentState
-                                          ?.saveAndValidate() ??
-                                      false) {
-                                    if (controller.value!
-                                        .isValid(type: PhoneNumberType.mobile))
-                                      await signupSMS(
-                                          _formKey.currentState!.value
-                                              .toString(),
-                                          controller.value!.international);
-                                  }
-                                }
-                              },
-                              child: const Text('JOIN'),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
+                  // Padding(
+                  //   padding: const EdgeInsets.only(bottom: 25.0),
+                  //   child: Row(
+                  //     mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  //     children: [
+                  //       Column(
+                  //         children: [
+                  //           ElevatedButton(
+                  //             style: ElevatedButton.styleFrom(
+                  //                 primary:
+                  //                     Theme.of(context).scaffoldBackgroundColor,
+                  //                 shadowColor:
+                  //                     const Color.fromARGB(255, 175, 174, 174),
+                  //                 textStyle: const TextStyle(
+                  //                     fontSize: 30,
+                  //                     color:
+                  //                         Color.fromARGB(255, 192, 190, 190))),
+                  //             onPressed: () async {
+                  //               var validator = _getValidator(true);
+                  //               if (_formKey.currentState != null) {
+                  //                 if (_formKey.currentState
+                  //                         ?.saveAndValidate() ??
+                  //                     false) {
+                  //                   if (controller.value!
+                  //                       .isValid(type: PhoneNumberType.mobile))
+                  //                     await signupSMS(
+                  //                         _formKey.currentState!.value
+                  //                             .toString(),
+                  //                         controller.value!.international);
+                  //                 }
+                  //               }
+                  //             },
+                  //             child: const Text('JOIN'),
+                  //           ),
+                  //         ],
+                  //       ),
+                  //     ],
+                  //   ),
+                  // ),
                 ],
               ),
             ));

@@ -27,6 +27,7 @@ dependencies:
   firebase_analytics: ^10.0.6
   firebase_core: ^2.3.0
   url_launcher: ^6.1.7
+  webviewx: ^0.2.1
 
 dev_dependencies:
   flutter_test:
