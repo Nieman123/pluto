@@ -39,8 +39,8 @@ class _JoinPageState extends State<Join> {
         child: Column(
           children: <Widget>[
             Container(
-              height: 600,
-              width: 600,
+              height: 500,
+              width: 610,
               child: _buildWebViewX(),
             ),
           ],
@@ -55,7 +55,7 @@ class _JoinPageState extends State<Join> {
       initialContent: initialContent,
       initialSourceType: SourceType.html,
       height: 600,
-      width: 600,
+      width: 800,
       onWebViewCreated: (controller) =>
           {webviewController = controller, _setHtmlFromAssets()},
       onPageStarted: (src) => {},
