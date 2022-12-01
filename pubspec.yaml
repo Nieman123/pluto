@@ -60,3 +60,4 @@ flutter:
     - assets/achievements/
     - assets/portfolio.json
     - assets/experience/HouseNightsAtWaterStreet.ics
+    - assets/test.html
