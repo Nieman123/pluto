@@ -2,9 +2,11 @@ import 'dart:convert';
 import 'dart:html';
 
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 
 import '../src/contact_me/data.dart';
 import '../src/custom/custom_text.dart';
@@ -62,35 +64,82 @@ class _CalendarEventState extends State<CalendarEvent> {
                   ),
                   Padding(
                       padding: const EdgeInsets.symmetric(vertical: 5.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      child: Column(
                         children: [
-                          Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                  textStyle: const TextStyle(fontSize: 15),
-                                  backgroundColor: Colors.black45),
-                              onPressed: () async {
-                                await downloadWaterStreetICS();
-                              },
-                              child: const Text('DOWNLOAD .ICS (iPHONE)'),
-                            ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                      textStyle: const TextStyle(fontSize: 15),
+                                      backgroundColor: Colors.black45),
+                                  onPressed: () async {
+                                    await downloadWaterStreetICS();
+                                  },
+                                  child: const Text('DOWNLOAD .ICS (iPHONE)'),
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                      textStyle: const TextStyle(fontSize: 15),
+                                      backgroundColor: Colors.black45),
+                                  onPressed: () async {
+                                    var uri = Uri.parse(
+                                        'https://calendar.google.com/calendar/event?action=TEMPLATE&tmeid=NmJ0ODFicGVzcTVsamJyNTUzMGVsa2llbTdfMjAyMjEyMTFUMDIwMDAwWiBuaWVtYW4xMjNAbQ&tmsrc=nieman123%40gmail.com&scp=ALL');
+                                    launchUrl(uri);
+                                  },
+                                  child: const Text('GOOGLE CALENDAR'),
+                                ),
+                              ),
+                            ],
                           ),
                           Padding(
                             padding: const EdgeInsets.all(8.0),
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                  textStyle: const TextStyle(fontSize: 15),
-                                  backgroundColor: Colors.black45),
-                              onPressed: () async {
-                                var uri = Uri.parse(
-                                    'https://calendar.google.com/calendar/event?action=TEMPLATE&tmeid=NmJ0ODFicGVzcTVsamJyNTUzMGVsa2llbTdfMjAyMjEyMTFUMDIwMDAwWiBuaWVtYW4xMjNAbQ&tmsrc=nieman123%40gmail.com&scp=ALL');
-                                launchUrl(uri);
-                              },
-                              child: const Text('GOOGLE CALENDAR'),
+                            child: RichText(
+                              textAlign: TextAlign.center,
+                              text: TextSpan(children: [
+                                const TextSpan(
+                                  text: 'Follow ',
+                                  style: TextStyle(
+                                      color: Colors.white, fontSize: 18),
+                                ),
+                                TextSpan(
+                                  text: '@pluto.events.avl',
+                                  style: const TextStyle(
+                                      color: Colors.grey, fontSize: 18),
+                                  recognizer: TapGestureRecognizer()
+                                    ..onTap = () {
+                                      launchUrlString(
+                                          'https://www.instagram.com/pluto.events.avl/');
+                                    },
+                                ),
+                                const TextSpan(
+                                  text: ' and ',
+                                  style: TextStyle(
+                                      color: Colors.white, fontSize: 18),
+                                ),
+                                TextSpan(
+                                  text: '@thenieman',
+                                  style: const TextStyle(
+                                      color: Colors.grey, fontSize: 18),
+                                  recognizer: TapGestureRecognizer()
+                                    ..onTap = () {
+                                      launchUrlString(
+                                          'https://www.instagram.com/thenieman/');
+                                    },
+                                ),
+                                const TextSpan(
+                                  text: ' on Instagram for updates.',
+                                  style: TextStyle(
+                                      color: Colors.white, fontSize: 18),
+                                ),
+                              ]),
                             ),
-                          ),
+                          )
                         ],
                       )),
                   Padding(
@@ -144,7 +193,7 @@ class _CalendarEventState extends State<CalendarEvent> {
                             child: CustomText(
                                 text:
                                     'Tap the buttons below to add to your calendar',
-                                fontSize: 10,
+                                fontSize: 18,
                                 color: Theme.of(context)
                                     .primaryColorLight
                                     .withOpacity(0.7)),
@@ -186,6 +235,49 @@ class _CalendarEventState extends State<CalendarEvent> {
                                   ),
                                 ],
                               )),
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: RichText(
+                              textAlign: TextAlign.center,
+                              text: TextSpan(children: [
+                                const TextSpan(
+                                  text: 'Follow ',
+                                  style: TextStyle(
+                                      color: Colors.white, fontSize: 18),
+                                ),
+                                TextSpan(
+                                  text: '@pluto.events.avl',
+                                  style: const TextStyle(
+                                      color: Colors.grey, fontSize: 18),
+                                  recognizer: TapGestureRecognizer()
+                                    ..onTap = () {
+                                      launchUrlString(
+                                          'https://www.instagram.com/pluto.events.avl/');
+                                    },
+                                ),
+                                const TextSpan(
+                                  text: ' and ',
+                                  style: TextStyle(
+                                      color: Colors.white, fontSize: 18),
+                                ),
+                                TextSpan(
+                                  text: '@thenieman',
+                                  style: const TextStyle(
+                                      color: Colors.grey, fontSize: 18),
+                                  recognizer: TapGestureRecognizer()
+                                    ..onTap = () {
+                                      launchUrlString(
+                                          'https://www.instagram.com/thenieman/');
+                                    },
+                                ),
+                                const TextSpan(
+                                  text: ' on Instagram for updates.',
+                                  style: TextStyle(
+                                      color: Colors.white, fontSize: 18),
+                                ),
+                              ]),
+                            ),
+                          ),
                           SizedBox(
                             width: width / 3,
                             child: Padding(
