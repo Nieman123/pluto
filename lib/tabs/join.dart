@@ -32,14 +32,13 @@ class _JoinPageState extends State<Join> {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Container(
-        padding: const EdgeInsets.all(5.0),
-        height: 610,
+      child: SizedBox(
+        height: 800,
         width: 800,
         child: Column(
           children: <Widget>[
-            Container(
-              height: 500,
+            SizedBox(
+              height: 780,
               width: 610,
               child: _buildWebViewX(),
             ),
