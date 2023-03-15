@@ -104,7 +104,7 @@ class _EventState extends State<Event> {
                                 elevation: 5,
                                 margin: EdgeInsets.all(10),
                                 child: Image.asset(
-                                  'assets/experience/every-2nd-saturday-water-street-916.png',
+                                  'assets/experience/every-2nd-saturday-water-street.png',
                                   fit: BoxFit.fill,
                                 ),
                               ),

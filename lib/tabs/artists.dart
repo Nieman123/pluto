@@ -123,7 +123,7 @@ class _ArtistState extends State<Artist> {
                         ),
                       ),
                       CustomText(
-                          text: 'DJ RVB1DR0N13',
+                          text: 'DJ rvb!Dr0Ni3',
                           fontSize: 18,
                           color: Theme.of(context).primaryColorLight),
                     ],
@@ -189,18 +189,52 @@ class _ArtistState extends State<Artist> {
                                           // )
                                         ],
                                       ),
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 15.0, vertical: 15.0),
-                                        child: Container(
-                                          width: 350.0,
-                                          height: 350.0,
-                                          decoration: const BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              image: DecorationImage(
-                                                  fit: BoxFit.fill,
-                                                  image: NetworkImage(
-                                                      'https://i.imgur.com/ph79TGT.png'))),
+                                      GestureDetector(
+                                        onTap: () {
+                                          showDialog(
+                                            context: context,
+                                            builder: (BuildContext context) {
+                                              return AlertDialog(
+                                                title: CustomText(
+                                                    text: 'DIVINE THUD',
+                                                    fontSize: 18,
+                                                    color: Theme.of(context)
+                                                        .primaryColorLight),
+                                                content: const CustomText(
+                                                    text:
+                                                        'Description of the DJ goes here',
+                                                    fontSize: 16,
+                                                    color: Colors.grey),
+                                                actions: [
+                                                  TextButton(
+                                                    child: CustomText(
+                                                        text: 'Close',
+                                                        fontSize: 16,
+                                                        color: Theme.of(context)
+                                                            .primaryColor),
+                                                    onPressed: () {
+                                                      Navigator.of(context)
+                                                          .pop();
+                                                    },
+                                                  ),
+                                                ],
+                                              );
+                                            },
+                                          );
+                                        },
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 15.0, vertical: 15.0),
+                                          child: Container(
+                                            width: 350.0,
+                                            height: 350.0,
+                                            decoration: const BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                image: DecorationImage(
+                                                    fit: BoxFit.fill,
+                                                    image: NetworkImage(
+                                                        'https://i.imgur.com/ph79TGT.png'))),
+                                          ),
                                         ),
                                       ),
                                       Column(
@@ -325,7 +359,7 @@ class _ArtistState extends State<Artist> {
                                     Column(
                                       children: [
                                         CustomText(
-                                            text: 'DJ RVB1DR0N13',
+                                            text: 'DJ rvb!Dr0Ni3',
                                             fontSize: 18,
                                             color: Theme.of(context)
                                                 .primaryColorLight),
