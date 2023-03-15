@@ -34,15 +34,6 @@ class _ArtistState extends State<Artist> {
                       text: 'MEET THE ARTISTS',
                       fontSize: 28,
                       color: Theme.of(context).primaryColorLight),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 5.0),
-                    child: CustomText(
-                        text: 'HOUSE NIGHTS AT WATER STREET',
-                        fontSize: 18,
-                        color: Theme.of(context)
-                            .primaryColorLight
-                            .withOpacity(0.7)),
-                  ),
                   Column(
                     children: [
                       Padding(
@@ -110,11 +101,29 @@ class _ArtistState extends State<Artist> {
                               image: DecorationImage(
                                   fit: BoxFit.fill,
                                   image: NetworkImage(
-                                      'https://i.imgur.com/6Drkikb.jpg'))),
+                                      'https://i.imgur.com/Qn41yP4.png'))),
                         ),
                       ),
                       CustomText(
                           text: 'DJ DAGGETT',
+                          fontSize: 18,
+                          color: Theme.of(context).primaryColorLight),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 15.0, vertical: 15.0),
+                        child: Container(
+                          width: 250.0,
+                          height: 250.0,
+                          decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              image: DecorationImage(
+                                  fit: BoxFit.cover,
+                                  image: NetworkImage(
+                                      'https://i.imgur.com/6KaRYem.png'))),
+                        ),
+                      ),
+                      CustomText(
+                          text: 'DJ RVB1DR0N13',
                           fontSize: 18,
                           color: Theme.of(context).primaryColorLight),
                     ],
@@ -123,6 +132,7 @@ class _ArtistState extends State<Artist> {
               ),
             );
           } else {
+            //Desktop Content
             return Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -263,9 +273,9 @@ class _ArtistState extends State<Artist> {
                                           decoration: const BoxDecoration(
                                               shape: BoxShape.circle,
                                               image: DecorationImage(
-                                                  fit: BoxFit.fill,
+                                                  fit: BoxFit.cover,
                                                   image: NetworkImage(
-                                                      'https://i.imgur.com/6Drkikb.jpg'))),
+                                                      'https://i.imgur.com/Qn41yP4.png'))),
                                         ),
                                       ),
                                       Column(
@@ -292,7 +302,50 @@ class _ArtistState extends State<Artist> {
                                   ),
                                 ),
                               ],
-                            )
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Column(
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 15.0, vertical: 15.0),
+                                      child: Container(
+                                        width: 350.0,
+                                        height: 350.0,
+                                        decoration: const BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            image: DecorationImage(
+                                                fit: BoxFit.cover,
+                                                image: NetworkImage(
+                                                    'https://i.imgur.com/6KaRYem.png'))),
+                                      ),
+                                    ),
+                                    Column(
+                                      children: [
+                                        CustomText(
+                                            text: 'DJ RVB1DR0N13',
+                                            fontSize: 18,
+                                            color: Theme.of(context)
+                                                .primaryColorLight),
+                                        // Padding(
+                                        //   padding: const EdgeInsets.all(8.0),
+                                        //   child: RichText(
+                                        //     text: const TextSpan(
+                                        //       text:
+                                        //           'Inspired by Dirty Bird and Off the Grid records, Nieman is a DJ and producer from Asheville, NC.',
+                                        //       style: TextStyle(
+                                        //           color: Colors.white),
+                                        //     ),
+                                        //   ),
+                                        // )
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ],
                         ),
                       ),
