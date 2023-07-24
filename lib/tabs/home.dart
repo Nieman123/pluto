@@ -103,7 +103,7 @@ class _HomePageState extends State<HomePage> {
                       children: [
                         const Introduction(
                             word:
-                                'Private events for dance music fanatics near Asheville, NC. \nScroll down to sign up for event notices!',
+                                'Events for dance music fanatics near Asheville, NC',
                             textScaleFactor: 1.5),
                         Roll(
                           crinkle: Crinkle.twinkling,
