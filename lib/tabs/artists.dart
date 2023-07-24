@@ -119,11 +119,11 @@ class _ArtistState extends State<Artist> {
                               image: DecorationImage(
                                   fit: BoxFit.cover,
                                   image: NetworkImage(
-                                      'https://i.imgur.com/6KaRYem.png'))),
+                                      'https://i.imgur.com/a0LusKi.png'))),
                         ),
                       ),
                       CustomText(
-                          text: 'DJ rvb!Dr0Ni3',
+                          text: 'RABI!D RON!E',
                           fontSize: 18,
                           color: Theme.of(context).primaryColorLight),
                     ],
@@ -353,13 +353,13 @@ class _ArtistState extends State<Artist> {
                                             image: DecorationImage(
                                                 fit: BoxFit.cover,
                                                 image: NetworkImage(
-                                                    'https://i.imgur.com/6KaRYem.png'))),
+                                                    'https://i.imgur.com/a0LusKi.png'))),
                                       ),
                                     ),
                                     Column(
                                       children: [
                                         CustomText(
-                                            text: 'DJ rvb!Dr0Ni3',
+                                            text: 'RABI!D RON!E',
                                             fontSize: 18,
                                             color: Theme.of(context)
                                                 .primaryColorLight),

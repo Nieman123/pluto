@@ -36,7 +36,8 @@ class _UnderlinedButtonState extends State<UnderlinedButton> {
       hoverColor: Colors.transparent,
       onTap: () => scroll.scrollTo(
           index: widget.tabNumber,
-          duration: const Duration(milliseconds: 2000)),
+          curve: Curves.decelerate,
+          duration: const Duration(milliseconds: 1000)),
       onHover: (bool value) => setState(() => _isHover = value),
       child: SizedBox(
         width: MediaQuery.of(context).size.width * 0.13,

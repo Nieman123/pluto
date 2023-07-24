@@ -97,6 +97,14 @@ class _ContactMeState extends State<ContactMe> {
                       height: height,
                     ),
                   ),
+                  Container(
+                    width: 100.0,
+                    height: 100.0,
+                    child: Image.asset(
+                      'assets/experience/pluto-logo-small.png',
+                      fit: BoxFit.fill,
+                    ),
+                  ),
                 ],
               ),
             );
@@ -161,6 +169,14 @@ class _ContactMeState extends State<ContactMe> {
                         children: [
                           SocialMediaBar(
                             height: height,
+                          ),
+                          Container(
+                            width: 100.0,
+                            height: 100.0,
+                            child: Image.asset(
+                              'assets/experience/pluto-logo-small.png',
+                              fit: BoxFit.fill,
+                            ),
                           ),
                         ],
                       ),

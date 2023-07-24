@@ -17,7 +17,7 @@ export 'scroll_controller.dart';
 
 List<Widget> widgetList = [
   const HomePage(),
-  Join(),
+  //Join(),
   const Event(),
   const Artist(),
   const ContactMe(),

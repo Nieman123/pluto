@@ -50,7 +50,7 @@ class _HomePageState extends State<HomePage> {
                     padding: EdgeInsets.only(top: height * 0.07),
                     child: const Introduction(
                         word:
-                            'Private events for dance music fanatics near Asheville, NC. \nScroll down to sign up for event notices!',
+                            'Events for dance music fanatics near Asheville, NC.',
                         textScaleFactor: 1.5),
                   ),
                   Roll(
