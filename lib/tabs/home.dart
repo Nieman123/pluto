@@ -106,13 +106,13 @@ class _HomePageState extends State<HomePage> {
                                 'Private events for dance music fanatics near Asheville, NC. \nScroll down to sign up for event notices!',
                             textScaleFactor: 1.5),
                         Roll(
-                          crinkle: Crinkle.vivacious,
+                          crinkle: Crinkle.twinkling,
                           child: Foil(
                             gradient: Foils.linearRainbow.copyWith(
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                                 colors: List.from(Foils.linearRainbow.colors)),
-                            opacity: 0.4,
+                            opacity: 0.6,
                             scalar: Scalar.identity,
                             speed: const Duration(seconds: 100),
                             duration: const Duration(seconds: 100),

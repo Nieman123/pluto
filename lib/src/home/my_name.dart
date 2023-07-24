@@ -18,26 +18,29 @@ class MyName extends StatelessWidget {
     return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12.0),
         child: isMobile
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: List.generate(data.split(' ').length, (int i) {
-                  return SizedBox(
-                    width: width - width * 0.4,
-                    child: FittedBox(
-                      fit: BoxFit.cover,
-                      child: Text(
-                        data.split(' ')[i],
-                        textScaleFactor: 4.5,
-                        style: const TextStyle(
-                          fontFamily: 'FjallaOne',
-                          // letterSpacing: 10.5,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white,
+            ? SizedBox(
+                width: width / 2,
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: List.generate(data.split(' ').length, (int i) {
+                      return SizedBox(
+                        width: width - width * 0.4,
+                        child: FittedBox(
+                          fit: BoxFit.cover,
+                          child: Text(
+                            data.split(' ')[i],
+                            textScaleFactor: 4.5,
+                            style: const TextStyle(
+                              fontFamily: 'FjallaOne',
+                              // letterSpacing: 10.5,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  );
-                }))
+                      );
+                    })),
+              )
             : Text(data,
                 textScaleFactor: 7,
                 style: const TextStyle(

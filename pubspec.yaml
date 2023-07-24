@@ -28,6 +28,7 @@ dependencies:
   firebase_core: ^2.3.0
   url_launcher: ^6.1.7
   webviewx: ^0.2.1
+  carousel_slider: ^4.2.1
 
 dev_dependencies:
   flutter_test:
@@ -53,6 +54,7 @@ flutter:
     - assets/what_i_do/
     - assets/what_i_do/constant/
     - assets/experience/
+    - assets/gallery/
     - assets/contact_me/
     - assets/contact_me/constant/
     - assets/projects/

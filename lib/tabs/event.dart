@@ -1,3 +1,4 @@
+import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 
 import '../src/contact_me/data.dart';
@@ -107,6 +108,40 @@ class _EventState extends State<Event> {
                       ),
                     ),
                   ),
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: CarouselSlider(
+                      options: CarouselOptions(
+                        autoPlay: true,
+                        aspectRatio: 2.0,
+                        enlargeCenterPage: true,
+                      ),
+                      items: [
+                        'assets/gallery/1.jpg',
+                        'assets/gallery/2.jpg',
+                        'assets/gallery/3.jpg',
+                        'assets/gallery/4.jpg',
+                        'assets/gallery/5.jpg',
+                        'assets/gallery/6.jpg',
+                        'assets/gallery/7.jpg',
+                        'assets/gallery/8.jpg'
+                      ].map((i) {
+                        return Builder(
+                          builder: (BuildContext context) {
+                            return Container(
+                                width: MediaQuery.of(context).size.width,
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 5.0),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Image.asset(i, fit: BoxFit.cover));
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ),
                 ],
               ),
             );
@@ -177,7 +212,7 @@ class _EventState extends State<Event> {
                             padding: const EdgeInsets.symmetric(vertical: 10.0),
                             child: CustomText(
                                 text: 'HOUSE NIGHTS AT WATER STREET',
-                                fontSize: 18,
+                                fontSize: 28,
                                 color: Theme.of(context)
                                     .primaryColorLight
                                     .withOpacity(0.7)),
@@ -205,6 +240,43 @@ class _EventState extends State<Event> {
                       ),
                     ),
                   ],
+                ),
+                SizedBox(
+                  width: width / 2,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: CarouselSlider(
+                      options: CarouselOptions(
+                        autoPlay: true,
+                        aspectRatio: 2.0,
+                        enlargeCenterPage: true,
+                      ),
+                      items: [
+                        'assets/gallery/1.jpg',
+                        'assets/gallery/2.jpg',
+                        'assets/gallery/3.jpg',
+                        'assets/gallery/4.jpg',
+                        'assets/gallery/5.jpg',
+                        'assets/gallery/6.jpg',
+                        'assets/gallery/7.jpg',
+                        'assets/gallery/8.jpg'
+                      ].map((i) {
+                        return Builder(
+                          builder: (BuildContext context) {
+                            return Container(
+                                width: MediaQuery.of(context).size.width,
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 5.0),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Image.asset(i, fit: BoxFit.cover));
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ),
                 ),
               ],
             );
