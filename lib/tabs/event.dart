@@ -124,7 +124,8 @@ class _EventState extends State<Event> {
                         'assets/gallery/5.jpg',
                         'assets/gallery/6.jpg',
                         'assets/gallery/7.jpg',
-                        'assets/gallery/8.jpg'
+                        'assets/gallery/8.jpg',
+                        'assets/gallery/9.jpg'
                       ].map((i) {
                         return Builder(
                           builder: (BuildContext context) {
@@ -259,7 +260,8 @@ class _EventState extends State<Event> {
                         'assets/gallery/5.jpg',
                         'assets/gallery/6.jpg',
                         'assets/gallery/7.jpg',
-                        'assets/gallery/8.jpg'
+                        'assets/gallery/8.jpg',
+                        'assets/gallery/9.jpg'
                       ].map((i) {
                         return Builder(
                           builder: (BuildContext context) {
