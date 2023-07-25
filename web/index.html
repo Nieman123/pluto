@@ -5,16 +5,22 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="Private underground events.">
+  <meta name="description" content="Events For Dance Music Enthusiasts.">
+  <meta property="og:url" content="https://pluto.events" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Pluto Events - Asheville" />
+  <meta property="og:description" content="Events For Dance Music Enthusiasts." />
+  <meta property="og:image" content="pluto-preview.png" />
+
 
   <link rel="stylesheet" href="style.css">
 
   <!-- iOS meta tags & icons -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="Meet Developer">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
-
+  <meta name="apple-mobile-web-app-title" content="Pluto Events">
+  <link rel="apple-touch-icon" href="pluto-logo.png">
+  <link rel="icon" type="image/x-icon" href="pluto_logo.ico">
   <title>Pluto Events - Asheville</title> <!-- Put site title here -->
   <link rel="manifest" href="manifest.json">
 </head>
@@ -34,7 +40,11 @@
     }
 
     if ('serviceWorker' in navigator) {
-      // Service workers are supported. Use them.
+      // Service workers are supported.
+      window.addEventListener('load', function() {
+      navigator.serviceWorker.register('/sw.js');
+      });
+
       window.addEventListener('load', function () {
         // Wait for registration to finish before dropping the <script> tag.
         // Otherwise, the browser will load the script multiple times,

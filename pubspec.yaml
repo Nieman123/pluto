@@ -29,6 +29,7 @@ dependencies:
   url_launcher: ^6.1.7
   webviewx: ^0.2.1
   carousel_slider: ^4.2.1
+  firebase_messaging: ^14.6.5
 
 dev_dependencies:
   flutter_test:
