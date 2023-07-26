@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'data.dart';
 
 class MyName extends StatelessWidget {
   MyName({
@@ -10,7 +9,6 @@ class MyName extends StatelessWidget {
 
   final bool isMobile;
   final BuildContext context;
-  final String data = name();
 
   @override
   Widget build(BuildContext context) {
@@ -22,15 +20,15 @@ class MyName extends StatelessWidget {
                 width: width / 2,
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: List.generate(data.split(' ').length, (int i) {
+                    children: List.generate(1, (int i) {
                       return SizedBox(
                         width: width - width * 0.4,
-                        child: FittedBox(
+                        child: const FittedBox(
                           fit: BoxFit.cover,
                           child: Text(
-                            data.split(' ')[i],
+                            "Pluto",
                             textScaleFactor: 4.5,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'FjallaOne',
                               // letterSpacing: 10.5,
                               fontWeight: FontWeight.w500,
@@ -41,9 +39,9 @@ class MyName extends StatelessWidget {
                       );
                     })),
               )
-            : Text(data,
+            : const Text('Pluto',
                 textScaleFactor: 7,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'FjallaOne',
                   letterSpacing: 20.5,
                   color: Colors.white,

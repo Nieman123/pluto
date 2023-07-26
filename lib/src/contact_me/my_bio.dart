@@ -8,29 +8,26 @@ class MyBio extends StatelessWidget {
   }) : super(key: key);
 
   final double fontSize;
-  final String getBio = bio();
 
   @override
   Widget build(BuildContext context) {
-    return (getBio == '')
-        ? const Center()
-        : Padding(
-            padding: const EdgeInsets.fromLTRB(12.0, 5.0, 12.0, 30.0),
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 30.0),
-                  child: Text(
-                    '"$getBio"',
-                    style: TextStyle(
-                        fontFamily: 'SourceCodePro',
-                        letterSpacing: 2,
-                        color: Theme.of(context).primaryColorLight,
-                        fontSize: fontSize),
-                  ),
-                ),
-              ],
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12.0, 5.0, 12.0, 30.0),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 30.0),
+            child: Text(
+              'Pluto is a organization of local DJs and producers who bring people together with music.',
+              style: TextStyle(
+                  fontFamily: 'SourceCodePro',
+                  letterSpacing: 2,
+                  color: Theme.of(context).primaryColorLight,
+                  fontSize: fontSize),
             ),
-          );
+          ),
+        ],
+      ),
+    );
   }
 }

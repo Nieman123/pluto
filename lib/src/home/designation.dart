@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../custom/custom_text.dart';
-import 'data.dart';
 
 class Designation extends StatelessWidget {
   Designation({
@@ -12,7 +11,11 @@ class Designation extends StatelessWidget {
 
   final bool isMobile;
   final BuildContext context;
-  final List<String> data = designation();
+  final List<String> data = [
+    'Underground Parties',
+    'Special Events',
+    'Outdoor Concerts'
+  ];
 
   @override
   Widget build(BuildContext context) {

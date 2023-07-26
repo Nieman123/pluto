@@ -19,8 +19,6 @@ class CalendarEvent extends StatefulWidget {
 }
 
 class _CalendarEventState extends State<CalendarEvent> {
-  final List<String> data = contactMe();
-  final List<String> getNameAndLink = nameAndLink();
   bool isHover = false;
 
   @override

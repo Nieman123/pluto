@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'data.dart';
 
 class About extends StatelessWidget {
   About({
@@ -8,7 +7,8 @@ class About extends StatelessWidget {
   }) : super(key: key);
 
   final double fontSize;
-  final String gotAbout = about();
+  final String gotAbout =
+      'Pluto is a organization of local DJs and producers who bring people together with music.';
 
   @override
   Widget build(BuildContext context) {

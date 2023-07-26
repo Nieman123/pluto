@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:foil/foil.dart';
 import '../src/home/about.dart';
-import '../src/home/data.dart';
 import '../src/home/designation.dart';
 import '../src/home/introduction.dart';
 import '../src/home/my_name.dart';
-import '../src/home/resume.dart';
 import '../src/home/social_media_bar.dart';
 
 class HomePage extends StatefulWidget {
@@ -60,7 +58,7 @@ class _HomePageState extends State<HomePage> {
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: List.from(Foils.linearRainbow.colors)),
-                      opacity: 0.4,
+                      opacity: 0.6,
                       scalar: Scalar.identity,
                       speed: const Duration(milliseconds: 100000),
                       duration: const Duration(milliseconds: 100000),

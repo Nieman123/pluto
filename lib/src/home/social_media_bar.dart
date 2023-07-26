@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../html_open_link.dart';
-import 'data.dart';
 
 class SocialMediaBar extends StatelessWidget {
   SocialMediaBar({Key? key, required this.height}) : super(key: key);
-  final List<List<String>> data = socialMedia();
+  final List<List<String>> data = [
+    ['https://instagram.com/pluto.events.avl/', 'instagram'],
+    ['mailto:contact@pluto.events', 'email']
+  ];
   final double height;
 
   @override

@@ -17,8 +17,6 @@ class Event extends StatefulWidget {
 }
 
 class _EventState extends State<Event> {
-  final List<String> data = contactMe();
-  final List<String> getNameAndLink = nameAndLink();
   bool isHover = false;
 
   @override

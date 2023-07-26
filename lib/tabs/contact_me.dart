@@ -16,8 +16,6 @@ class ContactMe extends StatefulWidget {
 }
 
 class _ContactMeState extends State<ContactMe> {
-  final List<String> data = contactMe();
-  final List<String> getNameAndLink = nameAndLink();
   bool isHover = false;
 
   @override
@@ -43,10 +41,8 @@ class _ContactMeState extends State<ContactMe> {
           focusColor: Colors.transparent,
           highlightColor: Colors.transparent,
           child: ClipOval(
-              child: data[2] != ''
-                  ? Image.asset('assets/contact_me/${data[2]}', scale: scale)
-                  : Image.asset('assets/contact_me/constant/picture.png',
-                      scale: scale)),
+              child: Image.asset('assets/contact_me/constant/picture.png',
+                  scale: scale)),
         ),
       );
     }
@@ -85,7 +81,7 @@ class _ContactMeState extends State<ContactMe> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         CustomText(
-                            text: ' ${data[0]}',
+                            text: 'Asheville, NC',
                             fontSize: 18,
                             color: Theme.of(context).primaryColorLight),
                       ],
@@ -154,7 +150,7 @@ class _ContactMeState extends State<ContactMe> {
                                   // else
                                   //   const Center(),
                                   CustomText(
-                                      text: ' ${data[0]}',
+                                      text: 'Asheville, NC',
                                       fontSize: 18,
                                       color:
                                           Theme.of(context).primaryColorLight),
@@ -191,13 +187,10 @@ class _ContactMeState extends State<ContactMe> {
           padding: const EdgeInsets.only(bottom: 3.0),
           child: Column(
             children: [
-              TextButton(
-                onPressed: () => htmlOpenLink(getNameAndLink[1]),
-                child: CustomText(
-                    text: 'Made with ❤️',
-                    fontSize: 10,
-                    color: Theme.of(context).primaryColorLight),
-              ),
+              CustomText(
+                  text: 'Made with ❤️',
+                  fontSize: 10,
+                  color: Theme.of(context).primaryColorLight)
             ],
           ),
         ),

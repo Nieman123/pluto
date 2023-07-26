@@ -11,8 +11,6 @@ class Artist extends StatefulWidget {
 }
 
 class _ArtistState extends State<Artist> {
-  final List<String> data = contactMe();
-  final List<String> getNameAndLink = nameAndLink();
   bool isHover = false;
 
   @override
