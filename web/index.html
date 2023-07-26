@@ -23,8 +23,23 @@
   <link rel="icon" type="image/x-icon" href="pluto_logo.ico">
   <title>Pluto Events - Asheville</title> <!-- Put site title here -->
   <link rel="manifest" href="manifest.json">
+
+  <script src="https://www.gstatic.com/firebasejs/8.4.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.4.1/firebase-messaging.js"></script>
 </head>
 <body>
+  <script>
+      const firebaseConfig = {
+      apiKey: "AIzaSyBLv7MumBOjUHpmAUiu9nLfhWvwmAYKorE",
+      authDomain: "pluto-9b6ca.firebaseapp.com",
+      projectId: "pluto-9b6ca",
+      storageBucket: "pluto-9b6ca.appspot.com",
+      messagingSenderId: "763906028056",
+      appId: "1:763906028056:web:c1261eba96f8b0c792896d",
+      measurementId: "G-Y6GBW8P032"
+    };
+      firebase.initializeApp(firebaseConfig);
+      </script>
   <script>
     var serviceWorkerVersion = null;
     var scriptLoaded = false;
@@ -42,7 +57,7 @@
     if ('serviceWorker' in navigator) {
       // Service workers are supported.
       window.addEventListener('load', function() {
-      navigator.serviceWorker.register('/sw.js');
+      navigator.serviceWorker.register('./firebase-messaging-sw.js');
       });
 
       window.addEventListener('load', function () {
@@ -93,5 +108,6 @@
       loadMainDartJs();
     }
   </script>
+  
 </body>
 </html>
