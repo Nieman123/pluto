@@ -1,7 +1,7 @@
 {
     "name": "Pluto Events",
     "short_name": "Pluto",
-    "start_url": ".",
+    "start_url": "https://pluto.events",
     "display": "standalone",
     "background_color": "#595e61",
     "theme_color": "#4005a6",
