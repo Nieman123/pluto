@@ -27,6 +27,7 @@ dependencies:
   carousel_slider: ^4.2.1
   firebase_messaging: ^14.6.5
   flutter_native_splash: ^2.3.1
+  flutter_list_view: ^1.1.21
 
 dev_dependencies:
   flutter_test:

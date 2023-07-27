@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_list_view/flutter_list_view.dart';
 import 'package:sa3_liquid/sa3_liquid.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
+
 import 'src/nav_bar/nav_bar.dart';
 import 'tabs/tabs.dart';
 
@@ -31,15 +33,11 @@ class App extends StatelessWidget {
                 variation3: 0,
                 rotation: 0,
               ),
-              ScrollablePositionedList.builder(
-                  physics: const BouncingScrollPhysics(),
-                  minCacheExtent: double.infinity,
-                  shrinkWrap: true,
-                  itemCount: widgetList.length,
-                  itemScrollController: scroll,
-                  itemBuilder: (context, index) {
-                    return widgetList[index];
-                  }),
+              FlutterListView(
+                  delegate: FlutterListViewDelegate(
+                (BuildContext context, int index) => widgetList[index],
+                childCount: widgetList.length,
+              ))
             ],
           ),
         );
@@ -65,15 +63,11 @@ class App extends StatelessWidget {
                 variation3: 0,
                 rotation: 0,
               ),
-              ScrollablePositionedList.builder(
-                  physics: const BouncingScrollPhysics(),
-                  minCacheExtent: double.infinity,
-                  shrinkWrap: true,
-                  itemCount: widgetList.length,
-                  itemScrollController: scroll,
-                  itemBuilder: (context, index) {
-                    return widgetList[index];
-                  }),
+              FlutterListView(
+                  delegate: FlutterListViewDelegate(
+                (BuildContext context, int index) => widgetList[index],
+                childCount: widgetList.length,
+              ))
             ],
           ),
         );

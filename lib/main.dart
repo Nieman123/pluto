@@ -86,30 +86,11 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    // return JSONService.hasLoaded == true
-    //     ? MaterialApp(
-    //         debugShowCheckedModeBanner: false,
-    //         theme: CustomTheme.darkTheme,
-    //         darkTheme: CustomTheme.darkTheme,
-    //         themeMode: currentTheme.currentTheme,
-    //         // localizationsDelegates: const [
-    //         //   FormBuilderLocalizations.delegate,
-    //         // ],
-    //         home: const App(),
-    //         initialRoute: App.route,
-    //         routes: {
-    //           App2.route: (context) => App2(),
-    //         },
-    //       )
-    //     : const Center(child: CircularProgressIndicator());
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: CustomTheme.darkTheme,
       darkTheme: CustomTheme.darkTheme,
       themeMode: currentTheme.currentTheme,
-      // localizationsDelegates: const [
-      //   FormBuilderLocalizations.delegate,
-      // ],
       home: const App(),
       initialRoute: App.route,
       routes: {
