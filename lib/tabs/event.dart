@@ -1,13 +1,8 @@
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
-import '../src/contact_me/data.dart';
-import '../src/contact_me/my_bio.dart';
 import '../src/custom/custom_text.dart';
-import '../src/home/social_media_bar.dart';
-import '../src/html_open_link.dart';
-import '../src/theme/config.dart';
-import '../src/theme/custom_theme.dart';
 
 class Event extends StatefulWidget {
   const Event({Key? key}) : super(key: key);
@@ -18,6 +13,13 @@ class Event extends StatefulWidget {
 
 class _EventState extends State<Event> {
   bool isHover = false;
+  String lastSaturday = '';
+
+  @override
+  void initState() {
+    super.initState();
+    calculateLastSaturday();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,35 +38,42 @@ class _EventState extends State<Event> {
                 children: [
                   CustomText(
                       text: 'UPCOMING EVENTS',
-                      fontSize: 28,
+                      fontSize: 48,
                       color: Theme.of(context).primaryColorLight),
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 20.0),
                     child: CustomText(
-                        text: 'FULL MOON GATHERING \n July 31st - August 2nd',
-                        fontSize: 18,
-                        color: Theme.of(context)
-                            .primaryColorLight
-                            .withOpacity(0.7)),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10.0),
-                    child: CustomText(
-                        text: 'ALOFT POOL PARTY \n August 12th',
-                        fontSize: 18,
-                        color: Theme.of(context)
-                            .primaryColorLight
-                            .withOpacity(0.7)),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 5.0),
-                    child: CustomText(
-                        text: 'PLUTO AT THE GETAWAY',
+                        text: 'ALOFT LEDGE PARTY \n August 12th 2-6PM',
                         fontSize: 28,
                         color: Theme.of(context)
                             .primaryColorLight
                             .withOpacity(0.7)),
                   ),
+                  Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 5.0),
+                      child: Column(
+                        children: [
+                          CustomText(
+                              text: 'PLUTO AT THE GETAWAY',
+                              fontSize: 48,
+                              color: Theme.of(context).primaryColorLight),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 20.0),
+                            child: CustomText(
+                                text: 'EVERY LAST SATURDAY OF THE MONTH',
+                                fontSize: 28,
+                                color: Theme.of(context)
+                                    .primaryColorLight
+                                    .withOpacity(0.7)),
+                          ),
+                          CustomText(
+                              text: '$lastSaturday 8PM-2AM',
+                              fontSize: 28,
+                              color: Theme.of(context)
+                                  .primaryColorLight
+                                  .withOpacity(0.7)),
+                        ],
+                      )),
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8.0),
                     child: Card(
@@ -74,34 +83,9 @@ class _EventState extends State<Event> {
                         borderRadius: BorderRadius.circular(10.0),
                       ),
                       elevation: 5,
-                      margin: EdgeInsets.all(10),
+                      margin: const EdgeInsets.all(20.0),
                       child: Image.asset(
                         'assets/experience/getaway-8x11-min.png',
-                        fit: BoxFit.fill,
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 20.0),
-                    child: CustomText(
-                        text: 'HOUSE NIGHTS AT WATER STREET',
-                        fontSize: 28,
-                        color: Theme.of(context)
-                            .primaryColorLight
-                            .withOpacity(0.7)),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: Card(
-                      semanticContainer: true,
-                      clipBehavior: Clip.antiAliasWithSaveLayer,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10.0),
-                      ),
-                      elevation: 5,
-                      margin: const EdgeInsets.all(5.0),
-                      child: Image.asset(
-                        'assets/experience/every-2nd-saturday-water-street-v4-min.png',
                         fit: BoxFit.fill,
                       ),
                     ),
@@ -157,36 +141,46 @@ class _EventState extends State<Event> {
                         children: [
                           CustomText(
                               text: 'UPCOMING EVENTS',
-                              fontSize: 35,
+                              fontSize: 48,
                               color: Theme.of(context).primaryColorLight),
                           Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 10.0),
+                            padding: const EdgeInsets.symmetric(vertical: 20.0),
                             child: CustomText(
-                                text:
-                                    'FULL MOON GATHERING \n July 31st - August 2nd',
-                                fontSize: 18,
-                                color: Theme.of(context)
-                                    .primaryColorLight
-                                    .withOpacity(0.7)),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 10.0),
-                            child: CustomText(
-                                text: 'ALOFT POOL PARTY \n August 12th',
-                                fontSize: 18,
-                                color: Theme.of(context)
-                                    .primaryColorLight
-                                    .withOpacity(0.7)),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 5.0),
-                            child: CustomText(
-                                text: 'PLUTO AT THE GETAWAY',
+                                text: 'ALOFT LEDGE PARTY \n August 12th 2-6PM',
                                 fontSize: 28,
                                 color: Theme.of(context)
                                     .primaryColorLight
                                     .withOpacity(0.7)),
                           ),
+                          Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 5.0),
+                              child: Column(
+                                children: [
+                                  CustomText(
+                                      text: 'PLUTO AT THE GETAWAY',
+                                      fontSize: 48,
+                                      color:
+                                          Theme.of(context).primaryColorLight),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 20.0),
+                                    child: CustomText(
+                                        text:
+                                            'EVERY LAST SATURDAY OF THE MONTH',
+                                        fontSize: 28,
+                                        color: Theme.of(context)
+                                            .primaryColorLight
+                                            .withOpacity(0.7)),
+                                  ),
+                                  CustomText(
+                                      text: '$lastSaturday 8PM-2AM',
+                                      fontSize: 28,
+                                      color: Theme.of(context)
+                                          .primaryColorLight
+                                          .withOpacity(0.7)),
+                                ],
+                              )),
                           SizedBox(
                             width: width / 3,
                             child: Padding(
@@ -202,34 +196,6 @@ class _EventState extends State<Event> {
                                 margin: EdgeInsets.all(10),
                                 child: Image.asset(
                                   'assets/experience/getaway-8x11-min.png',
-                                  fit: BoxFit.fill,
-                                ),
-                              ),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 10.0),
-                            child: CustomText(
-                                text: 'HOUSE NIGHTS AT WATER STREET',
-                                fontSize: 28,
-                                color: Theme.of(context)
-                                    .primaryColorLight
-                                    .withOpacity(0.7)),
-                          ),
-                          SizedBox(
-                            width: width / 3,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 20),
-                              child: Card(
-                                semanticContainer: true,
-                                clipBehavior: Clip.antiAliasWithSaveLayer,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10.0),
-                                ),
-                                elevation: 5,
-                                margin: EdgeInsets.all(10),
-                                child: Image.asset(
-                                  'assets/experience/every-2nd-saturday-water-street-v4-min.png',
                                   fit: BoxFit.fill,
                                 ),
                               ),
@@ -284,5 +250,48 @@ class _EventState extends State<Event> {
         }),
       ],
     );
+  }
+
+  void calculateLastSaturday() {
+    // Set date to the last day of the month
+    DateTime dt = DateTime(DateTime.now().year, DateTime.now().month + 1, 0);
+
+    // Find the last Saturday of the month
+    while (dt.weekday != DateTime.saturday) {
+      dt = dt.subtract(Duration(days: 1));
+    }
+
+    setState(() {
+      lastSaturday = formatDateTime(dt);
+    });
+  }
+
+  String formatDateTime(DateTime dateTime) {
+    int dayNum = dateTime.day;
+    String daySuffix;
+
+    if (!(dayNum >= 11 && dayNum <= 13)) {
+      switch (dayNum % 10) {
+        case 1:
+          daySuffix = 'st';
+          break;
+        case 2:
+          daySuffix = 'nd';
+          break;
+        case 3:
+          daySuffix = 'rd';
+          break;
+        default:
+          daySuffix = 'th';
+      }
+    } else {
+      daySuffix = 'th';
+    }
+
+    final DateFormat formatter =
+        DateFormat('MMMM d', 'en_US'); // e.g. August 26
+    String formatted = formatter.format(dateTime);
+
+    return "$formatted$daySuffix"; // e.g. August 26th
   }
 }

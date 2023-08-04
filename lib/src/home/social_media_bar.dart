@@ -6,6 +6,10 @@ class SocialMediaBar extends StatelessWidget {
   SocialMediaBar({Key? key, required this.height}) : super(key: key);
   final List<List<String>> data = [
     ['https://instagram.com/pluto.events.avl/', 'instagram'],
+    [
+      'https://www.facebook.com/people/Pluto-Events/100095100467395/',
+      'facebook'
+    ],
     ['mailto:contact@pluto.events', 'email']
   ];
   final double height;

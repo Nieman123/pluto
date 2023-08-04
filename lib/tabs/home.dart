@@ -34,7 +34,7 @@ class _HomePageState extends State<HomePage> {
     final double width = MediaQuery.of(context).size.width;
     final double height = MediaQuery.of(context).size.height;
     return Padding(
-      padding: EdgeInsets.only(bottom: height * 0.1),
+      padding: EdgeInsets.only(bottom: height * 0.01),
       child: SizedBox(
         child: LayoutBuilder(
             builder: (BuildContext context, BoxConstraints constraints) {

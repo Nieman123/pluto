@@ -21,7 +21,7 @@ class App extends StatelessWidget {
               const PlasmaRenderer(
                 type: PlasmaType.infinity,
                 particles: 10,
-                color: Color(0x444f4d4c),
+                color: Color.fromARGB(68, 85, 0, 165),
                 blur: 0.5,
                 size: 1,
                 speed: 1,
@@ -51,7 +51,7 @@ class App extends StatelessWidget {
               const PlasmaRenderer(
                 type: PlasmaType.infinity,
                 particles: 10,
-                color: Color(0x444f4d4c),
+                color: Color.fromARGB(68, 85, 0, 165),
                 blur: 0.5,
                 size: 1,
                 speed: 1,
