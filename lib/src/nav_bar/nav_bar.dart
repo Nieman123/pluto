@@ -24,31 +24,11 @@ class NavBar extends StatelessWidget {
               tabNumber: 0,
               btnNumber: ' 00. ',
               btnName: 'Home'),
-          // UnderlinedButton(
-          //     context: context,
-          //     tabNumber: 1,
-          //     btnNumber: ' 01. ',
-          //     btnName: 'Sign Up'),
-          // UnderlinedButton(
-          //     context: context,
-          //     tabNumber: 2,
-          //     btnNumber: ' 02. ',
-          //     btnName: 'FAQ'),
           UnderlinedButton(
               context: context,
               tabNumber: 1,
               btnNumber: ' 01. ',
               btnName: 'Events'),
-          // UnderlinedButton(
-          //     context: context,
-          //     tabNumber: 4,
-          //     btnNumber: ' 04. ',
-          //     btnName: 'Projects'),
-          // UnderlinedButton(
-          //     context: context,
-          //     tabNumber: 5,
-          //     btnNumber: ' 05. ',
-          //     btnName: 'Achievements'),
           UnderlinedButton(
               context: context,
               tabNumber: 2,

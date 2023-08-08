@@ -43,7 +43,8 @@ class _EventState extends State<Event> {
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 20.0),
                     child: CustomText(
-                        text: 'ALOFT LEDGE PARTY \n August 12th 2-6PM',
+                        text:
+                            "LIVIN' ON THE LEDGE\nAT W XYZ BAR\n August 12th 2-6PM",
                         fontSize: 28,
                         color: Theme.of(context)
                             .primaryColorLight
@@ -99,27 +100,51 @@ class _EventState extends State<Event> {
                         enlargeCenterPage: true,
                       ),
                       items: [
-                        'assets/gallery/1.jpg',
-                        'assets/gallery/2.jpg',
-                        'assets/gallery/3.jpg',
-                        'assets/gallery/4.jpg',
-                        'assets/gallery/5.jpg',
-                        'assets/gallery/6.jpg',
-                        'assets/gallery/7.jpg',
-                        'assets/gallery/8.jpg',
-                        'assets/gallery/9.jpg'
+                        [
+                          'assets/gallery/1.jpg',
+                          'Pluto at the Full Moon Gathering'
+                        ],
+                        ['assets/gallery/2.jpg', 'Photo by @nickyg.photos'],
+                        ['assets/gallery/3.jpg', 'Photo by @nickyg.photos'],
+                        ['assets/gallery/4.jpg', 'Photo by @nickyg.photos'],
+                        ['assets/gallery/5.jpg', 'Photo by @nickyg.photos'],
+                        ['assets/gallery/6.jpg', 'DJ Rab!d Ron!e and Nieman'],
+                        ['assets/gallery/7.jpg', 'Family Photo!'],
+                        ['assets/gallery/8.jpg', 'DJ Rab!d Ron!e and Nieman'],
+                        ['assets/gallery/9.jpg', 'Skate Night at Carrier Park']
                       ].map((i) {
                         return Builder(
                           builder: (BuildContext context) {
-                            return Container(
-                                width: MediaQuery.of(context).size.width,
-                                margin:
-                                    const EdgeInsets.symmetric(horizontal: 5.0),
-                                decoration: BoxDecoration(
-                                  color: Colors.amber,
-                                  borderRadius: BorderRadius.circular(10),
+                            return Stack(
+                              children: [
+                                Container(
+                                    width: MediaQuery.of(context).size.width,
+                                    margin: const EdgeInsets.symmetric(
+                                        horizontal: 5.0),
+                                    decoration: BoxDecoration(
+                                      color: Colors.amber,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child:
+                                        Image.asset(i[0], fit: BoxFit.cover)),
+                                Align(
+                                  alignment: const Alignment(
+                                      0.0, 0.9), // Bottom center
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(10.0),
+                                    child: Text(
+                                      i[1],
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w100,
+                                        backgroundColor: Colors.black54,
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                                child: Image.asset(i, fit: BoxFit.cover));
+                              ],
+                            );
                           },
                         );
                       }).toList(),
@@ -146,7 +171,8 @@ class _EventState extends State<Event> {
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 20.0),
                             child: CustomText(
-                                text: 'ALOFT LEDGE PARTY \n August 12th 2-6PM',
+                                text:
+                                    "LIVIN' ON THE LEDGE\nAT W XYZ BAR\n August 12th 2-6PM",
                                 fontSize: 28,
                                 color: Theme.of(context)
                                     .primaryColorLight
@@ -217,27 +243,51 @@ class _EventState extends State<Event> {
                         enlargeCenterPage: true,
                       ),
                       items: [
-                        'assets/gallery/1.jpg',
-                        'assets/gallery/2.jpg',
-                        'assets/gallery/3.jpg',
-                        'assets/gallery/4.jpg',
-                        'assets/gallery/5.jpg',
-                        'assets/gallery/6.jpg',
-                        'assets/gallery/7.jpg',
-                        'assets/gallery/8.jpg',
-                        'assets/gallery/9.jpg'
+                        [
+                          'assets/gallery/1.jpg',
+                          'Pluto at the Full Moon Gathering'
+                        ],
+                        ['assets/gallery/2.jpg', 'Photo by @nickyg.photos'],
+                        ['assets/gallery/3.jpg', 'Photo by @nickyg.photos'],
+                        ['assets/gallery/4.jpg', 'Photo by @nickyg.photos'],
+                        ['assets/gallery/5.jpg', 'Photo by @nickyg.photos'],
+                        ['assets/gallery/6.jpg', 'DJ Rab!d Ron!e and Nieman'],
+                        ['assets/gallery/7.jpg', 'Family Photo!'],
+                        ['assets/gallery/8.jpg', 'DJ Rab!d Ron!e and Nieman'],
+                        ['assets/gallery/9.jpg', 'Skate Night at Carrier Park']
                       ].map((i) {
                         return Builder(
                           builder: (BuildContext context) {
-                            return Container(
-                                width: MediaQuery.of(context).size.width,
-                                margin:
-                                    const EdgeInsets.symmetric(horizontal: 5.0),
-                                decoration: BoxDecoration(
-                                  color: Colors.amber,
-                                  borderRadius: BorderRadius.circular(10),
+                            return Stack(
+                              children: [
+                                Container(
+                                    width: MediaQuery.of(context).size.width,
+                                    margin: const EdgeInsets.symmetric(
+                                        horizontal: 5.0),
+                                    decoration: BoxDecoration(
+                                      color: Colors.amber,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child:
+                                        Image.asset(i[0], fit: BoxFit.cover)),
+                                Align(
+                                  alignment: const Alignment(
+                                      0.0, 0.9), // Bottom center
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(10.0),
+                                    child: Text(
+                                      i[1],
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w100,
+                                        backgroundColor: Colors.black54,
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                                child: Image.asset(i, fit: BoxFit.cover));
+                              ],
+                            );
                           },
                         );
                       }).toList(),
