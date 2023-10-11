@@ -41,16 +41,6 @@ class _EventState extends State<Event> {
                       fontSize: 48,
                       color: Theme.of(context).primaryColorLight),
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 20.0),
-                    child: CustomText(
-                        text:
-                            "LIVIN' ON THE LEDGE\nAT W XYZ BAR\n August 12th 2-6PM",
-                        fontSize: 28,
-                        color: Theme.of(context)
-                            .primaryColorLight
-                            .withOpacity(0.7)),
-                  ),
-                  Padding(
                       padding: const EdgeInsets.symmetric(vertical: 5.0),
                       child: Column(
                         children: [
@@ -101,7 +91,7 @@ class _EventState extends State<Event> {
                       ),
                       items: [
                         [
-                          'assets/gallery/1.jpg',
+                          'assets/gallery/1.png',
                           'Pluto at the Full Moon Gathering'
                         ],
                         ['assets/gallery/2.jpg', 'Photo by @nickyg.photos'],
@@ -168,16 +158,6 @@ class _EventState extends State<Event> {
                               text: 'UPCOMING EVENTS',
                               fontSize: 48,
                               color: Theme.of(context).primaryColorLight),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 20.0),
-                            child: CustomText(
-                                text:
-                                    "LIVIN' ON THE LEDGE\nAT W XYZ BAR\n August 12th 2-6PM",
-                                fontSize: 28,
-                                color: Theme.of(context)
-                                    .primaryColorLight
-                                    .withOpacity(0.7)),
-                          ),
                           Padding(
                               padding:
                                   const EdgeInsets.symmetric(vertical: 5.0),
