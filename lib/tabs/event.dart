@@ -1,6 +1,8 @@
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 
 import '../src/custom/custom_text.dart';
 
@@ -14,6 +16,22 @@ class Event extends StatefulWidget {
 class _EventState extends State<Event> {
   bool isHover = false;
   String lastSaturday = '';
+
+  Future<void> _launchURL() async {
+    final uri =
+        Uri.parse('https://posh.vip/e/plastic-abyss-barbies-underworld');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+      await FirebaseAnalytics.instance.logEvent(
+        name: 'ticket_button_click',
+        parameters: {
+          'button': 'tickers',
+        },
+      );
+    } else {
+      throw 'Could not launch $uri';
+    }
+  }
 
   @override
   void initState() {
@@ -45,13 +63,13 @@ class _EventState extends State<Event> {
                       child: Column(
                         children: [
                           CustomText(
-                              text: 'PLUTO AT THE GETAWAY',
+                              text: "PLASTIC ABYSS: BARBIE'S UNDERWORLD",
                               fontSize: 48,
                               color: Theme.of(context).primaryColorLight),
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 20.0),
                             child: CustomText(
-                                text: 'EVERY LAST SATURDAY OF THE MONTH',
+                                text: 'Halloween party with costume contest!',
                                 fontSize: 28,
                                 color: Theme.of(context)
                                     .primaryColorLight
@@ -63,6 +81,27 @@ class _EventState extends State<Event> {
                               color: Theme.of(context)
                                   .primaryColorLight
                                   .withOpacity(0.7)),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 15.0),
+                            child: ElevatedButton(
+                              onPressed: _launchURL,
+                              style: ButtonStyle(
+                                backgroundColor: MaterialStateProperty.all(Colors
+                                    .purple), // You can change this to your desired color
+                                foregroundColor: MaterialStateProperty.all(Colors
+                                    .white), // You can change this to your desired color
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: CustomText(
+                                    text: 'CLICK TO BUY TICKETS',
+                                    fontSize: 28,
+                                    color: Theme.of(context)
+                                        .primaryColorLight
+                                        .withOpacity(0.7)),
+                              ),
+                            ),
+                          ),
                         ],
                       )),
                   Padding(
@@ -76,7 +115,7 @@ class _EventState extends State<Event> {
                       elevation: 5,
                       margin: const EdgeInsets.all(20.0),
                       child: Image.asset(
-                        'assets/experience/getaway-8x11-min.png',
+                        'assets/experience/plastic-abyss.jpg',
                         fit: BoxFit.fill,
                       ),
                     ),
@@ -91,7 +130,7 @@ class _EventState extends State<Event> {
                       ),
                       items: [
                         [
-                          'assets/gallery/1.png',
+                          'assets/gallery/1.jpg',
                           'Pluto at the Full Moon Gathering'
                         ],
                         ['assets/gallery/2.jpg', 'Photo by @nickyg.photos'],
@@ -164,7 +203,8 @@ class _EventState extends State<Event> {
                               child: Column(
                                 children: [
                                   CustomText(
-                                      text: 'PLUTO AT THE GETAWAY',
+                                      text:
+                                          "PLASTIC ABYSS: BARBIE'S UNDERWORLD",
                                       fontSize: 48,
                                       color:
                                           Theme.of(context).primaryColorLight),
@@ -173,7 +213,7 @@ class _EventState extends State<Event> {
                                         vertical: 20.0),
                                     child: CustomText(
                                         text:
-                                            'EVERY LAST SATURDAY OF THE MONTH',
+                                            'Halloween party with costume contest!',
                                         fontSize: 28,
                                         color: Theme.of(context)
                                             .primaryColorLight
@@ -185,6 +225,29 @@ class _EventState extends State<Event> {
                                       color: Theme.of(context)
                                           .primaryColorLight
                                           .withOpacity(0.7)),
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 15.0),
+                                    child: ElevatedButton(
+                                      onPressed: _launchURL,
+                                      style: ButtonStyle(
+                                        backgroundColor:
+                                            MaterialStateProperty.all(Colors
+                                                .purple), // You can change this to your desired color
+                                        foregroundColor:
+                                            MaterialStateProperty.all(Colors
+                                                .white), // You can change this to your desired color
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(8.0),
+                                        child: CustomText(
+                                            text: 'CLICK TO BUY TICKETS',
+                                            fontSize: 28,
+                                            color: Theme.of(context)
+                                                .primaryColorLight
+                                                .withOpacity(0.7)),
+                                      ),
+                                    ),
+                                  ),
                                 ],
                               )),
                           SizedBox(
@@ -201,7 +264,7 @@ class _EventState extends State<Event> {
                                 elevation: 5,
                                 margin: EdgeInsets.all(10),
                                 child: Image.asset(
-                                  'assets/experience/getaway-8x11-min.png',
+                                  'assets/experience/plastic-abyss.jpg',
                                   fit: BoxFit.fill,
                                 ),
                               ),

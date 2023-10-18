@@ -13,7 +13,7 @@ import 'src/theme/custom_theme.dart';
 
 Future<void> main() async {
   final currentToken;
-  setUrlStrategy(PathUrlStrategy());
+  //setUrlStrategy(PathUrlStrategy());
   WidgetsFlutterBinding.ensureInitialized();
   configureApp();
   await Firebase.initializeApp(
