@@ -45,24 +45,6 @@ class _ArtistState extends State<Artist> {
                               image: DecorationImage(
                                   fit: BoxFit.fill,
                                   image: NetworkImage(
-                                      'https://i.imgur.com/2NAb0MC.png'))),
-                        ),
-                      ),
-                      CustomText(
-                          text: 'RHiNO',
-                          fontSize: 18,
-                          color: Theme.of(context).primaryColorLight),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 15.0, vertical: 15.0),
-                        child: Container(
-                          width: 250.0,
-                          height: 250.0,
-                          decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              image: DecorationImage(
-                                  fit: BoxFit.fill,
-                                  image: NetworkImage(
                                       'https://i.imgur.com/ph79TGT.png'))),
                         ),
                       ),
@@ -153,40 +135,6 @@ class _ArtistState extends State<Artist> {
                                   width: (width * .8) / 2,
                                   child: Column(
                                     children: [
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 15.0, vertical: 15.0),
-                                        child: Container(
-                                          width: 350.0,
-                                          height: 350.0,
-                                          decoration: const BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              image: DecorationImage(
-                                                  fit: BoxFit.fill,
-                                                  image: NetworkImage(
-                                                      'https://i.imgur.com/2NAb0MC.png'))),
-                                        ),
-                                      ),
-                                      Column(
-                                        children: [
-                                          CustomText(
-                                              text: 'RHiNO',
-                                              fontSize: 18,
-                                              color: Theme.of(context)
-                                                  .primaryColorLight),
-                                          // Padding(
-                                          //   padding: const EdgeInsets.all(8.0),
-                                          //   child: RichText(
-                                          //     text: const TextSpan(
-                                          //       text:
-                                          //           'RHiNO is a DJ, producer and visual artist from Asheville, NC.',
-                                          //       style: TextStyle(
-                                          //           color: Colors.white),
-                                          //     ),
-                                          //   ),
-                                          // )
-                                        ],
-                                      ),
                                       GestureDetector(
                                         onTap: () {
                                           showDialog(
@@ -253,6 +201,41 @@ class _ArtistState extends State<Artist> {
                                           //     ),
                                           //   ),
                                           // )
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 15.0,
+                                                vertical: 15.0),
+                                            child: Container(
+                                              width: 350.0,
+                                              height: 350.0,
+                                              decoration: const BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  image: DecorationImage(
+                                                      fit: BoxFit.cover,
+                                                      image: NetworkImage(
+                                                          'https://i.imgur.com/a0LusKi.png'))),
+                                            ),
+                                          ),
+                                          Column(
+                                            children: [
+                                              CustomText(
+                                                  text: 'RABI!D RON!E',
+                                                  fontSize: 18,
+                                                  color: Theme.of(context)
+                                                      .primaryColorLight),
+                                              // Padding(
+                                              //   padding: const EdgeInsets.all(8.0),
+                                              //   child: RichText(
+                                              //     text: const TextSpan(
+                                              //       text:
+                                              //           'Inspired by Dirty Bird and Off the Grid records, Nieman is a DJ and producer from Asheville, NC.',
+                                              //       style: TextStyle(
+                                              //           color: Colors.white),
+                                              //     ),
+                                              //   ),
+                                              // )
+                                            ],
+                                          )
                                         ],
                                       ),
                                     ],
@@ -332,49 +315,6 @@ class _ArtistState extends State<Artist> {
                                       ),
                                     ],
                                   ),
-                                ),
-                              ],
-                            ),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Column(
-                                  children: [
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 15.0, vertical: 15.0),
-                                      child: Container(
-                                        width: 350.0,
-                                        height: 350.0,
-                                        decoration: const BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            image: DecorationImage(
-                                                fit: BoxFit.cover,
-                                                image: NetworkImage(
-                                                    'https://i.imgur.com/a0LusKi.png'))),
-                                      ),
-                                    ),
-                                    Column(
-                                      children: [
-                                        CustomText(
-                                            text: 'RABI!D RON!E',
-                                            fontSize: 18,
-                                            color: Theme.of(context)
-                                                .primaryColorLight),
-                                        // Padding(
-                                        //   padding: const EdgeInsets.all(8.0),
-                                        //   child: RichText(
-                                        //     text: const TextSpan(
-                                        //       text:
-                                        //           'Inspired by Dirty Bird and Off the Grid records, Nieman is a DJ and producer from Asheville, NC.',
-                                        //       style: TextStyle(
-                                        //           color: Colors.white),
-                                        //     ),
-                                        //   ),
-                                        // )
-                                      ],
-                                    ),
-                                  ],
                                 ),
                               ],
                             ),
