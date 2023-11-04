@@ -99,7 +99,7 @@ class _ArtistState extends State<Artist> {
                               image: DecorationImage(
                                   fit: BoxFit.cover,
                                   image: NetworkImage(
-                                      'https://i.imgur.com/a0LusKi.png'))),
+                                      'https://i.imgur.com/KJesoFD.jpg'))),
                         ),
                       ),
                       CustomText(
@@ -213,7 +213,7 @@ class _ArtistState extends State<Artist> {
                                                   image: DecorationImage(
                                                       fit: BoxFit.cover,
                                                       image: NetworkImage(
-                                                          'https://i.imgur.com/a0LusKi.png'))),
+                                                          'https://i.imgur.com/KJesoFD.jpg'))),
                                             ),
                                           ),
                                           Column(
