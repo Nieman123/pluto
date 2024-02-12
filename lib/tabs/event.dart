@@ -54,72 +54,72 @@ class _EventState extends State<Event> {
               padding: const EdgeInsets.symmetric(horizontal: 10.0),
               child: Column(
                 children: [
-                  CustomText(
-                      text: 'UPCOMING EVENTS',
-                      fontSize: 48,
-                      color: Theme.of(context).primaryColorLight),
-                  Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 5.0),
-                      child: Column(
-                        children: [
-                          CustomText(
-                              text: "PLASTIC ABYSS: BARBIE'S UNDERWORLD",
-                              fontSize: 48,
-                              color: Theme.of(context).primaryColorLight),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 20.0),
-                            child: CustomText(
-                                text: 'Halloween party with costume contest!',
-                                fontSize: 28,
-                                color: Theme.of(context)
-                                    .primaryColorLight
-                                    .withOpacity(0.7)),
-                          ),
-                          CustomText(
-                              text: '$lastSaturday 8PM-2AM',
-                              fontSize: 28,
-                              color: Theme.of(context)
-                                  .primaryColorLight
-                                  .withOpacity(0.7)),
-                          Padding(
-                            padding: const EdgeInsets.only(top: 15.0),
-                            child: ElevatedButton(
-                              onPressed: _launchURL,
-                              style: ButtonStyle(
-                                backgroundColor: MaterialStateProperty.all(Colors
-                                    .purple), // You can change this to your desired color
-                                foregroundColor: MaterialStateProperty.all(Colors
-                                    .white), // You can change this to your desired color
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: CustomText(
-                                    text: 'CLICK TO BUY TICKETS',
-                                    fontSize: 28,
-                                    color: Theme.of(context)
-                                        .primaryColorLight
-                                        .withOpacity(0.7)),
-                              ),
-                            ),
-                          ),
-                        ],
-                      )),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: Card(
-                      semanticContainer: true,
-                      clipBehavior: Clip.antiAliasWithSaveLayer,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10.0),
-                      ),
-                      elevation: 5,
-                      margin: const EdgeInsets.all(20.0),
-                      child: Image.asset(
-                        'assets/experience/plastic-abyss.jpg',
-                        fit: BoxFit.fill,
-                      ),
-                    ),
-                  ),
+                  // CustomText(
+                  //     text: 'UPCOMING EVENTS',
+                  //     fontSize: 48,
+                  //     color: Theme.of(context).primaryColorLight),
+                  // Padding(
+                  //     padding: const EdgeInsets.symmetric(vertical: 5.0),
+                  //     child: Column(
+                  //       children: [
+                  //         CustomText(
+                  //             text: "PLASTIC ABYSS: BARBIE'S UNDERWORLD",
+                  //             fontSize: 48,
+                  //             color: Theme.of(context).primaryColorLight),
+                  //         Padding(
+                  //           padding: const EdgeInsets.symmetric(vertical: 20.0),
+                  //           child: CustomText(
+                  //               text: 'Halloween party with costume contest!',
+                  //               fontSize: 28,
+                  //               color: Theme.of(context)
+                  //                   .primaryColorLight
+                  //                   .withOpacity(0.7)),
+                  //         ),
+                  //         CustomText(
+                  //             text: '$lastSaturday 8PM-2AM',
+                  //             fontSize: 28,
+                  //             color: Theme.of(context)
+                  //                 .primaryColorLight
+                  //                 .withOpacity(0.7)),
+                  //         Padding(
+                  //           padding: const EdgeInsets.only(top: 15.0),
+                  //           child: ElevatedButton(
+                  //             onPressed: _launchURL,
+                  //             style: ButtonStyle(
+                  //               backgroundColor: MaterialStateProperty.all(Colors
+                  //                   .purple), // You can change this to your desired color
+                  //               foregroundColor: MaterialStateProperty.all(Colors
+                  //                   .white), // You can change this to your desired color
+                  //             ),
+                  //             child: Padding(
+                  //               padding: const EdgeInsets.all(8.0),
+                  //               child: CustomText(
+                  //                   text: 'CLICK TO BUY TICKETS',
+                  //                   fontSize: 28,
+                  //                   color: Theme.of(context)
+                  //                       .primaryColorLight
+                  //                       .withOpacity(0.7)),
+                  //             ),
+                  //           ),
+                  //         ),
+                  //       ],
+                  //     )),
+                  // Padding(
+                  //   padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  //   child: Card(
+                  //     semanticContainer: true,
+                  //     clipBehavior: Clip.antiAliasWithSaveLayer,
+                  //     shape: RoundedRectangleBorder(
+                  //       borderRadius: BorderRadius.circular(10.0),
+                  //     ),
+                  //     elevation: 5,
+                  //     margin: const EdgeInsets.all(20.0),
+                  //     child: Image.asset(
+                  //       'assets/experience/plastic-abyss.jpg',
+                  //       fit: BoxFit.fill,
+                  //     ),
+                  //   ),
+                  // ),
                   Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: CarouselSlider(
@@ -186,95 +186,95 @@ class _EventState extends State<Event> {
             return Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    SizedBox(
-                      width: width / 2,
-                      child: Column(
-                        children: [
-                          CustomText(
-                              text: 'UPCOMING EVENTS',
-                              fontSize: 48,
-                              color: Theme.of(context).primaryColorLight),
-                          Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 5.0),
-                              child: Column(
-                                children: [
-                                  CustomText(
-                                      text:
-                                          "PLASTIC ABYSS: BARBIE'S UNDERWORLD",
-                                      fontSize: 48,
-                                      color:
-                                          Theme.of(context).primaryColorLight),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 20.0),
-                                    child: CustomText(
-                                        text:
-                                            'Halloween party with costume contest!',
-                                        fontSize: 28,
-                                        color: Theme.of(context)
-                                            .primaryColorLight
-                                            .withOpacity(0.7)),
-                                  ),
-                                  CustomText(
-                                      text: '$lastSaturday 8PM-2AM',
-                                      fontSize: 28,
-                                      color: Theme.of(context)
-                                          .primaryColorLight
-                                          .withOpacity(0.7)),
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 15.0),
-                                    child: ElevatedButton(
-                                      onPressed: _launchURL,
-                                      style: ButtonStyle(
-                                        backgroundColor:
-                                            MaterialStateProperty.all(Colors
-                                                .purple), // You can change this to your desired color
-                                        foregroundColor:
-                                            MaterialStateProperty.all(Colors
-                                                .white), // You can change this to your desired color
-                                      ),
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(8.0),
-                                        child: CustomText(
-                                            text: 'CLICK TO BUY TICKETS',
-                                            fontSize: 28,
-                                            color: Theme.of(context)
-                                                .primaryColorLight
-                                                .withOpacity(0.7)),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              )),
-                          SizedBox(
-                            width: width / 3,
-                            child: Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 8.0),
-                              child: Card(
-                                semanticContainer: true,
-                                clipBehavior: Clip.antiAliasWithSaveLayer,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10.0),
-                                ),
-                                elevation: 5,
-                                margin: EdgeInsets.all(10),
-                                child: Image.asset(
-                                  'assets/experience/plastic-abyss.jpg',
-                                  fit: BoxFit.fill,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                // Row(
+                //   mainAxisAlignment: MainAxisAlignment.spaceAround,
+                //   children: [
+                //     SizedBox(
+                //       width: width / 2,
+                //       child: Column(
+                //         children: [
+                //           // CustomText(
+                //           //     text: 'UPCOMING EVENTS',
+                //           //     fontSize: 48,
+                //           //     color: Theme.of(context).primaryColorLight),
+                //           // Padding(
+                //           //     padding:
+                //           //         const EdgeInsets.symmetric(vertical: 5.0),
+                //           //     child: Column(
+                //           //       children: [
+                //           //         CustomText(
+                //           //             text:
+                //           //                 "PLASTIC ABYSS: BARBIE'S UNDERWORLD",
+                //           //             fontSize: 48,
+                //           //             color:
+                //           //                 Theme.of(context).primaryColorLight),
+                //           //         Padding(
+                //           //           padding: const EdgeInsets.symmetric(
+                //           //               vertical: 20.0),
+                //           //           child: CustomText(
+                //           //               text:
+                //           //                   'Halloween party with costume contest!',
+                //           //               fontSize: 28,
+                //           //               color: Theme.of(context)
+                //           //                   .primaryColorLight
+                //           //                   .withOpacity(0.7)),
+                //           //         ),
+                //           //         CustomText(
+                //           //             text: '$lastSaturday 8PM-2AM',
+                //           //             fontSize: 28,
+                //           //             color: Theme.of(context)
+                //           //                 .primaryColorLight
+                //           //                 .withOpacity(0.7)),
+                //           //         Padding(
+                //           //           padding: const EdgeInsets.only(top: 15.0),
+                //           //           child: ElevatedButton(
+                //           //             onPressed: _launchURL,
+                //           //             style: ButtonStyle(
+                //           //               backgroundColor:
+                //           //                   MaterialStateProperty.all(Colors
+                //           //                       .purple), // You can change this to your desired color
+                //           //               foregroundColor:
+                //           //                   MaterialStateProperty.all(Colors
+                //           //                       .white), // You can change this to your desired color
+                //           //             ),
+                //           //             child: Padding(
+                //           //               padding: const EdgeInsets.all(8.0),
+                //           //               child: CustomText(
+                //           //                   text: 'CLICK TO BUY TICKETS',
+                //           //                   fontSize: 28,
+                //           //                   color: Theme.of(context)
+                //           //                       .primaryColorLight
+                //           //                       .withOpacity(0.7)),
+                //           //             ),
+                //           //           ),
+                //           //         ),
+                //           //       ],
+                //           //     )),
+                //           // SizedBox(
+                //             width: width / 3,
+                //             child: Padding(
+                //               padding:
+                //                   const EdgeInsets.symmetric(vertical: 8.0),
+                //               child: Card(
+                //                 semanticContainer: true,
+                //                 clipBehavior: Clip.antiAliasWithSaveLayer,
+                //                 shape: RoundedRectangleBorder(
+                //                   borderRadius: BorderRadius.circular(10.0),
+                //                 ),
+                //                 elevation: 5,
+                //                 margin: EdgeInsets.all(10),
+                //                 child: Image.asset(
+                //                   'assets/experience/plastic-abyss.jpg',
+                //                   fit: BoxFit.fill,
+                //                 ),
+                //               ),
+                //             ),
+                //           ),
+                //         ],
+                //       ),
+                //     ),
+                //   ],
+                // ),
                 SizedBox(
                   width: width / 2,
                   child: Padding(
