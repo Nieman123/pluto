@@ -16,10 +16,10 @@ class Event extends StatefulWidget {
 class _EventState extends State<Event> {
   bool isHover = false;
   String lastSaturday = '';
+  String thirdSaturday = '';
 
   Future<void> _launchURL() async {
-    final uri =
-        Uri.parse('https://posh.vip/e/plastic-abyss-barbies-underworld');
+    final uri = Uri.parse('https://posh.vip/e/plutos-puff');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
       await FirebaseAnalytics.instance.logEvent(
@@ -36,7 +36,7 @@ class _EventState extends State<Event> {
   @override
   void initState() {
     super.initState();
-    calculateLastSaturday();
+    calculateThirdSaturday();
   }
 
   @override
@@ -54,72 +54,88 @@ class _EventState extends State<Event> {
               padding: const EdgeInsets.symmetric(horizontal: 10.0),
               child: Column(
                 children: [
-                  // CustomText(
-                  //     text: 'UPCOMING EVENTS',
-                  //     fontSize: 48,
-                  //     color: Theme.of(context).primaryColorLight),
-                  // Padding(
-                  //     padding: const EdgeInsets.symmetric(vertical: 5.0),
-                  //     child: Column(
-                  //       children: [
-                  //         CustomText(
-                  //             text: "PLASTIC ABYSS: BARBIE'S UNDERWORLD",
-                  //             fontSize: 48,
-                  //             color: Theme.of(context).primaryColorLight),
-                  //         Padding(
-                  //           padding: const EdgeInsets.symmetric(vertical: 20.0),
-                  //           child: CustomText(
-                  //               text: 'Halloween party with costume contest!',
-                  //               fontSize: 28,
-                  //               color: Theme.of(context)
-                  //                   .primaryColorLight
-                  //                   .withOpacity(0.7)),
-                  //         ),
-                  //         CustomText(
-                  //             text: '$lastSaturday 8PM-2AM',
-                  //             fontSize: 28,
-                  //             color: Theme.of(context)
-                  //                 .primaryColorLight
-                  //                 .withOpacity(0.7)),
-                  //         Padding(
-                  //           padding: const EdgeInsets.only(top: 15.0),
-                  //           child: ElevatedButton(
-                  //             onPressed: _launchURL,
-                  //             style: ButtonStyle(
-                  //               backgroundColor: MaterialStateProperty.all(Colors
-                  //                   .purple), // You can change this to your desired color
-                  //               foregroundColor: MaterialStateProperty.all(Colors
-                  //                   .white), // You can change this to your desired color
-                  //             ),
-                  //             child: Padding(
-                  //               padding: const EdgeInsets.all(8.0),
-                  //               child: CustomText(
-                  //                   text: 'CLICK TO BUY TICKETS',
-                  //                   fontSize: 28,
-                  //                   color: Theme.of(context)
-                  //                       .primaryColorLight
-                  //                       .withOpacity(0.7)),
-                  //             ),
-                  //           ),
-                  //         ),
-                  //       ],
-                  //     )),
-                  // Padding(
-                  //   padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  //   child: Card(
-                  //     semanticContainer: true,
-                  //     clipBehavior: Clip.antiAliasWithSaveLayer,
-                  //     shape: RoundedRectangleBorder(
-                  //       borderRadius: BorderRadius.circular(10.0),
-                  //     ),
-                  //     elevation: 5,
-                  //     margin: const EdgeInsets.all(20.0),
-                  //     child: Image.asset(
-                  //       'assets/experience/plastic-abyss.jpg',
-                  //       fit: BoxFit.fill,
-                  //     ),
-                  //   ),
-                  // ),
+                  CustomText(
+                      text: 'UPCOMING EVENTS',
+                      fontSize: 48,
+                      color: Theme.of(context).primaryColorLight),
+                  Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 5.0),
+                      child: Column(
+                        children: [
+                          CustomText(
+                              text: "PLUTO'S PUFF: A 420 FEST",
+                              fontSize: 48,
+                              color: Theme.of(context).primaryColorLight),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 20.0),
+                            child: CustomText(
+                                text: 'Happy holidaze!',
+                                fontSize: 28,
+                                color: Theme.of(context)
+                                    .primaryColorLight
+                                    .withOpacity(0.7)),
+                          ),
+                          CustomText(
+                              text: '$lastSaturday 2PM-2AM',
+                              fontSize: 28,
+                              color: Theme.of(context)
+                                  .primaryColorLight
+                                  .withOpacity(0.7)),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 15.0),
+                            child: ElevatedButton(
+                              onPressed: _launchURL,
+                              style: ButtonStyle(
+                                backgroundColor: MaterialStateProperty.all(Colors
+                                    .purple), // You can change this to your desired color
+                                foregroundColor: MaterialStateProperty.all(Colors
+                                    .white), // You can change this to your desired color
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: CustomText(
+                                    text: 'CLICK TO BUY TICKETS',
+                                    fontSize: 28,
+                                    color: Theme.of(context)
+                                        .primaryColorLight
+                                        .withOpacity(0.7)),
+                              ),
+                            ),
+                          ),
+                        ],
+                      )),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Card(
+                      semanticContainer: true,
+                      clipBehavior: Clip.antiAliasWithSaveLayer,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10.0),
+                      ),
+                      elevation: 5,
+                      margin: const EdgeInsets.all(20.0),
+                      child: Image.asset(
+                        'assets/events/420-fest.webp',
+                        fit: BoxFit.fill,
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Card(
+                      semanticContainer: true,
+                      clipBehavior: Clip.antiAliasWithSaveLayer,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10.0),
+                      ),
+                      elevation: 5,
+                      margin: const EdgeInsets.all(20.0),
+                      child: Image.asset(
+                        'assets/events/st patty .webp',
+                        fit: BoxFit.fill,
+                      ),
+                    ),
+                  ),
                   Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: CarouselSlider(
@@ -183,98 +199,117 @@ class _EventState extends State<Event> {
               ),
             );
           } else {
+            //Desktop Layout
             return Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Row(
-                //   mainAxisAlignment: MainAxisAlignment.spaceAround,
-                //   children: [
-                //     SizedBox(
-                //       width: width / 2,
-                //       child: Column(
-                //         children: [
-                //           // CustomText(
-                //           //     text: 'UPCOMING EVENTS',
-                //           //     fontSize: 48,
-                //           //     color: Theme.of(context).primaryColorLight),
-                //           // Padding(
-                //           //     padding:
-                //           //         const EdgeInsets.symmetric(vertical: 5.0),
-                //           //     child: Column(
-                //           //       children: [
-                //           //         CustomText(
-                //           //             text:
-                //           //                 "PLASTIC ABYSS: BARBIE'S UNDERWORLD",
-                //           //             fontSize: 48,
-                //           //             color:
-                //           //                 Theme.of(context).primaryColorLight),
-                //           //         Padding(
-                //           //           padding: const EdgeInsets.symmetric(
-                //           //               vertical: 20.0),
-                //           //           child: CustomText(
-                //           //               text:
-                //           //                   'Halloween party with costume contest!',
-                //           //               fontSize: 28,
-                //           //               color: Theme.of(context)
-                //           //                   .primaryColorLight
-                //           //                   .withOpacity(0.7)),
-                //           //         ),
-                //           //         CustomText(
-                //           //             text: '$lastSaturday 8PM-2AM',
-                //           //             fontSize: 28,
-                //           //             color: Theme.of(context)
-                //           //                 .primaryColorLight
-                //           //                 .withOpacity(0.7)),
-                //           //         Padding(
-                //           //           padding: const EdgeInsets.only(top: 15.0),
-                //           //           child: ElevatedButton(
-                //           //             onPressed: _launchURL,
-                //           //             style: ButtonStyle(
-                //           //               backgroundColor:
-                //           //                   MaterialStateProperty.all(Colors
-                //           //                       .purple), // You can change this to your desired color
-                //           //               foregroundColor:
-                //           //                   MaterialStateProperty.all(Colors
-                //           //                       .white), // You can change this to your desired color
-                //           //             ),
-                //           //             child: Padding(
-                //           //               padding: const EdgeInsets.all(8.0),
-                //           //               child: CustomText(
-                //           //                   text: 'CLICK TO BUY TICKETS',
-                //           //                   fontSize: 28,
-                //           //                   color: Theme.of(context)
-                //           //                       .primaryColorLight
-                //           //                       .withOpacity(0.7)),
-                //           //             ),
-                //           //           ),
-                //           //         ),
-                //           //       ],
-                //           //     )),
-                //           // SizedBox(
-                //             width: width / 3,
-                //             child: Padding(
-                //               padding:
-                //                   const EdgeInsets.symmetric(vertical: 8.0),
-                //               child: Card(
-                //                 semanticContainer: true,
-                //                 clipBehavior: Clip.antiAliasWithSaveLayer,
-                //                 shape: RoundedRectangleBorder(
-                //                   borderRadius: BorderRadius.circular(10.0),
-                //                 ),
-                //                 elevation: 5,
-                //                 margin: EdgeInsets.all(10),
-                //                 child: Image.asset(
-                //                   'assets/experience/plastic-abyss.jpg',
-                //                   fit: BoxFit.fill,
-                //                 ),
-                //               ),
-                //             ),
-                //           ),
-                //         ],
-                //       ),
-                //     ),
-                //   ],
-                // ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    SizedBox(
+                      width: width / 2,
+                      child: Column(
+                        children: [
+                          CustomText(
+                              text: 'UPCOMING EVENTS',
+                              fontSize: 48,
+                              color: Theme.of(context).primaryColorLight),
+                          Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 5.0),
+                              child: Column(
+                                children: [
+                                  CustomText(
+                                      text: "PLUTO'S PUFF: A 420 FEST",
+                                      fontSize: 48,
+                                      color:
+                                          Theme.of(context).primaryColorLight),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 20.0),
+                                    child: CustomText(
+                                        text: 'Happy Holidaze!',
+                                        fontSize: 28,
+                                        color: Theme.of(context)
+                                            .primaryColorLight
+                                            .withOpacity(0.7)),
+                                  ),
+                                  CustomText(
+                                      text: '$lastSaturday 8PM-2AM',
+                                      fontSize: 28,
+                                      color: Theme.of(context)
+                                          .primaryColorLight
+                                          .withOpacity(0.7)),
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 15.0),
+                                    child: ElevatedButton(
+                                      onPressed: _launchURL,
+                                      style: ButtonStyle(
+                                        backgroundColor:
+                                            MaterialStateProperty.all(Colors
+                                                .purple), // You can change this to your desired color
+                                        foregroundColor:
+                                            MaterialStateProperty.all(Colors
+                                                .white), // You can change this to your desired color
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(8.0),
+                                        child: CustomText(
+                                            text: 'CLICK TO BUY TICKETS',
+                                            fontSize: 28,
+                                            color: Theme.of(context)
+                                                .primaryColorLight
+                                                .withOpacity(0.7)),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              )),
+                          SizedBox(
+                            width: width / 3,
+                            child: Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 8.0),
+                              child: Card(
+                                semanticContainer: true,
+                                clipBehavior: Clip.antiAliasWithSaveLayer,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10.0),
+                                ),
+                                elevation: 5,
+                                margin: EdgeInsets.all(10),
+                                child: Image.asset(
+                                  'assets/events/420-fest.webp',
+                                  fit: BoxFit.fill,
+                                ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(
+                            width: width / 3,
+                            child: Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 8.0),
+                              child: Card(
+                                semanticContainer: true,
+                                clipBehavior: Clip.antiAliasWithSaveLayer,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10.0),
+                                ),
+                                elevation: 5,
+                                margin: EdgeInsets.all(10),
+                                child: Image.asset(
+                                  'assets/events/st patty .webp',
+                                  fit: BoxFit.fill,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
                 SizedBox(
                   width: width / 2,
                   child: Padding(
@@ -356,6 +391,24 @@ class _EventState extends State<Event> {
 
     setState(() {
       lastSaturday = formatDateTime(dt);
+    });
+  }
+
+  void calculateThirdSaturday() {
+    // Set date to the first day of the month
+    DateTime dt = DateTime(DateTime.now().year, DateTime.now().month, 1);
+
+    // Find the first Saturday of the month
+    while (dt.weekday != DateTime.saturday) {
+      dt = dt.add(Duration(days: 1));
+    }
+
+    // Add 14 days to get to the third Saturday
+    dt = dt.add(Duration(days: 14));
+
+    setState(() {
+      thirdSaturday = formatDateTime(
+          dt); // Assuming formatDateTime is a method that formats the DateTime object as desired
     });
   }
 

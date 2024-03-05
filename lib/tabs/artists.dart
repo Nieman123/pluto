@@ -44,8 +44,7 @@ class _ArtistState extends State<Artist> {
                               shape: BoxShape.circle,
                               image: DecorationImage(
                                   fit: BoxFit.fill,
-                                  image: NetworkImage(
-                                      'https://i.imgur.com/ph79TGT.png'))),
+                                  image: AssetImage('gallery/august.webp'))),
                         ),
                       ),
                       CustomText(
@@ -178,8 +177,8 @@ class _ArtistState extends State<Artist> {
                                                 shape: BoxShape.circle,
                                                 image: DecorationImage(
                                                     fit: BoxFit.fill,
-                                                    image: NetworkImage(
-                                                        'https://i.imgur.com/ph79TGT.png'))),
+                                                    image: AssetImage(
+                                                        'gallery/august.webp'))),
                                           ),
                                         ),
                                       ),
