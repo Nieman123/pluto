@@ -146,17 +146,60 @@ class _EventState extends State<Event> {
                       ),
                       items: [
                         [
-                          'assets/gallery/1.jpg',
+                          'assets/gallery/1.webp',
                           'Pluto at the Full Moon Gathering'
                         ],
-                        ['assets/gallery/2.jpg', 'Photo by @nickyg.photos'],
-                        ['assets/gallery/3.jpg', 'Photo by @nickyg.photos'],
-                        ['assets/gallery/4.jpg', 'Photo by @nickyg.photos'],
-                        ['assets/gallery/5.jpg', 'Photo by @nickyg.photos'],
-                        ['assets/gallery/6.jpg', 'DJ Rab!d Ron!e and Nieman'],
-                        ['assets/gallery/7.jpg', 'Family Photo!'],
-                        ['assets/gallery/8.jpg', 'DJ Rab!d Ron!e and Nieman'],
-                        ['assets/gallery/9.jpg', 'Skate Night at Carrier Park']
+                        [
+                          'assets/gallery/2.webp',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        ['assets/gallery/3.webp', 'Photo by @nickyg.photos'],
+                        ['assets/gallery/4.webp', 'Photo by @nickyg.photos'],
+                        [
+                          'assets/gallery/5.webp',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/6.webp',
+                          'DJ Rab!d Ron!e and Just Nieman'
+                        ],
+                        ['assets/gallery/7.webp', 'Family Photo!'],
+                        [
+                          'assets/gallery/8.webp',
+                          'DJ Rab!d Ron!e and Just Nieman'
+                        ],
+                        [
+                          'assets/gallery/9.webp',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/10.webp',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/11.webp',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/12.webp',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/13.webp',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/14.webp',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/15.webp',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/16.webp',
+                          'Photo by @tatehunna.photography'
+                        ],
                       ].map((i) {
                         return Builder(
                           builder: (BuildContext context) {
@@ -322,17 +365,60 @@ class _EventState extends State<Event> {
                       ),
                       items: [
                         [
-                          'assets/gallery/1.jpg',
+                          'assets/gallery/1.webp',
                           'Pluto at the Full Moon Gathering'
                         ],
-                        ['assets/gallery/2.jpg', 'Photo by @nickyg.photos'],
-                        ['assets/gallery/3.jpg', 'Photo by @nickyg.photos'],
-                        ['assets/gallery/4.jpg', 'Photo by @nickyg.photos'],
-                        ['assets/gallery/5.jpg', 'Photo by @nickyg.photos'],
-                        ['assets/gallery/6.jpg', 'DJ Rab!d Ron!e and Nieman'],
-                        ['assets/gallery/7.jpg', 'Family Photo!'],
-                        ['assets/gallery/8.jpg', 'DJ Rab!d Ron!e and Nieman'],
-                        ['assets/gallery/9.jpg', 'Skate Night at Carrier Park']
+                        [
+                          'assets/gallery/2.webp',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        ['assets/gallery/3.webp', 'Photo by @nickyg.photos'],
+                        ['assets/gallery/4.webp', 'Photo by @nickyg.photos'],
+                        [
+                          'assets/gallery/5.webp',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/6.webp',
+                          'DJ Rab!d Ron!e and Just Nieman'
+                        ],
+                        ['assets/gallery/7.webp', 'Family Photo!'],
+                        [
+                          'assets/gallery/8.webp',
+                          'DJ Rab!d Ron!e and Just Nieman'
+                        ],
+                        [
+                          'assets/gallery/9.webp',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/10.webp',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/11.webp',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/12.webp',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/13.webp',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/14.webp',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/15.webp',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/16.webp',
+                          'Photo by @tatehunna.photography'
+                        ],
                       ].map((i) {
                         return Builder(
                           builder: (BuildContext context) {

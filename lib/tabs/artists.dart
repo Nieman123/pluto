@@ -39,6 +39,13 @@ class _ArtistState extends State<Artist> {
                   const Column(
                     children: [
                       DJAvatar(
+                        name: 'JUST NIEMAN',
+                        description:
+                            'Inspired by Dirty Bird and Off the Grid records, Just Nieman is a multi-genre DJ and producer from Asheville, NC.',
+                        image: NetworkImage('https://i.imgur.com/5I4TqyV.jpg'),
+                        instagramUrl: 'https://www.instagram.com/justnieman/',
+                      ),
+                      DJAvatar(
                         name: 'DIVINE THUD',
                         description:
                             "Divine Thud style takes inspiration from Desert Hearts and brings amazing house tunes you've probably heard at festival.",
@@ -52,13 +59,6 @@ class _ArtistState extends State<Artist> {
                         image: NetworkImage('https://i.imgur.com/KJesoFD.jpg'),
                         instagramUrl:
                             'https://www.instagram.com/ronie.macaroni/',
-                      ),
-                      DJAvatar(
-                        name: 'JUST NIEMAN',
-                        description:
-                            'Inspired by Dirty Bird and Off the Grid records, Just Nieman is a multi-genre DJ and producer from Asheville, NC.',
-                        image: NetworkImage('https://i.imgur.com/5I4TqyV.jpg'),
-                        instagramUrl: 'https://www.instagram.com/justnieman/',
                       ),
                       DJAvatar(
                         name: 'DJ DAGGETT',
