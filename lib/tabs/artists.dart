@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../src/contact_me/data.dart';
+import '../djavatar.dart';
 import '../src/custom/custom_text.dart';
 
 class Artist extends StatefulWidget {
@@ -32,79 +32,41 @@ class _ArtistState extends State<Artist> {
                       text: 'MEET THE ARTISTS',
                       fontSize: 28,
                       color: Theme.of(context).primaryColorLight),
-                  Column(
+                  CustomText(
+                      text: 'TAP TO LEARN MORE',
+                      fontSize: 18,
+                      color: Theme.of(context).primaryColorLight),
+                  const Column(
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 15.0, vertical: 15.0),
-                        child: Container(
-                          width: 250.0,
-                          height: 250.0,
-                          decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              image: DecorationImage(
-                                  fit: BoxFit.fill,
-                                  image: AssetImage('gallery/august.webp'))),
-                        ),
+                      DJAvatar(
+                        name: 'DIVINE THUD',
+                        description:
+                            "Divine Thud style takes inspiration from Desert Hearts and brings amazing house tunes you've probably heard at festival.",
+                        image: NetworkImage('https://i.imgur.com/FiHtYq3.jpeg'),
+                        instagramUrl: 'https://www.instagram.com/divine_thud_/',
                       ),
-                      CustomText(
-                          text: 'DIVINE THUD',
-                          fontSize: 18,
-                          color: Theme.of(context).primaryColorLight),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 15.0, vertical: 15.0),
-                        child: Container(
-                          width: 250.0,
-                          height: 250.0,
-                          decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              image: DecorationImage(
-                                  fit: BoxFit.fill,
-                                  image: NetworkImage(
-                                      'https://i.imgur.com/5I4TqyV.jpg'))),
-                        ),
+                      DJAvatar(
+                        name: 'RAB!D RON!E',
+                        description:
+                            "Asheville's fastest up and coming female DJ, Ron!e gets the crowd rab!d with her heavy tech and bass house sets.",
+                        image: NetworkImage('https://i.imgur.com/KJesoFD.jpg'),
+                        instagramUrl:
+                            'https://www.instagram.com/ronie.macaroni/',
                       ),
-                      CustomText(
-                          text: 'NIEMAN',
-                          fontSize: 18,
-                          color: Theme.of(context).primaryColorLight),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 15.0, vertical: 15.0),
-                        child: Container(
-                          width: 250.0,
-                          height: 250.0,
-                          decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              image: DecorationImage(
-                                  fit: BoxFit.fill,
-                                  image: NetworkImage(
-                                      'https://i.imgur.com/Qn41yP4.png'))),
-                        ),
+                      DJAvatar(
+                        name: 'JUST NIEMAN',
+                        description:
+                            'Inspired by Dirty Bird and Off the Grid records, Just Nieman is a multi-genre DJ and producer from Asheville, NC.',
+                        image: NetworkImage('https://i.imgur.com/5I4TqyV.jpg'),
+                        instagramUrl: 'https://www.instagram.com/justnieman/',
                       ),
-                      CustomText(
-                          text: 'DJ DAGGETT',
-                          fontSize: 18,
-                          color: Theme.of(context).primaryColorLight),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 15.0, vertical: 15.0),
-                        child: Container(
-                          width: 250.0,
-                          height: 250.0,
-                          decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              image: DecorationImage(
-                                  fit: BoxFit.cover,
-                                  image: NetworkImage(
-                                      'https://i.imgur.com/KJesoFD.jpg'))),
-                        ),
+                      DJAvatar(
+                        name: 'DJ DAGGETT',
+                        description: 'He scratches, like a cat',
+                        image: NetworkImage('https://i.imgur.com/Qn41yP4.png'),
+                        instagramUrl:
+                            'https://www.instagram.com/daggett_productions/',
                       ),
-                      CustomText(
-                          text: 'RABI!D RON!E',
-                          fontSize: 18,
-                          color: Theme.of(context).primaryColorLight),
                     ],
                   )
                 ],
@@ -127,190 +89,58 @@ class _ArtistState extends State<Artist> {
                                 text: 'MEET THE ARTISTS',
                                 fontSize: 35,
                                 color: Theme.of(context).primaryColorLight),
+                            CustomText(
+                                text: 'TAP TO LEARN MORE',
+                                fontSize: 20,
+                                color: Theme.of(context).primaryColorLight),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 SizedBox(
                                   width: (width * .8) / 2,
-                                  child: Column(
+                                  child: const Column(
                                     children: [
-                                      GestureDetector(
-                                        onTap: () {
-                                          showDialog(
-                                            context: context,
-                                            builder: (BuildContext context) {
-                                              return AlertDialog(
-                                                title: CustomText(
-                                                    text: 'DIVINE THUD',
-                                                    fontSize: 18,
-                                                    color: Theme.of(context)
-                                                        .primaryColorLight),
-                                                content: const CustomText(
-                                                    text:
-                                                        'Description of the DJ goes here',
-                                                    fontSize: 16,
-                                                    color: Colors.grey),
-                                                actions: [
-                                                  TextButton(
-                                                    child: CustomText(
-                                                        text: 'Close',
-                                                        fontSize: 16,
-                                                        color: Theme.of(context)
-                                                            .primaryColor),
-                                                    onPressed: () {
-                                                      Navigator.of(context)
-                                                          .pop();
-                                                    },
-                                                  ),
-                                                ],
-                                              );
-                                            },
-                                          );
-                                        },
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 15.0, vertical: 15.0),
-                                          child: Container(
-                                            width: 350.0,
-                                            height: 350.0,
-                                            decoration: const BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                image: DecorationImage(
-                                                    fit: BoxFit.fill,
-                                                    image: AssetImage(
-                                                        'gallery/august.webp'))),
-                                          ),
-                                        ),
+                                      DJAvatar(
+                                        name: 'DIVINE THUD',
+                                        description:
+                                            "Divine Thud style takes inspiration from Desert Hearts and brings amazing house tunes you've probably heard at festival.",
+                                        image: NetworkImage(
+                                            'https://i.imgur.com/FiHtYq3.jpeg'),
+                                        instagramUrl:
+                                            'https://www.instagram.com/divine_thud_/',
                                       ),
-                                      Column(
-                                        children: [
-                                          CustomText(
-                                              text: 'DIVINE THUD',
-                                              fontSize: 18,
-                                              color: Theme.of(context)
-                                                  .primaryColorLight),
-                                          // Padding(
-                                          //   padding: const EdgeInsets.all(8.0),
-                                          //   child: RichText(
-                                          //     text: const TextSpan(
-                                          //       text:
-                                          //           "Divine Thud style takes inspiration from Desert Hearts and brings amazing house tunes you've probably heard at festival.",
-                                          //       style: TextStyle(
-                                          //           color: Colors.white),
-                                          //     ),
-                                          //   ),
-                                          // )
-                                          Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 15.0,
-                                                vertical: 15.0),
-                                            child: Container(
-                                              width: 350.0,
-                                              height: 350.0,
-                                              decoration: const BoxDecoration(
-                                                  shape: BoxShape.circle,
-                                                  image: DecorationImage(
-                                                      fit: BoxFit.cover,
-                                                      image: NetworkImage(
-                                                          'https://i.imgur.com/KJesoFD.jpg'))),
-                                            ),
-                                          ),
-                                          Column(
-                                            children: [
-                                              CustomText(
-                                                  text: 'RABI!D RON!E',
-                                                  fontSize: 18,
-                                                  color: Theme.of(context)
-                                                      .primaryColorLight),
-                                              // Padding(
-                                              //   padding: const EdgeInsets.all(8.0),
-                                              //   child: RichText(
-                                              //     text: const TextSpan(
-                                              //       text:
-                                              //           'Inspired by Dirty Bird and Off the Grid records, Nieman is a DJ and producer from Asheville, NC.',
-                                              //       style: TextStyle(
-                                              //           color: Colors.white),
-                                              //     ),
-                                              //   ),
-                                              // )
-                                            ],
-                                          )
-                                        ],
+                                      DJAvatar(
+                                        name: 'RAB!D RON!E',
+                                        description:
+                                            "Asheville's fastest up and coming female DJ, Ron!e gets the crowd rab!d with her heavy tech and bass house sets.",
+                                        image: NetworkImage(
+                                            'https://i.imgur.com/KJesoFD.jpg'),
+                                        instagramUrl:
+                                            'https://www.instagram.com/ronie.macaroni/',
                                       ),
                                     ],
                                   ),
                                 ),
                                 SizedBox(
                                   width: (width * .8) / 2,
-                                  child: Column(
+                                  child: const Column(
                                     children: [
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 15.0, vertical: 15.0),
-                                        child: Container(
-                                          width: 350.0,
-                                          height: 350.0,
-                                          decoration: const BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              image: DecorationImage(
-                                                  fit: BoxFit.fill,
-                                                  image: NetworkImage(
-                                                      'https://i.imgur.com/5I4TqyV.jpg'))),
-                                        ),
+                                      DJAvatar(
+                                        name: 'JUST NIEMAN',
+                                        description:
+                                            'Inspired by Dirty Bird and Off the Grid records, Just Nieman is a multi-genre DJ and producer from Asheville, NC.',
+                                        image: NetworkImage(
+                                            'https://i.imgur.com/5I4TqyV.jpg'),
+                                        instagramUrl:
+                                            'https://www.instagram.com/justnieman/',
                                       ),
-                                      Column(
-                                        children: [
-                                          CustomText(
-                                              text: 'NIEMAN',
-                                              fontSize: 18,
-                                              color: Theme.of(context)
-                                                  .primaryColorLight),
-                                          // Padding(
-                                          //   padding: const EdgeInsets.all(8.0),
-                                          //   child: RichText(
-                                          //     text: const TextSpan(
-                                          //       text:
-                                          //           'Inspired by Dirty Bird and Off the Grid records, Nieman is a DJ and producer from Asheville, NC.',
-                                          //       style: TextStyle(
-                                          //           color: Colors.white),
-                                          //     ),
-                                          //   ),
-                                          // )
-                                        ],
-                                      ),
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 15.0, vertical: 15.0),
-                                        child: Container(
-                                          width: 350.0,
-                                          height: 350.0,
-                                          decoration: const BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              image: DecorationImage(
-                                                  fit: BoxFit.cover,
-                                                  image: NetworkImage(
-                                                      'https://i.imgur.com/Qn41yP4.png'))),
-                                        ),
-                                      ),
-                                      Column(
-                                        children: [
-                                          CustomText(
-                                              text: 'DJ DAGGETT',
-                                              fontSize: 18,
-                                              color: Theme.of(context)
-                                                  .primaryColorLight),
-                                          // Padding(
-                                          //   padding: const EdgeInsets.all(8.0),
-                                          //   child: RichText(
-                                          //     text: const TextSpan(
-                                          //       text:
-                                          //           'Originally from Orlando, FL, DJ Dagget is spinning every thing from throwbacks, to the latest tech house tunes.',
-                                          //       style: TextStyle(
-                                          //           color: Colors.white),
-                                          //     ),
-                                          //   ),
-                                          // )
-                                        ],
+                                      DJAvatar(
+                                        name: 'DJ DAGGETT',
+                                        description: 'He scratches, like a cat',
+                                        image: NetworkImage(
+                                            'https://i.imgur.com/Qn41yP4.png'),
+                                        instagramUrl:
+                                            'https://www.instagram.com/daggett_productions/',
                                       ),
                                     ],
                                   ),

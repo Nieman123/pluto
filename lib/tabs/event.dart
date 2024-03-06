@@ -115,7 +115,7 @@ class _EventState extends State<Event> {
                       elevation: 5,
                       margin: const EdgeInsets.all(20.0),
                       child: Image.asset(
-                        'assets/events/420-fest.webp',
+                        'assets/events/420-fest-v2.webp',
                         fit: BoxFit.fill,
                       ),
                     ),
@@ -235,7 +235,7 @@ class _EventState extends State<Event> {
                                             .withOpacity(0.7)),
                                   ),
                                   CustomText(
-                                      text: '$lastSaturday 8PM-2AM',
+                                      text: '$lastSaturday 2PM-2AM',
                                       fontSize: 28,
                                       color: Theme.of(context)
                                           .primaryColorLight
@@ -279,7 +279,7 @@ class _EventState extends State<Event> {
                                 elevation: 5,
                                 margin: EdgeInsets.all(10),
                                 child: Image.asset(
-                                  'assets/events/420-fest.webp',
+                                  'assets/events/420-fest-v2.webp',
                                   fit: BoxFit.fill,
                                 ),
                               ),
