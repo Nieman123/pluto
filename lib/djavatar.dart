@@ -53,62 +53,72 @@ class DJAvatar extends StatelessWidget {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: CustomText(
-            text: name,
-            fontSize: 18,
-            color: Theme.of(context).primaryColorLight,
-          ),
+        return Dialog(
           backgroundColor: Colors.black45,
-          content: SingleChildScrollView(
-            // Wrap the content in a SingleChildScrollView
-            child: Column(
-              mainAxisSize: MainAxisSize.min, // Set the mainAxisSize to min
-              children: [
-                CustomText(
-                  text: description,
-                  fontSize: 16,
-                  color: Colors.white,
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: GestureDetector(
-                    onTap: () => _launchInstagram(instagramUrl),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Image.asset(
-                            'assets/home/constant/instagram.png',
-                            width: 24,
-                            height: 24,
-                          ),
-                        ),
-                        const CustomText(
-                          text: 'FOLLOW ON INSTAGRAM',
-                          fontSize: 16,
-                          color: Colors.white,
-                        ),
-                      ],
+          child: ConstrainedBox(
+            constraints:
+                BoxConstraints(maxWidth: 600), // Set your desired max width
+            child: FractionallySizedBox(
+              widthFactor:
+                  0.9, // Makes the dialog take up to 90% of the screen width
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize
+                      .min, // Ensures the column takes up only necessary space
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: CustomText(
+                        text: name,
+                        fontSize: 18,
+                        color: Theme.of(context).primaryColorLight,
+                      ),
                     ),
-                  ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: CustomText(
+                        text: description,
+                        fontSize: 16,
+                        color: Colors.white,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => _launchInstagram(instagramUrl),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Image.asset(
+                              'assets/home/constant/instagram.png',
+                              width: 24,
+                              height: 24,
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.only(left: 8.0),
+                              child: CustomText(
+                                text: 'FOLLOW ON INSTAGRAM',
+                                fontSize: 16,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      child: CustomText(
+                        text: 'Close',
+                        fontSize: 16,
+                        color: Theme.of(context).primaryColor,
+                      ),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
-          actions: [
-            TextButton(
-              child: CustomText(
-                text: 'Close',
-                fontSize: 16,
-                color: Theme.of(context).primaryColor,
-              ),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
         );
       },
     );

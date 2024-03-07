@@ -48,7 +48,7 @@ class _ArtistState extends State<Artist> {
                       DJAvatar(
                         name: 'DIVINE THUD',
                         description:
-                            "Divine Thud style takes inspiration from Desert Hearts and brings amazing house tunes you've probably heard at festival.",
+                            "Divine Thud style takes inspiration from Desert Hearts and brings amazing house tunes you've probably heard in the desert.",
                         image: NetworkImage('https://i.imgur.com/FiHtYq3.jpeg'),
                         instagramUrl: 'https://www.instagram.com/divine_thud_/',
                       ),
@@ -62,7 +62,9 @@ class _ArtistState extends State<Artist> {
                       ),
                       DJAvatar(
                         name: 'DJ DAGGETT',
-                        description: 'He scratches, like a cat',
+                        description: """
+DAGGETT is an extremely versatile DJ equipped with many years of experience.  
+DAGGETT's essence lies in 'open format' DJing, seamlessly blending a spectrum of music genres, from electro to house, across various decades.""",
                         image: NetworkImage('https://i.imgur.com/Qn41yP4.png'),
                         instagramUrl:
                             'https://www.instagram.com/daggett_productions/',
@@ -103,7 +105,7 @@ class _ArtistState extends State<Artist> {
                                       DJAvatar(
                                         name: 'DIVINE THUD',
                                         description:
-                                            "Divine Thud style takes inspiration from Desert Hearts and brings amazing house tunes you've probably heard at festival.",
+                                            "Divine Thud style takes inspiration from Desert Hearts and brings amazing house tunes you've probably heard in the desert.",
                                         image: NetworkImage(
                                             'https://i.imgur.com/FiHtYq3.jpeg'),
                                         instagramUrl:
@@ -136,7 +138,9 @@ class _ArtistState extends State<Artist> {
                                       ),
                                       DJAvatar(
                                         name: 'DJ DAGGETT',
-                                        description: 'He scratches, like a cat',
+                                        description: """
+DAGGETT is an extremely versatile DJ equipped with many years of experience.  
+DAGGETT's essence lies in 'open format' DJing, seamlessly blending a spectrum of music genres, from electro to house, across various decades.""",
                                         image: NetworkImage(
                                             'https://i.imgur.com/Qn41yP4.png'),
                                         instagramUrl:
