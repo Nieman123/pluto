@@ -1,14 +1,5 @@
-import 'dart:convert';
-import 'dart:html';
-
-import 'package:firebase_analytics/firebase_analytics.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:url_launcher/url_launcher_string.dart';
-
-import '../src/contact_me/data.dart';
 import '../src/custom/custom_text.dart';
 
 class CalendarEvent extends StatefulWidget {
@@ -30,294 +21,83 @@ class _CalendarEventState extends State<CalendarEvent> {
       children: [
         LayoutBuilder(
             builder: (BuildContext context, BoxConstraints constraints) {
-          if (constraints.maxWidth < 1000) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10.0),
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(15),
-                    child: CustomText(
-                        text: 'EVERY 2ND SATURDAY OF THE MONTH!',
-                        fontSize: 28,
-                        color: Theme.of(context).primaryColorLight),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 5.0),
-                    child: CustomText(
-                        text: 'HOUSE NIGHTS AT WATER STREET',
-                        fontSize: 18,
-                        color: Theme.of(context)
-                            .primaryColorLight
-                            .withOpacity(0.7)),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 5.0),
-                    child: CustomText(
-                        text: 'Tap the buttons below to add to your calendar',
-                        fontSize: 10,
-                        color: Theme.of(context)
-                            .primaryColorLight
-                            .withOpacity(0.7)),
-                  ),
-                  Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 5.0),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                      textStyle: const TextStyle(fontSize: 15),
-                                      backgroundColor: Colors.black45),
-                                  onPressed: () async {
-                                    await downloadWaterStreetICS();
-                                  },
-                                  child: const Text('DOWNLOAD .ICS (iPHONE)'),
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                      textStyle: const TextStyle(fontSize: 15),
-                                      backgroundColor: Colors.black45),
-                                  onPressed: () async {
-                                    var uri = Uri.parse(
-                                        'https://calendar.google.com/calendar/event?action=TEMPLATE&tmeid=NmJ0ODFicGVzcTVsamJyNTUzMGVsa2llbTdfMjAyMjEyMTFUMDIwMDAwWiBuaWVtYW4xMjNAbQ&tmsrc=nieman123%40gmail.com&scp=ALL');
-                                    launchUrl(uri);
-                                  },
-                                  child: const Text('GOOGLE CALENDAR'),
-                                ),
-                              ),
-                            ],
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: RichText(
-                              textAlign: TextAlign.center,
-                              text: TextSpan(children: [
-                                const TextSpan(
-                                  text: 'Follow ',
-                                  style: TextStyle(
-                                      color: Colors.white, fontSize: 18),
-                                ),
-                                TextSpan(
-                                  text: '@pluto.events.avl',
-                                  style: const TextStyle(
-                                      color: Colors.grey, fontSize: 18),
-                                  recognizer: TapGestureRecognizer()
-                                    ..onTap = () {
-                                      launchUrlString(
-                                          'https://www.instagram.com/pluto.events.avl/');
-                                    },
-                                ),
-                                const TextSpan(
-                                  text: ' and ',
-                                  style: TextStyle(
-                                      color: Colors.white, fontSize: 18),
-                                ),
-                                TextSpan(
-                                  text: '@thenieman',
-                                  style: const TextStyle(
-                                      color: Colors.grey, fontSize: 18),
-                                  recognizer: TapGestureRecognizer()
-                                    ..onTap = () {
-                                      launchUrlString(
-                                          'https://www.instagram.com/thenieman/');
-                                    },
-                                ),
-                                const TextSpan(
-                                  text: ' on Instagram for updates.',
-                                  style: TextStyle(
-                                      color: Colors.white, fontSize: 18),
-                                ),
-                              ]),
-                            ),
-                          )
-                        ],
-                      )),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: Card(
-                      semanticContainer: true,
-                      clipBehavior: Clip.antiAliasWithSaveLayer,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10.0),
-                      ),
-                      elevation: 5,
-                      margin: EdgeInsets.all(10),
-                      child: Image.asset(
-                        'assets/experience/every-2nd-saturday-water-street-916.png',
-                        fit: BoxFit.fill,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          } else {
-            return Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10.0),
+            child: Column(
               children: [
+                Padding(
+                  padding: const EdgeInsets.all(15),
+                  child: CustomText(
+                    text: "PLUTO'S PUFF: A 420 FEST",
+                    fontSize: constraints.maxWidth < 1000 ? 28 : 35,
+                    color: Theme.of(context).primaryColorLight,
+                  ),
+                ),
+                const SizedBox(
+                  height: 20,
+                ),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    SizedBox(
-                      width: width / 2,
-                      child: Column(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.all(15),
-                            child: CustomText(
-                                text: 'EVERY 2ND SATURDAY OF THE MONTH!',
-                                fontSize: 35,
-                                color: Theme.of(context).primaryColorLight),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
-                            child: CustomText(
-                                text: 'HOUSE NIGHTS AT WATER STREET',
-                                fontSize: 18,
-                                color: Theme.of(context)
-                                    .primaryColorLight
-                                    .withOpacity(0.7)),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 5.0),
-                            child: CustomText(
-                                text:
-                                    'Tap the buttons below to add to your calendar',
-                                fontSize: 18,
-                                color: Theme.of(context)
-                                    .primaryColorLight
-                                    .withOpacity(0.7)),
-                          ),
-                          Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 5.0),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.all(8.0),
-                                    child: ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                          textStyle:
-                                              const TextStyle(fontSize: 15),
-                                          backgroundColor: Colors.black45),
-                                      onPressed: () async {
-                                        await downloadWaterStreetICS();
-                                      },
-                                      child:
-                                          const Text('DOWNLOAD .ICS (iPHONE)'),
-                                    ),
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.all(8.0),
-                                    child: ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                          textStyle:
-                                              const TextStyle(fontSize: 15),
-                                          backgroundColor: Colors.black45),
-                                      onPressed: () async {
-                                        var uri = Uri.parse(
-                                            'https://calendar.google.com/calendar/event?action=TEMPLATE&tmeid=NmJ0ODFicGVzcTVsamJyNTUzMGVsa2llbTdfMjAyMjEyMTFUMDIwMDAwWiBuaWVtYW4xMjNAbQ&tmsrc=nieman123%40gmail.com&scp=ALL');
-                                        launchUrl(uri);
-                                      },
-                                      child: const Text('GOOGLE CALENDAR'),
-                                    ),
-                                  ),
-                                ],
-                              )),
-                          Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: RichText(
-                              textAlign: TextAlign.center,
-                              text: TextSpan(children: [
-                                const TextSpan(
-                                  text: 'Follow ',
-                                  style: TextStyle(
-                                      color: Colors.white, fontSize: 18),
-                                ),
-                                TextSpan(
-                                  text: '@pluto.events.avl',
-                                  style: const TextStyle(
-                                      color: Colors.grey, fontSize: 18),
-                                  recognizer: TapGestureRecognizer()
-                                    ..onTap = () {
-                                      launchUrlString(
-                                          'https://www.instagram.com/pluto.events.avl/');
-                                    },
-                                ),
-                                const TextSpan(
-                                  text: ' and ',
-                                  style: TextStyle(
-                                      color: Colors.white, fontSize: 18),
-                                ),
-                                TextSpan(
-                                  text: '@thenieman',
-                                  style: const TextStyle(
-                                      color: Colors.grey, fontSize: 18),
-                                  recognizer: TapGestureRecognizer()
-                                    ..onTap = () {
-                                      launchUrlString(
-                                          'https://www.instagram.com/thenieman/');
-                                    },
-                                ),
-                                const TextSpan(
-                                  text: ' on Instagram for updates.',
-                                  style: TextStyle(
-                                      color: Colors.white, fontSize: 18),
-                                ),
-                              ]),
-                            ),
-                          ),
-                          SizedBox(
-                            width: width / 3,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 20),
-                              child: Card(
-                                semanticContainer: true,
-                                clipBehavior: Clip.antiAliasWithSaveLayer,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10.0),
-                                ),
-                                elevation: 5,
-                                margin: EdgeInsets.all(10),
-                                child: Image.asset(
-                                  'assets/experience/every-2nd-saturday-water-street-916.png',
-                                  fit: BoxFit.fill,
-                                ),
-                              ),
-                            ),
-                          )
-                        ],
-                      ),
+                    ElevatedButton(
+                      onPressed: () =>
+                          launchUrlString('https://posh.vip/e/plutos-puff'),
+                      child: Text('Get Tickets'),
+                    ),
+                    SizedBox(width: 20), // Spacing between buttons
+                    ElevatedButton(
+                      onPressed: () =>
+                          launchUrlString('https://fb.me/e/2PyOdK3DM'),
+                      child: Text('Facebook Event'),
                     ),
                   ],
                 ),
+                const SizedBox(
+                  height: 20,
+                ),
+                SizedBox(
+                  width: width * .7,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: CustomText(
+                      text: '''
+2PM-2AM! On April 20th
+
+To celebrate the holidaze, we will be throwing a huge party at The Getaway! Including vendors, food truck, and amazing music all day.
+
+Hoping to see you there!
+
+Pluto kindly reminds all attendees to adhere to the current local laws and regulations regarding the possession and consumption of cannabis and hemp products. Enjoy responsibly''',
+                      fontSize: constraints.maxWidth < 1000 ? 14 : 18,
+                      color:
+                          Theme.of(context).primaryColorLight.withOpacity(0.7),
+                    ),
+                  ),
+                ),
+                const SizedBox(
+                  height: 20,
+                ),
+                SizedBox(
+                  width: width * .7,
+                  child: Card(
+                    semanticContainer: true,
+                    clipBehavior: Clip.antiAliasWithSaveLayer,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                    elevation: 5,
+                    margin: EdgeInsets.all(10),
+                    child: Image.asset(
+                      'assets/events/420-fest-v2.webp',
+                      fit: BoxFit.fill,
+                    ),
+                  ),
+                ),
               ],
-            );
-          }
+            ),
+          );
         }),
       ],
     );
-  }
-
-  Future<void> downloadWaterStreetICS() async {
-    await FirebaseAnalytics.instance.logEvent(
-      name: 'cal_download_clicked_waterstreet',
-    );
-    final rawData = await rootBundle
-        .load(r'assets/experience/HouseNightsAtWaterStreet.ics');
-    final content = base64Encode(rawData.buffer.asUint8List());
-    final anchor = AnchorElement(
-        href: 'data:application/octet-stream;charset=utf-16le;base64,$content')
-      ..setAttribute('download', 'HouseNightsAtWaterStreet.ics')
-      ..click();
   }
 }
