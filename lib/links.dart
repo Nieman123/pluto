@@ -37,7 +37,9 @@ class LinksPage extends StatelessWidget {
               const SizedBox(height: 20),
               const LinkBox(
                   icon: Icons.link_rounded,
+                  image: AssetImage('assets/home/constant/420-fest-3x3.png'),
                   text: '420 FEST DETAILS',
+                  isImageCircular: true,
                   url: 'https://pluto.events/420-fest/'),
               const LinkBox(
                   icon: Icons.music_note,

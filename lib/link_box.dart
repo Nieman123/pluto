@@ -7,6 +7,7 @@ class LinkBox extends StatelessWidget {
   final String text;
   final String url;
   final ImageProvider? image; // Optional image parameter
+  final bool isImageCircular; // New parameter to toggle image shape
 
   const LinkBox({
     Key? key,
@@ -14,6 +15,7 @@ class LinkBox extends StatelessWidget {
     required this.text,
     required this.url,
     this.image, // Initialize the optional image parameter
+    this.isImageCircular = false, // Default shape is square
   }) : super(key: key);
 
   @override
@@ -53,18 +55,29 @@ class LinkBox extends StatelessWidget {
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
+                shape: isImageCircular
+                    ? BoxShape.circle
+                    : BoxShape.rectangle, // Conditionally set the shape
+                borderRadius: isImageCircular
+                    ? null
+                    : BorderRadius.circular(
+                        10), // Only round corners if not circular
               ),
               height: iconHeight, // Reserve space for the icon/image
-              child: imageProvider != null
-                  ? Image(image: imageProvider, fit: BoxFit.cover)
-                  : Icon(icon, size: iconHeight),
+              width: isImageCircular
+                  ? iconHeight
+                  : null, // If circular, set width to maintain aspect ratio
+              child: ClipOval(
+                child: imageProvider != null
+                    ? Image(image: imageProvider, fit: BoxFit.cover)
+                    : Icon(icon, size: iconHeight),
+              ),
             ),
             const SizedBox(height: 10), // Space between image and text
             Text(
               text,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
               ),
