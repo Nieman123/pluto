@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_list_view/flutter_list_view.dart';
 import 'package:sa3_liquid/sa3_liquid.dart';
-import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 import 'src/nav_bar/nav_bar.dart';
 import 'tabs/tabs.dart';

@@ -1,5 +1,9 @@
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+
 import '../src/custom/custom_text.dart';
 
 class CalendarEvent extends StatefulWidget {
@@ -52,8 +56,12 @@ class _CalendarEventState extends State<CalendarEvent> {
                         borderRadius: BorderRadius.circular(5),
                       ),
                       child: ElevatedButton(
-                        onPressed: () =>
-                            launchUrlString('https://posh.vip/e/plutos-puff'),
+                        onPressed: () => {
+                          launchUrlString('https://posh.vip/e/plutos-puff'),
+                          FirebaseAnalytics.instance.logEvent(
+                            name: '420_fest_page_ticket_button',
+                          )
+                        },
                         child: const Text('Get Tickets'),
                         style: ElevatedButton.styleFrom(
                           primary: Colors.transparent,
@@ -84,8 +92,12 @@ class _CalendarEventState extends State<CalendarEvent> {
                         borderRadius: BorderRadius.circular(5),
                       ),
                       child: ElevatedButton(
-                        onPressed: () =>
-                            launchUrlString('https://fb.me/e/2PyOdK3DM'),
+                        onPressed: () => {
+                          launchUrlString('https://fb.me/e/2PyOdK3DM'),
+                          FirebaseAnalytics.instance.logEvent(
+                            name: '420_fest_page_facebook_button',
+                          )
+                        },
                         child: const Text('Facebook Event'),
                         style: ElevatedButton.styleFrom(
                           primary: Colors.transparent,
@@ -103,6 +115,35 @@ class _CalendarEventState extends State<CalendarEvent> {
                       ),
                     )
                   ],
+                ),
+                const SizedBox(
+                  height: 20,
+                ),
+                RichText(
+                  textScaleFactor: 1.5,
+                  text: TextSpan(
+                    children: [
+                      TextSpan(
+                        text:
+                            'Click to follow us on Instagram for Event Updates!',
+                        style: const TextStyle(
+                          color: Colors
+                              .blue, // Change this color to match your app's design
+                          decoration: TextDecoration.underline,
+                        ),
+                        recognizer: TapGestureRecognizer()
+                          ..onTap = () async {
+                            const url =
+                                'https://www.instagram.com/pluto.events.avl';
+                            if (await canLaunchUrlString(url)) {
+                              await launchUrlString(url);
+                            } else {
+                              throw 'Could not launch $url';
+                            }
+                          },
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(
                   height: 20,

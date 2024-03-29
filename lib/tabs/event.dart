@@ -25,7 +25,7 @@ class _EventState extends State<Event> {
       await FirebaseAnalytics.instance.logEvent(
         name: 'ticket_button_click',
         parameters: {
-          'button': 'tickers',
+          'button': 'tickets',
         },
       );
     } else {
@@ -120,22 +120,22 @@ class _EventState extends State<Event> {
                       ),
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: Card(
-                      semanticContainer: true,
-                      clipBehavior: Clip.antiAliasWithSaveLayer,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10.0),
-                      ),
-                      elevation: 5,
-                      margin: const EdgeInsets.all(20.0),
-                      child: Image.asset(
-                        'assets/events/st patty .webp',
-                        fit: BoxFit.fill,
-                      ),
-                    ),
-                  ),
+                  // Padding(
+                  //   padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  //   child: Card(
+                  //     semanticContainer: true,
+                  //     clipBehavior: Clip.antiAliasWithSaveLayer,
+                  //     shape: RoundedRectangleBorder(
+                  //       borderRadius: BorderRadius.circular(10.0),
+                  //     ),
+                  //     elevation: 5,
+                  //     margin: const EdgeInsets.all(20.0),
+                  //     child: Image.asset(
+                  //       'assets/events/st patty .webp',
+                  //       fit: BoxFit.fill,
+                  //     ),
+                  //   ),
+                  // ),
                   Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: CarouselSlider(
@@ -328,26 +328,26 @@ class _EventState extends State<Event> {
                               ),
                             ),
                           ),
-                          SizedBox(
-                            width: width / 3,
-                            child: Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 8.0),
-                              child: Card(
-                                semanticContainer: true,
-                                clipBehavior: Clip.antiAliasWithSaveLayer,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10.0),
-                                ),
-                                elevation: 5,
-                                margin: EdgeInsets.all(10),
-                                child: Image.asset(
-                                  'assets/events/st patty .webp',
-                                  fit: BoxFit.fill,
-                                ),
-                              ),
-                            ),
-                          ),
+                          // SizedBox(
+                          //   width: width / 3,
+                          //   child: Padding(
+                          //     padding:
+                          //         const EdgeInsets.symmetric(vertical: 8.0),
+                          //     child: Card(
+                          //       semanticContainer: true,
+                          //       clipBehavior: Clip.antiAliasWithSaveLayer,
+                          //       shape: RoundedRectangleBorder(
+                          //         borderRadius: BorderRadius.circular(10.0),
+                          //       ),
+                          //       elevation: 5,
+                          //       margin: EdgeInsets.all(10),
+                          //       child: Image.asset(
+                          //         'assets/events/st patty .webp',
+                          //         fit: BoxFit.fill,
+                          //       ),
+                          //     ),
+                          //   ),
+                          // ),
                         ],
                       ),
                     ),

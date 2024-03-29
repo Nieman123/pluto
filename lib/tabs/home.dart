@@ -1,3 +1,4 @@
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:foil/foil.dart';
@@ -27,6 +28,9 @@ class _HomePageState extends State<HomePage> {
         ));
       });
     });
+    FirebaseAnalytics.instance.logEvent(
+      name: 'home_page_visit',
+    );
   }
 
   @override

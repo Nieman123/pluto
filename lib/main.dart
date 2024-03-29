@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pluto/links.dart';
 
 import '420.dart';
 import 'app.dart';
@@ -59,6 +60,12 @@ class _MyAppState extends State<MyApp> {
         path: '/420-fest',
         builder: (BuildContext context, GoRouterState state) {
           return Fest420Page();
+        },
+      ),
+      GoRoute(
+        path: '/links',
+        builder: (BuildContext context, GoRouterState state) {
+          return const LinksPage();
         },
       ),
     ], debugLogDiagnostics: true);
