@@ -18,19 +18,11 @@ class App extends StatelessWidget {
           body: Stack(
             children: [
               const PlasmaRenderer(
-                type: PlasmaType.infinity,
-                particles: 10,
                 color: Color.fromARGB(68, 85, 0, 165),
                 blur: 0.5,
-                size: 1,
-                speed: 1,
-                offset: 0,
                 blendMode: BlendMode.plus,
                 particleType: ParticleType.atlas,
                 variation1: 1,
-                variation2: 0,
-                variation3: 0,
-                rotation: 0,
               ),
               FlutterListView(
                   delegate: FlutterListViewDelegate(
@@ -49,18 +41,11 @@ class App extends StatelessWidget {
             children: [
               const PlasmaRenderer(
                 type: PlasmaType.infinity,
-                particles: 10,
                 color: Color.fromARGB(68, 85, 0, 165),
                 blur: 0.5,
-                size: 1,
-                speed: 1,
-                offset: 0,
                 blendMode: BlendMode.plus,
                 particleType: ParticleType.atlas,
                 variation1: 1,
-                variation2: 0,
-                variation3: 0,
-                rotation: 0,
               ),
               FlutterListView(
                   delegate: FlutterListViewDelegate(
