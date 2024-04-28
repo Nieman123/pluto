@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_improved_scrolling/flutter_improved_scrolling.dart';
 import 'package:flutter_list_view/flutter_list_view.dart';
 import 'package:sa3_liquid/sa3_liquid.dart';
 
@@ -10,6 +11,8 @@ class App extends StatelessWidget {
   static const String route = '/';
   @override
   Widget build(BuildContext context) {
+    final controller = ScrollController();
+
     final double height = MediaQuery.of(context).size.height;
     final double width = MediaQuery.of(context).size.width;
     return LayoutBuilder(builder: (context, constraints) {
@@ -24,11 +27,17 @@ class App extends StatelessWidget {
                 particleType: ParticleType.atlas,
                 variation1: 1,
               ),
-              FlutterListView(
-                  delegate: FlutterListViewDelegate(
-                (BuildContext context, int index) => widgetList[index],
-                childCount: widgetList.length,
-              ))
+              ImprovedScrolling(
+                scrollController: controller,
+                enableKeyboardScrolling: true,
+                child: ListView.builder(
+                  itemCount: widgetList.length,
+                  controller: controller,
+                  itemBuilder: (BuildContext context, int index) {
+                    return widgetList[index];
+                  },
+                ),
+              )
             ],
           ),
         );
@@ -47,11 +56,17 @@ class App extends StatelessWidget {
                 particleType: ParticleType.atlas,
                 variation1: 1,
               ),
-              FlutterListView(
-                  delegate: FlutterListViewDelegate(
-                (BuildContext context, int index) => widgetList[index],
-                childCount: widgetList.length,
-              ))
+              ImprovedScrolling(
+                scrollController: controller,
+                enableKeyboardScrolling: true,
+                child: ListView.builder(
+                  itemCount: widgetList.length,
+                  controller: controller,
+                  itemBuilder: (BuildContext context, int index) {
+                    return widgetList[index];
+                  },
+                ),
+              )
             ],
           ),
         );
