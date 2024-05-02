@@ -46,10 +46,11 @@ class LinksPage extends StatelessWidget {
                 const SizedBox(height: 20),
                 const LinkBox(
                     icon: Icons.link_rounded,
-                    image: AssetImage('assets/home/constant/420-fest-3x3.png'),
-                    text: '420 FEST DETAILS',
+                    image: AssetImage(
+                        'assets/events/getaway-may-18th_half-min.png'),
+                    text: 'MAY 18 TICKETS',
                     isImageCircular: true,
-                    url: 'https://pluto.events/420-fest/'),
+                    url: 'https://posh.vip/e/taurus-season-birthday-bash'),
                 const LinkBox(
                     icon: Icons.music_note,
                     image: AssetImage('assets/home/constant/instagram.png'),
@@ -85,11 +86,6 @@ class LinksPage extends StatelessWidget {
                     image: NetworkImage('https://i.imgur.com/FiHtYq3.jpeg'),
                     text: 'DIVINE THUD',
                     url: 'https://www.instagram.com/divine_thud_/'),
-                const LinkBox(
-                    icon: Icons.face,
-                    image: NetworkImage('https://i.imgur.com/KJesoFD.jpg'),
-                    text: 'RAB!D RON!E',
-                    url: 'https://www.instagram.com/ronie.macaroni/'),
                 const LinkBox(
                     icon: Icons.face,
                     image: NetworkImage('https://i.imgur.com/Qn41yP4.png'),

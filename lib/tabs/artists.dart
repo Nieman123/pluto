@@ -53,14 +53,6 @@ class _ArtistState extends State<Artist> {
                         instagramUrl: 'https://www.instagram.com/divine_thud_/',
                       ),
                       DJAvatar(
-                        name: 'RAB!D RON!E',
-                        description:
-                            "Asheville's fastest up and coming female DJ, Ron!e gets the crowd rab!d with her heavy tech and bass house sets.",
-                        image: NetworkImage('https://i.imgur.com/KJesoFD.jpg'),
-                        instagramUrl:
-                            'https://www.instagram.com/ronie.macaroni/',
-                      ),
-                      DJAvatar(
                         name: 'DJ DAGGETT',
                         description: """
 DAGGETT is an extremely versatile DJ equipped with many years of experience.  
@@ -110,15 +102,6 @@ DAGGETT's essence lies in 'open format' DJing, seamlessly blending a spectrum of
                                             'https://i.imgur.com/FiHtYq3.jpeg'),
                                         instagramUrl:
                                             'https://www.instagram.com/divine_thud_/',
-                                      ),
-                                      DJAvatar(
-                                        name: 'RAB!D RON!E',
-                                        description:
-                                            "Asheville's fastest up and coming female DJ, Ron!e gets the crowd rab!d with her heavy tech and bass house sets.",
-                                        image: NetworkImage(
-                                            'https://i.imgur.com/KJesoFD.jpg'),
-                                        instagramUrl:
-                                            'https://www.instagram.com/ronie.macaroni/',
                                       ),
                                     ],
                                   ),

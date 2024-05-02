@@ -55,12 +55,12 @@ class _MyAppState extends State<MyApp> {
         path: '/',
         builder: (BuildContext context, GoRouterState state) => const App(),
       ),
-      GoRoute(
-        path: '/420-fest',
-        builder: (BuildContext context, GoRouterState state) {
-          return Fest420Page();
-        },
-      ),
+      // GoRoute(
+      //   path: '/420-fest',
+      //   builder: (BuildContext context, GoRouterState state) {
+      //     return Fest420Page();
+      //   },
+      // ),
       GoRoute(
         path: '/links',
         builder: (BuildContext context, GoRouterState state) {
