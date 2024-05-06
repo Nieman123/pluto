@@ -5,16 +5,16 @@ import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 import 'tabs/calendar_event.dart'; // Assuming you have this from your App2 class
 
-class Fest420Page extends StatefulWidget {
-  Fest420Page({Key? key}) : super(key: key);
+class GetawayPage extends StatefulWidget {
+  GetawayPage({Key? key}) : super(key: key);
 
   @override
-  _Fest420PageState createState() => _Fest420PageState();
+  _GetawayPageState createState() => _GetawayPageState();
 
   final ItemScrollController scrollController = ItemScrollController();
 }
 
-class _Fest420PageState extends State<Fest420Page> {
+class _GetawayPageState extends State<GetawayPage> {
   final List<Widget> widgetList = [
     const CalendarEvent(),
   ];
@@ -25,7 +25,7 @@ class _Fest420PageState extends State<Fest420Page> {
   void initState() {
     super.initState();
     FirebaseAnalytics.instance.logEvent(
-      name: '420_fest_page_visit',
+      name: 'getaway_18_page_visit',
     );
   }
 

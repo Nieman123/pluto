@@ -76,7 +76,7 @@ class _EventState extends State<Event> {
                                     .withOpacity(0.7)),
                           ),
                           CustomText(
-                              text: '$lastSaturday 2PM-2AM',
+                              text: '$lastSaturday 8PM-2AM',
                               fontSize: 28,
                               color: Theme.of(context)
                                   .primaryColorLight

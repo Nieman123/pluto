@@ -2,11 +2,11 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'links.dart';
 
-import '420.dart';
 import 'app.dart';
 import 'firebase_options.dart';
+import 'getaway.dart';
+import 'links.dart';
 import 'src/configure_web.dart';
 import 'src/json_service.dart';
 import 'src/theme/config.dart';
@@ -55,12 +55,12 @@ class _MyAppState extends State<MyApp> {
         path: '/',
         builder: (BuildContext context, GoRouterState state) => const App(),
       ),
-      // GoRoute(
-      //   path: '/420-fest',
-      //   builder: (BuildContext context, GoRouterState state) {
-      //     return Fest420Page();
-      //   },
-      // ),
+      GoRoute(
+        path: '/getaway',
+        builder: (BuildContext context, GoRouterState state) {
+          return GetawayPage();
+        },
+      ),
       GoRoute(
         path: '/links',
         builder: (BuildContext context, GoRouterState state) {

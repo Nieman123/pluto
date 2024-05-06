@@ -1,7 +1,6 @@
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 import '../src/custom/custom_text.dart';
@@ -32,7 +31,7 @@ class _CalendarEventState extends State<CalendarEvent> {
                 Padding(
                   padding: const EdgeInsets.all(15),
                   child: CustomText(
-                    text: "PLUTO'S PUFF: A 420 FEST",
+                    text: 'TAURUS SEASON BIRTHDAY BASH',
                     fontSize: constraints.maxWidth < 1000 ? 28 : 35,
                     color: Theme.of(context).primaryColorLight,
                   ),
@@ -57,9 +56,10 @@ class _CalendarEventState extends State<CalendarEvent> {
                       ),
                       child: ElevatedButton(
                         onPressed: () => {
-                          launchUrlString('https://posh.vip/e/plutos-puff'),
+                          launchUrlString(
+                              'https://posh.vip/e/taurus-season-birthday-bash'),
                           FirebaseAnalytics.instance.logEvent(
-                            name: '420_fest_page_ticket_button',
+                            name: 'getaway_18_page_ticket_button',
                           )
                         },
                         child: const Text('Get Tickets'),
@@ -93,7 +93,8 @@ class _CalendarEventState extends State<CalendarEvent> {
                       ),
                       child: ElevatedButton(
                         onPressed: () => {
-                          launchUrlString('https://fb.me/e/2PyOdK3DM'),
+                          launchUrlString(
+                              'https://www.facebook.com/events/806802474214296/'),
                           FirebaseAnalytics.instance.logEvent(
                             name: '420_fest_page_facebook_button',
                           )
@@ -154,13 +155,11 @@ class _CalendarEventState extends State<CalendarEvent> {
                     padding: const EdgeInsets.symmetric(vertical: 8.0),
                     child: CustomText(
                       text: '''
-2PM-2AM! On April 20th
+Saturday, May 18th
 
-To celebrate the holidaze, we will be throwing a huge party at The Getaway! Including vendors, food truck, and amazing music all day.
+Come celebrate the spirit of Taurus at our Taurus Season Birthday Bash 🎉
 
-Hoping to see you there!
-
-Pluto kindly reminds all attendees to adhere to the current local laws and regulations regarding the possession and consumption of cannabis and hemp products. Enjoy responsibly''',
+Join us at The Getaway, Asheville’s favorite river bar, which it out of the way in a good way. Whether you're a Taurus or just love one, this night is dedicated to celebrating the reliability, dedication, and warmth that a Taurus brings into our lives. 🌟''',
                       fontSize: constraints.maxWidth < 1000 ? 14 : 18,
                       color:
                           Theme.of(context).primaryColorLight.withOpacity(0.7),
@@ -181,7 +180,7 @@ Pluto kindly reminds all attendees to adhere to the current local laws and regul
                     elevation: 5,
                     margin: const EdgeInsets.all(10),
                     child: Image.asset(
-                      'assets/events/420-fest-v2.webp',
+                      'assets/events/getaway-may-18th_half-min.png',
                       fit: BoxFit.fill,
                     ),
                   ),
