@@ -46,11 +46,10 @@ class LinksPage extends StatelessWidget {
                 const SizedBox(height: 20),
                 const LinkBox(
                     icon: Icons.link_rounded,
-                    image: AssetImage(
-                        'assets/events/getaway-may-18th_half-min.png'),
+                    image: AssetImage('assets/events/JUNE-15.png'),
                     text: 'MAY 18 TICKETS',
                     isImageCircular: true,
-                    url: 'https://posh.vip/e/taurus-season-birthday-bash'),
+                    url: 'https://posh.vip/e/pluto-at-the-getaway'),
                 const LinkBox(
                     icon: Icons.music_note,
                     image: AssetImage('assets/home/constant/instagram.png'),

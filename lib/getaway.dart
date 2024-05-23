@@ -25,7 +25,7 @@ class _GetawayPageState extends State<GetawayPage> {
   void initState() {
     super.initState();
     FirebaseAnalytics.instance.logEvent(
-      name: 'getaway_18_page_visit',
+      name: 'getaway_15_page_visit',
     );
   }
 

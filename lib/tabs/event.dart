@@ -19,7 +19,7 @@ class _EventState extends State<Event> {
   String thirdSaturday = '';
 
   Future<void> _launchURL() async {
-    final uri = Uri.parse('https://posh.vip/e/taurus-season-birthday-bash');
+    final uri = Uri.parse('https://posh.vip/e/pluto-at-the-getaway');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
       await FirebaseAnalytics.instance.logEvent(
@@ -63,20 +63,20 @@ class _EventState extends State<Event> {
                       child: Column(
                         children: [
                           CustomText(
-                              text: "TAURUS SEASON BIRTHDAY BASH",
+                              text: "PLUTO AT THE GETAWAY",
                               fontSize: 48,
                               color: Theme.of(context).primaryColorLight),
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 20.0),
                             child: CustomText(
-                                text: 'Happy birthday!',
+                                text: 'Open Decks 8-10PM!',
                                 fontSize: 28,
                                 color: Theme.of(context)
                                     .primaryColorLight
                                     .withOpacity(0.7)),
                           ),
                           CustomText(
-                              text: '$lastSaturday 8PM-2AM',
+                              text: 'June 15th 8PM-2AM',
                               fontSize: 28,
                               color: Theme.of(context)
                                   .primaryColorLight
@@ -115,7 +115,7 @@ class _EventState extends State<Event> {
                       elevation: 5,
                       margin: const EdgeInsets.all(20.0),
                       child: Image.asset(
-                        'assets/events/getaway-may-18th_half-min.png',
+                        'assets/events/JUNE-15.png',
                         fit: BoxFit.fill,
                       ),
                     ),
@@ -263,7 +263,7 @@ class _EventState extends State<Event> {
                               child: Column(
                                 children: [
                                   CustomText(
-                                      text: 'Taurus Season Birthday Bash',
+                                      text: 'PLUTO AT THE GETAWAY',
                                       fontSize: 48,
                                       color:
                                           Theme.of(context).primaryColorLight),
@@ -271,7 +271,7 @@ class _EventState extends State<Event> {
                                     padding: const EdgeInsets.symmetric(
                                         vertical: 20.0),
                                     child: CustomText(
-                                        text: 'Happy Birthday!',
+                                        text: 'Open decks 8-10PM!',
                                         fontSize: 28,
                                         color: Theme.of(context)
                                             .primaryColorLight
@@ -322,7 +322,7 @@ class _EventState extends State<Event> {
                                 elevation: 5,
                                 margin: EdgeInsets.all(10),
                                 child: Image.asset(
-                                  'assets/events/getaway-may-18th_half-min.png',
+                                  'assets/events/JUNE-15.png',
                                   fit: BoxFit.fill,
                                 ),
                               ),

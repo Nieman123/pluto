@@ -31,9 +31,24 @@ class _CalendarEventState extends State<CalendarEvent> {
                 Padding(
                   padding: const EdgeInsets.all(15),
                   child: CustomText(
-                    text: 'TAURUS SEASON BIRTHDAY BASH',
+                    text: 'PLUTO AT THE GETAWAY',
                     fontSize: constraints.maxWidth < 1000 ? 28 : 35,
                     color: Theme.of(context).primaryColorLight,
+                  ),
+                ),
+                SizedBox(
+                  width: width * .7,
+                  child: Card(
+                    clipBehavior: Clip.antiAliasWithSaveLayer,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                    elevation: 5,
+                    margin: const EdgeInsets.all(10),
+                    child: Image.asset(
+                      'assets/events/JUNE-15.png',
+                      fit: BoxFit.fill,
+                    ),
                   ),
                 ),
                 const SizedBox(
@@ -49,20 +64,17 @@ class _CalendarEventState extends State<CalendarEvent> {
                             Color.fromARGB(255, 61, 15, 70),
                             Color.fromARGB(255, 105, 11, 43)
                           ],
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
                         ),
                         borderRadius: BorderRadius.circular(5),
                       ),
                       child: ElevatedButton(
                         onPressed: () => {
                           launchUrlString(
-                              'https://posh.vip/e/taurus-season-birthday-bash'),
+                              'https://posh.vip/e/pluto-at-the-getaway'),
                           FirebaseAnalytics.instance.logEvent(
                             name: 'getaway_18_page_ticket_button',
                           )
                         },
-                        child: const Text('Get Tickets'),
                         style: ElevatedButton.styleFrom(
                           primary: Colors.transparent,
                           onSurface: Colors.transparent,
@@ -76,6 +88,7 @@ class _CalendarEventState extends State<CalendarEvent> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
+                        child: const Text('Get Tickets'),
                       ),
                     ),
                     const SizedBox(width: 20), // Spacing between buttons
@@ -86,20 +99,17 @@ class _CalendarEventState extends State<CalendarEvent> {
                             Color.fromARGB(255, 61, 15, 70),
                             Color.fromARGB(255, 105, 11, 43)
                           ],
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
                         ),
                         borderRadius: BorderRadius.circular(5),
                       ),
                       child: ElevatedButton(
                         onPressed: () => {
                           launchUrlString(
-                              'https://www.facebook.com/events/806802474214296/'),
+                              'https://www.facebook.com/events/979517340028569/'),
                           FirebaseAnalytics.instance.logEvent(
-                            name: '420_fest_page_facebook_button',
+                            name: 'getaway_15_page_facebook_button',
                           )
                         },
-                        child: const Text('Facebook Event'),
                         style: ElevatedButton.styleFrom(
                           primary: Colors.transparent,
                           onSurface: Colors.transparent,
@@ -113,6 +123,7 @@ class _CalendarEventState extends State<CalendarEvent> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
+                        child: const Text('Facebook Event'),
                       ),
                     )
                   ],
@@ -155,11 +166,21 @@ class _CalendarEventState extends State<CalendarEvent> {
                     padding: const EdgeInsets.symmetric(vertical: 8.0),
                     child: CustomText(
                       text: '''
-Saturday, May 18th
+Saturday, 15th
 
-Come celebrate the spirit of Taurus at our Taurus Season Birthday Bash 🎉
+21+
 
-Join us at The Getaway, Asheville’s favorite river bar, which it out of the way in a good way. Whether you're a Taurus or just love one, this night is dedicated to celebrating the reliability, dedication, and warmth that a Taurus brings into our lives. 🌟''',
+Join us on the 15th, we'll be spinning the best of house, techno, and bass music, taking you on a sonic journey that will keep you moving all night long.
+
+Special Features:
+
+Open Decks: From 8 PM to 10 PM, we're opening up the decks for aspiring DJs to showcase their talents. If you want to spin a set, arrive early to sign up!
+
+90s Rave Theme: Embrace the nostalgia with glow sticks, neon outfits, and all things rave. Get creative with your attire and immerse yourself in the vibrant atmosphere.
+
+Don't miss out on this epic night of music, dancing, and good vibes. Grab your friends and put on your best rave gear!
+
+Join us at The Getaway, Asheville’s favorite river bar, which it out of the way in a good way.''',
                       fontSize: constraints.maxWidth < 1000 ? 14 : 18,
                       color:
                           Theme.of(context).primaryColorLight.withOpacity(0.7),
@@ -168,22 +189,6 @@ Join us at The Getaway, Asheville’s favorite river bar, which it out of the wa
                 ),
                 const SizedBox(
                   height: 20,
-                ),
-                SizedBox(
-                  width: width * .7,
-                  child: Card(
-                    semanticContainer: true,
-                    clipBehavior: Clip.antiAliasWithSaveLayer,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10.0),
-                    ),
-                    elevation: 5,
-                    margin: const EdgeInsets.all(10),
-                    child: Image.asset(
-                      'assets/events/getaway-may-18th_half-min.png',
-                      fit: BoxFit.fill,
-                    ),
-                  ),
                 ),
               ],
             ),
