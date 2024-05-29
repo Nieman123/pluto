@@ -85,11 +85,6 @@ class LinksPage extends StatelessWidget {
                     image: NetworkImage('https://i.imgur.com/FiHtYq3.jpeg'),
                     text: 'DIVINE THUD',
                     url: 'https://www.instagram.com/divine_thud_/'),
-                const LinkBox(
-                    icon: Icons.face,
-                    image: NetworkImage('https://i.imgur.com/Qn41yP4.png'),
-                    text: 'DJ DAGGETT',
-                    url: 'https://www.instagram.com/daggett_productions/'),
               ],
             ),
           ),

@@ -16,7 +16,7 @@ class _ArtistState extends State<Artist> {
   @override
   Widget build(BuildContext context) {
     final double width = MediaQuery.of(context).size.width;
-    final double height = MediaQuery.of(context).size.height;
+    //final double height = MediaQuery.of(context).size.height;
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -51,15 +51,6 @@ class _ArtistState extends State<Artist> {
                             "Divine Thud style takes inspiration from Desert Hearts and brings amazing house tunes you've probably heard in the desert.",
                         image: NetworkImage('https://i.imgur.com/FiHtYq3.jpeg'),
                         instagramUrl: 'https://www.instagram.com/divine_thud_/',
-                      ),
-                      DJAvatar(
-                        name: 'DJ DAGGETT',
-                        description: """
-DAGGETT is an extremely versatile DJ equipped with many years of experience.  
-DAGGETT's essence lies in 'open format' DJing, seamlessly blending a spectrum of music genres, from electro to house, across various decades.""",
-                        image: NetworkImage('https://i.imgur.com/Qn41yP4.png'),
-                        instagramUrl:
-                            'https://www.instagram.com/daggett_productions/',
                       ),
                     ],
                   )
@@ -118,16 +109,6 @@ DAGGETT's essence lies in 'open format' DJing, seamlessly blending a spectrum of
                                             'https://i.imgur.com/5I4TqyV.jpg'),
                                         instagramUrl:
                                             'https://www.instagram.com/justnieman/',
-                                      ),
-                                      DJAvatar(
-                                        name: 'DJ DAGGETT',
-                                        description: """
-DAGGETT is an extremely versatile DJ equipped with many years of experience.  
-DAGGETT's essence lies in 'open format' DJing, seamlessly blending a spectrum of music genres, from electro to house, across various decades.""",
-                                        image: NetworkImage(
-                                            'https://i.imgur.com/Qn41yP4.png'),
-                                        instagramUrl:
-                                            'https://www.instagram.com/daggett_productions/',
                                       ),
                                     ],
                                   ),
