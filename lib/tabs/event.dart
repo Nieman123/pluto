@@ -18,8 +18,8 @@ class _EventState extends State<Event> {
   String lastSaturday = '';
   String thirdSaturday = '';
 
-  Future<void> _launchURL() async {
-    final uri = Uri.parse('https://posh.vip/e/pluto-at-the-getaway');
+  Future<void> _launchURL(String url) async {
+    final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
       await FirebaseAnalytics.instance.logEvent(
@@ -63,7 +63,7 @@ class _EventState extends State<Event> {
                       child: Column(
                         children: [
                           CustomText(
-                              text: "PLUTO AT THE GETAWAY",
+                              text: "ELYSIUM",
                               fontSize: 48,
                               color: Theme.of(context).primaryColorLight),
                           Padding(
@@ -76,7 +76,7 @@ class _EventState extends State<Event> {
                                     .withOpacity(0.7)),
                           ),
                           CustomText(
-                              text: 'June 15th 8PM-2AM',
+                              text: 'July 20th 8PM-2AM',
                               fontSize: 28,
                               color: Theme.of(context)
                                   .primaryColorLight
@@ -84,7 +84,9 @@ class _EventState extends State<Event> {
                           Padding(
                             padding: const EdgeInsets.only(top: 15.0),
                             child: ElevatedButton(
-                              onPressed: _launchURL,
+                              onPressed: () async {
+                                _launchURL('https://posh.vip/e/elysium');
+                              },
                               style: ButtonStyle(
                                 backgroundColor: MaterialStateProperty.all(Colors
                                     .purple), // You can change this to your desired color
@@ -115,27 +117,74 @@ class _EventState extends State<Event> {
                       elevation: 5,
                       margin: const EdgeInsets.all(20.0),
                       child: Image.asset(
-                        'assets/events/JUNE-15.png',
+                        'assets/events/getaway-elysium-2.png',
                         fit: BoxFit.fill,
                       ),
                     ),
                   ),
-                  // Padding(
-                  //   padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  //   child: Card(
-                  //     semanticContainer: true,
-                  //     clipBehavior: Clip.antiAliasWithSaveLayer,
-                  //     shape: RoundedRectangleBorder(
-                  //       borderRadius: BorderRadius.circular(10.0),
-                  //     ),
-                  //     elevation: 5,
-                  //     margin: const EdgeInsets.all(20.0),
-                  //     child: Image.asset(
-                  //       'assets/events/st patty .webp',
-                  //       fit: BoxFit.fill,
-                  //     ),
-                  //   ),
-                  // ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Column(
+                      children: [
+                        CustomText(
+                            text: "SUNDOWN SHOWDOWN",
+                            fontSize: 48,
+                            color: Theme.of(context).primaryColorLight),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 20.0),
+                          child: CustomText(
+                              text:
+                                  'FEATURING A SPECIAL NC vs SC vs FL B2B SET',
+                              fontSize: 28,
+                              color: Theme.of(context)
+                                  .primaryColorLight
+                                  .withOpacity(0.7)),
+                        ),
+                        CustomText(
+                            text: 'AUGUST 30TH 6PM- :)',
+                            fontSize: 28,
+                            color: Theme.of(context)
+                                .primaryColorLight
+                                .withOpacity(0.7)),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 15.0),
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              _launchURL('https://posh.vip/e/sundown-showdown');
+                            },
+                            style: ButtonStyle(
+                              backgroundColor: MaterialStateProperty.all(Colors
+                                  .purple), // You can change this to your desired color
+                              foregroundColor: MaterialStateProperty.all(Colors
+                                  .white), // You can change this to your desired color
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: CustomText(
+                                  text: 'CLICK TO BUY TICKETS',
+                                  fontSize: 28,
+                                  color: Theme.of(context)
+                                      .primaryColorLight
+                                      .withOpacity(0.7)),
+                            ),
+                          ),
+                        ),
+                        Card(
+                          semanticContainer: true,
+                          clipBehavior: Clip.antiAliasWithSaveLayer,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10.0),
+                          ),
+                          elevation: 5,
+                          margin: const EdgeInsets.all(20.0),
+                          child: Image.asset(
+                            'assets/events/sundown-showdown.webp',
+                            fit: BoxFit.fill,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: CarouselSlider(
@@ -263,7 +312,7 @@ class _EventState extends State<Event> {
                               child: Column(
                                 children: [
                                   CustomText(
-                                      text: 'PLUTO AT THE GETAWAY',
+                                      text: 'ELYSIUM',
                                       fontSize: 48,
                                       color:
                                           Theme.of(context).primaryColorLight),
@@ -286,7 +335,10 @@ class _EventState extends State<Event> {
                                   Padding(
                                     padding: const EdgeInsets.only(top: 15.0),
                                     child: ElevatedButton(
-                                      onPressed: _launchURL,
+                                      onPressed: () async {
+                                        _launchURL(
+                                            'https://posh.vip/e/elysium');
+                                      },
                                       style: ButtonStyle(
                                         backgroundColor:
                                             MaterialStateProperty.all(Colors
@@ -322,32 +374,86 @@ class _EventState extends State<Event> {
                                 elevation: 5,
                                 margin: EdgeInsets.all(10),
                                 child: Image.asset(
-                                  'assets/events/JUNE-15.png',
+                                  'assets/events/getaway-elysium-2.png',
                                   fit: BoxFit.fill,
                                 ),
                               ),
                             ),
                           ),
-                          // SizedBox(
-                          //   width: width / 3,
-                          //   child: Padding(
-                          //     padding:
-                          //         const EdgeInsets.symmetric(vertical: 8.0),
-                          //     child: Card(
-                          //       semanticContainer: true,
-                          //       clipBehavior: Clip.antiAliasWithSaveLayer,
-                          //       shape: RoundedRectangleBorder(
-                          //         borderRadius: BorderRadius.circular(10.0),
-                          //       ),
-                          //       elevation: 5,
-                          //       margin: EdgeInsets.all(10),
-                          //       child: Image.asset(
-                          //         'assets/events/st patty .webp',
-                          //         fit: BoxFit.fill,
-                          //       ),
-                          //     ),
-                          //   ),
-                          // ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            child: Column(
+                              children: [
+                                CustomText(
+                                    text: "SUNDOWN SHOWDOWN",
+                                    fontSize: 48,
+                                    color: Theme.of(context).primaryColorLight),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 20.0),
+                                  child: CustomText(
+                                      text:
+                                          'FEATURING A SPECIAL NC vs SC vs FL B2B SET',
+                                      fontSize: 28,
+                                      color: Theme.of(context)
+                                          .primaryColorLight
+                                          .withOpacity(0.7)),
+                                ),
+                                CustomText(
+                                    text: 'AUGUST 30TH 6PM- :)',
+                                    fontSize: 28,
+                                    color: Theme.of(context)
+                                        .primaryColorLight
+                                        .withOpacity(0.7)),
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 15.0),
+                                  child: ElevatedButton(
+                                    onPressed: () async {
+                                      _launchURL(
+                                          'https://posh.vip/e/sundown-showdown');
+                                    },
+                                    style: ButtonStyle(
+                                      backgroundColor:
+                                          MaterialStateProperty.all(Colors
+                                              .purple), // You can change this to your desired color
+                                      foregroundColor:
+                                          MaterialStateProperty.all(Colors
+                                              .white), // You can change this to your desired color
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: CustomText(
+                                          text: 'CLICK TO BUY TICKETS',
+                                          fontSize: 28,
+                                          color: Theme.of(context)
+                                              .primaryColorLight
+                                              .withOpacity(0.7)),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(
+                            width: width / 3,
+                            child: Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 8.0),
+                              child: Card(
+                                semanticContainer: true,
+                                clipBehavior: Clip.antiAliasWithSaveLayer,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10.0),
+                                ),
+                                elevation: 5,
+                                margin: EdgeInsets.all(10),
+                                child: Image.asset(
+                                  'assets/events/sundown-showdown.webp',
+                                  fit: BoxFit.fill,
+                                ),
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),

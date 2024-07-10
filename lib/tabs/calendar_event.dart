@@ -31,7 +31,7 @@ class _CalendarEventState extends State<CalendarEvent> {
                 Padding(
                   padding: const EdgeInsets.all(15),
                   child: CustomText(
-                    text: 'PLUTO AT THE GETAWAY',
+                    text: 'ELYSIUM',
                     fontSize: constraints.maxWidth < 1000 ? 28 : 35,
                     color: Theme.of(context).primaryColorLight,
                   ),
@@ -46,7 +46,7 @@ class _CalendarEventState extends State<CalendarEvent> {
                     elevation: 5,
                     margin: const EdgeInsets.all(10),
                     child: Image.asset(
-                      'assets/events/JUNE-15.png',
+                      'assets/events/getaway-elysium-2.png',
                       fit: BoxFit.fill,
                     ),
                   ),
@@ -69,8 +69,7 @@ class _CalendarEventState extends State<CalendarEvent> {
                       ),
                       child: ElevatedButton(
                         onPressed: () => {
-                          launchUrlString(
-                              'https://posh.vip/e/pluto-at-the-getaway'),
+                          launchUrlString('https://posh.vip/e/elysium'),
                           FirebaseAnalytics.instance.logEvent(
                             name: 'getaway_18_page_ticket_button',
                           )
@@ -105,7 +104,7 @@ class _CalendarEventState extends State<CalendarEvent> {
                       child: ElevatedButton(
                         onPressed: () => {
                           launchUrlString(
-                              'https://www.facebook.com/events/979517340028569/'),
+                              'https://www.facebook.com/share/1639R66NB8M75czK/'),
                           FirebaseAnalytics.instance.logEvent(
                             name: 'getaway_15_page_facebook_button',
                           )
@@ -166,21 +165,20 @@ class _CalendarEventState extends State<CalendarEvent> {
                     padding: const EdgeInsets.symmetric(vertical: 8.0),
                     child: CustomText(
                       text: '''
-Saturday, 15th
+Elysium is a monthly dance party hosted at The Getaway, featuring local talent from Asheville and beyond. 
+Come discover the beats our tastemakers have in store for us, as we cultivate a community focused on music, dance, and meaningful human connection.
 
-21+
+This Month:
+Saturday July 20th, 8-10PM
 
-Join us on the 15th, we'll be spinning the best of house, techno, and bass music, taking you on a sonic journey that will keep you moving all night long.
+Performances by
+Celestial Dreamers | 10:00PM - 11:20PM
+Just Nieman | 11:20PM - 12:40AM
+Divine Thud | 12:40AM - 2:00AM
 
-Special Features:
-
-Open Decks: From 8 PM to 10 PM, we're opening up the decks for aspiring DJs to showcase their talents. If you want to spin a set, arrive early to sign up!
-
-90s Rave Theme: Embrace the nostalgia with glow sticks, neon outfits, and all things rave. Get creative with your attire and immerse yourself in the vibrant atmosphere.
-
-Don't miss out on this epic night of music, dancing, and good vibes. Grab your friends and put on your best rave gear!
-
-Join us at The Getaway, Asheville’s favorite river bar, which it out of the way in a good way.''',
+Open Decks from 8-10PM
+Sign-ups start at 7:30
+Bring a Rekordbox USB''',
                       fontSize: constraints.maxWidth < 1000 ? 14 : 18,
                       color:
                           Theme.of(context).primaryColorLight.withOpacity(0.7),

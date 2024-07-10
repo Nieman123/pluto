@@ -45,11 +45,17 @@ class LinksPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
                 const LinkBox(
-                    icon: Icons.link_rounded,
-                    image: AssetImage('assets/events/JUNE-15.png'),
-                    text: 'MAY 18 TICKETS',
+                    icon: Icons.airplane_ticket,
+                    image: AssetImage('assets/events/getaway-elysium-2.png'),
+                    text: 'ELYSIUM TICKETS',
                     isImageCircular: true,
-                    url: 'https://posh.vip/e/pluto-at-the-getaway'),
+                    url: 'https://posh.vip/e/elysium'),
+                const LinkBox(
+                    icon: Icons.airplane_ticket,
+                    image: AssetImage('assets/events/sundown-showdown.webp'),
+                    text: 'SUNDOWN SHOWDOW TICKETS',
+                    isImageCircular: true,
+                    url: 'https://posh.vip/e/sundown-showdown'),
                 const LinkBox(
                     icon: Icons.music_note,
                     image: AssetImage('assets/home/constant/instagram.png'),
