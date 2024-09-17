@@ -66,17 +66,17 @@ class _EventState extends State<Event> {
                               text: "ELYSIUM",
                               fontSize: 48,
                               color: Theme.of(context).primaryColorLight),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 20.0),
-                            child: CustomText(
-                                text: 'Open Decks 8-10PM!',
-                                fontSize: 28,
-                                color: Theme.of(context)
-                                    .primaryColorLight
-                                    .withOpacity(0.7)),
-                          ),
+                          // Padding(
+                          //   padding: const EdgeInsets.symmetric(vertical: 20.0),
+                          //   child: CustomText(
+                          //       text: 'Open Decks 8-10PM!',
+                          //       fontSize: 28,
+                          //       color: Theme.of(context)
+                          //           .primaryColorLight
+                          //           .withOpacity(0.7)),
+                          // ),
                           CustomText(
-                              text: 'July 20th 8PM-2AM',
+                              text: 'September 21st 8PM-2AM',
                               fontSize: 28,
                               color: Theme.of(context)
                                   .primaryColorLight
@@ -85,7 +85,7 @@ class _EventState extends State<Event> {
                             padding: const EdgeInsets.only(top: 15.0),
                             child: ElevatedButton(
                               onPressed: () async {
-                                _launchURL('https://posh.vip/e/elysium');
+                                _launchURL('https://posh.vip/f/13bf1');
                               },
                               style: ButtonStyle(
                                 backgroundColor: MaterialStateProperty.all(Colors
@@ -127,48 +127,47 @@ class _EventState extends State<Event> {
                     child: Column(
                       children: [
                         CustomText(
-                            text: "SUNDOWN SHOWDOWN",
+                            text: "PLUTO POOL PARTY",
                             fontSize: 48,
                             color: Theme.of(context).primaryColorLight),
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 20.0),
                           child: CustomText(
-                              text:
-                                  'FEATURING A SPECIAL NC vs SC vs FL B2B SET',
+                              text: '@ ALOFT HOTEL DOWNTOWN ASHEVILLE',
                               fontSize: 28,
                               color: Theme.of(context)
                                   .primaryColorLight
                                   .withOpacity(0.7)),
                         ),
                         CustomText(
-                            text: 'AUGUST 30TH 6PM- :)',
+                            text: 'SEPTEMBER 21ST 1-5PM',
                             fontSize: 28,
                             color: Theme.of(context)
                                 .primaryColorLight
                                 .withOpacity(0.7)),
-                        Padding(
-                          padding: const EdgeInsets.only(top: 15.0),
-                          child: ElevatedButton(
-                            onPressed: () async {
-                              _launchURL('https://posh.vip/e/sundown-showdown');
-                            },
-                            style: ButtonStyle(
-                              backgroundColor: MaterialStateProperty.all(Colors
-                                  .purple), // You can change this to your desired color
-                              foregroundColor: MaterialStateProperty.all(Colors
-                                  .white), // You can change this to your desired color
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: CustomText(
-                                  text: 'CLICK TO BUY TICKETS',
-                                  fontSize: 28,
-                                  color: Theme.of(context)
-                                      .primaryColorLight
-                                      .withOpacity(0.7)),
-                            ),
-                          ),
-                        ),
+                        // Padding(
+                        //   padding: const EdgeInsets.only(top: 15.0),
+                        //   child: ElevatedButton(
+                        //     onPressed: () async {
+                        //       _launchURL('https://posh.vip/e/sundown-showdown');
+                        //     },
+                        //     style: ButtonStyle(
+                        //       backgroundColor: MaterialStateProperty.all(Colors
+                        //           .purple), // You can change this to your desired color
+                        //       foregroundColor: MaterialStateProperty.all(Colors
+                        //           .white), // You can change this to your desired color
+                        //     ),
+                        //     child: Padding(
+                        //       padding: const EdgeInsets.all(8.0),
+                        //       child: CustomText(
+                        //           text: 'CLICK TO BUY TICKETS',
+                        //           fontSize: 28,
+                        //           color: Theme.of(context)
+                        //               .primaryColorLight
+                        //               .withOpacity(0.7)),
+                        //     ),
+                        //   ),
+                        // ),
                         Card(
                           semanticContainer: true,
                           clipBehavior: Clip.antiAliasWithSaveLayer,
@@ -178,7 +177,7 @@ class _EventState extends State<Event> {
                           elevation: 5,
                           margin: const EdgeInsets.all(20.0),
                           child: Image.asset(
-                            'assets/events/sundown-showdown.webp',
+                            'assets/events/aloft-pool-party-2024-min.png',
                             fit: BoxFit.fill,
                           ),
                         ),
@@ -195,42 +194,15 @@ class _EventState extends State<Event> {
                       ),
                       items: [
                         [
-                          'assets/gallery/1.webp',
-                          'Pluto at the Full Moon Gathering'
+                          'assets/gallery/elysium-5_resized.jpg',
+                          'Photo by @tatehunna.photography'
                         ],
                         [
                           'assets/gallery/2.webp',
                           'Photo by @tatehunna.photography'
                         ],
-                        ['assets/gallery/3.webp', 'Photo by @nickyg.photos'],
-                        ['assets/gallery/4.webp', 'Photo by @nickyg.photos'],
                         [
-                          'assets/gallery/5.webp',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/6.webp',
-                          'DJ Rab!d Ron!e and Just Nieman'
-                        ],
-                        ['assets/gallery/7.webp', 'Family Photo!'],
-                        [
-                          'assets/gallery/8.webp',
-                          'DJ Rab!d Ron!e and Just Nieman'
-                        ],
-                        [
-                          'assets/gallery/9.webp',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/10.webp',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/11.webp',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/12.webp',
+                          'assets/gallery/elysium-10_resized.jpg',
                           'Photo by @tatehunna.photography'
                         ],
                         [
@@ -238,7 +210,7 @@ class _EventState extends State<Event> {
                           'Photo by @tatehunna.photography'
                         ],
                         [
-                          'assets/gallery/14.webp',
+                          'assets/gallery/elysium-12_resized.jpg',
                           'Photo by @tatehunna.photography'
                         ],
                         [
@@ -246,8 +218,61 @@ class _EventState extends State<Event> {
                           'Photo by @tatehunna.photography'
                         ],
                         [
-                          'assets/gallery/16.webp',
+                          'assets/gallery/elysium-3_resized.jpg',
                           'Photo by @tatehunna.photography'
+                        ],
+                        ['assets/gallery/4.webp', 'Photo by @nickyg.photos'],
+                        [
+                          'assets/gallery/elysium-11_resized.jpg',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/elysium-9_resized.jpg',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/elysium-8_resized.jpg',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/elysium-1_resized.jpg',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/11.webp',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/elysium-2_resized.jpg',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/elysium-7_resized.jpg',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/elysium-13_resized.jpg',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/10.webp',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/elysium-6_resized.jpg',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/elysium-4_resized.jpg',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/14.webp',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/1.webp',
+                          'Pluto at the Full Moon Gathering'
                         ],
                       ].map((i) {
                         return Builder(
@@ -316,18 +341,18 @@ class _EventState extends State<Event> {
                                       fontSize: 48,
                                       color:
                                           Theme.of(context).primaryColorLight),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 20.0),
-                                    child: CustomText(
-                                        text: 'Open decks 8-10PM!',
-                                        fontSize: 28,
-                                        color: Theme.of(context)
-                                            .primaryColorLight
-                                            .withOpacity(0.7)),
-                                  ),
+                                  // Padding(
+                                  //   padding: const EdgeInsets.symmetric(
+                                  //       vertical: 20.0),
+                                  //   child: CustomText(
+                                  //       text: 'Open decks 8-10PM!',
+                                  //       fontSize: 28,
+                                  //       color: Theme.of(context)
+                                  //           .primaryColorLight
+                                  //           .withOpacity(0.7)),
+                                  // ),
                                   CustomText(
-                                      text: '$lastSaturday 8PM-2AM',
+                                      text: 'September 21st 8PM-2AM',
                                       fontSize: 28,
                                       color: Theme.of(context)
                                           .primaryColorLight
@@ -336,8 +361,7 @@ class _EventState extends State<Event> {
                                     padding: const EdgeInsets.only(top: 15.0),
                                     child: ElevatedButton(
                                       onPressed: () async {
-                                        _launchURL(
-                                            'https://posh.vip/e/elysium');
+                                        _launchURL('https://posh.vip/f/13bf1');
                                       },
                                       style: ButtonStyle(
                                         backgroundColor:
@@ -385,52 +409,51 @@ class _EventState extends State<Event> {
                             child: Column(
                               children: [
                                 CustomText(
-                                    text: "SUNDOWN SHOWDOWN",
+                                    text: 'PLUTO POOL PARTY',
                                     fontSize: 48,
                                     color: Theme.of(context).primaryColorLight),
                                 Padding(
                                   padding: const EdgeInsets.symmetric(
                                       vertical: 20.0),
                                   child: CustomText(
-                                      text:
-                                          'FEATURING A SPECIAL NC vs SC vs FL B2B SET',
+                                      text: '@ ALOFT HOTEL DOWNTOWN ASHEVILLE',
                                       fontSize: 28,
                                       color: Theme.of(context)
                                           .primaryColorLight
                                           .withOpacity(0.7)),
                                 ),
                                 CustomText(
-                                    text: 'AUGUST 30TH 6PM- :)',
+                                    text: 'September 21st 1-5PM',
                                     fontSize: 28,
                                     color: Theme.of(context)
                                         .primaryColorLight
                                         .withOpacity(0.7)),
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 15.0),
-                                  child: ElevatedButton(
-                                    onPressed: () async {
-                                      _launchURL(
-                                          'https://posh.vip/e/sundown-showdown');
-                                    },
-                                    style: ButtonStyle(
-                                      backgroundColor:
-                                          MaterialStateProperty.all(Colors
-                                              .purple), // You can change this to your desired color
-                                      foregroundColor:
-                                          MaterialStateProperty.all(Colors
-                                              .white), // You can change this to your desired color
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(8.0),
-                                      child: CustomText(
-                                          text: 'CLICK TO BUY TICKETS',
-                                          fontSize: 28,
-                                          color: Theme.of(context)
-                                              .primaryColorLight
-                                              .withOpacity(0.7)),
-                                    ),
-                                  ),
-                                ),
+                                // Padding(
+                                //   padding: const EdgeInsets.only(top: 15.0),
+                                //   child: ElevatedButton(
+                                //     onPressed: () async {
+                                //       _launchURL(
+                                //           'https://posh.vip/e/sundown-showdown');
+                                //     },
+                                //     style: ButtonStyle(
+                                //       backgroundColor:
+                                //           MaterialStateProperty.all(Colors
+                                //               .purple), // You can change this to your desired color
+                                //       foregroundColor:
+                                //           MaterialStateProperty.all(Colors
+                                //               .white), // You can change this to your desired color
+                                //     ),
+                                //     child: Padding(
+                                //       padding: const EdgeInsets.all(8.0),
+                                //       child: CustomText(
+                                //           text: 'CLICK TO BUY TICKETS',
+                                //           fontSize: 28,
+                                //           color: Theme.of(context)
+                                //               .primaryColorLight
+                                //               .withOpacity(0.7)),
+                                //     ),
+                                //   ),
+                                // ),
                               ],
                             ),
                           ),
@@ -448,7 +471,7 @@ class _EventState extends State<Event> {
                                 elevation: 5,
                                 margin: EdgeInsets.all(10),
                                 child: Image.asset(
-                                  'assets/events/sundown-showdown.webp',
+                                  'assets/events/aloft-pool-party-2024-min.png',
                                   fit: BoxFit.fill,
                                 ),
                               ),
@@ -471,42 +494,15 @@ class _EventState extends State<Event> {
                       ),
                       items: [
                         [
-                          'assets/gallery/1.webp',
-                          'Pluto at the Full Moon Gathering'
+                          'assets/gallery/elysium-5_resized.jpg',
+                          'Photo by @tatehunna.photography'
                         ],
                         [
                           'assets/gallery/2.webp',
                           'Photo by @tatehunna.photography'
                         ],
-                        ['assets/gallery/3.webp', 'Photo by @nickyg.photos'],
-                        ['assets/gallery/4.webp', 'Photo by @nickyg.photos'],
                         [
-                          'assets/gallery/5.webp',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/6.webp',
-                          'DJ Rab!d Ron!e and Just Nieman'
-                        ],
-                        ['assets/gallery/7.webp', 'Family Photo!'],
-                        [
-                          'assets/gallery/8.webp',
-                          'DJ Rab!d Ron!e and Just Nieman'
-                        ],
-                        [
-                          'assets/gallery/9.webp',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/10.webp',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/11.webp',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/12.webp',
+                          'assets/gallery/elysium-10_resized.jpg',
                           'Photo by @tatehunna.photography'
                         ],
                         [
@@ -514,7 +510,7 @@ class _EventState extends State<Event> {
                           'Photo by @tatehunna.photography'
                         ],
                         [
-                          'assets/gallery/14.webp',
+                          'assets/gallery/elysium-12_resized.jpg',
                           'Photo by @tatehunna.photography'
                         ],
                         [
@@ -522,8 +518,61 @@ class _EventState extends State<Event> {
                           'Photo by @tatehunna.photography'
                         ],
                         [
-                          'assets/gallery/16.webp',
+                          'assets/gallery/elysium-3_resized.jpg',
                           'Photo by @tatehunna.photography'
+                        ],
+                        ['assets/gallery/4.webp', 'Photo by @nickyg.photos'],
+                        [
+                          'assets/gallery/elysium-11_resized.jpg',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/elysium-9_resized.jpg',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/elysium-8_resized.jpg',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/elysium-1_resized.jpg',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/11.webp',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/elysium-2_resized.jpg',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/elysium-7_resized.jpg',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/elysium-13_resized.jpg',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/10.webp',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/elysium-6_resized.jpg',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/elysium-4_resized.jpg',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/14.webp',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/1.webp',
+                          'Pluto at the Full Moon Gathering'
                         ],
                       ].map((i) {
                         return Builder(
