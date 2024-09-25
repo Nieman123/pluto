@@ -76,7 +76,7 @@ class _EventState extends State<Event> {
                           //           .withOpacity(0.7)),
                           // ),
                           CustomText(
-                              text: 'September 21st 8PM-2AM',
+                              text: 'Saturday, October 19th 8PM-2AM',
                               fontSize: 28,
                               color: Theme.of(context)
                                   .primaryColorLight
@@ -85,7 +85,7 @@ class _EventState extends State<Event> {
                             padding: const EdgeInsets.only(top: 15.0),
                             child: ElevatedButton(
                               onPressed: () async {
-                                _launchURL('https://posh.vip/f/13bf1');
+                                _launchURL('https://posh.vip/f/15528');
                               },
                               style: ButtonStyle(
                                 backgroundColor: MaterialStateProperty.all(Colors
@@ -122,68 +122,68 @@ class _EventState extends State<Event> {
                       ),
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: Column(
-                      children: [
-                        CustomText(
-                            text: "PLUTO POOL PARTY",
-                            fontSize: 48,
-                            color: Theme.of(context).primaryColorLight),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 20.0),
-                          child: CustomText(
-                              text: '@ ALOFT HOTEL DOWNTOWN ASHEVILLE',
-                              fontSize: 28,
-                              color: Theme.of(context)
-                                  .primaryColorLight
-                                  .withOpacity(0.7)),
-                        ),
-                        CustomText(
-                            text: 'SEPTEMBER 21ST 1-5PM',
-                            fontSize: 28,
-                            color: Theme.of(context)
-                                .primaryColorLight
-                                .withOpacity(0.7)),
-                        // Padding(
-                        //   padding: const EdgeInsets.only(top: 15.0),
-                        //   child: ElevatedButton(
-                        //     onPressed: () async {
-                        //       _launchURL('https://posh.vip/e/sundown-showdown');
-                        //     },
-                        //     style: ButtonStyle(
-                        //       backgroundColor: MaterialStateProperty.all(Colors
-                        //           .purple), // You can change this to your desired color
-                        //       foregroundColor: MaterialStateProperty.all(Colors
-                        //           .white), // You can change this to your desired color
-                        //     ),
-                        //     child: Padding(
-                        //       padding: const EdgeInsets.all(8.0),
-                        //       child: CustomText(
-                        //           text: 'CLICK TO BUY TICKETS',
-                        //           fontSize: 28,
-                        //           color: Theme.of(context)
-                        //               .primaryColorLight
-                        //               .withOpacity(0.7)),
-                        //     ),
-                        //   ),
-                        // ),
-                        Card(
-                          semanticContainer: true,
-                          clipBehavior: Clip.antiAliasWithSaveLayer,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10.0),
-                          ),
-                          elevation: 5,
-                          margin: const EdgeInsets.all(20.0),
-                          child: Image.asset(
-                            'assets/events/aloft-pool-party-2024-min.png',
-                            fit: BoxFit.fill,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  // Padding(
+                  //   padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  //   child: Column(
+                  //     children: [
+                  //       CustomText(
+                  //           text: "PLUTO POOL PARTY",
+                  //           fontSize: 48,
+                  //           color: Theme.of(context).primaryColorLight),
+                  //       Padding(
+                  //         padding: const EdgeInsets.symmetric(vertical: 20.0),
+                  //         child: CustomText(
+                  //             text: '@ ALOFT HOTEL DOWNTOWN ASHEVILLE',
+                  //             fontSize: 28,
+                  //             color: Theme.of(context)
+                  //                 .primaryColorLight
+                  //                 .withOpacity(0.7)),
+                  //       ),
+                  //       CustomText(
+                  //           text: 'SEPTEMBER 21ST 1-5PM',
+                  //           fontSize: 28,
+                  //           color: Theme.of(context)
+                  //               .primaryColorLight
+                  //               .withOpacity(0.7)),
+                  //       // Padding(
+                  //       //   padding: const EdgeInsets.only(top: 15.0),
+                  //       //   child: ElevatedButton(
+                  //       //     onPressed: () async {
+                  //       //       _launchURL('https://posh.vip/e/sundown-showdown');
+                  //       //     },
+                  //       //     style: ButtonStyle(
+                  //       //       backgroundColor: MaterialStateProperty.all(Colors
+                  //       //           .purple), // You can change this to your desired color
+                  //       //       foregroundColor: MaterialStateProperty.all(Colors
+                  //       //           .white), // You can change this to your desired color
+                  //       //     ),
+                  //       //     child: Padding(
+                  //       //       padding: const EdgeInsets.all(8.0),
+                  //       //       child: CustomText(
+                  //       //           text: 'CLICK TO BUY TICKETS',
+                  //       //           fontSize: 28,
+                  //       //           color: Theme.of(context)
+                  //       //               .primaryColorLight
+                  //       //               .withOpacity(0.7)),
+                  //       //     ),
+                  //       //   ),
+                  //       // ),
+                  //       Card(
+                  //         semanticContainer: true,
+                  //         clipBehavior: Clip.antiAliasWithSaveLayer,
+                  //         shape: RoundedRectangleBorder(
+                  //           borderRadius: BorderRadius.circular(10.0),
+                  //         ),
+                  //         elevation: 5,
+                  //         margin: const EdgeInsets.all(20.0),
+                  //         child: Image.asset(
+                  //           'assets/events/aloft-pool-party-2024-min.png',
+                  //           fit: BoxFit.fill,
+                  //         ),
+                  //       ),
+                  //     ],
+                  //   ),
+                  // ),
                   Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: CarouselSlider(
@@ -352,7 +352,7 @@ class _EventState extends State<Event> {
                                   //           .withOpacity(0.7)),
                                   // ),
                                   CustomText(
-                                      text: 'September 21st 8PM-2AM',
+                                      text: 'Saturday October 19th 8PM-2AM',
                                       fontSize: 28,
                                       color: Theme.of(context)
                                           .primaryColorLight
@@ -361,7 +361,7 @@ class _EventState extends State<Event> {
                                     padding: const EdgeInsets.only(top: 15.0),
                                     child: ElevatedButton(
                                       onPressed: () async {
-                                        _launchURL('https://posh.vip/f/13bf1');
+                                        _launchURL('https://posh.vip/f/15528');
                                       },
                                       style: ButtonStyle(
                                         backgroundColor:
@@ -404,79 +404,79 @@ class _EventState extends State<Event> {
                               ),
                             ),
                           ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
-                            child: Column(
-                              children: [
-                                CustomText(
-                                    text: 'PLUTO POOL PARTY',
-                                    fontSize: 48,
-                                    color: Theme.of(context).primaryColorLight),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 20.0),
-                                  child: CustomText(
-                                      text: '@ ALOFT HOTEL DOWNTOWN ASHEVILLE',
-                                      fontSize: 28,
-                                      color: Theme.of(context)
-                                          .primaryColorLight
-                                          .withOpacity(0.7)),
-                                ),
-                                CustomText(
-                                    text: 'September 21st 1-5PM',
-                                    fontSize: 28,
-                                    color: Theme.of(context)
-                                        .primaryColorLight
-                                        .withOpacity(0.7)),
-                                // Padding(
-                                //   padding: const EdgeInsets.only(top: 15.0),
-                                //   child: ElevatedButton(
-                                //     onPressed: () async {
-                                //       _launchURL(
-                                //           'https://posh.vip/e/sundown-showdown');
-                                //     },
-                                //     style: ButtonStyle(
-                                //       backgroundColor:
-                                //           MaterialStateProperty.all(Colors
-                                //               .purple), // You can change this to your desired color
-                                //       foregroundColor:
-                                //           MaterialStateProperty.all(Colors
-                                //               .white), // You can change this to your desired color
-                                //     ),
-                                //     child: Padding(
-                                //       padding: const EdgeInsets.all(8.0),
-                                //       child: CustomText(
-                                //           text: 'CLICK TO BUY TICKETS',
-                                //           fontSize: 28,
-                                //           color: Theme.of(context)
-                                //               .primaryColorLight
-                                //               .withOpacity(0.7)),
-                                //     ),
-                                //   ),
-                                // ),
-                              ],
-                            ),
-                          ),
-                          SizedBox(
-                            width: width / 3,
-                            child: Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 8.0),
-                              child: Card(
-                                semanticContainer: true,
-                                clipBehavior: Clip.antiAliasWithSaveLayer,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10.0),
-                                ),
-                                elevation: 5,
-                                margin: EdgeInsets.all(10),
-                                child: Image.asset(
-                                  'assets/events/aloft-pool-party-2024-min.png',
-                                  fit: BoxFit.fill,
-                                ),
-                              ),
-                            ),
-                          ),
+                          // Padding(
+                          //   padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          //   child: Column(
+                          //     children: [
+                          //       CustomText(
+                          //           text: 'PLUTO POOL PARTY',
+                          //           fontSize: 48,
+                          //           color: Theme.of(context).primaryColorLight),
+                          //       Padding(
+                          //         padding: const EdgeInsets.symmetric(
+                          //             vertical: 20.0),
+                          //         child: CustomText(
+                          //             text: '@ ALOFT HOTEL DOWNTOWN ASHEVILLE',
+                          //             fontSize: 28,
+                          //             color: Theme.of(context)
+                          //                 .primaryColorLight
+                          //                 .withOpacity(0.7)),
+                          //       ),
+                          //       CustomText(
+                          //           text: 'September 21st 1-5PM',
+                          //           fontSize: 28,
+                          //           color: Theme.of(context)
+                          //               .primaryColorLight
+                          //               .withOpacity(0.7)),
+                          //       // Padding(
+                          //       //   padding: const EdgeInsets.only(top: 15.0),
+                          //       //   child: ElevatedButton(
+                          //       //     onPressed: () async {
+                          //       //       _launchURL(
+                          //       //           'https://posh.vip/e/sundown-showdown');
+                          //       //     },
+                          //       //     style: ButtonStyle(
+                          //       //       backgroundColor:
+                          //       //           MaterialStateProperty.all(Colors
+                          //       //               .purple), // You can change this to your desired color
+                          //       //       foregroundColor:
+                          //       //           MaterialStateProperty.all(Colors
+                          //       //               .white), // You can change this to your desired color
+                          //       //     ),
+                          //       //     child: Padding(
+                          //       //       padding: const EdgeInsets.all(8.0),
+                          //       //       child: CustomText(
+                          //       //           text: 'CLICK TO BUY TICKETS',
+                          //       //           fontSize: 28,
+                          //       //           color: Theme.of(context)
+                          //       //               .primaryColorLight
+                          //       //               .withOpacity(0.7)),
+                          //       //     ),
+                          //       //   ),
+                          //       // ),
+                          //     ],
+                          //   ),
+                          // ),
+                          // SizedBox(
+                          //   width: width / 3,
+                          //   child: Padding(
+                          //     padding:
+                          //         const EdgeInsets.symmetric(vertical: 8.0),
+                          //     child: Card(
+                          //       semanticContainer: true,
+                          //       clipBehavior: Clip.antiAliasWithSaveLayer,
+                          //       shape: RoundedRectangleBorder(
+                          //         borderRadius: BorderRadius.circular(10.0),
+                          //       ),
+                          //       elevation: 5,
+                          //       margin: EdgeInsets.all(10),
+                          //       child: Image.asset(
+                          //         'assets/events/aloft-pool-party-2024-min.png',
+                          //         fit: BoxFit.fill,
+                          //       ),
+                          //     ),
+                          //   ),
+                          // ),
                         ],
                       ),
                     ),
