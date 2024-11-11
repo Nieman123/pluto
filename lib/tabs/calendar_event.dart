@@ -75,8 +75,8 @@ class _CalendarEventState extends State<CalendarEvent> {
                           )
                         },
                         style: ElevatedButton.styleFrom(
-                          primary: Colors.transparent,
-                          onSurface: Colors.transparent,
+                          foregroundColor: Colors.transparent,
+                          //onSurface: Colors.transparent,
                           shadowColor: Colors.transparent,
                           padding: const EdgeInsets.symmetric(
                               horizontal: 30, vertical: 20),
@@ -110,8 +110,8 @@ class _CalendarEventState extends State<CalendarEvent> {
                           )
                         },
                         style: ElevatedButton.styleFrom(
-                          primary: Colors.transparent,
-                          onSurface: Colors.transparent,
+                          foregroundColor: Colors.transparent,
+                          //onSurface: Colors.transparent,
                           shadowColor: Colors.transparent,
                           padding: const EdgeInsets.symmetric(
                               horizontal: 30, vertical: 20),

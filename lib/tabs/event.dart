@@ -54,74 +54,74 @@ class _EventState extends State<Event> {
               padding: const EdgeInsets.symmetric(horizontal: 10.0),
               child: Column(
                 children: [
-                  CustomText(
-                      text: 'UPCOMING EVENTS',
-                      fontSize: 48,
-                      color: Theme.of(context).primaryColorLight),
-                  Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 5.0),
-                      child: Column(
-                        children: [
-                          CustomText(
-                              text: "ELYSIUM",
-                              fontSize: 48,
-                              color: Theme.of(context).primaryColorLight),
-                          // Padding(
-                          //   padding: const EdgeInsets.symmetric(vertical: 20.0),
-                          //   child: CustomText(
-                          //       text: 'Open Decks 8-10PM!',
-                          //       fontSize: 28,
-                          //       color: Theme.of(context)
-                          //           .primaryColorLight
-                          //           .withOpacity(0.7)),
-                          // ),
-                          CustomText(
-                              text: 'Saturday, October 19th 8PM-2AM',
-                              fontSize: 28,
-                              color: Theme.of(context)
-                                  .primaryColorLight
-                                  .withOpacity(0.7)),
-                          Padding(
-                            padding: const EdgeInsets.only(top: 15.0),
-                            child: ElevatedButton(
-                              onPressed: () async {
-                                _launchURL('https://posh.vip/f/15528');
-                              },
-                              style: ButtonStyle(
-                                backgroundColor: MaterialStateProperty.all(Colors
-                                    .purple), // You can change this to your desired color
-                                foregroundColor: MaterialStateProperty.all(Colors
-                                    .white), // You can change this to your desired color
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: CustomText(
-                                    text: 'CLICK TO BUY TICKETS',
-                                    fontSize: 28,
-                                    color: Theme.of(context)
-                                        .primaryColorLight
-                                        .withOpacity(0.7)),
-                              ),
-                            ),
-                          ),
-                        ],
-                      )),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: Card(
-                      semanticContainer: true,
-                      clipBehavior: Clip.antiAliasWithSaveLayer,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10.0),
-                      ),
-                      elevation: 5,
-                      margin: const EdgeInsets.all(20.0),
-                      child: Image.asset(
-                        'assets/events/getaway-elysium-2.png',
-                        fit: BoxFit.fill,
-                      ),
-                    ),
-                  ),
+                  // CustomText(
+                  //     text: 'UPCOMING EVENTS',
+                  //     fontSize: 48,
+                  //     color: Theme.of(context).primaryColorLight),
+                  // Padding(
+                  //     padding: const EdgeInsets.symmetric(vertical: 5.0),
+                  //     child: Column(
+                  //       children: [
+                  //         CustomText(
+                  //             text: "ELYSIUM",
+                  //             fontSize: 48,
+                  //             color: Theme.of(context).primaryColorLight),
+                  //         // Padding(
+                  //         //   padding: const EdgeInsets.symmetric(vertical: 20.0),
+                  //         //   child: CustomText(
+                  //         //       text: 'Open Decks 8-10PM!',
+                  //         //       fontSize: 28,
+                  //         //       color: Theme.of(context)
+                  //         //           .primaryColorLight
+                  //         //           .withOpacity(0.7)),
+                  //         // ),
+                  //         CustomText(
+                  //             text: 'Saturday, October 19th 8PM-2AM',
+                  //             fontSize: 28,
+                  //             color: Theme.of(context)
+                  //                 .primaryColorLight
+                  //                 .withOpacity(0.7)),
+                  //         Padding(
+                  //           padding: const EdgeInsets.only(top: 15.0),
+                  //           child: ElevatedButton(
+                  //             onPressed: () async {
+                  //               _launchURL('https://posh.vip/f/15528');
+                  //             },
+                  //             style: ButtonStyle(
+                  //               backgroundColor: MaterialStateProperty.all(Colors
+                  //                   .purple), // You can change this to your desired color
+                  //               foregroundColor: MaterialStateProperty.all(Colors
+                  //                   .white), // You can change this to your desired color
+                  //             ),
+                  //             child: Padding(
+                  //               padding: const EdgeInsets.all(8.0),
+                  //               child: CustomText(
+                  //                   text: 'CLICK TO BUY TICKETS',
+                  //                   fontSize: 28,
+                  //                   color: Theme.of(context)
+                  //                       .primaryColorLight
+                  //                       .withOpacity(0.7)),
+                  //             ),
+                  //           ),
+                  //         ),
+                  //       ],
+                  //     )),
+                  // Padding(
+                  //   padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  //   child: Card(
+                  //     semanticContainer: true,
+                  //     clipBehavior: Clip.antiAliasWithSaveLayer,
+                  //     shape: RoundedRectangleBorder(
+                  //       borderRadius: BorderRadius.circular(10.0),
+                  //     ),
+                  //     elevation: 5,
+                  //     margin: const EdgeInsets.all(20.0),
+                  //     child: Image.asset(
+                  //       'assets/events/getaway-elysium-2.png',
+                  //       fit: BoxFit.fill,
+                  //     ),
+                  //   ),
+                  // ),
                   // Padding(
                   //   padding: const EdgeInsets.symmetric(vertical: 8.0),
                   //   child: Column(
@@ -327,83 +327,83 @@ class _EventState extends State<Event> {
                       width: width / 2,
                       child: Column(
                         children: [
-                          CustomText(
-                              text: 'UPCOMING EVENTS',
-                              fontSize: 48,
-                              color: Theme.of(context).primaryColorLight),
-                          Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 5.0),
-                              child: Column(
-                                children: [
-                                  CustomText(
-                                      text: 'ELYSIUM',
-                                      fontSize: 48,
-                                      color:
-                                          Theme.of(context).primaryColorLight),
-                                  // Padding(
-                                  //   padding: const EdgeInsets.symmetric(
-                                  //       vertical: 20.0),
-                                  //   child: CustomText(
-                                  //       text: 'Open decks 8-10PM!',
-                                  //       fontSize: 28,
-                                  //       color: Theme.of(context)
-                                  //           .primaryColorLight
-                                  //           .withOpacity(0.7)),
-                                  // ),
-                                  CustomText(
-                                      text: 'Saturday October 19th 8PM-2AM',
-                                      fontSize: 28,
-                                      color: Theme.of(context)
-                                          .primaryColorLight
-                                          .withOpacity(0.7)),
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 15.0),
-                                    child: ElevatedButton(
-                                      onPressed: () async {
-                                        _launchURL('https://posh.vip/f/15528');
-                                      },
-                                      style: ButtonStyle(
-                                        backgroundColor:
-                                            MaterialStateProperty.all(Colors
-                                                .purple), // You can change this to your desired color
-                                        foregroundColor:
-                                            MaterialStateProperty.all(Colors
-                                                .white), // You can change this to your desired color
-                                      ),
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(8.0),
-                                        child: CustomText(
-                                            text: 'CLICK TO BUY TICKETS',
-                                            fontSize: 28,
-                                            color: Theme.of(context)
-                                                .primaryColorLight
-                                                .withOpacity(0.7)),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              )),
-                          SizedBox(
-                            width: width / 3,
-                            child: Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 8.0),
-                              child: Card(
-                                semanticContainer: true,
-                                clipBehavior: Clip.antiAliasWithSaveLayer,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10.0),
-                                ),
-                                elevation: 5,
-                                margin: EdgeInsets.all(10),
-                                child: Image.asset(
-                                  'assets/events/getaway-elysium-2.png',
-                                  fit: BoxFit.fill,
-                                ),
-                              ),
-                            ),
-                          ),
+                          // CustomText(
+                          //     text: 'UPCOMING EVENTS',
+                          //     fontSize: 48,
+                          //     color: Theme.of(context).primaryColorLight),
+                          // Padding(
+                          //     padding:
+                          //         const EdgeInsets.symmetric(vertical: 5.0),
+                          //     child: Column(
+                          //       children: [
+                          //         CustomText(
+                          //             text: 'ELYSIUM',
+                          //             fontSize: 48,
+                          //             color:
+                          //                 Theme.of(context).primaryColorLight),
+                          //         // Padding(
+                          //         //   padding: const EdgeInsets.symmetric(
+                          //         //       vertical: 20.0),
+                          //         //   child: CustomText(
+                          //         //       text: 'Open decks 8-10PM!',
+                          //         //       fontSize: 28,
+                          //         //       color: Theme.of(context)
+                          //         //           .primaryColorLight
+                          //         //           .withOpacity(0.7)),
+                          //         // ),
+                          //         CustomText(
+                          //             text: 'Saturday October 19th 8PM-2AM',
+                          //             fontSize: 28,
+                          //             color: Theme.of(context)
+                          //                 .primaryColorLight
+                          //                 .withOpacity(0.7)),
+                          //         Padding(
+                          //           padding: const EdgeInsets.only(top: 15.0),
+                          //           child: ElevatedButton(
+                          //             onPressed: () async {
+                          //               _launchURL('https://posh.vip/f/15528');
+                          //             },
+                          //             style: ButtonStyle(
+                          //               backgroundColor:
+                          //                   MaterialStateProperty.all(Colors
+                          //                       .purple), // You can change this to your desired color
+                          //               foregroundColor:
+                          //                   MaterialStateProperty.all(Colors
+                          //                       .white), // You can change this to your desired color
+                          //             ),
+                          //             child: Padding(
+                          //               padding: const EdgeInsets.all(8.0),
+                          //               child: CustomText(
+                          //                   text: 'CLICK TO BUY TICKETS',
+                          //                   fontSize: 28,
+                          //                   color: Theme.of(context)
+                          //                       .primaryColorLight
+                          //                       .withOpacity(0.7)),
+                          //             ),
+                          //           ),
+                          //         ),
+                          //       ],
+                          //     )),
+                          // SizedBox(
+                          //   width: width / 3,
+                          //   child: Padding(
+                          //     padding:
+                          //         const EdgeInsets.symmetric(vertical: 8.0),
+                          //     child: Card(
+                          //       semanticContainer: true,
+                          //       clipBehavior: Clip.antiAliasWithSaveLayer,
+                          //       shape: RoundedRectangleBorder(
+                          //         borderRadius: BorderRadius.circular(10.0),
+                          //       ),
+                          //       elevation: 5,
+                          //       margin: EdgeInsets.all(10),
+                          //       child: Image.asset(
+                          //         'assets/events/getaway-elysium-2.png',
+                          //         fit: BoxFit.fill,
+                          //       ),
+                          //     ),
+                          //   ),
+                          // ),
                           // Padding(
                           //   padding: const EdgeInsets.symmetric(vertical: 8.0),
                           //   child: Column(
