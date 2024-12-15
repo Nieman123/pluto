@@ -1,4 +1,4 @@
-import 'package:carousel_slider/carousel_slider.dart';
+import 'package:carousel_slider_plus/carousel_slider_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -17,6 +17,89 @@ class _EventState extends State<Event> {
   bool isHover = false;
   String lastSaturday = '';
   String thirdSaturday = '';
+  final imageList = [
+                        [
+                          'assets/gallery/elysium-5_resized.jpg',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/2.webp',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/elysium-10_resized.jpg',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/13.webp',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/elysium-12_resized.jpg',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/15.webp',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/elysium-3_resized.jpg',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        ['assets/gallery/4.webp', 'Photo by @nickyg.photos'],
+                        [
+                          'assets/gallery/elysium-11_resized.jpg',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/elysium-9_resized.jpg',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/elysium-8_resized.jpg',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/elysium-1_resized.jpg',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/11.webp',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/elysium-2_resized.jpg',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/elysium-7_resized.jpg',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/elysium-13_resized.jpg',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/10.webp',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/elysium-6_resized.jpg',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/elysium-4_resized.jpg',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/14.webp',
+                          'Photo by @tatehunna.photography'
+                        ],
+                        [
+                          'assets/gallery/1.webp',
+                          'Pluto at the Full Moon Gathering'
+                        ],
+                      ];
 
   Future<void> _launchURL(String url) async {
     final uri = Uri.parse(url);
@@ -192,89 +275,7 @@ class _EventState extends State<Event> {
                         aspectRatio: 2.0,
                         enlargeCenterPage: true,
                       ),
-                      items: [
-                        [
-                          'assets/gallery/elysium-5_resized.jpg',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/2.webp',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/elysium-10_resized.jpg',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/13.webp',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/elysium-12_resized.jpg',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/15.webp',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/elysium-3_resized.jpg',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        ['assets/gallery/4.webp', 'Photo by @nickyg.photos'],
-                        [
-                          'assets/gallery/elysium-11_resized.jpg',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/elysium-9_resized.jpg',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/elysium-8_resized.jpg',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/elysium-1_resized.jpg',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/11.webp',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/elysium-2_resized.jpg',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/elysium-7_resized.jpg',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/elysium-13_resized.jpg',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/10.webp',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/elysium-6_resized.jpg',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/elysium-4_resized.jpg',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/14.webp',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/1.webp',
-                          'Pluto at the Full Moon Gathering'
-                        ],
-                      ].map((i) {
+                      items: imageList.map((i) {
                         return Builder(
                           builder: (BuildContext context) {
                             return Stack(
@@ -492,89 +493,7 @@ class _EventState extends State<Event> {
                         aspectRatio: 2.0,
                         enlargeCenterPage: true,
                       ),
-                      items: [
-                        [
-                          'assets/gallery/elysium-5_resized.jpg',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/2.webp',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/elysium-10_resized.jpg',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/13.webp',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/elysium-12_resized.jpg',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/15.webp',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/elysium-3_resized.jpg',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        ['assets/gallery/4.webp', 'Photo by @nickyg.photos'],
-                        [
-                          'assets/gallery/elysium-11_resized.jpg',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/elysium-9_resized.jpg',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/elysium-8_resized.jpg',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/elysium-1_resized.jpg',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/11.webp',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/elysium-2_resized.jpg',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/elysium-7_resized.jpg',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/elysium-13_resized.jpg',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/10.webp',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/elysium-6_resized.jpg',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/elysium-4_resized.jpg',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/14.webp',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
-                          'assets/gallery/1.webp',
-                          'Pluto at the Full Moon Gathering'
-                        ],
-                      ].map((i) {
+                      items: imageList.map((i) {
                         return Builder(
                           builder: (BuildContext context) {
                             return Stack(

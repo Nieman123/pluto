@@ -24,7 +24,7 @@ dependencies:
   flutter_local_notifications: ^18.0.1
   http: ^1.2.2
   url_launcher: ^6.1.7
-  carousel_slider: ^5.0.0
+  carousel_slider_plus: ^7.0.1
   firebase_messaging: ^15.1.4
   flutter_native_splash: ^2.3.1
   flutter_list_view: ^1.1.21
