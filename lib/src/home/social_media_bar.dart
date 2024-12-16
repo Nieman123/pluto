@@ -35,11 +35,11 @@ class SocialMediaBar extends StatelessWidget {
                       ? SocialMediaButton(
                           image: 'assets/home/constant/${data[i][1]}.png',
                           link: data[i][0],
-                          height: height)
+                          height: height / 2)
                       : SocialMediaButton(
                           image: 'assets/home/constant/link.png',
                           link: data[i][0],
-                          height: height,
+                          height: height / 2,
                         ),
                   onPressed: () {
                     htmlOpenLink(data[i][0]);

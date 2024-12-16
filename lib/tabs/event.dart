@@ -271,9 +271,10 @@ class _EventState extends State<Event> {
                     padding: const EdgeInsets.all(8.0),
                     child: CarouselSlider(
                       options: CarouselOptions(
+                        aspectRatio: 1,
                         autoPlay: true,
-                        aspectRatio: 2.0,
-                        enlargeCenterPage: true,
+                        autoPlayInterval: const Duration(seconds: 4),
+                        enlargeCenterPage: false,
                       ),
                       items: imageList.map((i) {
                         return Builder(
@@ -489,9 +490,10 @@ class _EventState extends State<Event> {
                     padding: const EdgeInsets.all(8.0),
                     child: CarouselSlider(
                       options: CarouselOptions(
+                        aspectRatio: 1,
                         autoPlay: true,
-                        aspectRatio: 2.0,
-                        enlargeCenterPage: true,
+                        autoPlayInterval: const Duration(seconds: 4),
+                        enlargeCenterPage: false,
                       ),
                       items: imageList.map((i) {
                         return Builder(
