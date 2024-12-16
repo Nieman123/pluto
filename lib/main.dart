@@ -4,9 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'app.dart';
+import 'camping.dart';
+import 'campout.dart';
 import 'firebase_options.dart';
 import 'getaway.dart';
 import 'links.dart';
+import 'schedule.dart';
 import 'src/configure_web.dart';
 import 'src/json_service.dart';
 import 'src/theme/config.dart';
@@ -65,6 +68,24 @@ class _MyAppState extends State<MyApp> {
         path: '/links',
         builder: (BuildContext context, GoRouterState state) {
           return const LinksPage();
+        },
+      ),
+      GoRoute(
+        path: '/campout',
+        builder: (BuildContext context, GoRouterState state) {
+          return const CampoutPage();
+        },
+      ),
+      GoRoute(
+        path: '/camping',
+        builder: (BuildContext context, GoRouterState state) {
+          return const CampingInfoPage();
+        },
+      ),
+      GoRoute(
+        path: '/schedule',
+        builder: (BuildContext context, GoRouterState state) {
+          return const SchedulePage();
         },
       ),
     ], debugLogDiagnostics: true);

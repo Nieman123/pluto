@@ -31,6 +31,7 @@ dependencies:
   intl: any
   go_router: ^14.4.1
   flutter_improved_scrolling: ^0.0.3
+  flutter_glow: ^0.3.2
 
 dev_dependencies:
   flutter_test:
@@ -65,3 +66,4 @@ flutter:
     - assets/events/
     - assets/portfolio.json
     - assets/test.html
+    - assets/pluto-campout-compressed.png
