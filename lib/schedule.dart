@@ -118,6 +118,7 @@ class SchedulePage extends StatelessWidget {
         Text(
           day,
           style: const TextStyle(
+            textBaseline: TextBaseline.ideographic,
             fontSize: 22,
             fontWeight: FontWeight.bold,
             color: Colors.white,

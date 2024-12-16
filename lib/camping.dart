@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sa3_liquid/liquid/plasma/plasma.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 
 class CampingInfoPage extends StatelessWidget {
   const CampingInfoPage({Key? key}) : super(key: key);
@@ -75,6 +77,7 @@ class CampingInfoPage extends StatelessWidget {
                             '- Keep your area clean and pack out all trash.\n'
                             '- Open flames only in designiated fire pits due to forest regulations. Portable stoves are permitted.\n'
                             '- Bring extra lighting for your campsite—it gets very dark at night.\n'
+                            '- Please drive slow on the way into the campsite as people may be walking up the road.\n'
                             '- **No Dogs**',
                       ),
                       const SizedBox(height: 16),
@@ -91,8 +94,7 @@ class CampingInfoPage extends StatelessWidget {
                       // Section: Packing List
                       _buildSection(
                         title: '🎒 Recommended Packing List',
-                        content:
-                            '- Tent or hammock setup\n'
+                        content: '- Tent or hammock setup\n'
                             '- Warm clothing and rain gear\n'
                             '- Reusable water bottle\n'
                             '- Pop-up canopy\n'
@@ -100,6 +102,47 @@ class CampingInfoPage extends StatelessWidget {
                             '- Lighting: headlamps, lanterns, or fairy lights\n'
                             '- Portable power bank for devices',
                       ),
+                      const SizedBox(height: 24),
+// Section: Packing List
+                      _buildSection(
+                        title: '🗺️ Directions to campsite',
+                        content: '- Use the button below to open Google Maps\n'
+                            '- **APPLE MAPS WILL TAKE YOU TO THE WRONG PLACE**\n'
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:
+                                  const Color.fromARGB(255, 115, 60, 175),
+                              foregroundColor: Colors.white,
+                            ),
+                            onPressed: () {
+                              launchUrlString(
+                                  "https://maps.app.goo.gl/jr4zsPcM4NntB9yUA");
+                            },
+                            child: const Text('Click to Open in Google Maps'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+
+                      const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            height: 300,
+                            child: HtmlWidget(
+                              '''
+                            <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d6419.734689571348!2d-82.77775025102153!3d35.22150145833545!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8859a4555bbaa24d%3A0x6475e958b68744d1!2sKUYKENDALL%20GROUP%20CAMPGROUND!5e1!3m2!1sen!2sus!4v1734319199628!5m2!1sen!2sus" width="600" height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                          ''',
+                            ),
+                          ),
+                        ],
+                      ),
+
                       const SizedBox(height: 24),
 
                       // Section: Call to Action
@@ -128,56 +171,57 @@ class CampingInfoPage extends StatelessWidget {
   }
 
   Widget _buildSection({required String title, required String content}) {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        title,
-        style: const TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            textBaseline: TextBaseline.ideographic,
+          ),
         ),
-      ),
-      const SizedBox(height: 8),
-      RichText(
-        text: TextSpan(
-          style: const TextStyle(fontSize: 14, color: Colors.white70),
-          children: _parseMarkdownBold(content),
+        const SizedBox(height: 8),
+        RichText(
+          text: TextSpan(
+            style: const TextStyle(fontSize: 14, color: Colors.white70),
+            children: _parseMarkdownBold(content),
+          ),
         ),
-      ),
-      const SizedBox(height: 16),
-    ],
-  );
-}
+        const SizedBox(height: 16),
+      ],
+    );
+  }
 
-/// Helper function to parse bold text wrapped in ** into TextSpans
-List<TextSpan> _parseMarkdownBold(String text) {
-  final regex = RegExp(r'\*\*(.*?)\*\*'); // Matches text between **
-  final spans = <TextSpan>[];
-  int currentIndex = 0;
+  /// Helper function to parse bold text wrapped in ** into TextSpans
+  List<TextSpan> _parseMarkdownBold(String text) {
+    final regex = RegExp(r'\*\*(.*?)\*\*'); // Matches text between **
+    final spans = <TextSpan>[];
+    int currentIndex = 0;
 
-  for (final match in regex.allMatches(text)) {
-    // Add regular text before the bold part
-    if (match.start > currentIndex) {
-      spans.add(TextSpan(text: text.substring(currentIndex, match.start)));
+    for (final match in regex.allMatches(text)) {
+      // Add regular text before the bold part
+      if (match.start > currentIndex) {
+        spans.add(TextSpan(text: text.substring(currentIndex, match.start)));
+      }
+
+      // Add bold text
+      spans.add(TextSpan(
+        text: match.group(1), // Extract text between **
+        style:
+            const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+      ));
+
+      currentIndex = match.end;
     }
 
-    // Add bold text
-    spans.add(TextSpan(
-      text: match.group(1), // Extract text between **
-      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-    ));
+    // Add remaining text after the last bold match
+    if (currentIndex < text.length) {
+      spans.add(TextSpan(text: text.substring(currentIndex)));
+    }
 
-    currentIndex = match.end;
+    return spans;
   }
-
-  // Add remaining text after the last bold match
-  if (currentIndex < text.length) {
-    spans.add(TextSpan(text: text.substring(currentIndex)));
-  }
-
-  return spans;
-}
-
 }
