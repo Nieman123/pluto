@@ -1,11 +1,10 @@
+import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:foil/foil.dart';
 import '../src/home/about.dart';
 import '../src/home/designation.dart';
 import '../src/home/introduction.dart';
-import '../src/home/my_name.dart';
 import '../src/home/social_media_bar.dart';
 
 class HomePage extends StatefulWidget {
@@ -55,24 +54,28 @@ class _HomePageState extends State<HomePage> {
                             'Events for dance music enthusiasts.\nAsheville, NC',
                         textScaleFactor: 1.5),
                   ),
-                  Roll(
-                    crinkle: Crinkle.vivacious,
-                    child: Foil(
-                      gradient: Foils.linearRainbow.copyWith(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: List.from(Foils.linearRainbow.colors)),
-                      opacity: 0.6,
-                      scalar: Scalar.identity,
-                      speed: const Duration(milliseconds: 100000),
-                      duration: const Duration(milliseconds: 100000),
-                      child: MyName(
-                        isMobile: true,
-                        context: context,
-                      ),
-                    ),
+                  Row(
+                    children: [
+                      AnimatedTextKit(animatedTexts: [
+                        ColorizeAnimatedText(
+                          'Pluto',
+                          textStyle: const TextStyle(
+                            fontSize: 80.0,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          colors: [
+                            Colors.red,
+                            Colors.orange,
+                            Colors.yellow,
+                            Colors.green,
+                            Colors.blue,
+                            Colors.indigo,
+                          ],
+                          speed: const Duration(milliseconds: 1000),
+                        )
+                      ])
+                    ],
                   ),
-
                   Designation(isMobile: true, context: context),
                   SocialMediaBar(
                     height: height,
@@ -97,22 +100,27 @@ class _HomePageState extends State<HomePage> {
                             word:
                                 'Events for dance music enthusiasts.\nAsheville, NC',
                             textScaleFactor: 1.5),
-                        Roll(
-                          crinkle: Crinkle.twinkling,
-                          child: Foil(
-                            gradient: Foils.linearRainbow.copyWith(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: List.from(Foils.linearRainbow.colors)),
-                            opacity: 0.6,
-                            scalar: Scalar.identity,
-                            speed: const Duration(seconds: 100),
-                            duration: const Duration(seconds: 100),
-                            child: MyName(
-                              isMobile: true,
-                              context: context,
-                            ),
-                          ),
+                        Row(
+                          children: [
+                            AnimatedTextKit(animatedTexts: [
+                              ColorizeAnimatedText(
+                                'Pluto',
+                                textStyle: const TextStyle(
+                                  fontSize: 200.0,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                colors: [
+                                  Colors.red,
+                                  Colors.orange,
+                                  Colors.yellow,
+                                  Colors.green,
+                                  Colors.blue,
+                                  Colors.indigo,
+                                ],
+                                speed: const Duration(milliseconds: 1000),
+                              )
+                            ])
+                          ],
                         ),
                         Designation(isMobile: false, context: context),
                         SocialMediaBar(

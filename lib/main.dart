@@ -9,7 +9,7 @@ import 'campout.dart';
 import 'firebase_options.dart';
 import 'getaway.dart';
 import 'links.dart';
-import 'schedule.dart';
+//import 'schedule.dart';
 import 'src/configure_web.dart';
 import 'src/json_service.dart';
 import 'src/theme/config.dart';
