@@ -14,7 +14,7 @@ class Designation extends StatelessWidget {
   final List<String> data = [
     'Underground Parties',
     'Special Events',
-    'Outdoor Concerts'
+    'Camping Festivals',
   ];
 
   @override

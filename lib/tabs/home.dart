@@ -60,7 +60,7 @@ class _HomePageState extends State<HomePage> {
                         ColorizeAnimatedText(
                           'Pluto',
                           textStyle: const TextStyle(
-                            fontSize: 80.0,
+                            fontSize: 200.0,
                             fontWeight: FontWeight.bold,
                           ),
                           colors: [
