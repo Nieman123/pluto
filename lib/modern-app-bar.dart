@@ -15,7 +15,7 @@ class ModernAppBarPage extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Image.asset(
-              'assets/logo.png', // Replace with your logo path
+              'assets/experience/pluto-logo-small.png', // Replace with your logo path
               height: 30, // Logo size
             ),
             const SizedBox(width: 8),
@@ -24,7 +24,7 @@ class ModernAppBarPage extends StatelessWidget {
               style: TextStyle(
                 fontFamily: 'Montserrat', // Use a clean, custom font
                 fontWeight: FontWeight.bold,
-                fontSize: 20,
+                fontSize: 80,
                 color: Colors.white,
               ),
             ),

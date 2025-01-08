@@ -82,12 +82,12 @@ class _MyAppState extends State<MyApp> {
           return const CampingInfoPage();
         },
       ),
-      GoRoute(
-        path: '/schedule',
-        builder: (BuildContext context, GoRouterState state) {
-          return const SchedulePage();
-        },
-      ),
+      // GoRoute(
+      //   path: '/schedule',
+      //   builder: (BuildContext context, GoRouterState state) {
+      //     return const SchedulePage();
+      //   },
+      // ),
     ], debugLogDiagnostics: true);
   }
 
