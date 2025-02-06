@@ -1,9 +1,9 @@
 import 'package:carousel_slider_plus/carousel_slider_plus.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:firebase_analytics/firebase_analytics.dart';
 
 import '../src/custom/custom_text.dart';
 
@@ -306,10 +306,10 @@ class _EventState extends State<Event> {
                                       },
                                       style: ButtonStyle(
                                         backgroundColor:
-                                            MaterialStateProperty.all(Colors
+                                            WidgetStateProperty.all(Colors
                                                 .purple), // You can change this to your desired color
                                         foregroundColor:
-                                            MaterialStateProperty.all(Colors
+                                            WidgetStateProperty.all(Colors
                                                 .white), // You can change this to your desired color
                                       ),
                                       child: Padding(

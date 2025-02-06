@@ -46,10 +46,15 @@ class LinksPage extends StatelessWidget {
                 const SizedBox(height: 20),
                 const LinkBox(
                     icon: Icons.airplane_ticket,
-                    image: AssetImage('assets/events/getaway-elysium-2.png'),
-                    text: 'ELYSIUM TICKETS',
+                    image: AssetImage('assets/pluto-campout-compressed.png'),
+                    text: 'PLUTO CAMPOUT INFO / PASSES',
                     isImageCircular: true,
-                    url: 'https://posh.vip/f/13bf1'),
+                    url: 'https://pluto.events/campout'),
+                const LinkBox(
+                    icon: Icons.edit_document,
+                    text: 'PLUTO CAMPOUT VENDOR APPLICATION',
+                    isImageCircular: true,
+                    url: 'https://forms.gle/qMzyfN93o9zbgedY8'),
                 const LinkBox(
                     icon: Icons.music_note,
                     image: AssetImage('assets/home/constant/instagram.png'),
