@@ -88,6 +88,22 @@ class CampoutPage extends StatelessWidget {
                               //   },
                               //   child: const Text('Schedule'),
                               // ),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor:
+                                      const Color.fromARGB(255, 115, 60, 175),
+                                  foregroundColor: Colors.white,
+                                  minimumSize: const Size(
+                                      200, 50), // Uniform button size
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8)),
+                                ),
+                                onPressed: () {
+                                  launchUrlString(
+                                      'https://posh.vip/e/pluto-campout');
+                                },
+                                child: const Text('Buy Tickets'),
+                              ),
                               const SizedBox(width: 16),
                               ElevatedButton(
                                 style: ElevatedButton.styleFrom(
@@ -125,9 +141,9 @@ class CampoutPage extends StatelessWidget {
                                 ),
                                 onPressed: () {
                                   launchUrlString(
-                                      'https://posh.vip/e/pluto-campout');
+                                      'https://forms.gle/qMzyfN93o9zbgedY8');
                                 },
-                                child: const Text('Buy Tickets'),
+                                child: const Text('Vendor Application'),
                               ),
                               const SizedBox(width: 16),
                               ElevatedButton(
@@ -140,12 +156,37 @@ class CampoutPage extends StatelessWidget {
                                       borderRadius: BorderRadius.circular(8)),
                                 ),
                                 onPressed: () {
-                                  launchUrlString('https://instagram.com/pluto.events.avl');
+                                  launchUrlString(
+                                      'https://instagram.com/pluto.events.avl');
                                 },
                                 child: const Text('Follow for Updates'),
                               ),
                             ],
                           ),
+
+                          const SizedBox(height: 24),
+
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor:
+                                      const Color.fromARGB(255, 115, 60, 175),
+                                  foregroundColor: Colors.white,
+                                  minimumSize: const Size(
+                                      200, 50), // Uniform button size
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8)),
+                                ),
+                                onPressed: () {
+                                  launchUrlString(
+                                      'https://docs.google.com/forms/d/e/1FAIpQLSfTMKhUHXlYZ9G2POUUx09GRm83D7ZPy5ELNGcJ9t7EyO37hQ/viewform?usp=header');
+                                },
+                                child: const Text('Volunteer Application'),
+                              ),
+                            ],
+                          )
                         ],
                       ),
 
@@ -218,19 +259,6 @@ class CampoutPage extends StatelessWidget {
         ),
         const SizedBox(height: 16),
       ],
-    );
-  }
-
-  Widget _buildNavButton(BuildContext context, String title, String route) {
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.green.shade800,
-        foregroundColor: Colors.white,
-      ),
-      onPressed: () {
-        GoRouter.of(context).go(route);
-      },
-      child: Text(title),
     );
   }
 }
