@@ -199,8 +199,12 @@ class CampoutPage extends StatelessWidget {
                           _buildSection(
                             title: '🏕️ The Experience',
                             content:
-                                'Local Artists, Local Vibes: Pluto Camp Out is a celebration of Asheville’s music communities.\n'
-                                'Immersive Camping: Relax in nature with friends, explore hiking trails, or dance under the stars. Bring lights and pop-up canopies!',
+                                'Local Artists, Local Vibes: Pluto Camp Out is a celebration of Asheville’s music communities.\n\n'
+                                'Immersive Camping: Relax in nature with friends, explore hiking trails to find the waterfall, shop from local vendors, or dance under the stars. Bring your lights and pop-up canopies!\n\n'
+                                'Daytime Workshops: Enjoy a variety of activities including yoga, crafting, and more to spark your creativity and help you unwind.\n\n'
+                                'Festival Boutique & Trading Post: Donate or trade unique finds at our boutique, a special space for exchanging items.\n\n'
+                                'Free Dinners: Savor two complimentary dinners (while supplies last) to refuel and connect with fellow campers.\n\n'
+                                'Rain or Shine: The fun never stops - our event is on, no matter the weather!',
                             context: context,
                           ),
                           const SizedBox(height: 24),
@@ -208,10 +212,19 @@ class CampoutPage extends StatelessWidget {
                           // Section: Essential Info
                           _buildSection(
                             title: '🎟️ Tickets & Camping Info',
-                            content: 'Tickets: \$80 Early Bird / \$100 GA\n'
-                                'Car Pass: \$20 (required for vehicle entry)\n'
-                                'Amenities: Bathrooms and water spigot available. No showers.\n'
-                                'Bring your tent, your best vibes, and your best friends!',
+                            content:
+                                'Tickets: 🎟️ \$80 Early Bird (ends March 1st) / \$100 GA\n\n'
+                                'Car Pass: 🚗 \$20 (required for vehicle entry)\n\n'
+                                'Amenities: 🚻 Bathrooms and water spigot available. No showers.\n\n'
+                                'Tent & Vibes: ⛺ Bring your tent, your best vibes, and your best friends!\n\n'
+                                'Camping: 🏕️ Free camping is included with your ticket. No RVs allowed.\n\n'
+                                'BYOB: 🍻 Bring your own beverages. NO GLASS bottles, please.\n\n'
+                                'No Pets: 🐾 Please leave your furry friends at home.\n\n'
+                                'Age: 🔞 18+ only.\n\n'
+                                'Food: 🍽️ No food vendors on site. Please bring your own food.\n\n'
+                                'Fires: 🔥 Fires in designated areas only.\n\n'
+                                'Leave No Trace: ♻️ Pack it in, pack it out. Help keep the forest clean by taking your trash with you.\n\n'
+                                'Parking: 🅿️ Limited parking available. Carpooling is encouraged.\n\n',
                             context: context,
                           ),
                           const SizedBox(height: 16),
@@ -235,7 +248,6 @@ class CampoutPage extends StatelessWidget {
     final screenWidth = MediaQuery.of(context).size.width;
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
