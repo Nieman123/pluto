@@ -20,7 +20,7 @@ class ModernAppBarPage extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             const Text(
-              'Pluto Camp Out 2025',
+              'Pluto Campout 2025',
               style: TextStyle(
                 fontFamily: 'Montserrat', // Use a clean, custom font
                 fontWeight: FontWeight.bold,
@@ -51,7 +51,7 @@ class ModernAppBarPage extends StatelessWidget {
                 ),
                 padding: const EdgeInsets.all(16),
                 child: const Text(
-                  'Welcome to the Pluto Camp Out 2025!\nExperience unforgettable music and vibes.',
+                  'Welcome to the Pluto Campout 2025!\nExperience unforgettable music and vibes.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 18,

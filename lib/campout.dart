@@ -12,7 +12,7 @@ class CampoutPage extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: const Color.fromARGB(255, 115, 60, 175),
         titleTextStyle: const TextStyle(color: Colors.white),
-        title: const Text('Pluto Camp Out 2025'),
+        title: const Text('Pluto Campout 2025'),
         centerTitle: true,
       ),
       body: Stack(
@@ -58,9 +58,9 @@ class CampoutPage extends StatelessWidget {
 
                       // Section: Event Overview
                       _buildSection(
-                        title: '🌲 Welcome to Pluto Camp Out 2025 🌲',
+                        title: '🌲 Welcome to Pluto Campout 2025 🌲',
                         content:
-                            'Get ready for three nights of music, community, and nature at the inaugural Pluto Camp Out! Join us in the Pisgah National Forest for an unforgettable weekend celebrating local talent, connection, and the beauty of the outdoors.',
+                            'Get ready for three nights of music, community, and nature at the inaugural Pluto Campout! Join us in the Pisgah National Forest for an unforgettable weekend celebrating local talent, connection, and the beauty of the outdoors.',
                         context: context,
                       ),
 
@@ -199,7 +199,7 @@ class CampoutPage extends StatelessWidget {
                           _buildSection(
                             title: '🏕️ The Experience',
                             content:
-                                'Local Artists, Local Vibes: Pluto Camp Out is a celebration of Asheville’s music communities.\n\n'
+                                'Local Artists, Local Vibes: Pluto Campout is a celebration of Asheville’s music communities.\n\n'
                                 'Immersive Camping: Relax in nature with friends, explore hiking trails to find the waterfall, shop from local vendors, or dance under the stars. Bring your lights and pop-up canopies!\n\n'
                                 'Daytime Workshops: Enjoy a variety of activities including yoga, crafting, and more to spark your creativity and help you unwind.\n\n'
                                 'Festival Boutique & Trading Post: Donate or trade unique finds at our boutique, a special space for exchanging items.\n\n'

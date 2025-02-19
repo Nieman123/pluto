@@ -30,7 +30,7 @@ class SchedulePage extends StatelessWidget {
               child: Column(
                 children: [
                   const Text(
-                    '🌟 Pluto Camp Out Schedule 🌟',
+                    '🌟 Pluto Campout Schedule 🌟',
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
