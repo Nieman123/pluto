@@ -1,12 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../src/contact_me/data.dart';
-import '../src/contact_me/my_bio.dart';
 import '../src/custom/custom_text.dart';
 import '../src/home/social_media_bar.dart';
-import '../src/html_open_link.dart';
-import '../src/theme/config.dart';
-import '../src/theme/custom_theme.dart';
 
 class ContactMe extends StatefulWidget {
   const ContactMe({Key? key}) : super(key: key);
@@ -23,29 +18,6 @@ class _ContactMeState extends State<ContactMe> {
     final double width = MediaQuery.of(context).size.width;
     final double height = MediaQuery.of(context).size.height;
 
-    Widget imageWidget(double scale) {
-      return AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: EdgeInsets.only(
-            top: isHover ? height * 0.005 : height * 0.01,
-            bottom: !isHover ? height * 0.005 : height * 0.01),
-        child: InkWell(
-          onTap: () {},
-          onHover: (bool value) {
-            setState(() {
-              isHover = value;
-            });
-          },
-          hoverColor: Colors.transparent,
-          splashColor: Colors.transparent,
-          focusColor: Colors.transparent,
-          highlightColor: Colors.transparent,
-          child: ClipOval(
-              child: Image.asset('assets/contact_me/constant/picture.png',
-                  scale: scale)),
-        ),
-      );
-    }
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,

@@ -1,9 +1,9 @@
 import 'package:carousel_slider_plus/carousel_slider_plus.dart';
-import 'package:firebase_analytics/firebase_analytics.dart';
+//import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
+//import 'package:url_launcher/url_launcher.dart';
 
 import '../src/custom/custom_text.dart';
 
@@ -102,20 +102,20 @@ class _EventState extends State<Event> {
                         ],
                       ];
 
-  Future<void> _launchURL(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-      await FirebaseAnalytics.instance.logEvent(
-        name: 'ticket_button_click',
-        parameters: {
-          'button': 'tickets',
-        },
-      );
-    } else {
-      throw 'Could not launch $uri';
-    }
-  }
+  // Future<void> _launchURL(String url) async {
+  //   final uri = Uri.parse(url);
+  //   if (await canLaunchUrl(uri)) {
+  //     await launchUrl(uri);
+  //     await FirebaseAnalytics.instance.logEvent(
+  //       name: 'ticket_button_click',
+  //       parameters: {
+  //         'button': 'tickets',
+  //       },
+  //     );
+  //   } else {
+  //     throw 'Could not launch $uri';
+  //   }
+  // }
 
   @override
   void initState() {
@@ -126,7 +126,7 @@ class _EventState extends State<Event> {
   @override
   Widget build(BuildContext context) {
     final double width = MediaQuery.of(context).size.width;
-    final double height = MediaQuery.of(context).size.height;
+    //final double height = MediaQuery.of(context).size.height;
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,

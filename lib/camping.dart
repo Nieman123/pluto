@@ -55,7 +55,7 @@ class CampingInfoPage extends StatelessWidget {
                       _buildSection(
                         title: '🏕️ Camping Overview',
                         content:
-                            'Camping at Pluto Camp Out is all about connecting with nature and enjoying a unique outdoor experience. '
+                            'Camping at Pluto Campout is all about connecting with nature and enjoying a unique outdoor experience. '
                             'Set up your tent, hammock, or canopy in the beautiful Kuykendall Group Campground, located in the Pisgah National Forest.',
                       ),
                       const SizedBox(height: 16),

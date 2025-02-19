@@ -16,6 +16,7 @@ import 'src/theme/config.dart';
 import 'src/theme/custom_theme.dart';
 
 Future<void> main() async {
+  // ignore: unused_local_variable
   final currentToken;
   //setUrlStrategy(PathUrlStrategy());
   WidgetsFlutterBinding.ensureInitialized();

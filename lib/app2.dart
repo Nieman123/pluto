@@ -10,13 +10,13 @@ class App2 extends StatelessWidget {
   App2({Key? key}) : super(key: key);
   static const String route = '/waterStreet';
 
-  List<Widget> a2WidgetList = [
+  final List<Widget> a2WidgetList = [
     const CalendarEvent(),
   ];
   @override
   Widget build(BuildContext context) {
-    final double height = MediaQuery.of(context).size.height;
-    final double width = MediaQuery.of(context).size.width;
+    //final double height = MediaQuery.of(context).size.height;
+    //final double width = MediaQuery.of(context).size.width;
     FirebaseAnalytics.instance.logEvent(
       name: 'waterstreet_event_page_visit',
     );
