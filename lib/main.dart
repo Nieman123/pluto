@@ -7,7 +7,6 @@ import 'app.dart';
 import 'camping.dart';
 import 'campout.dart';
 import 'firebase_options.dart';
-import 'getaway.dart';
 import 'links.dart';
 //import 'schedule.dart';
 import 'src/configure_web.dart';
@@ -58,12 +57,6 @@ class _MyAppState extends State<MyApp> {
       GoRoute(
         path: '/',
         builder: (BuildContext context, GoRouterState state) => const App(),
-      ),
-      GoRoute(
-        path: '/getaway',
-        builder: (BuildContext context, GoRouterState state) {
-          return GetawayPage();
-        },
       ),
       GoRoute(
         path: '/links',
