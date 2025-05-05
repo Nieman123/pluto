@@ -73,21 +73,6 @@ class CampoutPage extends StatelessWidget {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              // ElevatedButton(
-                              //   style: ElevatedButton.styleFrom(
-                              //     backgroundColor:
-                              //         const Color.fromARGB(255, 115, 60, 175),
-                              //     foregroundColor: Colors.white,
-                              //     minimumSize: const Size(
-                              //         200, 50), // Uniform button size
-                              //     shape: RoundedRectangleBorder(
-                              //         borderRadius: BorderRadius.circular(8)),
-                              //   ),
-                              //   onPressed: () {
-                              //     GoRouter.of(context).go('/schedule');
-                              //   },
-                              //   child: const Text('Schedule'),
-                              // ),
                               ElevatedButton(
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor:
@@ -140,10 +125,9 @@ class CampoutPage extends StatelessWidget {
                                       borderRadius: BorderRadius.circular(8)),
                                 ),
                                 onPressed: () {
-                                  launchUrlString(
-                                      'https://forms.gle/qMzyfN93o9zbgedY8');
+                                  GoRouter.of(context).go('/schedule');
                                 },
-                                child: const Text('Vendor Application'),
+                                child: const Text('Schedule'),
                               ),
                               const SizedBox(width: 16),
                               ElevatedButton(

@@ -9,6 +9,7 @@ import 'campout.dart';
 import 'firebase_options.dart';
 import 'links.dart';
 //import 'schedule.dart';
+import 'schedule.dart';
 import 'src/configure_web.dart';
 import 'src/json_service.dart';
 import 'src/theme/config.dart';
@@ -76,12 +77,12 @@ class _MyAppState extends State<MyApp> {
           return const CampingInfoPage();
         },
       ),
-      // GoRoute(
-      //   path: '/schedule',
-      //   builder: (BuildContext context, GoRouterState state) {
-      //     return const SchedulePage();
-      //   },
-      // ),
+      GoRoute(
+        path: '/schedule',
+        builder: (BuildContext context, GoRouterState state) {
+          return const SchedulePage();
+        },
+      ),
     ], debugLogDiagnostics: true);
   }
 
