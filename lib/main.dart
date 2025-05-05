@@ -9,6 +9,7 @@ import 'campout.dart';
 import 'firebase_options.dart';
 import 'links.dart';
 //import 'schedule.dart';
+import 'sign_in.dart';
 import 'src/configure_web.dart';
 import 'src/json_service.dart';
 import 'src/theme/config.dart';
@@ -74,6 +75,12 @@ class _MyAppState extends State<MyApp> {
         path: '/camping',
         builder: (BuildContext context, GoRouterState state) {
           return const CampingInfoPage();
+        },
+      ),
+      GoRoute(
+        path: '/sign-in',
+        builder: (BuildContext context, GoRouterState state) {
+          return const SignInPage();
         },
       ),
       // GoRoute(

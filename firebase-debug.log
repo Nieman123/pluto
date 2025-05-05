@@ -1,0 +1,24 @@
+[debug] [2025-03-13T22:39:28.883Z] ----------------------------------------------------------------------
+[debug] [2025-03-13T22:39:28.885Z] Command:       /usr/local/bin/firebase /Users/jonathannieman/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/bin/firebase deploy
+[debug] [2025-03-13T22:39:28.885Z] CLI Version:   13.24.1
+[debug] [2025-03-13T22:39:28.886Z] Platform:      darwin
+[debug] [2025-03-13T22:39:28.886Z] Node Version:  v18.5.0
+[debug] [2025-03-13T22:39:28.890Z] Time:          Thu Mar 13 2025 18:39:28 GMT-0400 (Eastern Daylight Time)
+[debug] [2025-03-13T22:39:28.890Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-03-13T22:39:28.897Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[debug] [2025-03-13T22:39:29.069Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-03-13T22:39:29.070Z] > authorizing via signed-in user (nieman123@gmail.com)
+[debug] [2025-03-13T22:39:29.071Z] [iam] checking project pluto-9b6ca for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2025-03-13T22:39:29.072Z] Checked if tokens are valid: false, expires at: 1740071093934
+[debug] [2025-03-13T22:39:29.073Z] Checked if tokens are valid: false, expires at: 1740071093934
+[debug] [2025-03-13T22:39:29.074Z] > refreshing access token with scopes: []
+[debug] [2025-03-13T22:39:29.075Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-03-13T22:39:29.077Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-03-13T22:39:29.252Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2025-03-13T22:39:29.254Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[debug] [2025-03-13T22:39:29.436Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-03-13T22:39:29.439Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-03-13T22:39:29.452Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/pluto-9b6ca:testIamPermissions [none]
+[debug] [2025-03-13T22:39:29.453Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/pluto-9b6ca:testIamPermissions x-goog-quota-user=projects/pluto-9b6ca
+[debug] [2025-03-13T22:39:29.453Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/pluto-9b6ca:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
