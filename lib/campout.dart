@@ -203,10 +203,10 @@ class CampoutPage extends StatelessWidget {
                                 'Amenities: 🚻 Bathrooms and water spigot available. No showers.\n\n'
                                 'Tent & Vibes: ⛺ Bring your tent, your best vibes, and your best friends!\n\n'
                                 'Camping: 🏕️ Free camping is included with your ticket. No RVs allowed.\n\n'
-                                'BYOB: 🍻 Bring your own beverages. NO GLASS bottles, please.\n\n'
+                                //'BYOB: 🍻 Bring your own beverages. NO GLASS bottles, please.\n\n'
                                 'No Pets: 🐾 Please leave your furry friends at home.\n\n'
                                 'Age: 🔞 18+ only.\n\n'
-                                'Food: 🍽️ No food vendors on site. Please bring your own food.\n\n'
+                                'Food: 🍽️ Please bring your own food. Slinging Dawgs will be serving hot dogs on Friday and Saturday nights.\n\n'
                                 'Fires: 🔥 Fires in designated areas only.\n\n'
                                 'Leave No Trace: ♻️ Pack it in, pack it out. Help keep the forest clean by taking your trash with you.\n\n'
                                 'Parking: 🅿️ Limited parking available. Carpooling is encouraged.\n\n',
