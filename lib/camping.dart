@@ -56,7 +56,7 @@ class CampingInfoPage extends StatelessWidget {
                         title: '🏕️ Camping Overview',
                         content:
                             'Camping at Pluto Campout is all about connecting with nature and enjoying a unique outdoor experience. '
-                            'Set up your tent, hammock, or canopy in the beautiful Kuykendall Group Campground, located in the Pisgah National Forest.',
+                            'Set up your tent, hammock, or canopy in the beautiful Kuykendall Group Campground, located in the Pisgah National Forest.\n \nYou will be camping next to your vehicle, feel free to find a spot and setup once you arrive!',
                       ),
                       const SizedBox(height: 16),
 

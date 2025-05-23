@@ -188,7 +188,8 @@ class CampoutPage extends StatelessWidget {
                                 'Daytime Workshops: Enjoy a variety of activities including yoga, crafting, and more to spark your creativity and help you unwind.\n\n'
                                 'Festival Boutique & Trading Post: Donate or trade unique finds at our boutique, a special space for exchanging items.\n\n'
                                 'Free Dinners: Savor two complimentary dinners (while supplies last) to refuel and connect with fellow campers.\n\n'
-                                'Rain or Shine: The fun never stops - our event is on, no matter the weather!',
+                                'Rain or Shine: The fun never stops - our event is on, no matter the weather!\n\n'
+                                'All Beef Hot Dogs provided by Slinging Dawgs Worldwide, on Friday and Saturday nights.\n\n',
                             context: context,
                           ),
                           const SizedBox(height: 24),
