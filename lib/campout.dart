@@ -60,7 +60,7 @@ class CampoutPage extends StatelessWidget {
                       _buildSection(
                         title: '🌲 Welcome to Pluto Campout 2025 🌲',
                         content:
-                            'Get ready for three nights of music, community, and nature at the inaugural Pluto Campout! Join us in the Pisgah National Forest for an unforgettable weekend celebrating local talent, connection, and the beauty of the outdoors.',
+                            '🚨 POSTPONED 🚨 \n\n Unfortunately we recieved an email from the Forest Service yesterday evening informing us that we need to cancel or relocate the event. \n\n We are working diligently to aquire new dates and a venue for this event. Stay tuned and we are so sorry for the inconvience. \n\nGet ready for three nights of music, community, and nature at the inaugural Pluto Campout! Join us in the Pisgah National Forest for an unforgettable weekend celebrating local talent, connection, and the beauty of the outdoors.',
                         context: context,
                       ),
 
