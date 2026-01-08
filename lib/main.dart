@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 
 import 'app.dart';
 import 'camping.dart';
-import 'campout.dart';
 import 'firebase_options.dart';
 import 'links.dart';
 //import 'schedule.dart';
@@ -63,12 +62,6 @@ class _MyAppState extends State<MyApp> {
         path: '/links',
         builder: (BuildContext context, GoRouterState state) {
           return const LinksPage();
-        },
-      ),
-      GoRoute(
-        path: '/campout',
-        builder: (BuildContext context, GoRouterState state) {
-          return const CampoutPage();
         },
       ),
       GoRoute(

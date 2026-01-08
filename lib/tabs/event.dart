@@ -77,10 +77,6 @@ class _EventState extends State<Event> {
                           'Photo by @tatehunna.photography'
                         ],
                         [
-                          'assets/gallery/elysium-13_resized.jpg',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
                           'assets/gallery/10.webp',
                           'Photo by @tatehunna.photography'
                         ],
@@ -147,7 +143,7 @@ class _EventState extends State<Event> {
                       child: Column(
                         children: [
                           CustomText(
-                              text: "PLUTO CAMPOUT 2025",
+                              text: 'ManaFest 2026',
                               fontSize: 48,
                               color: Theme.of(context).primaryColorLight),
                           // Padding(
@@ -159,35 +155,35 @@ class _EventState extends State<Event> {
                           //           .primaryColorLight
                           //           .withOpacity(0.7)),
                           // ),
-                          CustomText(
-                              text: 'Saturday, October 19th 8PM-2AM',
-                              fontSize: 28,
-                              color: Theme.of(context)
-                                  .primaryColorLight
-                                  .withOpacity(0.7)),
-                          Padding(
-                            padding: const EdgeInsets.only(top: 15.0),
-                            child: ElevatedButton(
-                              onPressed: () async {
-                                GoRouter.of(context).go('/campout');
-                              },
-                              style: ButtonStyle(
-                                backgroundColor: MaterialStateProperty.all(Colors
-                                    .purple), // You can change this to your desired color
-                                foregroundColor: MaterialStateProperty.all(Colors
-                                    .white), // You can change this to your desired color
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: CustomText(
-                                    text: 'CLICK FOR PASSES/INFO',
-                                    fontSize: 28,
-                                    color: Theme.of(context)
-                                        .primaryColorLight
-                                        .withOpacity(0.7)),
-                              ),
-                            ),
-                          ),
+                          // CustomText(
+                          //     text: 'Saturday, October 19th 8PM-2AM',
+                          //     fontSize: 28,
+                          //     color: Theme.of(context)
+                          //         .primaryColorLight
+                          //         .withOpacity(0.7)),
+                          // Padding(
+                          //   padding: const EdgeInsets.only(top: 15.0),
+                          //   child: ElevatedButton(
+                          //     onPressed: () async {
+                          //       GoRouter.of(context).go('/campout');
+                          //     },
+                          //     style: ButtonStyle(
+                          //       backgroundColor: MaterialStateProperty.all(Colors
+                          //           .purple), // You can change this to your desired color
+                          //       foregroundColor: MaterialStateProperty.all(Colors
+                          //           .white), // You can change this to your desired color
+                          //     ),
+                          //     child: Padding(
+                          //       padding: const EdgeInsets.all(8.0),
+                          //       child: CustomText(
+                          //           text: 'CLICK FOR PASSES/INFO',
+                          //           fontSize: 28,
+                          //           color: Theme.of(context)
+                          //               .primaryColorLight
+                          //               .withOpacity(0.7)),
+                          //     ),
+                          //   ),
+                          // ),
                         ],
                       )),
                   Padding(
@@ -201,7 +197,7 @@ class _EventState extends State<Event> {
                       elevation: 5,
                       margin: const EdgeInsets.all(20.0),
                       child: Image.asset(
-                        'assets/pluto-campout-compressed.png',
+                        'assets/events/Mana-Fest-2026-Flyer-half.png',
                         fit: BoxFit.fill,
                       ),
                     ),
@@ -278,7 +274,7 @@ class _EventState extends State<Event> {
                               child: Column(
                                 children: [
                                   CustomText(
-                                      text: 'PLUTO CAMPOUT 2025',
+                                      text: 'ManaFest 2026',
                                       fontSize: 48,
                                       color:
                                           Theme.of(context).primaryColorLight),
@@ -298,31 +294,31 @@ class _EventState extends State<Event> {
                                       color: Theme.of(context)
                                           .primaryColorLight
                                           .withOpacity(0.7)),
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 15.0),
-                                    child: ElevatedButton(
-                                      onPressed: () async {
-                                        GoRouter.of(context).go('/campout');
-                                      },
-                                      style: ButtonStyle(
-                                        backgroundColor:
-                                            WidgetStateProperty.all(Colors
-                                                .purple), // You can change this to your desired color
-                                        foregroundColor:
-                                            WidgetStateProperty.all(Colors
-                                                .white), // You can change this to your desired color
-                                      ),
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(8.0),
-                                        child: CustomText(
-                                            text: 'CLICK FOR PASSES/INFO',
-                                            fontSize: 28,
-                                            color: Theme.of(context)
-                                                .primaryColorLight
-                                                .withOpacity(0.7)),
-                                      ),
-                                    ),
-                                  ),
+                                  // Padding(
+                                  //   padding: const EdgeInsets.only(top: 15.0),
+                                  //   child: ElevatedButton(
+                                  //     onPressed: () async {
+                                  //       GoRouter.of(context).go('/campout');
+                                  //     },
+                                  //     style: ButtonStyle(
+                                  //       backgroundColor:
+                                  //           WidgetStateProperty.all(Colors
+                                  //               .purple), // You can change this to your desired color
+                                  //       foregroundColor:
+                                  //           WidgetStateProperty.all(Colors
+                                  //               .white), // You can change this to your desired color
+                                  //     ),
+                                  //     child: Padding(
+                                  //       padding: const EdgeInsets.all(8.0),
+                                  //       child: CustomText(
+                                  //           text: 'CLICK FOR PASSES/INFO',
+                                  //           fontSize: 28,
+                                  //           color: Theme.of(context)
+                                  //               .primaryColorLight
+                                  //               .withOpacity(0.7)),
+                                  //     ),
+                                  //   ),
+                                  // ),
                                 ],
                               )),
                           SizedBox(
@@ -339,7 +335,7 @@ class _EventState extends State<Event> {
                                 elevation: 5,
                                 margin: EdgeInsets.all(10),
                                 child: Image.asset(
-                                  'assets/pluto-campout-compressed.png',
+                                  'assets/events/Mana-Fest-2026-Flyer-half.png',
                                   fit: BoxFit.fill,
                                 ),
                               ),
