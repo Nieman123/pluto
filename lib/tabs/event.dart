@@ -20,10 +20,6 @@ class _EventState extends State<Event> {
   String thirdSaturday = '';
   final imageList = [
                         [
-                          'assets/gallery/elysium-5_resized.jpg',
-                          'Photo by @tatehunna.photography'
-                        ],
-                        [
                           'assets/gallery/2.webp',
                           'Photo by @tatehunna.photography'
                         ],
@@ -288,12 +284,12 @@ class _EventState extends State<Event> {
                                   //           .primaryColorLight
                                   //           .withOpacity(0.7)),
                                   // ),
-                                  CustomText(
-                                      text: 'May 29 - June 1, 2025',
-                                      fontSize: 28,
-                                      color: Theme.of(context)
-                                          .primaryColorLight
-                                          .withOpacity(0.7)),
+                                  // CustomText(
+                                  //     text: 'May 29 - June 1, 2025',
+                                  //     fontSize: 28,
+                                  //     color: Theme.of(context)
+                                  //         .primaryColorLight
+                                  //         .withOpacity(0.7)),
                                   // Padding(
                                   //   padding: const EdgeInsets.only(top: 15.0),
                                   //   child: ElevatedButton(
