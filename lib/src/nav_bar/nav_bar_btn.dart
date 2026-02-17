@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../tabs/tabs.dart';
+import '../../tabs/scroll_controller.dart';
 
 TextStyle textStyle(double fontSize, Color color) => TextStyle(
       fontFamily: 'Montserrat',

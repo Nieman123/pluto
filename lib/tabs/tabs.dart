@@ -5,15 +5,7 @@ import 'contact_me.dart';
 import 'event.dart';
 import 'home.dart';
 
-export 'achievements.dart';
-export 'contact_me.dart';
-export 'education.dart';
-export 'experience.dart';
-export 'home.dart';
-export 'projects.dart';
-export 'scroll_controller.dart';
-
-List<Widget> widgetList = [
+final List<Widget> widgetList = <Widget>[
   const HomePage(),
   const Event(),
   const Artist(),

@@ -14,13 +14,10 @@ import 'profile_page.dart';
 import 'schedule.dart';
 import 'sign_on_page.dart';
 import 'src/configure_web.dart';
-import 'src/json_service.dart';
 import 'src/theme/config.dart';
 import 'src/theme/custom_theme.dart';
 
 Future<void> main() async {
-  // ignore: unused_local_variable
-  final currentToken;
   //setUrlStrategy(PathUrlStrategy());
   WidgetsFlutterBinding.ensureInitialized();
   configureApp();
@@ -29,9 +26,10 @@ Future<void> main() async {
   );
   runApp(const MyApp());
   if (await FirebaseMessaging.instance.isSupported()) {
-    currentToken = await FirebaseMessaging.instance.getToken(
-        vapidKey:
-            'BBwgiNd7-lSc0iqFjrIprkGQDgiV8Z67WprIVKqc3-hVFpanH9xOAnrHQKZ45h4JaMIp9nljQONhdqzBvpuJINE');
+    await FirebaseMessaging.instance.getToken(
+      vapidKey:
+          'BBwgiNd7-lSc0iqFjrIprkGQDgiV8Z67WprIVKqc3-hVFpanH9xOAnrHQKZ45h4JaMIp9nljQONhdqzBvpuJINE',
+    );
   }
 }
 
@@ -50,10 +48,6 @@ class _MyAppState extends State<MyApp> {
     messageListener();
     super.initState();
     currentTheme.addListener(() {
-      setState(() {});
-    });
-    jsonService.init();
-    jsonService.addListener(() {
       setState(() {});
     });
 

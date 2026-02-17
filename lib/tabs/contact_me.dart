@@ -42,7 +42,6 @@ class _ContactMeState extends State<ContactMe> {
                             .primaryColorLight
                             .withValues(alpha: 0.7)),
                   ),
-                  //MyBio(fontSize: 15),
                   Padding(
                     padding: const EdgeInsets.only(
                       bottom: 5.0,
@@ -105,7 +104,6 @@ class _ContactMeState extends State<ContactMe> {
                                       .primaryColorLight
                                       .withValues(alpha: 0.7)),
                             ),
-                            //MyBio(fontSize: 15),
                             Padding(
                               padding:
                                   const EdgeInsets.symmetric(vertical: 10.0),
