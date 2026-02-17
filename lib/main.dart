@@ -8,6 +8,7 @@ import 'app.dart';
 import 'camping.dart';
 import 'firebase_options.dart';
 import 'links.dart';
+import 'profile_page.dart';
 import 'schedule.dart';
 import 'sign_on_page.dart';
 import 'src/configure_web.dart';
@@ -87,6 +88,12 @@ class _MyAppState extends State<MyApp> {
         path: '/admin',
         builder: (BuildContext context, GoRouterState state) {
           return const AdminPage();
+        },
+      ),
+      GoRoute(
+        path: '/profile',
+        builder: (BuildContext context, GoRouterState state) {
+          return const ProfilePage();
         },
       ),
     ], debugLogDiagnostics: true);
