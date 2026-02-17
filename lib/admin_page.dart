@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -668,6 +669,67 @@ class _AdminPageState extends State<AdminPage> {
     setState(() {
       _statusMessage = 'Copied QR code value to clipboard.';
     });
+  }
+
+  Future<void> _downloadEventQrCode(EventQrCode eventQrCode) async {
+    final String normalizedCode = eventQrCode.code.trim();
+    if (normalizedCode.isEmpty) {
+      setState(() {
+        _statusMessage = 'QR code value is empty. Nothing to download.';
+      });
+      return;
+    }
+
+    try {
+      final QrPainter painter = QrPainter(
+        data: normalizedCode,
+        version: QrVersions.auto,
+        gapless: true,
+        eyeStyle: const QrEyeStyle(color: Colors.black),
+        dataModuleStyle: const QrDataModuleStyle(color: Colors.black),
+      );
+      final ByteData? qrImageData = await painter.toImageData(1200);
+      if (qrImageData == null) {
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _statusMessage = 'Failed to generate QR image bytes.';
+        });
+        return;
+      }
+
+      final Uint8List pngBytes = qrImageData.buffer.asUint8List();
+      final String fileName =
+          '${_sanitizeFileSegment(eventQrCode.eventName)}_qr.png';
+      final String? savedPath = await FilePicker.platform.saveFile(
+        dialogTitle: 'Download QR Code',
+        fileName: fileName,
+        type: FileType.custom,
+        allowedExtensions: <String>['png'],
+        bytes: pngBytes,
+      );
+
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        if (kIsWeb) {
+          _statusMessage = 'QR code download started.';
+        } else if (savedPath == null || savedPath.isEmpty) {
+          _statusMessage = 'QR code download canceled.';
+        } else {
+          _statusMessage = 'QR code saved to $savedPath';
+        }
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _statusMessage = 'Failed to download QR code: $error';
+      });
+    }
   }
 
   void _editEventQrCode(EventQrCode eventQrCode) {
@@ -1528,6 +1590,11 @@ class _AdminPageState extends State<AdminPage> {
                               ),
                               OutlinedButton(
                                 onPressed: () =>
+                                    _downloadEventQrCode(eventQrCode),
+                                child: const Text('Download QR'),
+                              ),
+                              OutlinedButton(
+                                onPressed: () =>
                                     _deleteEventQrCode(eventQrCode),
                                 child: const Text('Delete'),
                               ),
@@ -1655,6 +1722,18 @@ class _AdminPageState extends State<AdminPage> {
       return 'Unknown';
     }
     return DateFormat('yyyy-MM-dd HH:mm').format(date.toLocal());
+  }
+
+  String _sanitizeFileSegment(String value) {
+    final String normalized = value
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+        .replaceAll(RegExp(r'^_+|_+$'), '');
+    if (normalized.isEmpty) {
+      return 'event';
+    }
+    return normalized;
   }
 
   String _mimeTypeForExtension(String extension) {
