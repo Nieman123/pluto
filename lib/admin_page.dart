@@ -25,6 +25,7 @@ class AdminPage extends StatefulWidget {
 
 class _AdminPageState extends State<AdminPage> {
   final CurrentEventsRepository _eventsRepository = CurrentEventsRepository();
+  final UserProfileRepository _profileRepository = UserProfileRepository();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   final TextEditingController _titleController = TextEditingController();
@@ -912,6 +913,7 @@ class _AdminPageState extends State<AdminPage> {
         final Widget rewardItems = _buildRewardItemsCard();
         final Widget eventQrEditor = _buildEventQrEditorCard();
         final Widget eventQrCodes = _buildEventQrCodesCard();
+        final Widget eventQrClaims = _buildEventQrClaimsAnalyticsCard();
         final Widget managementPane = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
@@ -920,6 +922,8 @@ class _AdminPageState extends State<AdminPage> {
             eventQrEditor,
             const SizedBox(height: 16),
             eventQrCodes,
+            const SizedBox(height: 16),
+            eventQrClaims,
             const SizedBox(height: 16),
             rewardEditor,
             const SizedBox(height: 16),
@@ -938,6 +942,8 @@ class _AdminPageState extends State<AdminPage> {
               eventQrEditor,
               const SizedBox(height: 16),
               eventQrCodes,
+              const SizedBox(height: 16),
+              eventQrClaims,
               const SizedBox(height: 16),
               rewardEditor,
               const SizedBox(height: 16),
@@ -1601,6 +1607,123 @@ class _AdminPageState extends State<AdminPage> {
                             ],
                           ),
                         ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  String _claimIdentityLabel(EventQrClaimRecord claim) {
+    final String displayName = claim.claimedByDisplayName.trim();
+    final String email = claim.claimedByEmail.trim();
+
+    if (displayName.isNotEmpty && email.isNotEmpty) {
+      return '$displayName ($email)';
+    }
+    if (email.isNotEmpty) {
+      return email;
+    }
+    if (displayName.isNotEmpty) {
+      return '$displayName (${claim.uid})';
+    }
+    return claim.uid;
+  }
+
+  Widget _buildEventQrClaimsAnalyticsCard() {
+    return Card(
+      color: Colors.black.withValues(alpha: 0.45),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: StreamBuilder<List<EventQrClaimRecord>>(
+          stream: _profileRepository.watchRecentEventQrClaims(),
+          builder: (BuildContext context,
+              AsyncSnapshot<List<EventQrClaimRecord>> snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const SizedBox(
+                height: 120,
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+
+            if (snapshot.hasError) {
+              return Text(
+                'Failed to load QR claim analytics: ${snapshot.error}',
+                style: const TextStyle(color: Colors.white70),
+              );
+            }
+
+            final List<EventQrClaimRecord> claims =
+                snapshot.data ?? <EventQrClaimRecord>[];
+            if (claims.isEmpty) {
+              return const Text(
+                'No event QR claims yet.',
+                style: TextStyle(color: Colors.white70),
+              );
+            }
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const Text(
+                  'Recent QR Claims',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Shows who claimed each event QR code recently.',
+                  style: TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 10),
+                ...claims.map((EventQrClaimRecord claim) {
+                  final String eventLabel = claim.eventName.isEmpty
+                      ? '(Unnamed event)'
+                      : claim.eventName;
+                  final String codeLabel =
+                      claim.code.isEmpty ? claim.eventQrCodeId : claim.code;
+
+                  return Card(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    margin: const EdgeInsets.only(bottom: 10),
+                    child: ListTile(
+                      title: Text(
+                        eventLabel,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          const SizedBox(height: 4),
+                          Text(
+                            'User: ${_claimIdentityLabel(claim)}',
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                          Text(
+                            'Code: $codeLabel',
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                          Text(
+                            'Claimed: ${_formatDate(claim.createdAt)}',
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                        ],
+                      ),
+                      trailing: Text(
+                        '+${claim.pointsAwarded}',
+                        style: const TextStyle(
+                          color: Colors.greenAccent,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
                   );

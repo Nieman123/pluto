@@ -239,9 +239,57 @@ class EventQrClaimResult {
   final int newPointsBalance;
 }
 
+class EventQrClaimRecord {
+  EventQrClaimRecord({
+    required this.id,
+    required this.eventQrCodeId,
+    required this.eventName,
+    required this.code,
+    required this.uid,
+    required this.claimedByDisplayName,
+    required this.claimedByEmail,
+    required this.pointsAwarded,
+    required this.createdAt,
+  });
+
+  factory EventQrClaimRecord.fromSnapshot(
+    DocumentSnapshot<Map<String, dynamic>> snapshot,
+  ) {
+    final Map<String, dynamic> data = snapshot.data() ?? <String, dynamic>{};
+    return EventQrClaimRecord(
+      id: snapshot.id,
+      eventQrCodeId: (data['eventQrCodeId'] as String? ??
+              snapshot.reference.parent.parent?.id ??
+              '')
+          .trim(),
+      eventName: (data['eventName'] as String? ?? '').trim(),
+      code: (data['code'] as String? ?? '').trim().toUpperCase(),
+      uid: (data['uid'] as String? ?? '').trim(),
+      claimedByDisplayName:
+          (data['claimedByDisplayName'] as String? ?? '').trim(),
+      claimedByEmail: (data['claimedByEmail'] as String? ?? '').trim(),
+      pointsAwarded: _parseInt(data['pointsAwarded']),
+      createdAt: _parseTimestamp(data['createdAt']),
+    );
+  }
+
+  final String id;
+  final String eventQrCodeId;
+  final String eventName;
+  final String code;
+  final String uid;
+  final String claimedByDisplayName;
+  final String claimedByEmail;
+  final int pointsAwarded;
+  final DateTime? createdAt;
+}
+
 class UserProfileRepository {
   UserProfileRepository({FirebaseFirestore? firestore})
       : _firestore = firestore ?? FirebaseFirestore.instance;
+
+  static const int _eventQrClaimCooldownSeconds = 30;
+  static const int _eventQrDailyClaimLimit = 10;
 
   final FirebaseFirestore _firestore;
 
@@ -335,6 +383,21 @@ class UserProfileRepository {
         .snapshots()
         .map((QuerySnapshot<Map<String, dynamic>> snapshot) {
       return snapshot.docs.map(PointsTransaction.fromSnapshot).toList();
+    });
+  }
+
+  Stream<List<EventQrClaimRecord>> watchRecentEventQrClaims({int limit = 200}) {
+    return _firestore
+        .collectionGroup('claims')
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((QuerySnapshot<Map<String, dynamic>> snapshot) {
+      return snapshot.docs
+          .map(EventQrClaimRecord.fromSnapshot)
+          .where((EventQrClaimRecord claim) =>
+              claim.eventQrCodeId.isNotEmpty && claim.uid.isNotEmpty)
+          .toList();
     });
   }
 
@@ -536,8 +599,12 @@ class UserProfileRepository {
         matchingCodes.docs.first.reference;
     final DocumentReference<Map<String, dynamic>> profileRef =
         _profiles.doc(user.uid);
+    final DocumentReference<Map<String, dynamic>> rateLimitRef =
+        profileRef.collection('claimRateLimits').doc('eventQr');
     final CollectionReference<Map<String, dynamic>> transactionCollection =
         profileRef.collection('pointsTransactions');
+    final DateTime nowUtc = DateTime.now().toUtc();
+    final String claimDayKey = _utcDayKey(nowUtc);
 
     return _firestore.runTransaction(
       (Transaction transaction) async {
@@ -598,8 +665,43 @@ class UserProfileRepository {
 
         final DocumentSnapshot<Map<String, dynamic>> profileSnapshot =
             await transaction.get(profileRef);
+        final DocumentSnapshot<Map<String, dynamic>> rateLimitSnapshot =
+            await transaction.get(rateLimitRef);
         final Map<String, dynamic> profileData =
             profileSnapshot.data() ?? <String, dynamic>{};
+        final Map<String, dynamic> rateLimitData =
+            rateLimitSnapshot.data() ?? <String, dynamic>{};
+
+        final String storedDayKey =
+            (rateLimitData['dayKey'] as String? ?? '').trim();
+        final int claimsToday = storedDayKey == claimDayKey
+            ? _parseInt(rateLimitData['claimsToday'])
+            : 0;
+        if (claimsToday >= _eventQrDailyClaimLimit) {
+          throw FirebaseException(
+            plugin: 'cloud_firestore',
+            code: 'daily-claim-limit',
+            message:
+                'You reached the daily event QR claim limit. Please try again tomorrow.',
+          );
+        }
+
+        final DateTime? lastClaimAt =
+            _parseTimestamp(rateLimitData['lastClaimAt']);
+        if (lastClaimAt != null) {
+          final int secondsSinceLastClaim =
+              nowUtc.difference(lastClaimAt.toUtc()).inSeconds;
+          if (secondsSinceLastClaim < _eventQrClaimCooldownSeconds) {
+            final int waitSeconds =
+                _eventQrClaimCooldownSeconds - secondsSinceLastClaim;
+            throw FirebaseException(
+              plugin: 'cloud_firestore',
+              code: 'claim-cooldown',
+              message:
+                  'Please wait $waitSeconds seconds before claiming another event QR code.',
+            );
+          }
+        }
 
         final int currentBalance = _parseInt(profileData['pointsBalance']);
         final int currentLifetimePoints =
@@ -611,6 +713,7 @@ class UserProfileRepository {
         final int newEventsAttended = currentEventsAttended + 1;
 
         final String fallbackName = _fallbackDisplayNameForUser(user);
+        final String normalizedEmail = (user.email ?? '').trim();
         final Map<String, dynamic> profilePayload = <String, dynamic>{
           'pointsBalance': newBalance,
           'lifetimePoints': newLifetimePoints,
@@ -644,8 +747,27 @@ class UserProfileRepository {
             'eventName': eventName,
             'pointsAwarded': pointsAwarded,
             'code': normalizedCode,
+            'claimedByDisplayName': fallbackName,
+            'claimedByEmail': normalizedEmail,
             'createdAt': FieldValue.serverTimestamp(),
           },
+          SetOptions(merge: true),
+        );
+
+        final Map<String, dynamic> rateLimitPayload = <String, dynamic>{
+          'dayKey': claimDayKey,
+          'claimsToday': claimsToday + 1,
+          'lastClaimAt': FieldValue.serverTimestamp(),
+          'cooldownSeconds': _eventQrClaimCooldownSeconds,
+          'dailyClaimLimit': _eventQrDailyClaimLimit,
+          'updatedAt': FieldValue.serverTimestamp(),
+        };
+        if (!rateLimitSnapshot.exists) {
+          rateLimitPayload['createdAt'] = FieldValue.serverTimestamp();
+        }
+        transaction.set(
+          rateLimitRef,
+          rateLimitPayload,
           SetOptions(merge: true),
         );
 
@@ -755,4 +877,16 @@ DateTime? _parseTimestamp(dynamic value) {
     return value.toDate();
   }
   return null;
+}
+
+String _utcDayKey(DateTime value) {
+  final DateTime utc = value.toUtc();
+  return '${utc.year}-${_twoDigits(utc.month)}-${_twoDigits(utc.day)}';
+}
+
+String _twoDigits(int value) {
+  if (value >= 10) {
+    return '$value';
+  }
+  return '0$value';
 }

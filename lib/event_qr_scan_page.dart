@@ -123,6 +123,12 @@ class _EventQrScanPageState extends State<EventQrScanPage> {
         return 'This QR code has expired.';
       case 'already-claimed':
         return 'You already checked in for this event.';
+      case 'claim-cooldown':
+        return error.message ??
+            'Please wait a moment before claiming another event QR code.';
+      case 'daily-claim-limit':
+        return error.message ??
+            "You reached today's event QR claim limit. Try again tomorrow.";
       default:
         return error.message ?? 'Claim failed (${error.code}).';
     }

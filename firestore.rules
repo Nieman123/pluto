@@ -102,6 +102,12 @@ service cloud.firestore {
       }
     }
 
+    // Support collectionGroup('claims') analytics queries for admins.
+    match /{documentPath=**}/claims/{claimUid} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     match /userProfiles/{profileUid} {
       allow read: if isSelf(profileUid) || isAdmin();
       allow create: if isSelf(profileUid) &&
@@ -123,6 +129,13 @@ service cloud.firestore {
         allow read: if isSelf(profileUid) || isAdmin();
         allow create: if isSelf(profileUid) || isAdmin();
         allow update, delete: if isAdmin();
+      }
+
+      // Per-user anti-abuse rate-limiting state for event QR claims.
+      match /claimRateLimits/{limitId} {
+        allow read: if isSelf(profileUid) || isAdmin();
+        allow create, update: if isSelf(profileUid) || isAdmin();
+        allow delete: if false;
       }
     }
 
