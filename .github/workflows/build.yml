@@ -1,72 +1,44 @@
-name: Build and Deploy
+name: Build and Deploy (Main)
 
 on:
   push:
     branches:
-      - master
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: true
 
 jobs:
-  build:
+  build_and_deploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
-
-      - name: Check if dotenv exists
-        run: |
-          if [[ -f dotenv ]]; then
-            echo "Already present, ignoring."
-          else
-            : > dotenv
-          fi
+        uses: actions/checkout@v4
 
       - name: Set up Flutter
-        uses: subosito/flutter-action@v1
+        uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
+          channel: stable
+          cache: true
 
-      - name: Get dependencies
+      - name: Install dependencies
         run: flutter pub get
 
-      - name: Run analyze
+      - name: Analyze project
         run: flutter analyze .
 
-      - name: Build release
-        run: flutter build web --web-renderer html --release
+      - name: Build web release
+        run: flutter build web --release
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v1
+      - name: Deploy to Firebase Hosting (live)
+        uses: FirebaseExtended/action-hosting-deploy@v0
         with:
-          name: build
-          path: build
-
-  deploy-build:
-    needs: build
-
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Clone the repoitory
-        uses: actions/checkout@v2
-        with:
-          ref: master-deploy
-
-      - name: Configure git
-        run: |
-          git config --global user.email ${GITHUB_ACTOR}@gmail.com
-          git config --global user.name ${GITHUB_ACTOR}
-
-      - name: Download website build
-        uses: actions/download-artifact@v1
-        with:
-          name: build
-          path: build
-
-      - name: Commit and Push
-        run: |
-          if [ $(git status --porcelain=v1 2>/dev/null | wc -l) != "0" ] ; then
-            git add -f .
-            git commit -m "gh-actions deployed a new build"
-            git push --force https://github.com/${GITHUB_REPOSITORY}.git HEAD:master-deploy
-          fi
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PLUTO_9B6CA }}
+          channelId: live
+          projectId: pluto-9b6ca
