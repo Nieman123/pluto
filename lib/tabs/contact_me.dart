@@ -18,7 +18,6 @@ class _ContactMeState extends State<ContactMe> {
     final double width = MediaQuery.of(context).size.width;
     final double height = MediaQuery.of(context).size.height;
 
-
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -41,7 +40,7 @@ class _ContactMeState extends State<ContactMe> {
                         fontSize: 18,
                         color: Theme.of(context)
                             .primaryColorLight
-                            .withOpacity(0.7)),
+                            .withValues(alpha: 0.7)),
                   ),
                   //MyBio(fontSize: 15),
                   Padding(
@@ -65,7 +64,7 @@ class _ContactMeState extends State<ContactMe> {
                       height: height,
                     ),
                   ),
-                  Container(
+                  SizedBox(
                     width: 100.0,
                     height: 100.0,
                     child: Image.asset(
@@ -78,7 +77,7 @@ class _ContactMeState extends State<ContactMe> {
             );
           } else {
             return Padding(
-              padding: EdgeInsets.all(50),
+              padding: const EdgeInsets.all(50),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -104,7 +103,7 @@ class _ContactMeState extends State<ContactMe> {
                                   fontSize: 18,
                                   color: Theme.of(context)
                                       .primaryColorLight
-                                      .withOpacity(0.7)),
+                                      .withValues(alpha: 0.7)),
                             ),
                             //MyBio(fontSize: 15),
                             Padding(
@@ -138,7 +137,7 @@ class _ContactMeState extends State<ContactMe> {
                           SocialMediaBar(
                             height: height,
                           ),
-                          Container(
+                          SizedBox(
                             width: 100.0,
                             height: 100.0,
                             child: Image.asset(

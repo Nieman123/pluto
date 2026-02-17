@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class MyBio extends StatelessWidget {
-  MyBio({
+  const MyBio({
     Key? key,
     required this.fontSize,
   }) : super(key: key);

@@ -56,8 +56,8 @@ class DJAvatar extends StatelessWidget {
         return Dialog(
           backgroundColor: Colors.black45,
           child: ConstrainedBox(
-            constraints:
-                BoxConstraints(maxWidth: 600), // Set your desired max width
+            constraints: const BoxConstraints(
+                maxWidth: 600), // Set your desired max width
             child: FractionallySizedBox(
               widthFactor:
                   0.9, // Makes the dialog take up to 90% of the screen width
@@ -124,10 +124,9 @@ class DJAvatar extends StatelessWidget {
     );
   }
 
-  void _launchInstagram(String url) async {
+  Future<void> _launchInstagram(String url) async {
     if (!await launchUrl(Uri.parse(url))) {
-      // ignore: only_throw_errors
-      throw 'Could not launch $url';
+      throw Exception('Could not launch $url');
     }
   }
 }

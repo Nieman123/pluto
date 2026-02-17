@@ -131,7 +131,6 @@ class _CalendarEventState extends State<CalendarEvent> {
                   height: 20,
                 ),
                 RichText(
-                  textScaleFactor: 1.5,
                   text: TextSpan(
                     children: [
                       TextSpan(
@@ -149,12 +148,13 @@ class _CalendarEventState extends State<CalendarEvent> {
                             if (await canLaunchUrlString(url)) {
                               await launchUrlString(url);
                             } else {
-                              throw 'Could not launch $url';
+                              throw Exception('Could not launch $url');
                             }
                           },
                       ),
                     ],
                   ),
+                  textScaler: const TextScaler.linear(1.5),
                 ),
                 const SizedBox(
                   height: 20,
@@ -180,8 +180,9 @@ Open Decks from 8-10PM
 Sign-ups start at 7:30
 Bring a Rekordbox USB''',
                       fontSize: constraints.maxWidth < 1000 ? 14 : 18,
-                      color:
-                          Theme.of(context).primaryColorLight.withOpacity(0.7),
+                      color: Theme.of(context)
+                          .primaryColorLight
+                          .withValues(alpha: 0.7),
                     ),
                   ),
                 ),

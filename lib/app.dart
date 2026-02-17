@@ -55,7 +55,6 @@ class App extends StatelessWidget {
         body: Stack(
           children: <Widget>[
             const PlasmaRenderer(
-              type: PlasmaType.infinity,
               color: Color.fromARGB(68, 85, 0, 165),
               blur: 0.5,
               blendMode: BlendMode.plus,
@@ -80,11 +79,10 @@ class App extends StatelessWidget {
   }
 
   Widget _buildLoadingHome() {
-    return Scaffold(
+    return const Scaffold(
       body: Stack(
-        children: const <Widget>[
+        children: <Widget>[
           PlasmaRenderer(
-            type: PlasmaType.infinity,
             color: Color.fromARGB(68, 85, 0, 165),
             blur: 0.5,
             blendMode: BlendMode.plus,

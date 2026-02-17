@@ -24,7 +24,6 @@ class CampoutPage extends StatelessWidget {
             particleType: ParticleType.atlas,
             variation1: 0.7,
             variation2: 0.3,
-            size: 1.0,
           ),
           SingleChildScrollView(
             child: Center(
@@ -67,7 +66,6 @@ class CampoutPage extends StatelessWidget {
                       const SizedBox(height: 24),
 
                       Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           // Navigation Links (in a Row)
                           Row(

@@ -1375,7 +1375,6 @@ class _AdminPageState extends State<AdminPage> {
                       ),
                       child: QrImageView(
                         data: previewCode,
-                        version: QrVersions.auto,
                         size: 220,
                         backgroundColor: Colors.white,
                       ),
@@ -1498,7 +1497,6 @@ class _AdminPageState extends State<AdminPage> {
                               ),
                               child: QrImageView(
                                 data: eventQrCode.code,
-                                version: QrVersions.auto,
                                 size: 130,
                                 backgroundColor: Colors.white,
                               ),

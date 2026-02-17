@@ -253,9 +253,9 @@ class SignedInHomePage extends StatelessWidget {
 
             final List<CurrentEvent> events = snapshot.data ?? <CurrentEvent>[];
             if (events.isEmpty) {
-              return Column(
+              return const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const <Widget>[
+                children: <Widget>[
                   Text(
                     'Upcoming Events',
                     style: TextStyle(
@@ -320,7 +320,6 @@ class SignedInHomePage extends StatelessWidget {
       body: Stack(
         children: <Widget>[
           const PlasmaRenderer(
-            type: PlasmaType.infinity,
             color: Color.fromARGB(68, 85, 0, 165),
             blur: 0.5,
             blendMode: BlendMode.plus,

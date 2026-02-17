@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 
 class About extends StatelessWidget {
-  About({
+  const About({
     Key? key,
     required this.fontSize,
   }) : super(key: key);
 
-  final double fontSize;
-  final String gotAbout =
+  static const String _aboutText =
       'Pluto is a organization of local DJs and producers who bring people together with music.';
+
+  final double fontSize;
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +20,7 @@ class About extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: 30.0),
             child: Text(
-              gotAbout,
+              _aboutText,
               style: TextStyle(
                   fontFamily: 'SourceCodePro',
                   letterSpacing: 2.5,

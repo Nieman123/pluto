@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_glow/flutter_glow.dart';
 
 class SparkleButton extends StatefulWidget {
+  const SparkleButton({super.key, required this.text, required this.onPressed});
   final String text;
   final VoidCallback onPressed;
-
-  const SparkleButton({Key? key, required this.text, required this.onPressed})
-      : super(key: key);
 
   @override
   _SparkleButtonState createState() => _SparkleButtonState();
@@ -62,14 +60,13 @@ class _SparkleButtonState extends State<SparkleButton>
 }
 
 class SparklePainter extends CustomPainter {
-  final double progress;
-
   SparklePainter({required this.progress});
+  final double progress;
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.5)
+      ..color = Colors.white.withValues(alpha: 0.5)
       ..style = PaintingStyle.fill;
 
     // Draw sparkles at dynamic positions based on progress
@@ -79,7 +76,7 @@ class SparklePainter extends CustomPainter {
       Offset(size.width * 0.5, size.height * progress),
     ];
 
-    for (var sparkle in sparkles) {
+    for (final sparkle in sparkles) {
       canvas.drawCircle(sparkle, 3, paint);
     }
   }

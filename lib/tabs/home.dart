@@ -23,7 +23,7 @@ class _HomePageState extends State<HomePage> {
         SystemChrome.setApplicationSwitcherDescription(
             ApplicationSwitcherDescription(
           label: 'Pluto - Private Underground Events in Asheville, NC',
-          primaryColor: Colors.black.value,
+          primaryColor: Colors.black.toARGB32(),
         ));
       });
     });
@@ -80,7 +80,7 @@ class _HomePageState extends State<HomePage> {
                   SocialMediaBar(
                     height: height,
                   ),
-                  About(fontSize: 24),
+                  const About(fontSize: 24),
                 ],
               ),
             );
@@ -126,7 +126,7 @@ class _HomePageState extends State<HomePage> {
                         SocialMediaBar(
                           height: height / 2,
                         ),
-                        About(fontSize: 30),
+                        const About(fontSize: 30),
                       ],
                     ),
                   ),

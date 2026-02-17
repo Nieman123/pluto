@@ -4,25 +4,25 @@ import '../custom/custom_text.dart';
 import '../html_open_link.dart';
 
 class Resume extends StatelessWidget {
-  Resume({
+  const Resume({
     Key? key,
     required this.width,
   }) : super(key: key);
 
-  final double width;
+  static const String _resumeUrl = '';
 
-  final String data = '';
+  final double width;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-        padding: data == ''
+        padding: _resumeUrl == ''
             ? EdgeInsets.zero
             : EdgeInsets.only(right: width * 0.019),
         child: Visibility(
-          visible: data != '',
+          visible: _resumeUrl != '',
           child: TextButton(
-              onPressed: () => htmlOpenLink(data),
+              onPressed: () => htmlOpenLink(_resumeUrl),
               child: CustomText(
                   text: 'MY RESUME',
                   fontSize: 20,

@@ -26,19 +26,11 @@ class App2 extends StatelessWidget {
           body: Stack(
             children: [
               const PlasmaRenderer(
-                type: PlasmaType.infinity,
-                particles: 10,
                 color: Color(0x444f4d4c),
                 blur: 0.5,
-                size: 1,
-                speed: 1,
-                offset: 0,
                 blendMode: BlendMode.plus,
                 particleType: ParticleType.atlas,
                 variation1: 1,
-                variation2: 0,
-                variation3: 0,
-                rotation: 0,
               ),
               ScrollablePositionedList.builder(
                   physics: const BouncingScrollPhysics(),
@@ -57,19 +49,11 @@ class App2 extends StatelessWidget {
           body: Stack(
             children: [
               const PlasmaRenderer(
-                type: PlasmaType.infinity,
-                particles: 10,
                 color: Color(0x444f4d4c),
                 blur: 0.5,
-                size: 1,
-                speed: 1,
-                offset: 0,
                 blendMode: BlendMode.plus,
                 particleType: ParticleType.atlas,
                 variation1: 1,
-                variation2: 0,
-                variation3: 0,
-                rotation: 0,
               ),
               ScrollablePositionedList.builder(
                   physics: const BouncingScrollPhysics(),

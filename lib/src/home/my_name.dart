@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class MyName extends StatelessWidget {
-  MyName({
+  const MyName({
     Key? key,
     required this.isMobile,
     required this.context,
@@ -26,8 +26,8 @@ class MyName extends StatelessWidget {
                         child: const FittedBox(
                           fit: BoxFit.cover,
                           child: Text(
-                            "Pluto",
-                            textScaleFactor: 4.5,
+                            'Pluto',
+                            textScaler: TextScaler.linear(4.5),
                             style: TextStyle(
                               fontFamily: 'FjallaOne',
                               // letterSpacing: 10.5,
@@ -40,7 +40,7 @@ class MyName extends StatelessWidget {
                     })),
               )
             : const Text('Pluto',
-                textScaleFactor: 7,
+                textScaler: TextScaler.linear(7),
                 style: TextStyle(
                   fontFamily: 'FjallaOne',
                   letterSpacing: 20.5,

@@ -1,13 +1,10 @@
-import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'dart:math';
 
+import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 class LinkBox extends StatelessWidget {
-  final IconData icon;
-  final String text;
-  final String url;
-  final ImageProvider? image; // Optional image parameter
-  final bool isImageCircular; // New parameter to toggle image shape
+  // New parameter to toggle image shape
 
   const LinkBox({
     Key? key,
@@ -17,17 +14,23 @@ class LinkBox extends StatelessWidget {
     this.image, // Initialize the optional image parameter
     this.isImageCircular = false, // Default shape is square
   }) : super(key: key);
+  final IconData icon;
+  final String text;
+  final String url;
+  final ImageProvider? image; // Optional image parameter
+  final bool isImageCircular;
 
   @override
   Widget build(BuildContext context) {
-    double buttonWidth = min(MediaQuery.of(context).size.width * 0.8, 800.0);
-    double iconHeight = 75;
+    final double buttonWidth =
+        min(MediaQuery.of(context).size.width * 0.8, 800.0);
+    const double iconHeight = 75;
 
     final imageProvider = image;
 
     return InkWell(
       onTap: () async {
-        var uri = Uri.parse(url);
+        final uri = Uri.parse(url);
         if (await canLaunchUrl(uri)) {
           launchUrl(uri);
         }
@@ -42,7 +45,7 @@ class LinkBox extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               spreadRadius: 1,
               blurRadius: 5,
               offset: const Offset(0, 3),

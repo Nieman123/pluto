@@ -24,7 +24,6 @@ class CampingInfoPage extends StatelessWidget {
             particleType: ParticleType.atlas,
             variation1: 0.7,
             variation2: 0.3,
-            size: 1.0,
           ),
           SingleChildScrollView(
             child: Center(
@@ -53,11 +52,10 @@ class CampingInfoPage extends StatelessWidget {
 
                       // Section: Overview
                       _buildSection(
-                        title: '🏕️ Camping Overview',
-                        content:
-                            'Camping at Pluto Campout is all about connecting with nature and enjoying a unique outdoor experience. '
-                            'Set up your tent, hammock, or canopy in the beautiful Kuykendall Group Campground, located in the Pisgah National Forest.\n \nYou will be camping next to your vehicle, feel free to find a spot and setup once you arrive!\n \nFestival Grounds Open Noon on Thursday'
-                      ),
+                          title: '🏕️ Camping Overview',
+                          content:
+                              'Camping at Pluto Campout is all about connecting with nature and enjoying a unique outdoor experience. '
+                              'Set up your tent, hammock, or canopy in the beautiful Kuykendall Group Campground, located in the Pisgah National Forest.\n \nYou will be camping next to your vehicle, feel free to find a spot and setup once you arrive!\n \nFestival Grounds Open Noon on Thursday'),
                       const SizedBox(height: 16),
 
                       // Section: Essential Amenities
@@ -105,10 +103,10 @@ class CampingInfoPage extends StatelessWidget {
                       const SizedBox(height: 24),
 // Section: Packing List
                       _buildSection(
-                        title: '🗺️ Directions to campsite',
-                        content: '- Use the button below to open Google Maps\n'
-                            '- **APPLE MAPS WILL TAKE YOU TO THE WRONG PLACE**\n'
-                      ),
+                          title: '🗺️ Directions to campsite',
+                          content:
+                              '- Use the button below to open Google Maps\n'
+                              '- **APPLE MAPS WILL TAKE YOU TO THE WRONG PLACE**\n'),
                       const SizedBox(height: 24),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -121,7 +119,7 @@ class CampingInfoPage extends StatelessWidget {
                             ),
                             onPressed: () {
                               launchUrlString(
-                                  "https://maps.app.goo.gl/jr4zsPcM4NntB9yUA");
+                                  'https://maps.app.goo.gl/jr4zsPcM4NntB9yUA');
                             },
                             child: const Text('Click to Open in Google Maps'),
                           ),

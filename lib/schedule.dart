@@ -22,7 +22,6 @@ class SchedulePage extends StatelessWidget {
             particleType: ParticleType.atlas,
             variation1: 0.7,
             variation2: 0.3,
-            size: 1.0,
           ),
           SingleChildScrollView(
             child: Padding(
@@ -93,11 +92,12 @@ class SchedulePage extends StatelessWidget {
                   Center(
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Color.fromARGB(255, 115, 60, 175),
+                        backgroundColor:
+                            const Color.fromARGB(255, 115, 60, 175),
                         foregroundColor: Colors.white,
                       ),
                       onPressed: () {
-                            GoRouter.of(context).go('/campout'); 
+                        GoRouter.of(context).go('/campout');
                       },
                       child: const Text('Back to Event Info'),
                     ),
@@ -111,78 +111,81 @@ class SchedulePage extends StatelessWidget {
     );
   }
 
-  Widget _buildDaySchedule({required String day, required List<String> schedule}) {
-  return Center(
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 600),
-      child: Card(
-      elevation: 4,
-      color: Colors.black.withOpacity(0.3),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              day,
-              textAlign: TextAlign.left,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                shadows: [
-                  Shadow(
-                    color: Colors.black45,
-                    offset: Offset(1, 1),
-                    blurRadius: 2,
+  Widget _buildDaySchedule(
+      {required String day, required List<String> schedule}) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 600),
+        child: Card(
+          elevation: 4,
+          color: Colors.black.withValues(alpha: 0.3),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  day,
+                  textAlign: TextAlign.left,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black45,
+                        offset: Offset(1, 1),
+                        blurRadius: 2,
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            ...schedule.map((entry) {
-              final parts = entry.split(': ');
-              final timePart = parts[0] + ': ';
-              final artistPart = parts.length > 1 ? parts.sublist(1).join(': ') : '';
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  RichText(
-                    text: TextSpan(
-                      children: [
-                        TextSpan(
-                          text: timePart,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w400,
-                            color: Colors.white70,
-                          ),
-                        ),
-                        if (artistPart.isNotEmpty)
-                          TextSpan(
-                            text: artistPart,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                ),
+                const SizedBox(height: 12),
+                ...schedule.map((entry) {
+                  final parts = entry.split(': ');
+                  final timePart = '${parts[0]}: ';
+                  final artistPart =
+                      parts.length > 1 ? parts.sublist(1).join(': ') : '';
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      RichText(
+                        text: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: timePart,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w400,
+                                color: Colors.white70,
+                              ),
                             ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Divider(color: Colors.white24, height: 1),
-                  const SizedBox(height: 8),
-                ],
-              );
-            }).toList(),
-          ],
+                            if (artistPart.isNotEmpty)
+                              TextSpan(
+                                text: artistPart,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Divider(color: Colors.white24, height: 1),
+                      const SizedBox(height: 8),
+                    ],
+                  );
+                }).toList(),
+              ],
+            ),
+          ),
         ),
       ),
-      ),
-    ),
-  );
-}
+    );
+  }
 }

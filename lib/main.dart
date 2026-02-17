@@ -46,7 +46,7 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     getPermission();
-    messageListener(context);
+    messageListener();
     super.initState();
     currentTheme.addListener(() {
       setState(() {});
@@ -107,27 +107,22 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> getPermission() async {
-    FirebaseMessaging messaging = FirebaseMessaging.instance;
+    final FirebaseMessaging messaging = FirebaseMessaging.instance;
 
-    NotificationSettings settings = await messaging.requestPermission(
-      alert: true,
-      announcement: false,
-      badge: true,
-      carPlay: false,
-      criticalAlert: false,
-      provisional: false,
-      sound: true,
-    );
+    final NotificationSettings settings = await messaging.requestPermission();
 
-    print('User granted permission: ${settings.authorizationStatus}');
+    debugPrint('User granted permission: ${settings.authorizationStatus}');
   }
 
-  void messageListener(BuildContext context) {
+  void messageListener() {
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       //print('Got a message whilst in the foreground!');
       //print('Message data: ${message.data}');
 
       if (message.notification != null) {
+        if (!mounted) {
+          return;
+        }
         //print(
         //    'Message also contained a notification: ${message.notification!.body}');
         showDialog(
@@ -157,9 +152,9 @@ class _MyAppState extends State<MyApp> {
 
 //push notification dialog for foreground
 class DynamicDialog extends StatefulWidget {
+  const DynamicDialog({super.key, this.title, this.body});
   final title;
   final body;
-  DynamicDialog({this.title, this.body});
   @override
   _DynamicDialogState createState() => _DynamicDialogState();
 }

@@ -1,5 +1,8 @@
-import 'dart:html' as html;
+import 'package:url_launcher/url_launcher_string.dart';
 
-void htmlOpenLink(String url) {
-  html.window.open(url, '_blank');
+Future<void> htmlOpenLink(String url) async {
+  if (url.trim().isEmpty) {
+    return;
+  }
+  await launchUrlString(url, webOnlyWindowName: '_blank');
 }
