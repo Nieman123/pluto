@@ -88,6 +88,25 @@ class _ItemShopPageState extends State<ItemShopPage> {
     }
   }
 
+  void _showCannotAffordMessage({
+    required RewardItem rewardItem,
+    required int pointsBalance,
+  }) {
+    final int pointsNeeded = rewardItem.pointsCost - pointsBalance;
+    final String message = pointsNeeded > 0
+        ? 'Not enough Pluto Points for ${rewardItem.name}. You need $pointsNeeded more.'
+        : 'Not enough Pluto Points for ${rewardItem.name}.';
+
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
   Widget _buildSignedOutState() {
     return Center(
       child: ConstrainedBox(
@@ -291,9 +310,23 @@ class _ItemShopPageState extends State<ItemShopPage> {
                           ),
                           const SizedBox(height: 10),
                           ElevatedButton(
-                            onPressed: (!canAfford || isRedeeming)
+                            style: canAfford
+                                ? null
+                                : ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.white24,
+                                    foregroundColor: Colors.white60,
+                                    elevation: 0,
+                                  ),
+                            onPressed: isRedeeming
                                 ? null
                                 : () {
+                                    if (!canAfford) {
+                                      _showCannotAffordMessage(
+                                        rewardItem: reward,
+                                        pointsBalance: profile.pointsBalance,
+                                      );
+                                      return;
+                                    }
                                     _redeemReward(
                                       user: user,
                                       rewardItem: reward,
