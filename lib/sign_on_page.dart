@@ -25,6 +25,20 @@ class _SignOnPageState extends State<SignOnPage> {
     super.dispose();
   }
 
+  InputDecoration _inputDecoration(String labelText) {
+    return InputDecoration(
+      labelText: labelText,
+      labelStyle: const TextStyle(color: Colors.white70),
+      border: const OutlineInputBorder(),
+      enabledBorder: const OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.white54),
+      ),
+      focusedBorder: const OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.white),
+      ),
+    );
+  }
+
   Future<void> _runAuthAction(Future<void> Function() action) async {
     if (_isBusy) {
       return;
@@ -224,19 +238,17 @@ class _SignOnPageState extends State<SignOnPage> {
                             TextField(
                               controller: _emailController,
                               keyboardType: TextInputType.emailAddress,
-                              decoration: const InputDecoration(
-                                labelText: 'Email',
-                                border: OutlineInputBorder(),
-                              ),
+                              style: const TextStyle(color: Colors.white),
+                              cursorColor: Colors.white,
+                              decoration: _inputDecoration('Email'),
                             ),
                             const SizedBox(height: 12),
                             TextField(
                               controller: _passwordController,
                               obscureText: true,
-                              decoration: const InputDecoration(
-                                labelText: 'Password',
-                                border: OutlineInputBorder(),
-                              ),
+                              style: const TextStyle(color: Colors.white),
+                              cursorColor: Colors.white,
+                              decoration: _inputDecoration('Password'),
                             ),
                             const SizedBox(height: 12),
                             Wrap(
