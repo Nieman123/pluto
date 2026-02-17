@@ -43,53 +43,98 @@ class SignedInHomePage extends StatelessWidget {
     await launchUrlString(normalizedUrl, webOnlyWindowName: '_blank');
   }
 
-  Widget _buildQuickActions(BuildContext context) {
-    return Wrap(
-      alignment: WrapAlignment.center,
-      spacing: 12,
-      runSpacing: 12,
-      children: <Widget>[
-        ElevatedButton.icon(
-          onPressed: () => context.go('/profile'),
-          icon: const Icon(Icons.person),
-          label: const Text('Profile'),
+  Widget _buildQuickActionButton({
+    required String label,
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
+    return SizedBox.expand(
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon, size: 28),
+        label: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
         ),
-        ElevatedButton.icon(
-          onPressed: () => context.go('/scan-qr'),
-          icon: const Icon(Icons.qr_code_scanner),
-          label: const Text('Scan QR Code'),
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
-        OutlinedButton.icon(
-          onPressed: () => context.go('/shop'),
-          icon: const Icon(Icons.redeem),
-          label: const Text('Rewards Shop'),
-        ),
-        OutlinedButton.icon(
-          onPressed: () => context.go('/sign-on'),
-          icon: const Icon(Icons.settings),
-          label: const Text('Account'),
-        ),
-        StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-          stream: FirebaseFirestore.instance
-              .collection('adminUsers')
-              .doc(user.uid)
-              .snapshots(),
-          builder: (BuildContext context,
-              AsyncSnapshot<DocumentSnapshot<Map<String, dynamic>>>
-                  adminSnapshot) {
-            final bool isAdmin = adminSnapshot.data?.exists ?? false;
-            if (!isAdmin) {
-              return const SizedBox.shrink();
-            }
+      ),
+    );
+  }
 
-            return OutlinedButton.icon(
+  Widget _buildQuickActions(BuildContext context) {
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('adminUsers')
+          .doc(user.uid)
+          .snapshots(),
+      builder: (BuildContext context,
+          AsyncSnapshot<DocumentSnapshot<Map<String, dynamic>>> adminSnapshot) {
+        final bool isAdmin = adminSnapshot.data?.exists ?? false;
+
+        final List<Widget> actionButtons = <Widget>[
+          _buildQuickActionButton(
+            label: 'Profile',
+            icon: Icons.person,
+            onPressed: () => context.go('/profile'),
+          ),
+          _buildQuickActionButton(
+            label: 'Scan QR Code',
+            icon: Icons.qr_code_scanner,
+            onPressed: () => context.go('/scan-qr'),
+          ),
+          _buildQuickActionButton(
+            label: 'Rewards Shop',
+            icon: Icons.redeem,
+            onPressed: () => context.go('/shop'),
+          ),
+          _buildQuickActionButton(
+            label: 'Account',
+            icon: Icons.settings,
+            onPressed: () => context.go('/sign-on'),
+          ),
+        ];
+
+        if (isAdmin) {
+          actionButtons.add(
+            _buildQuickActionButton(
+              label: 'Admin',
+              icon: Icons.admin_panel_settings,
               onPressed: () => context.go('/admin'),
-              icon: const Icon(Icons.admin_panel_settings),
-              label: const Text('Admin'),
+            ),
+          );
+        }
+
+        return LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints constraints) {
+            const double spacing = 12;
+            final double buttonWidth = (constraints.maxWidth - spacing) / 2;
+
+            return Wrap(
+              alignment: WrapAlignment.center,
+              spacing: spacing,
+              runSpacing: spacing,
+              children: actionButtons
+                  .map(
+                    (Widget button) => SizedBox(
+                      width: buttonWidth,
+                      height: 96,
+                      child: button,
+                    ),
+                  )
+                  .toList(),
             );
           },
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -102,46 +147,31 @@ class SignedInHomePage extends StatelessWidget {
         padding: const EdgeInsets.all(18),
         child: Column(
           children: <Widget>[
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 14,
-              runSpacing: 10,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: <Widget>[
-                Container(
-                  width: 72,
-                  height: 72,
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white10,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.white24),
-                  ),
-                  child: Image.asset(
-                    'assets/experience/pluto-logo-small.png',
-                    fit: BoxFit.contain,
-                  ),
+            Center(
+              child: SizedBox(
+                width: 144,
+                height: 144,
+                child: Image.asset(
+                  'assets/experience/pluto-logo-small.png',
+                  fit: BoxFit.contain,
                 ),
-                Column(
-                  children: <Widget>[
-                    Text(
-                      'Welcome back, $displayName',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 30,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Signed in as ${user.email ?? user.uid}',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                  ],
-                ),
-              ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Welcome back, $displayName',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 30,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Signed in as ${user.email ?? user.uid}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white70),
             ),
             const SizedBox(height: 16),
             _buildQuickActions(context),
