@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -245,6 +246,9 @@ class _AdminPageState extends State<AdminPage> {
   }
 
   Widget _buildUnauthorizedState(User user) {
+    final String projectId = Firebase.app().options.projectId;
+    final String expectedDocPath = 'adminUsers/${user.uid}';
+
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 760),
@@ -271,7 +275,75 @@ class _AdminPageState extends State<AdminPage> {
                 ),
                 const SizedBox(height: 10),
                 SelectableText(
+                  'Project: $projectId',
+                  style: const TextStyle(color: Colors.white),
+                ),
+                SelectableText(
                   'UID: ${user.uid}',
+                  style: const TextStyle(color: Colors.white),
+                ),
+                SelectableText(
+                  'Expected document: $expectedDocPath',
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAdminReadErrorState(User user, Object? error) {
+    final String projectId = Firebase.app().options.projectId;
+    final String expectedDocPath = 'adminUsers/${user.uid}';
+    final String errorMessage;
+    if (error is FirebaseException) {
+      errorMessage =
+          '${error.code}: ${error.message ?? 'Unknown Firestore error'}';
+    } else {
+      errorMessage = error?.toString() ?? 'Unknown error';
+    }
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 900),
+        child: Card(
+          color: Colors.black.withValues(alpha: 0.45),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const Text(
+                  'Admin check failed',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Firestore could not read the admin user document. This is usually a Firestore security rules issue.',
+                  style: TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 10),
+                SelectableText(
+                  'Error: $errorMessage',
+                  style: const TextStyle(color: Colors.white),
+                ),
+                SelectableText(
+                  'Project: $projectId',
+                  style: const TextStyle(color: Colors.white),
+                ),
+                SelectableText(
+                  'UID: ${user.uid}',
+                  style: const TextStyle(color: Colors.white),
+                ),
+                SelectableText(
+                  'Expected document: $expectedDocPath',
                   style: const TextStyle(color: Colors.white),
                 ),
               ],
@@ -299,14 +371,33 @@ class _AdminPageState extends State<AdminPage> {
           );
         }
 
+        final bool hasBoundedHeight = constraints.maxHeight.isFinite;
+        final double paneHeight = hasBoundedHeight
+            ? (constraints.maxHeight - 32 >= 200
+                ? constraints.maxHeight - 32
+                : 200)
+            : 800;
+
         return Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Expanded(flex: 5, child: editor),
+              Expanded(
+                flex: 5,
+                child: SizedBox(
+                  height: paneHeight,
+                  child: SingleChildScrollView(child: editor),
+                ),
+              ),
               const SizedBox(width: 16),
-              Expanded(flex: 6, child: events),
+              Expanded(
+                flex: 6,
+                child: SizedBox(
+                  height: paneHeight,
+                  child: SingleChildScrollView(child: events),
+                ),
+              ),
             ],
           ),
         );
@@ -316,6 +407,19 @@ class _AdminPageState extends State<AdminPage> {
 
   Widget _buildEditorCard() {
     final Uint8List? flyerBytes = decodeFlyerDataUrl(_flyerDataUrl);
+    InputDecoration inputDecoration(String labelText) {
+      return InputDecoration(
+        labelText: labelText,
+        labelStyle: const TextStyle(color: Colors.white70),
+        border: const OutlineInputBorder(),
+        enabledBorder: const OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.white54),
+        ),
+        focusedBorder: const OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.white),
+        ),
+      );
+    }
 
     return Card(
       color: Colors.black.withValues(alpha: 0.45),
@@ -337,36 +441,33 @@ class _AdminPageState extends State<AdminPage> {
             const SizedBox(height: 14),
             TextField(
               controller: _titleController,
-              decoration: const InputDecoration(
-                labelText: 'Title',
-                border: OutlineInputBorder(),
-              ),
+              style: const TextStyle(color: Colors.white),
+              cursorColor: Colors.white,
+              decoration: inputDecoration('Title'),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _detailsController,
               maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Details (date, time, location, etc.)',
-                border: OutlineInputBorder(),
-              ),
+              style: const TextStyle(color: Colors.white),
+              cursorColor: Colors.white,
+              decoration:
+                  inputDecoration('Details (date, time, location, etc.)'),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _ticketUrlController,
-              decoration: const InputDecoration(
-                labelText: 'Ticket URL (optional)',
-                border: OutlineInputBorder(),
-              ),
+              style: const TextStyle(color: Colors.white),
+              cursorColor: Colors.white,
+              decoration: inputDecoration('Ticket URL (optional)'),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _sortOrderController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Sort Order',
-                border: OutlineInputBorder(),
-              ),
+              style: const TextStyle(color: Colors.white),
+              cursorColor: Colors.white,
+              decoration: inputDecoration('Sort Order'),
             ),
             SwitchListTile(
               title: const Text('Active event'),
@@ -603,6 +704,13 @@ class _AdminPageState extends State<AdminPage> {
                   if (adminSnapshot.connectionState ==
                       ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (adminSnapshot.hasError) {
+                    return _buildAdminReadErrorState(
+                      user,
+                      adminSnapshot.error,
+                    );
                   }
 
                   final bool isAdmin = adminSnapshot.data?.exists ?? false;
