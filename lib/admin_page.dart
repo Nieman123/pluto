@@ -11,6 +11,7 @@ import 'package:intl/intl.dart';
 import 'package:sa3_liquid/liquid/plasma/plasma.dart';
 
 import 'current_events_repository.dart';
+import 'user_profile_repository.dart';
 
 class AdminPage extends StatefulWidget {
   const AdminPage({Key? key}) : super(key: key);
@@ -21,17 +22,31 @@ class AdminPage extends StatefulWidget {
 
 class _AdminPageState extends State<AdminPage> {
   final CurrentEventsRepository _eventsRepository = CurrentEventsRepository();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _detailsController = TextEditingController();
   final TextEditingController _ticketUrlController = TextEditingController();
   final TextEditingController _sortOrderController =
       TextEditingController(text: '0');
+  final TextEditingController _rewardNameController = TextEditingController();
+  final TextEditingController _rewardDescriptionController =
+      TextEditingController();
+  final TextEditingController _rewardPointsCostController =
+      TextEditingController(text: '100');
+  final TextEditingController _rewardInventoryController =
+      TextEditingController();
+  final TextEditingController _rewardCategoryController =
+      TextEditingController();
 
   String? _editingEventId;
   String _flyerDataUrl = '';
   bool _isActive = true;
   bool _isSaving = false;
+  String? _editingRewardId;
+  String _rewardImageDataUrl = '';
+  bool _rewardIsActive = true;
+  bool _isSavingReward = false;
   String _statusMessage = '';
 
   @override
@@ -40,6 +55,11 @@ class _AdminPageState extends State<AdminPage> {
     _detailsController.dispose();
     _ticketUrlController.dispose();
     _sortOrderController.dispose();
+    _rewardNameController.dispose();
+    _rewardDescriptionController.dispose();
+    _rewardPointsCostController.dispose();
+    _rewardInventoryController.dispose();
+    _rewardCategoryController.dispose();
     super.dispose();
   }
 
@@ -207,6 +227,240 @@ class _AdminPageState extends State<AdminPage> {
     });
   }
 
+  InputDecoration _inputDecoration(String labelText) {
+    return InputDecoration(
+      labelText: labelText,
+      labelStyle: const TextStyle(color: Colors.white70),
+      border: const OutlineInputBorder(),
+      enabledBorder: const OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.white54),
+      ),
+      focusedBorder: const OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.white),
+      ),
+    );
+  }
+
+  Stream<List<RewardItem>> _watchRewardItems() {
+    return _firestore.collection('rewardItems').snapshots().map(
+      (QuerySnapshot<Map<String, dynamic>> snapshot) {
+        final List<RewardItem> rewards =
+            snapshot.docs.map(RewardItem.fromSnapshot).toList();
+        rewards.sort((RewardItem a, RewardItem b) {
+          if (a.isActive != b.isActive) {
+            return a.isActive ? -1 : 1;
+          }
+
+          final int byCost = a.pointsCost.compareTo(b.pointsCost);
+          if (byCost != 0) {
+            return byCost;
+          }
+
+          return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+        });
+        return rewards;
+      },
+    );
+  }
+
+  Future<void> _pickRewardImage() async {
+    final FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: <String>['png', 'jpg', 'jpeg', 'webp'],
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty) {
+      return;
+    }
+
+    final PlatformFile file = result.files.first;
+    final Uint8List? fileBytes = file.bytes;
+    if (fileBytes == null) {
+      setState(() {
+        _statusMessage = 'Unable to read reward image bytes.';
+      });
+      return;
+    }
+
+    if (fileBytes.lengthInBytes > 900000) {
+      setState(() {
+        _statusMessage =
+            'Reward image too large for Firestore document storage.';
+      });
+      return;
+    }
+
+    final String mimeType = _mimeTypeForExtension(file.extension ?? '');
+    setState(() {
+      _rewardImageDataUrl = encodeDataUrl(bytes: fileBytes, mimeType: mimeType);
+      _statusMessage = 'Reward image selected.';
+    });
+  }
+
+  Future<void> _saveRewardItem() async {
+    final String rewardName = _rewardNameController.text.trim();
+    if (rewardName.isEmpty) {
+      setState(() {
+        _statusMessage = 'Reward name is required.';
+      });
+      return;
+    }
+
+    final int? pointsCost =
+        int.tryParse(_rewardPointsCostController.text.trim());
+    if (pointsCost == null || pointsCost <= 0) {
+      setState(() {
+        _statusMessage = 'Reward points cost must be a number greater than 0.';
+      });
+      return;
+    }
+
+    final String inventoryText = _rewardInventoryController.text.trim();
+    int? inventory;
+    if (inventoryText.isNotEmpty) {
+      inventory = int.tryParse(inventoryText);
+      if (inventory == null || inventory < 0) {
+        setState(() {
+          _statusMessage =
+              'Inventory must be a non-negative number or left blank.';
+        });
+        return;
+      }
+    }
+
+    setState(() {
+      _isSavingReward = true;
+      _statusMessage = '';
+    });
+
+    try {
+      final DocumentReference<Map<String, dynamic>> rewardDoc =
+          (_editingRewardId == null || _editingRewardId!.isEmpty)
+              ? _firestore.collection('rewardItems').doc()
+              : _firestore.collection('rewardItems').doc(_editingRewardId);
+      final DocumentSnapshot<Map<String, dynamic>> existingSnapshot =
+          await rewardDoc.get();
+
+      final Map<String, dynamic> payload = <String, dynamic>{
+        'name': rewardName,
+        'description': _rewardDescriptionController.text.trim(),
+        'pointsCost': pointsCost,
+        'isActive': _rewardIsActive,
+        'category': _rewardCategoryController.text.trim(),
+        'imageDataUrl': _rewardImageDataUrl,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      if (inventory == null) {
+        payload['inventory'] = FieldValue.delete();
+      } else {
+        payload['inventory'] = inventory;
+      }
+
+      if (!existingSnapshot.exists) {
+        payload['createdAt'] = FieldValue.serverTimestamp();
+      }
+
+      await rewardDoc.set(payload, SetOptions(merge: true));
+
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _editingRewardId = rewardDoc.id;
+        _statusMessage = 'Reward item saved.';
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _statusMessage = 'Failed to save reward item: $error';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSavingReward = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _deleteRewardItem(RewardItem rewardItem) async {
+    final bool? shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Delete Reward Item?'),
+          content: Text('Delete "${rewardItem.name}" from rewardItems?'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldDelete != true) {
+      return;
+    }
+
+    try {
+      await _firestore.collection('rewardItems').doc(rewardItem.id).delete();
+      if (!mounted) {
+        return;
+      }
+
+      if (_editingRewardId == rewardItem.id) {
+        _startNewRewardItem();
+      }
+      setState(() {
+        _statusMessage = 'Reward item deleted.';
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _statusMessage = 'Failed to delete reward item: $error';
+      });
+    }
+  }
+
+  void _editRewardItem(RewardItem rewardItem) {
+    setState(() {
+      _editingRewardId = rewardItem.id;
+      _rewardNameController.text = rewardItem.name;
+      _rewardDescriptionController.text = rewardItem.description;
+      _rewardPointsCostController.text = rewardItem.pointsCost.toString();
+      _rewardInventoryController.text = rewardItem.inventory?.toString() ?? '';
+      _rewardCategoryController.text = rewardItem.category;
+      _rewardIsActive = rewardItem.isActive;
+      _rewardImageDataUrl = rewardItem.imageDataUrl;
+      _statusMessage = 'Editing reward "${rewardItem.name}".';
+    });
+  }
+
+  void _startNewRewardItem() {
+    setState(() {
+      _editingRewardId = null;
+      _rewardNameController.clear();
+      _rewardDescriptionController.clear();
+      _rewardPointsCostController.text = '100';
+      _rewardInventoryController.clear();
+      _rewardCategoryController.clear();
+      _rewardIsActive = true;
+      _rewardImageDataUrl = '';
+      _statusMessage = 'New reward item form ready.';
+    });
+  }
+
   Widget _buildSignedOutState() {
     return Center(
       child: ConstrainedBox(
@@ -359,6 +613,18 @@ class _AdminPageState extends State<AdminPage> {
       builder: (BuildContext context, BoxConstraints constraints) {
         final Widget editor = _buildEditorCard();
         final Widget events = _buildEventsCard();
+        final Widget rewardEditor = _buildRewardEditorCard();
+        final Widget rewardItems = _buildRewardItemsCard();
+        final Widget managementPane = Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            events,
+            const SizedBox(height: 16),
+            rewardEditor,
+            const SizedBox(height: 16),
+            rewardItems,
+          ],
+        );
 
         if (constraints.maxWidth < 1100) {
           return ListView(
@@ -367,6 +633,10 @@ class _AdminPageState extends State<AdminPage> {
               editor,
               const SizedBox(height: 16),
               events,
+              const SizedBox(height: 16),
+              rewardEditor,
+              const SizedBox(height: 16),
+              rewardItems,
             ],
           );
         }
@@ -395,7 +665,7 @@ class _AdminPageState extends State<AdminPage> {
                 flex: 6,
                 child: SizedBox(
                   height: paneHeight,
-                  child: SingleChildScrollView(child: events),
+                  child: SingleChildScrollView(child: managementPane),
                 ),
               ),
             ],
@@ -407,19 +677,6 @@ class _AdminPageState extends State<AdminPage> {
 
   Widget _buildEditorCard() {
     final Uint8List? flyerBytes = decodeFlyerDataUrl(_flyerDataUrl);
-    InputDecoration inputDecoration(String labelText) {
-      return InputDecoration(
-        labelText: labelText,
-        labelStyle: const TextStyle(color: Colors.white70),
-        border: const OutlineInputBorder(),
-        enabledBorder: const OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.white54),
-        ),
-        focusedBorder: const OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.white),
-        ),
-      );
-    }
 
     return Card(
       color: Colors.black.withValues(alpha: 0.45),
@@ -443,7 +700,7 @@ class _AdminPageState extends State<AdminPage> {
               controller: _titleController,
               style: const TextStyle(color: Colors.white),
               cursorColor: Colors.white,
-              decoration: inputDecoration('Title'),
+              decoration: _inputDecoration('Title'),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -452,14 +709,14 @@ class _AdminPageState extends State<AdminPage> {
               style: const TextStyle(color: Colors.white),
               cursorColor: Colors.white,
               decoration:
-                  inputDecoration('Details (date, time, location, etc.)'),
+                  _inputDecoration('Details (date, time, location, etc.)'),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _ticketUrlController,
               style: const TextStyle(color: Colors.white),
               cursorColor: Colors.white,
-              decoration: inputDecoration('Ticket URL (optional)'),
+              decoration: _inputDecoration('Ticket URL (optional)'),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -467,7 +724,7 @@ class _AdminPageState extends State<AdminPage> {
               keyboardType: TextInputType.number,
               style: const TextStyle(color: Colors.white),
               cursorColor: Colors.white,
-              decoration: inputDecoration('Sort Order'),
+              decoration: _inputDecoration('Sort Order'),
             ),
             SwitchListTile(
               title: const Text('Active event'),
@@ -526,6 +783,245 @@ class _AdminPageState extends State<AdminPage> {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRewardEditorCard() {
+    final Uint8List? rewardImageBytes = decodeDataUrl(_rewardImageDataUrl);
+
+    return Card(
+      color: Colors.black.withValues(alpha: 0.45),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              _editingRewardId == null
+                  ? 'Create Reward Item'
+                  : 'Edit Reward Item',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: _rewardNameController,
+              style: const TextStyle(color: Colors.white),
+              cursorColor: Colors.white,
+              decoration: _inputDecoration('Reward Name'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _rewardDescriptionController,
+              maxLines: 3,
+              style: const TextStyle(color: Colors.white),
+              cursorColor: Colors.white,
+              decoration: _inputDecoration('Description'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _rewardPointsCostController,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(color: Colors.white),
+              cursorColor: Colors.white,
+              decoration: _inputDecoration('Points Cost'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _rewardInventoryController,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(color: Colors.white),
+              cursorColor: Colors.white,
+              decoration: _inputDecoration(
+                  'Inventory (optional, leave blank for unlimited)'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _rewardCategoryController,
+              style: const TextStyle(color: Colors.white),
+              cursorColor: Colors.white,
+              decoration: _inputDecoration('Category (optional)'),
+            ),
+            SwitchListTile(
+              title: const Text('Active reward item'),
+              value: _rewardIsActive,
+              onChanged: (bool value) {
+                setState(() {
+                  _rewardIsActive = value;
+                });
+              },
+            ),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: <Widget>[
+                ElevatedButton(
+                  onPressed: _isSavingReward ? null : _pickRewardImage,
+                  child: const Text('Upload Reward Image'),
+                ),
+                OutlinedButton(
+                  onPressed: _isSavingReward
+                      ? null
+                      : () {
+                          setState(() {
+                            _rewardImageDataUrl = '';
+                            _statusMessage = 'Reward image removed.';
+                          });
+                        },
+                  child: const Text('Remove Image'),
+                ),
+              ],
+            ),
+            if (rewardImageBytes != null) ...<Widget>[
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.memory(
+                  rewardImageBytes,
+                  height: 220,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: <Widget>[
+                ElevatedButton(
+                  onPressed: _isSavingReward ? null : _saveRewardItem,
+                  child: Text(_isSavingReward ? 'Saving...' : 'Save Reward'),
+                ),
+                OutlinedButton(
+                  onPressed: _isSavingReward ? null : _startNewRewardItem,
+                  child: const Text('New Reward'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRewardItemsCard() {
+    return Card(
+      color: Colors.black.withValues(alpha: 0.45),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: StreamBuilder<List<RewardItem>>(
+          stream: _watchRewardItems(),
+          builder:
+              (BuildContext context, AsyncSnapshot<List<RewardItem>> snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const SizedBox(
+                height: 120,
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+
+            if (snapshot.hasError) {
+              return Text(
+                'Failed to load reward items: ${snapshot.error}',
+                style: const TextStyle(color: Colors.white70),
+              );
+            }
+
+            final List<RewardItem> rewards = snapshot.data ?? <RewardItem>[];
+            if (rewards.isEmpty) {
+              return const Text(
+                'No reward items found. Create one using the reward form.',
+                style: TextStyle(color: Colors.white70),
+              );
+            }
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const Text(
+                  'Reward Items',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ...rewards.map((RewardItem reward) {
+                  return Card(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    margin: const EdgeInsets.only(bottom: 10),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            reward.name.isEmpty
+                                ? '(Unnamed reward)'
+                                : reward.name,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Active: ${reward.isActive} | Cost: ${reward.pointsCost} | Inventory: ${reward.inventory?.toString() ?? 'unlimited'}',
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                          if (reward.category.isNotEmpty)
+                            Text(
+                              'Category: ${reward.category}',
+                              style: const TextStyle(color: Colors.white70),
+                            ),
+                          if (reward.description.isNotEmpty) ...<Widget>[
+                            const SizedBox(height: 6),
+                            Text(
+                              reward.description,
+                              style: const TextStyle(color: Colors.white70),
+                            ),
+                          ],
+                          if (reward.imageBytes != null) ...<Widget>[
+                            const SizedBox(height: 10),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.memory(
+                                reward.imageBytes!,
+                                height: 150,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 10,
+                            children: <Widget>[
+                              ElevatedButton(
+                                onPressed: () => _editRewardItem(reward),
+                                child: const Text('Edit'),
+                              ),
+                              OutlinedButton(
+                                onPressed: () => _deleteRewardItem(reward),
+                                child: const Text('Delete'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -660,7 +1156,7 @@ class _AdminPageState extends State<AdminPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Admin - Current Events'),
+        title: const Text('Admin - Events & Rewards'),
         actions: <Widget>[
           TextButton(
             onPressed: () => context.go('/'),
@@ -723,7 +1219,7 @@ class _AdminPageState extends State<AdminPage> {
               );
             },
           ),
-          if (_isSaving)
+          if (_isSaving || _isSavingReward)
             Container(
               color: Colors.black45,
               child: const Center(child: CircularProgressIndicator()),
