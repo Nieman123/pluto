@@ -1,0 +1,133 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return signedIn() &&
+          exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid));
+    }
+
+    function knownProfileKeys() {
+      return [
+        'displayName',
+        'homeCity',
+        'favoriteGenre',
+        'bio',
+        'profileImageDataUrl',
+        'pointsBalance',
+        'lifetimePoints',
+        'eventsAttended',
+        'createdAt',
+        'updatedAt',
+        'lastAttendanceAt',
+        'lastRedemptionAt'
+      ];
+    }
+
+    function isUserRewardInventoryDecrement() {
+      let profilePath =
+          /databases/$(database)/documents/userProfiles/$(request.auth.uid);
+      return signedIn() &&
+          resource.data.inventory is int &&
+          request.resource.data.inventory is int &&
+          request.resource.data.pointsCost == resource.data.pointsCost &&
+          request.resource.data.inventory == resource.data.inventory - 1 &&
+          request.resource.data.diff(resource.data)
+              .changedKeys()
+              .hasOnly(['inventory', 'updatedAt']) &&
+          exists(profilePath) &&
+          existsAfter(profilePath) &&
+          get(profilePath).data.pointsBalance is int &&
+          getAfter(profilePath).data.pointsBalance is int &&
+          (get(profilePath).data.pointsBalance -
+              getAfter(profilePath).data.pointsBalance) ==
+              resource.data.pointsCost;
+    }
+
+    function isUserEventQrClaimIncrement(eventQrId) {
+      return signedIn() &&
+          request.resource.data.totalClaims is int &&
+          resource.data.totalClaims is int &&
+          request.resource.data.totalClaims == resource.data.totalClaims + 1 &&
+          request.resource.data.diff(resource.data)
+              .changedKeys()
+              .hasOnly(['totalClaims', 'updatedAt']) &&
+          existsAfter(
+              /databases/$(database)/documents/eventQrCodes/$(eventQrId)/claims/$(request.auth.uid));
+    }
+
+    match /adminUsers/{adminUid} {
+      allow read: if isSelf(adminUid);
+      allow write: if false;
+    }
+
+    match /currentEvents/{eventId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /rewardItems/{rewardId} {
+      allow read: if signedIn();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || isUserRewardInventoryDecrement();
+    }
+
+    match /eventQrCodes/{eventQrId} {
+      allow read: if signedIn();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || isUserEventQrClaimIncrement(eventQrId);
+
+      match /claims/{claimUid} {
+        allow read: if isSelf(claimUid) || isAdmin();
+        allow create: if isSelf(claimUid) &&
+            !exists(
+                /databases/$(database)/documents/eventQrCodes/$(eventQrId)/claims/$(claimUid)) &&
+            exists(/databases/$(database)/documents/eventQrCodes/$(eventQrId)) &&
+            get(/databases/$(database)/documents/eventQrCodes/$(eventQrId)).data
+                .isActive ==
+                true &&
+            request.resource.data.uid == claimUid &&
+            request.resource.data.eventQrCodeId == eventQrId &&
+            request.resource.data.pointsAwarded ==
+                get(/databases/$(database)/documents/eventQrCodes/$(eventQrId))
+                    .data.pointsAwarded;
+        allow update, delete: if false;
+      }
+    }
+
+    match /userProfiles/{profileUid} {
+      allow read: if isSelf(profileUid) || isAdmin();
+      allow create: if isSelf(profileUid) &&
+          request.resource.data.keys().hasOnly(knownProfileKeys());
+      allow update: if (isSelf(profileUid) &&
+              request.resource.data.diff(resource.data)
+                  .affectedKeys()
+                  .hasOnly(knownProfileKeys())) ||
+          isAdmin();
+      allow delete: if false;
+
+      match /pointsTransactions/{transactionId} {
+        allow read: if isSelf(profileUid) || isAdmin();
+        allow create: if isSelf(profileUid) || isAdmin();
+        allow update, delete: if false;
+      }
+
+      match /redemptionRequests/{requestId} {
+        allow read: if isSelf(profileUid) || isAdmin();
+        allow create: if isSelf(profileUid) || isAdmin();
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
