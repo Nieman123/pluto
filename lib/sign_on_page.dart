@@ -153,6 +153,10 @@ class _SignOnPageState extends State<SignOnPage> {
             onPressed: () => context.go('/scan-qr'),
             child: const Text('Scan QR'),
           ),
+          TextButton(
+            onPressed: () => context.go('/shop'),
+            child: const Text('Rewards Shop'),
+          ),
         ],
       ),
       body: Stack(
@@ -216,6 +220,10 @@ class _SignOnPageState extends State<SignOnPage> {
                                   ElevatedButton(
                                     onPressed: () => context.go('/scan-qr'),
                                     child: const Text('Open Scanner'),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () => context.go('/shop'),
+                                    child: const Text('Open Rewards Shop'),
                                   ),
                                 ],
                               ),

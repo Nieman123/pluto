@@ -455,7 +455,7 @@ class UserProfileRepository {
         throw FirebaseException(
           plugin: 'cloud_firestore',
           code: 'insufficient-points',
-          message: 'Not enough points for this reward.',
+          message: 'Not enough Pluto Points for this reward.',
         );
       }
 
@@ -571,7 +571,8 @@ class UserProfileRepository {
           throw FirebaseException(
             plugin: 'cloud_firestore',
             code: 'invalid-points',
-            message: 'This event QR code has invalid points configuration.',
+            message:
+                'This event QR code has invalid Pluto Points configuration.',
           );
         }
 
@@ -591,7 +592,7 @@ class UserProfileRepository {
           throw FirebaseException(
             plugin: 'cloud_firestore',
             code: 'already-claimed',
-            message: 'You already claimed points for this event.',
+            message: 'You already claimed Pluto Points for this event.',
           );
         }
 

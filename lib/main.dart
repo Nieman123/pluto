@@ -8,6 +8,7 @@ import 'app.dart';
 import 'camping.dart';
 import 'event_qr_scan_page.dart';
 import 'firebase_options.dart';
+import 'item_shop_page.dart';
 import 'links.dart';
 import 'profile_page.dart';
 import 'schedule.dart';
@@ -101,6 +102,12 @@ class _MyAppState extends State<MyApp> {
         path: '/scan-qr',
         builder: (BuildContext context, GoRouterState state) {
           return const EventQrScanPage();
+        },
+      ),
+      GoRoute(
+        path: '/shop',
+        builder: (BuildContext context, GoRouterState state) {
+          return const ItemShopPage();
         },
       ),
     ], debugLogDiagnostics: true);

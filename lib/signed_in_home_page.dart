@@ -45,6 +45,7 @@ class SignedInHomePage extends StatelessWidget {
 
   Widget _buildQuickActions(BuildContext context) {
     return Wrap(
+      alignment: WrapAlignment.center,
       spacing: 12,
       runSpacing: 12,
       children: <Widget>[
@@ -59,7 +60,7 @@ class SignedInHomePage extends StatelessWidget {
           label: const Text('Scan QR Code'),
         ),
         OutlinedButton.icon(
-          onPressed: () => context.go('/profile'),
+          onPressed: () => context.go('/shop'),
           icon: const Icon(Icons.redeem),
           label: const Text('Rewards Shop'),
         ),
@@ -100,9 +101,9 @@ class SignedInHomePage extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(18),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Wrap(
+              alignment: WrapAlignment.center,
               spacing: 14,
               runSpacing: 10,
               crossAxisAlignment: WrapCrossAlignment.center,
@@ -122,10 +123,10 @@ class SignedInHomePage extends StatelessWidget {
                   ),
                 ),
                 Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
                       'Welcome back, $displayName',
+                      textAlign: TextAlign.center,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 30,
@@ -135,6 +136,7 @@ class SignedInHomePage extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       'Signed in as ${user.email ?? user.uid}',
+                      textAlign: TextAlign.center,
                       style: const TextStyle(color: Colors.white70),
                     ),
                   ],
@@ -160,8 +162,11 @@ class SignedInHomePage extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       child: Padding(
         padding: const EdgeInsets.all(10),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 12,
+          runSpacing: 12,
           children: <Widget>[
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
@@ -183,13 +188,13 @@ class SignedInHomePage extends StatelessWidget {
                       fit: BoxFit.cover,
                     ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Text(
                     event.title.isEmpty ? 'Upcoming Event' : event.title,
+                    textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 20,
@@ -200,11 +205,13 @@ class SignedInHomePage extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       event.details,
+                      textAlign: TextAlign.center,
                       style: const TextStyle(color: Colors.white70),
                     ),
                   ],
                   const SizedBox(height: 10),
                   Wrap(
+                    alignment: WrapAlignment.center,
                     spacing: 8,
                     runSpacing: 8,
                     children: <Widget>[
@@ -245,19 +252,22 @@ class SignedInHomePage extends StatelessWidget {
             }
 
             if (snapshot.hasError) {
-              return Text(
-                'Could not load events: ${snapshot.error}',
-                style: const TextStyle(color: Colors.white70),
+              return Center(
+                child: Text(
+                  'Could not load events: ${snapshot.error}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white70),
+                ),
               );
             }
 
             final List<CurrentEvent> events = snapshot.data ?? <CurrentEvent>[];
             if (events.isEmpty) {
               return const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Text(
                     'Upcoming Events',
+                    textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 26,
@@ -267,6 +277,7 @@ class SignedInHomePage extends StatelessWidget {
                   SizedBox(height: 8),
                   Text(
                     'No active events right now. Check back soon.',
+                    textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.white70),
                   ),
                 ],
@@ -274,10 +285,10 @@ class SignedInHomePage extends StatelessWidget {
             }
 
             return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 const Text(
                   'Upcoming Events',
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 26,
@@ -310,6 +321,10 @@ class SignedInHomePage extends StatelessWidget {
           TextButton(
             onPressed: () => context.go('/scan-qr'),
             child: const Text('Scan QR'),
+          ),
+          TextButton(
+            onPressed: () => context.go('/shop'),
+            child: const Text('Rewards Shop'),
           ),
           TextButton(
             onPressed: () => FirebaseAuth.instance.signOut(),

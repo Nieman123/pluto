@@ -85,8 +85,8 @@ class _EventQrScanPageState extends State<EventQrScanPage> {
         _lastScannedCode = trimmed;
         _lastScanTime = DateTime.now();
         _statusMessage =
-            'Success: +${result.pointsAwarded} points for ${result.eventName}. '
-            'New balance: ${result.newPointsBalance}.';
+            'Success: +${result.pointsAwarded} Pluto Points for ${result.eventName}. '
+            'New Pluto Points balance: ${result.newPointsBalance}.';
       });
     } on FirebaseException catch (error) {
       if (!mounted) {
@@ -150,7 +150,7 @@ class _EventQrScanPageState extends State<EventQrScanPage> {
                 ),
                 const SizedBox(height: 10),
                 const Text(
-                  'Sign in before scanning event QR codes for rewards points.',
+                  'Sign in before scanning event QR codes for Pluto Points.',
                   style: TextStyle(color: Colors.white70),
                 ),
                 const SizedBox(height: 14),
@@ -194,7 +194,7 @@ class _EventQrScanPageState extends State<EventQrScanPage> {
                   ),
                   const SizedBox(height: 10),
                   const Text(
-                    'Scan the venue QR code to add event points to your account.',
+                    'Scan the venue QR code to add Pluto Points to your account.',
                     style: TextStyle(color: Colors.white70),
                   ),
                   const SizedBox(height: 14),
@@ -252,7 +252,7 @@ class _EventQrScanPageState extends State<EventQrScanPage> {
                               rawCode: _manualCodeController.text,
                             );
                           },
-                    child: const Text('Claim Points'),
+                    child: const Text('Claim Pluto Points'),
                   ),
                 ],
               ),
@@ -276,6 +276,10 @@ class _EventQrScanPageState extends State<EventQrScanPage> {
           TextButton(
             onPressed: () => context.go('/profile'),
             child: const Text('Profile'),
+          ),
+          TextButton(
+            onPressed: () => context.go('/shop'),
+            child: const Text('Rewards Shop'),
           ),
         ],
       ),

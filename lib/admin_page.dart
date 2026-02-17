@@ -330,7 +330,8 @@ class _AdminPageState extends State<AdminPage> {
         int.tryParse(_rewardPointsCostController.text.trim());
     if (pointsCost == null || pointsCost <= 0) {
       setState(() {
-        _statusMessage = 'Reward points cost must be a number greater than 0.';
+        _statusMessage =
+            'Reward Pluto Points cost must be a number greater than 0.';
       });
       return;
     }
@@ -522,7 +523,8 @@ class _AdminPageState extends State<AdminPage> {
         int.tryParse(_eventQrPointsController.text.trim());
     if (pointsAwarded == null || pointsAwarded <= 0) {
       setState(() {
-        _statusMessage = 'Points awarded must be a number greater than 0.';
+        _statusMessage =
+            'Pluto Points awarded must be a number greater than 0.';
       });
       return;
     }
@@ -617,7 +619,7 @@ class _AdminPageState extends State<AdminPage> {
           title: const Text('Delete Event QR?'),
           content: Text(
             'Delete QR for "${eventQrCode.eventName}"? '
-            'This keeps past user points history but removes this code.',
+            'This keeps past user Pluto Points history but removes this code.',
           ),
           actions: <Widget>[
             TextButton(
@@ -1070,7 +1072,7 @@ class _AdminPageState extends State<AdminPage> {
               keyboardType: TextInputType.number,
               style: const TextStyle(color: Colors.white),
               cursorColor: Colors.white,
-              decoration: _inputDecoration('Points Cost'),
+              decoration: _inputDecoration('Pluto Points Cost'),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -1214,7 +1216,7 @@ class _AdminPageState extends State<AdminPage> {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            'Active: ${reward.isActive} | Cost: ${reward.pointsCost} | Inventory: ${reward.inventory?.toString() ?? 'unlimited'}',
+                            'Active: ${reward.isActive} | Cost: ${reward.pointsCost} Pluto Points | Inventory: ${reward.inventory?.toString() ?? 'unlimited'}',
                             style: const TextStyle(color: Colors.white70),
                           ),
                           if (reward.category.isNotEmpty)
@@ -1290,7 +1292,7 @@ class _AdminPageState extends State<AdminPage> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Users scan this QR at the venue to receive points.',
+              'Users scan this QR at the venue to receive Pluto Points.',
               style: TextStyle(color: Colors.white70),
             ),
             const SizedBox(height: 14),
@@ -1306,7 +1308,7 @@ class _AdminPageState extends State<AdminPage> {
               keyboardType: TextInputType.number,
               style: const TextStyle(color: Colors.white),
               cursorColor: Colors.white,
-              decoration: _inputDecoration('Points Awarded'),
+              decoration: _inputDecoration('Pluto Points Awarded'),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -1474,7 +1476,7 @@ class _AdminPageState extends State<AdminPage> {
                           const SizedBox(height: 4),
                           Text(
                             'Active: ${eventQrCode.isActive} | '
-                            'Points: ${eventQrCode.pointsAwarded} | '
+                            'Pluto Points: ${eventQrCode.pointsAwarded} | '
                             'Claims: ${eventQrCode.totalClaims}',
                             style: const TextStyle(color: Colors.white70),
                           ),

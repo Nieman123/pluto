@@ -27,7 +27,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
   String _profileImageDataUrl = '';
   bool _isSavingProfile = false;
-  String? _redeemingRewardId;
   String _statusMessage = '';
 
   String? _profileHydratedForUid;
@@ -178,47 +177,6 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  Future<void> _redeemReward({
-    required User user,
-    required RewardItem rewardItem,
-  }) async {
-    if (_redeemingRewardId != null) {
-      return;
-    }
-
-    setState(() {
-      _redeemingRewardId = rewardItem.id;
-      _statusMessage = '';
-    });
-
-    try {
-      await _profileRepository.redeemReward(
-        uid: user.uid,
-        rewardItem: rewardItem,
-      );
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _statusMessage =
-            'Reward request submitted: ${rewardItem.name} (${rewardItem.pointsCost} points).';
-      });
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _statusMessage = 'Redeem failed: $error';
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _redeemingRewardId = null;
-        });
-      }
-    }
-  }
-
   Widget _buildSignedOutState() {
     return Center(
       child: ConstrainedBox(
@@ -241,7 +199,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 const SizedBox(height: 10),
                 const Text(
-                  'Your profile tracks attendance points, rewards, and redemption history.',
+                  'Your profile tracks attendance Pluto Points, rewards, and redemption history.',
                   style: TextStyle(color: Colors.white70),
                 ),
                 const SizedBox(height: 14),
@@ -413,11 +371,11 @@ class _ProfilePageState extends State<ProfilePage> {
               runSpacing: 10,
               children: <Widget>[
                 _MetricChip(
-                  label: 'Points Balance',
+                  label: 'Pluto Points Balance',
                   value: '${profile.pointsBalance}',
                 ),
                 _MetricChip(
-                  label: 'Lifetime Points',
+                  label: 'Lifetime Pluto Points',
                   value: '${profile.lifetimePoints}',
                 ),
                 _MetricChip(
@@ -427,9 +385,19 @@ class _ProfilePageState extends State<ProfilePage> {
               ],
             ),
             const SizedBox(height: 12),
-            ElevatedButton(
-              onPressed: () => context.go('/scan-qr'),
-              child: const Text('Scan Event QR'),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: <Widget>[
+                ElevatedButton(
+                  onPressed: () => context.go('/scan-qr'),
+                  child: const Text('Scan Event QR'),
+                ),
+                OutlinedButton(
+                  onPressed: () => context.go('/shop'),
+                  child: const Text('Open Rewards Shop'),
+                ),
+              ],
             ),
             const SizedBox(height: 14),
             Text(
@@ -451,7 +419,7 @@ class _ProfilePageState extends State<ProfilePage> {
             Text(
               nextTier == null
                   ? 'Top tier unlocked.'
-                  : '${profile.pointsToNextTier} points to next tier ($nextTier)',
+                  : '${profile.pointsToNextTier} Pluto Points to next tier ($nextTier)',
               style: const TextStyle(color: Colors.white70),
             ),
             const SizedBox(height: 14),
@@ -466,7 +434,7 @@ class _ProfilePageState extends State<ProfilePage> {
             const SizedBox(height: 8),
             if (badges.isEmpty)
               const Text(
-                'Attend events and earn points to unlock badges.',
+                'Attend events and earn Pluto Points to unlock badges.',
                 style: TextStyle(color: Colors.white70),
               ),
             if (badges.isNotEmpty)
@@ -491,159 +459,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildRewardShopCard({
-    required User user,
-    required UserProfile profile,
-  }) {
-    return Card(
-      color: Colors.black.withValues(alpha: 0.45),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: StreamBuilder<List<RewardItem>>(
-          stream: _profileRepository.watchActiveRewardItems(),
-          builder:
-              (BuildContext context, AsyncSnapshot<List<RewardItem>> snapshot) {
-            final List<RewardItem> rewards = snapshot.data ?? <RewardItem>[];
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                const Text(
-                  'Item Shop',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Redeem points for tickets, merch, or special experiences.',
-                  style: TextStyle(color: Colors.white70),
-                ),
-                if (snapshot.connectionState == ConnectionState.waiting)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 16),
-                    child: CircularProgressIndicator(),
-                  ),
-                if (snapshot.hasError)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: Text(
-                      'Unable to load rewards: ${snapshot.error}',
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                  ),
-                if (!snapshot.hasError &&
-                    snapshot.connectionState != ConnectionState.waiting &&
-                    rewards.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 12),
-                    child: Text(
-                      'No reward items yet. Add docs in rewardItems collection with fields: name, description, pointsCost, isActive.',
-                      style: TextStyle(color: Colors.white70),
-                    ),
-                  ),
-                ...rewards.map((RewardItem reward) {
-                  final bool canAfford =
-                      profile.pointsBalance >= reward.pointsCost;
-                  final bool isRedeeming = _redeemingRewardId == reward.id;
-
-                  return Card(
-                    color: Colors.black.withValues(alpha: 0.35),
-                    margin: const EdgeInsets.only(top: 12),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Wrap(
-                            spacing: 12,
-                            runSpacing: 10,
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            children: <Widget>[
-                              if (reward.imageBytes != null)
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.memory(
-                                    reward.imageBytes!,
-                                    width: 110,
-                                    height: 110,
-                                    fit: BoxFit.cover,
-                                  ),
-                                ),
-                              SizedBox(
-                                width: 420,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: <Widget>[
-                                    Text(
-                                      reward.name,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 19,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    if (reward.category.isNotEmpty)
-                                      Text(
-                                        reward.category,
-                                        style: const TextStyle(
-                                            color: Colors.white60),
-                                      ),
-                                    if (reward.description.isNotEmpty)
-                                      Padding(
-                                        padding: const EdgeInsets.only(top: 4),
-                                        child: Text(
-                                          reward.description,
-                                          style: const TextStyle(
-                                            color: Colors.white70,
-                                          ),
-                                        ),
-                                      ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      'Cost: ${reward.pointsCost} pts'
-                                      '${reward.inventory == null ? '' : ' | Inventory: ${reward.inventory}'}',
-                                      style: const TextStyle(
-                                          color: Colors.white70),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          ElevatedButton(
-                            onPressed: (!canAfford || isRedeeming)
-                                ? null
-                                : () {
-                                    _redeemReward(
-                                      user: user,
-                                      rewardItem: reward,
-                                    );
-                                  },
-                            child: Text(
-                              isRedeeming
-                                  ? 'Redeeming...'
-                                  : canAfford
-                                      ? 'Redeem'
-                                      : 'Not Enough Points',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }),
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
-
   Widget _buildPointsHistoryCard(User user) {
     return Card(
       color: Colors.black.withValues(alpha: 0.45),
@@ -660,7 +475,7 @@ class _ProfilePageState extends State<ProfilePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 const Text(
-                  'Points History',
+                  'Pluto Points History',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 28,
@@ -669,7 +484,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Attendance points, redemptions, and adjustments appear here.',
+                  'Attendance Pluto Points, redemptions, and adjustments appear here.',
                   style: TextStyle(color: Colors.white70),
                 ),
                 if (snapshot.connectionState == ConnectionState.waiting)
@@ -691,7 +506,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   const Padding(
                     padding: EdgeInsets.only(top: 12),
                     child: Text(
-                      'No points activity yet.',
+                      'No Pluto Points activity yet.',
                       style: TextStyle(color: Colors.white70),
                     ),
                   ),
@@ -749,8 +564,6 @@ class _ProfilePageState extends State<ProfilePage> {
               const SizedBox(height: 14),
               _buildTierAndPointsCard(profile),
               const SizedBox(height: 14),
-              _buildRewardShopCard(user: user, profile: profile),
-              const SizedBox(height: 14),
               _buildPointsHistoryCard(user),
             ],
           );
@@ -781,8 +594,6 @@ class _ProfilePageState extends State<ProfilePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: <Widget>[
-                      _buildRewardShopCard(user: user, profile: profile),
-                      const SizedBox(height: 14),
                       _buildPointsHistoryCard(user),
                     ],
                   ),
@@ -826,6 +637,10 @@ class _ProfilePageState extends State<ProfilePage> {
           TextButton(
             onPressed: () => context.go('/scan-qr'),
             child: const Text('Scan QR'),
+          ),
+          TextButton(
+            onPressed: () => context.go('/shop'),
+            child: const Text('Rewards Shop'),
           ),
         ],
       ),
