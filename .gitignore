@@ -17,3 +17,5 @@ _site/
 pubspec.lock
 dotenv
 .DS_Store
+.dartServer
+.dart-tool
