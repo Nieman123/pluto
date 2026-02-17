@@ -1,0 +1,644 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+import 'package:sa3_liquid/liquid/plasma/plasma.dart';
+
+import 'current_events_repository.dart';
+
+class AdminPage extends StatefulWidget {
+  const AdminPage({Key? key}) : super(key: key);
+
+  @override
+  State<AdminPage> createState() => _AdminPageState();
+}
+
+class _AdminPageState extends State<AdminPage> {
+  final CurrentEventsRepository _eventsRepository = CurrentEventsRepository();
+
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _detailsController = TextEditingController();
+  final TextEditingController _ticketUrlController = TextEditingController();
+  final TextEditingController _sortOrderController =
+      TextEditingController(text: '0');
+
+  String? _editingEventId;
+  String _flyerDataUrl = '';
+  bool _isActive = true;
+  bool _isSaving = false;
+  String _statusMessage = '';
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _detailsController.dispose();
+    _ticketUrlController.dispose();
+    _sortOrderController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickFlyerImage() async {
+    final FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: <String>['png', 'jpg', 'jpeg', 'webp'],
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty) {
+      return;
+    }
+
+    final PlatformFile file = result.files.first;
+    final Uint8List? fileBytes = file.bytes;
+    if (fileBytes == null) {
+      setState(() {
+        _statusMessage = 'Unable to read image bytes.';
+      });
+      return;
+    }
+
+    if (fileBytes.lengthInBytes > 900000) {
+      setState(() {
+        _statusMessage =
+            'Image is too large for Firestore document storage. Use a smaller file.';
+      });
+      return;
+    }
+
+    final String mimeType = _mimeTypeForExtension(file.extension ?? '');
+    final String dataUrl = 'data:$mimeType;base64,${base64Encode(fileBytes)}';
+
+    setState(() {
+      _flyerDataUrl = dataUrl;
+      _statusMessage = 'Flyer selected.';
+    });
+  }
+
+  Future<void> _saveEvent() async {
+    final String title = _titleController.text.trim();
+    if (title.isEmpty) {
+      setState(() {
+        _statusMessage = 'Title is required.';
+      });
+      return;
+    }
+
+    final int? parsedSortOrder = int.tryParse(_sortOrderController.text.trim());
+    if (parsedSortOrder == null) {
+      setState(() {
+        _statusMessage = 'Sort order must be a number.';
+      });
+      return;
+    }
+
+    setState(() {
+      _isSaving = true;
+      _statusMessage = '';
+    });
+
+    try {
+      final String eventId = await _eventsRepository.saveEvent(
+        id: _editingEventId,
+        title: title,
+        details: _detailsController.text,
+        ticketUrl: _ticketUrlController.text,
+        flyerDataUrl: _flyerDataUrl,
+        isActive: _isActive,
+        sortOrder: parsedSortOrder,
+      );
+
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _editingEventId = eventId;
+        _statusMessage = 'Event saved.';
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _statusMessage = 'Failed to save event: $error';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _deleteEvent(CurrentEvent event) async {
+    final bool? shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Delete Event?'),
+          content: Text('Delete "${event.title}" from current events?'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldDelete != true) {
+      return;
+    }
+
+    try {
+      await _eventsRepository.deleteEvent(event.id);
+      if (!mounted) {
+        return;
+      }
+      if (_editingEventId == event.id) {
+        _startNewEvent();
+      }
+      setState(() {
+        _statusMessage = 'Event deleted.';
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _statusMessage = 'Failed to delete event: $error';
+      });
+    }
+  }
+
+  void _editEvent(CurrentEvent event) {
+    setState(() {
+      _editingEventId = event.id;
+      _titleController.text = event.title;
+      _detailsController.text = event.details;
+      _ticketUrlController.text = event.ticketUrl;
+      _sortOrderController.text = event.sortOrder.toString();
+      _isActive = event.isActive;
+      _flyerDataUrl = event.flyerDataUrl;
+      _statusMessage = 'Editing "${event.title}".';
+    });
+  }
+
+  void _startNewEvent() {
+    setState(() {
+      _editingEventId = null;
+      _titleController.clear();
+      _detailsController.clear();
+      _ticketUrlController.clear();
+      _sortOrderController.text = '0';
+      _flyerDataUrl = '';
+      _isActive = true;
+      _statusMessage = 'New event form ready.';
+    });
+  }
+
+  Widget _buildSignedOutState() {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 600),
+        child: Card(
+          color: Colors.black.withValues(alpha: 0.45),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const Text(
+                  'Sign in required',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'You must sign in before opening the admin editor.',
+                  style: TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 14),
+                ElevatedButton(
+                  onPressed: () => context.go('/sign-on'),
+                  child: const Text('Open Sign On'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUnauthorizedState(User user) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 760),
+        child: Card(
+          color: Colors.black.withValues(alpha: 0.45),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const Text(
+                  'Admin access denied',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'This user is signed in, but the UID is not present in Firestore at adminUsers/{uid}.',
+                  style: TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 10),
+                SelectableText(
+                  'UID: ${user.uid}',
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEditorLayout() {
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final Widget editor = _buildEditorCard();
+        final Widget events = _buildEventsCard();
+
+        if (constraints.maxWidth < 1100) {
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: <Widget>[
+              editor,
+              const SizedBox(height: 16),
+              events,
+            ],
+          );
+        }
+
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Expanded(flex: 5, child: editor),
+              const SizedBox(width: 16),
+              Expanded(flex: 6, child: events),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildEditorCard() {
+    final Uint8List? flyerBytes = decodeFlyerDataUrl(_flyerDataUrl);
+
+    return Card(
+      color: Colors.black.withValues(alpha: 0.45),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              _editingEventId == null
+                  ? 'Create Current Event'
+                  : 'Edit Current Event',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: _titleController,
+              decoration: const InputDecoration(
+                labelText: 'Title',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _detailsController,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Details (date, time, location, etc.)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _ticketUrlController,
+              decoration: const InputDecoration(
+                labelText: 'Ticket URL (optional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _sortOrderController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Sort Order',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            SwitchListTile(
+              title: const Text('Active event'),
+              value: _isActive,
+              onChanged: (bool value) {
+                setState(() {
+                  _isActive = value;
+                });
+              },
+            ),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: <Widget>[
+                ElevatedButton(
+                  onPressed: _isSaving ? null : _pickFlyerImage,
+                  child: const Text('Upload Flyer Image'),
+                ),
+                OutlinedButton(
+                  onPressed: _isSaving
+                      ? null
+                      : () {
+                          setState(() {
+                            _flyerDataUrl = '';
+                            _statusMessage = 'Flyer image removed.';
+                          });
+                        },
+                  child: const Text('Remove Flyer'),
+                ),
+              ],
+            ),
+            if (flyerBytes != null) ...<Widget>[
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.memory(
+                  flyerBytes,
+                  height: 260,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: <Widget>[
+                ElevatedButton(
+                  onPressed: _isSaving ? null : _saveEvent,
+                  child: const Text('Save Event'),
+                ),
+                OutlinedButton(
+                  onPressed: _isSaving ? null : _startNewEvent,
+                  child: const Text('New Event'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEventsCard() {
+    return Card(
+      color: Colors.black.withValues(alpha: 0.45),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: StreamBuilder<List<CurrentEvent>>(
+          stream: _eventsRepository.watchEvents(onlyActive: false),
+          builder: (BuildContext context,
+              AsyncSnapshot<List<CurrentEvent>> snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const SizedBox(
+                height: 120,
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+
+            if (snapshot.hasError) {
+              return Text(
+                'Failed to load events: ${snapshot.error}',
+                style: const TextStyle(color: Colors.white70),
+              );
+            }
+
+            final List<CurrentEvent> events = snapshot.data ?? <CurrentEvent>[];
+            if (events.isEmpty) {
+              return const Text(
+                'No current events found. Create one using the form.',
+                style: TextStyle(color: Colors.white70),
+              );
+            }
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const Text(
+                  'Current Events',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ...events.map((CurrentEvent event) {
+                  return Card(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    margin: const EdgeInsets.only(bottom: 10),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            event.title.isEmpty ? '(Untitled)' : event.title,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Active: ${event.isActive} | Sort: ${event.sortOrder}',
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                          Text(
+                            'Updated: ${_formatDate(event.updatedAt)}',
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                          if (event.details.isNotEmpty) ...<Widget>[
+                            const SizedBox(height: 6),
+                            Text(
+                              event.details,
+                              style: const TextStyle(color: Colors.white70),
+                            ),
+                          ],
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 10,
+                            children: <Widget>[
+                              ElevatedButton(
+                                onPressed: () => _editEvent(event),
+                                child: const Text('Edit'),
+                              ),
+                              OutlinedButton(
+                                onPressed: () => _deleteEvent(event),
+                                child: const Text('Delete'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) {
+      return 'Unknown';
+    }
+    return DateFormat('yyyy-MM-dd HH:mm').format(date.toLocal());
+  }
+
+  String _mimeTypeForExtension(String extension) {
+    switch (extension.toLowerCase()) {
+      case 'png':
+        return 'image/png';
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'webp':
+        return 'image/webp';
+      default:
+        return 'application/octet-stream';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Admin - Current Events'),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => context.go('/'),
+            child: const Text('Home'),
+          ),
+          TextButton(
+            onPressed: () => context.go('/sign-on'),
+            child: const Text('Sign On'),
+          ),
+        ],
+      ),
+      body: Stack(
+        children: <Widget>[
+          const PlasmaRenderer(
+            color: Color.fromARGB(68, 85, 0, 165),
+            blur: 0.5,
+            blendMode: BlendMode.plus,
+            particleType: ParticleType.atlas,
+            variation1: 1,
+          ),
+          StreamBuilder<User?>(
+            stream: FirebaseAuth.instance.authStateChanges(),
+            builder: (BuildContext context, AsyncSnapshot<User?> authSnapshot) {
+              if (authSnapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              final User? user = authSnapshot.data;
+              if (user == null) {
+                return _buildSignedOutState();
+              }
+
+              return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                stream: FirebaseFirestore.instance
+                    .collection('adminUsers')
+                    .doc(user.uid)
+                    .snapshots(),
+                builder: (BuildContext context,
+                    AsyncSnapshot<DocumentSnapshot<Map<String, dynamic>>>
+                        adminSnapshot) {
+                  if (adminSnapshot.connectionState ==
+                      ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  final bool isAdmin = adminSnapshot.data?.exists ?? false;
+                  if (!isAdmin) {
+                    return _buildUnauthorizedState(user);
+                  }
+
+                  return _buildEditorLayout();
+                },
+              );
+            },
+          ),
+          if (_isSaving)
+            Container(
+              color: Colors.black45,
+              child: const Center(child: CircularProgressIndicator()),
+            ),
+          if (_statusMessage.isNotEmpty)
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Container(
+                margin: const EdgeInsets.all(18),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.black87,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  _statusMessage,
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}

@@ -68,7 +68,7 @@
     <!-- Custom Bootstrap Script for Service Worker & App Loading -->
     <script>
       // The value below is injected by the Flutter build.
-      var serviceWorkerVersion = '{{flutter_service_worker_version}}';
+      var serviceWorkerVersion = {{flutter_service_worker_version}};
       var scriptLoaded = false;
       function loadMainDartJs() {
         if (scriptLoaded) return;
@@ -98,7 +98,7 @@
               });
             }
             if (!reg.active && (reg.installing || reg.waiting)) {
-              // Wait for activation if there’s no active worker.
+              // Wait for activation if there's no active worker.
               waitForActivation(reg.installing ?? reg.waiting);
             } else if (!reg.active.scriptURL.endsWith(serviceWorkerVersion)) {
               // If version mismatch, update the service worker.

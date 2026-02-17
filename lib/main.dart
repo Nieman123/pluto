@@ -3,12 +3,13 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import 'admin_page.dart';
 import 'app.dart';
 import 'camping.dart';
 import 'firebase_options.dart';
 import 'links.dart';
-//import 'schedule.dart';
 import 'schedule.dart';
+import 'sign_on_page.dart';
 import 'src/configure_web.dart';
 import 'src/json_service.dart';
 import 'src/theme/config.dart';
@@ -74,6 +75,18 @@ class _MyAppState extends State<MyApp> {
         path: '/schedule',
         builder: (BuildContext context, GoRouterState state) {
           return const SchedulePage();
+        },
+      ),
+      GoRoute(
+        path: '/sign-on',
+        builder: (BuildContext context, GoRouterState state) {
+          return const SignOnPage();
+        },
+      ),
+      GoRoute(
+        path: '/admin',
+        builder: (BuildContext context, GoRouterState state) {
+          return const AdminPage();
         },
       ),
     ], debugLogDiagnostics: true);

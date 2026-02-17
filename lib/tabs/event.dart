@@ -1,434 +1,291 @@
 import 'package:carousel_slider_plus/carousel_slider_plus.dart';
-//import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher_string.dart';
-//import 'package:url_launcher/url_launcher.dart';
 
+import '../current_events_repository.dart';
 import '../src/custom/custom_text.dart';
 
-class Event extends StatefulWidget {
+class Event extends StatelessWidget {
   const Event({Key? key}) : super(key: key);
 
-  @override
-  _EventState createState() => _EventState();
-}
+  static const String _fallbackTitle = 'ManaFest 2026';
+  static const String _fallbackDetails = 'Live music + community gathering';
+  static const String _fallbackTicketUrl = 'https://posh.vip/e/manafest-2026';
 
-class _EventState extends State<Event> {
-  static const String _manafestTicketsUrl = 'https://posh.vip/e/manafest-2026';
-
-  bool isHover = false;
-  String lastSaturday = '';
-  String thirdSaturday = '';
-  final imageList = [
-    ['assets/gallery/2.webp', 'Photo by @tatehunna.photography'],
-    [
+  static const List<List<String>> _imageList = <List<String>>[
+    <String>['assets/gallery/2.webp', 'Photo by @tatehunna.photography'],
+    <String>[
       'assets/gallery/elysium-10_resized.jpg',
       'Photo by @tatehunna.photography'
     ],
-    ['assets/gallery/13.webp', 'Photo by @tatehunna.photography'],
-    [
+    <String>['assets/gallery/13.webp', 'Photo by @tatehunna.photography'],
+    <String>[
       'assets/gallery/elysium-12_resized.jpg',
       'Photo by @tatehunna.photography'
     ],
-    ['assets/gallery/15.webp', 'Photo by @tatehunna.photography'],
-    ['assets/gallery/elysium-3_resized.jpg', 'Photo by @tatehunna.photography'],
-    ['assets/gallery/4.webp', 'Photo by @nickyg.photos'],
-    [
+    <String>['assets/gallery/15.webp', 'Photo by @tatehunna.photography'],
+    <String>[
+      'assets/gallery/elysium-3_resized.jpg',
+      'Photo by @tatehunna.photography'
+    ],
+    <String>['assets/gallery/4.webp', 'Photo by @nickyg.photos'],
+    <String>[
       'assets/gallery/elysium-11_resized.jpg',
       'Photo by @tatehunna.photography'
     ],
-    ['assets/gallery/elysium-9_resized.jpg', 'Photo by @tatehunna.photography'],
-    ['assets/gallery/elysium-8_resized.jpg', 'Photo by @tatehunna.photography'],
-    ['assets/gallery/elysium-1_resized.jpg', 'Photo by @tatehunna.photography'],
-    ['assets/gallery/11.webp', 'Photo by @tatehunna.photography'],
-    ['assets/gallery/elysium-2_resized.jpg', 'Photo by @tatehunna.photography'],
-    ['assets/gallery/elysium-7_resized.jpg', 'Photo by @tatehunna.photography'],
-    ['assets/gallery/10.webp', 'Photo by @tatehunna.photography'],
-    ['assets/gallery/elysium-6_resized.jpg', 'Photo by @tatehunna.photography'],
-    ['assets/gallery/elysium-4_resized.jpg', 'Photo by @tatehunna.photography'],
-    ['assets/gallery/14.webp', 'Photo by @tatehunna.photography'],
-    ['assets/gallery/1.webp', 'Pluto at the Full Moon Gathering'],
+    <String>[
+      'assets/gallery/elysium-9_resized.jpg',
+      'Photo by @tatehunna.photography'
+    ],
+    <String>[
+      'assets/gallery/elysium-8_resized.jpg',
+      'Photo by @tatehunna.photography'
+    ],
+    <String>[
+      'assets/gallery/elysium-1_resized.jpg',
+      'Photo by @tatehunna.photography'
+    ],
+    <String>['assets/gallery/11.webp', 'Photo by @tatehunna.photography'],
+    <String>[
+      'assets/gallery/elysium-2_resized.jpg',
+      'Photo by @tatehunna.photography'
+    ],
+    <String>[
+      'assets/gallery/elysium-7_resized.jpg',
+      'Photo by @tatehunna.photography'
+    ],
+    <String>['assets/gallery/10.webp', 'Photo by @tatehunna.photography'],
+    <String>[
+      'assets/gallery/elysium-6_resized.jpg',
+      'Photo by @tatehunna.photography'
+    ],
+    <String>[
+      'assets/gallery/elysium-4_resized.jpg',
+      'Photo by @tatehunna.photography'
+    ],
+    <String>['assets/gallery/14.webp', 'Photo by @tatehunna.photography'],
+    <String>['assets/gallery/1.webp', 'Pluto at the Full Moon Gathering'],
   ];
 
-  Future<void> _openManafestTickets() async {
-    await launchUrlString(
-      _manafestTicketsUrl,
-      webOnlyWindowName: '_blank',
+  static final CurrentEventsRepository _eventsRepository =
+      CurrentEventsRepository();
+
+  Future<void> _openLink(String url) async {
+    if (url.trim().isEmpty) {
+      return;
+    }
+    await launchUrlString(url, webOnlyWindowName: '_blank');
+  }
+
+  Widget _buildFlyer({
+    required BuildContext context,
+    required CurrentEvent event,
+  }) {
+    if (event.flyerBytes != null) {
+      return Image.memory(
+        event.flyerBytes!,
+        fit: BoxFit.cover,
+      );
+    }
+
+    return Container(
+      color: Colors.white10,
+      alignment: Alignment.center,
+      child: const Padding(
+        padding: EdgeInsets.symmetric(vertical: 28, horizontal: 16),
+        child: Text(
+          'No flyer image uploaded yet',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.white70),
+        ),
+      ),
     );
   }
 
-  @override
-  void initState() {
-    super.initState();
-    calculateThirdSaturday();
+  Widget _buildEventCard(
+    BuildContext context, {
+    required String title,
+    required String details,
+    required String ticketUrl,
+    required Widget flyer,
+  }) {
+    final Color textColor =
+        Theme.of(context).primaryColorLight.withValues(alpha: 0.9);
+
+    return Card(
+      color: Colors.black.withValues(alpha: 0.35),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            if (details.trim().isNotEmpty) ...<Widget>[
+              const SizedBox(height: 6),
+              Text(
+                details,
+                style: TextStyle(fontSize: 18, color: textColor),
+              ),
+            ],
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: flyer,
+            ),
+            if (ticketUrl.trim().isNotEmpty) ...<Widget>[
+              const SizedBox(height: 10),
+              Center(
+                child: ElevatedButton(
+                  onPressed: () => _openLink(ticketUrl),
+                  child: const Text('Click For Tickets'),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEventsContent(BuildContext context, List<CurrentEvent> events) {
+    if (events.isEmpty) {
+      return _buildEventCard(
+        context,
+        title: _fallbackTitle,
+        details: _fallbackDetails,
+        ticketUrl: _fallbackTicketUrl,
+        flyer: Image.asset(
+          'assets/events/Mana-Fest-2026-Flyer-half.png',
+          fit: BoxFit.cover,
+        ),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final bool isCompact = constraints.maxWidth < 1000;
+        final double cardWidth =
+            isCompact ? constraints.maxWidth : constraints.maxWidth * 0.45;
+
+        return Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 16,
+          runSpacing: 16,
+          children: events
+              .map((CurrentEvent event) => SizedBox(
+                    width: cardWidth,
+                    child: _buildEventCard(
+                      context,
+                      title: event.title,
+                      details: event.details,
+                      ticketUrl: event.ticketUrl,
+                      flyer: _buildFlyer(context: context, event: event),
+                    ),
+                  ))
+              .toList(),
+        );
+      },
+    );
+  }
+
+  Widget _buildGalleryCarousel(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(8),
+      child: CarouselSlider(
+        options: CarouselOptions(
+          aspectRatio: 1,
+        ),
+        items: _imageList.map((List<String> item) {
+          return Builder(
+            builder: (BuildContext context) {
+              return Stack(
+                children: <Widget>[
+                  Container(
+                    width: MediaQuery.of(context).size.width,
+                    margin: const EdgeInsets.symmetric(horizontal: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.black12,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Image.asset(item[0], fit: BoxFit.cover),
+                  ),
+                  Align(
+                    alignment: const Alignment(0, 0.9),
+                    child: Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Text(
+                        item[1],
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w100,
+                          backgroundColor: Colors.black54,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
+        }).toList(),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final double width = MediaQuery.of(context).size.width;
-    //final double height = MediaQuery.of(context).size.height;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      child: Column(
+        children: <Widget>[
+          CustomText(
+            text: 'UPCOMING EVENTS',
+            fontSize: 48,
+            color: Theme.of(context).primaryColorLight,
+          ),
+          const SizedBox(height: 10),
+          StreamBuilder<List<CurrentEvent>>(
+            stream: _eventsRepository.watchEvents(onlyActive: true),
+            builder: (BuildContext context,
+                AsyncSnapshot<List<CurrentEvent>> snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Padding(
+                  padding: EdgeInsets.all(20),
+                  child: CircularProgressIndicator(),
+                );
+              }
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        LayoutBuilder(
-            builder: (BuildContext context, BoxConstraints constraints) {
-          if (constraints.maxWidth < 1000) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10.0),
-              child: Column(
-                children: [
-                  CustomText(
-                      text: 'UPCOMING EVENTS',
-                      fontSize: 48,
-                      color: Theme.of(context).primaryColorLight),
-                  Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 5.0),
-                      child: Column(
-                        children: [
-                          CustomText(
-                              text: 'ManaFest 2026',
-                              fontSize: 48,
-                              color: Theme.of(context).primaryColorLight),
-                          // Padding(
-                          //   padding: const EdgeInsets.symmetric(vertical: 20.0),
-                          //   child: CustomText(
-                          //       text: 'Open Decks 8-10PM!',
-                          //       fontSize: 28,
-                          //       color: Theme.of(context)
-                          //           .primaryColorLight
-                          //           .withOpacity(0.7)),
-                          // ),
-                          // CustomText(
-                          //     text: 'Saturday, October 19th 8PM-2AM',
-                          //     fontSize: 28,
-                          //     color: Theme.of(context)
-                          //         .primaryColorLight
-                          //         .withOpacity(0.7)),
-                          // Padding(
-                          //   padding: const EdgeInsets.only(top: 15.0),
-                          //   child: ElevatedButton(
-                          //     onPressed: () async {
-                          //       GoRouter.of(context).go('/campout');
-                          //     },
-                          //     style: ButtonStyle(
-                          //       backgroundColor: WidgetStateProperty.all(Colors
-                          //           .purple), // You can change this to your desired color
-                          //       foregroundColor: WidgetStateProperty.all(Colors
-                          //           .white), // You can change this to your desired color
-                          //     ),
-                          //     child: Padding(
-                          //       padding: const EdgeInsets.all(8.0),
-                          //       child: CustomText(
-                          //           text: 'CLICK FOR PASSES/INFO',
-                          //           fontSize: 28,
-                          //           color: Theme.of(context)
-                          //               .primaryColorLight
-                          //               .withOpacity(0.7)),
-                          //     ),
-                          //   ),
-                          // ),
-                        ],
-                      )),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: Card(
-                      semanticContainer: true,
-                      clipBehavior: Clip.antiAliasWithSaveLayer,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10.0),
-                      ),
-                      elevation: 5,
-                      margin: const EdgeInsets.all(20.0),
-                      child: Image.asset(
-                        'assets/events/Mana-Fest-2026-Flyer-half.png',
-                        fit: BoxFit.fill,
-                      ),
-                    ),
+              if (snapshot.hasError) {
+                return Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    'Unable to load events right now: ${snapshot.error}',
+                    style: const TextStyle(color: Colors.white70),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12.0),
-                    child: ElevatedButton(
-                      style: ButtonStyle(
-                        backgroundColor: WidgetStateProperty.all(Colors.purple),
-                        //foregroundColor: WidgetStateProperty.all(Colors.white),
-                      ),
-                      onPressed: _openManafestTickets,
-                      child: const Text('Click For Tickets'),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: CarouselSlider(
-                      options: CarouselOptions(
-                        aspectRatio: 1,
-                        autoPlay: true,
-                        autoPlayInterval: const Duration(seconds: 4),
-                        enlargeCenterPage: false,
-                      ),
-                      items: imageList.map((i) {
-                        return Builder(
-                          builder: (BuildContext context) {
-                            return Stack(
-                              children: [
-                                Container(
-                                    width: MediaQuery.of(context).size.width,
-                                    margin: const EdgeInsets.symmetric(
-                                        horizontal: 5.0),
-                                    decoration: BoxDecoration(
-                                      color: Colors.amber,
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child:
-                                        Image.asset(i[0], fit: BoxFit.cover)),
-                                Align(
-                                  alignment: const Alignment(
-                                      0.0, 0.9), // Bottom center
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(10.0),
-                                    child: Text(
-                                      i[1],
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w100,
-                                        backgroundColor: Colors.black54,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          } else {
-            //Desktop Layout
-            return Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    SizedBox(
-                      width: width / 2,
-                      child: Column(
-                        children: [
-                          CustomText(
-                              text: 'UPCOMING EVENTS',
-                              fontSize: 48,
-                              color: Theme.of(context).primaryColorLight),
-                          Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 5.0),
-                              child: Column(
-                                children: [
-                                  CustomText(
-                                      text: 'ManaFest 2026',
-                                      fontSize: 48,
-                                      color:
-                                          Theme.of(context).primaryColorLight),
-                                  // Padding(
-                                  //   padding: const EdgeInsets.symmetric(
-                                  //       vertical: 20.0),
-                                  //   child: CustomText(
-                                  //       text: 'Open decks 8-10PM!',
-                                  //       fontSize: 28,
-                                  //       color: Theme.of(context)
-                                  //           .primaryColorLight
-                                  //           .withOpacity(0.7)),
-                                  // ),
-                                  // CustomText(
-                                  //     text: 'May 29 - June 1, 2025',
-                                  //     fontSize: 28,
-                                  //     color: Theme.of(context)
-                                  //         .primaryColorLight
-                                  //         .withOpacity(0.7)),
-                                  // Padding(
-                                  //   padding: const EdgeInsets.only(top: 15.0),
-                                  //   child: ElevatedButton(
-                                  //     onPressed: () async {
-                                  //       GoRouter.of(context).go('/campout');
-                                  //     },
-                                  //     style: ButtonStyle(
-                                  //       backgroundColor:
-                                  //           WidgetStateProperty.all(Colors
-                                  //               .purple), // You can change this to your desired color
-                                  //       foregroundColor:
-                                  //           WidgetStateProperty.all(Colors
-                                  //               .white), // You can change this to your desired color
-                                  //     ),
-                                  //     child: Padding(
-                                  //       padding: const EdgeInsets.all(8.0),
-                                  //       child: CustomText(
-                                  //           text: 'CLICK FOR PASSES/INFO',
-                                  //           fontSize: 28,
-                                  //           color: Theme.of(context)
-                                  //               .primaryColorLight
-                                  //               .withOpacity(0.7)),
-                                  //     ),
-                                  //   ),
-                                  // ),
-                                ],
-                              )),
-                          SizedBox(
-                            width: width / 3,
-                            child: Column(
-                              children: [
-                                Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 8.0),
-                                  child: Card(
-                                    semanticContainer: true,
-                                    clipBehavior: Clip.antiAliasWithSaveLayer,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10.0),
-                                    ),
-                                    elevation: 5,
-                                    margin: EdgeInsets.all(10),
-                                    child: Image.asset(
-                                      'assets/events/Mana-Fest-2026-Flyer-half.png',
-                                      fit: BoxFit.fill,
-                                    ),
-                                  ),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 12.0),
-                                  child: ElevatedButton(
-                                    onPressed: _openManafestTickets,
-                                    child: const Text('Click For Tickets'),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(
-                  width: width / 2,
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: CarouselSlider(
-                      options: CarouselOptions(
-                        aspectRatio: 1,
-                        autoPlay: true,
-                        autoPlayInterval: const Duration(seconds: 4),
-                        enlargeCenterPage: false,
-                      ),
-                      items: imageList.map((i) {
-                        return Builder(
-                          builder: (BuildContext context) {
-                            return Stack(
-                              children: [
-                                Container(
-                                    width: MediaQuery.of(context).size.width,
-                                    margin: const EdgeInsets.symmetric(
-                                        horizontal: 5.0),
-                                    decoration: BoxDecoration(
-                                      color: Colors.amber,
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child:
-                                        Image.asset(i[0], fit: BoxFit.cover)),
-                                Align(
-                                  alignment: const Alignment(
-                                      0.0, 0.9), // Bottom center
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(10.0),
-                                    child: Text(
-                                      i[1],
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w100,
-                                        backgroundColor: Colors.black54,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ),
-              ],
-            );
-          }
-        }),
-      ],
+                );
+              }
+
+              return _buildEventsContent(
+                context,
+                snapshot.data ?? <CurrentEvent>[],
+              );
+            },
+          ),
+          const SizedBox(height: 14),
+          _buildGalleryCarousel(context),
+        ],
+      ),
     );
-  }
-
-  void calculateLastSaturday() {
-    // Set date to the last day of the month
-    DateTime dt = DateTime(DateTime.now().year, DateTime.now().month + 1, 0);
-
-    // Find the last Saturday of the month
-    while (dt.weekday != DateTime.saturday) {
-      dt = dt.subtract(Duration(days: 1));
-    }
-
-    setState(() {
-      lastSaturday = formatDateTime(dt);
-    });
-  }
-
-  void calculateThirdSaturday() {
-    // Set date to the first day of the month
-    DateTime dt = DateTime(DateTime.now().year, DateTime.now().month, 1);
-
-    // Find the first Saturday of the month
-    while (dt.weekday != DateTime.saturday) {
-      dt = dt.add(Duration(days: 1));
-    }
-
-    // Add 14 days to get to the third Saturday
-    dt = dt.add(Duration(days: 14));
-
-    setState(() {
-      thirdSaturday = formatDateTime(
-          dt); // Assuming formatDateTime is a method that formats the DateTime object as desired
-    });
-  }
-
-  String formatDateTime(DateTime dateTime) {
-    int dayNum = dateTime.day;
-    String daySuffix;
-
-    if (!(dayNum >= 11 && dayNum <= 13)) {
-      switch (dayNum % 10) {
-        case 1:
-          daySuffix = 'st';
-          break;
-        case 2:
-          daySuffix = 'nd';
-          break;
-        case 3:
-          daySuffix = 'rd';
-          break;
-        default:
-          daySuffix = 'th';
-      }
-    } else {
-      daySuffix = 'th';
-    }
-
-    final DateFormat formatter =
-        DateFormat('MMMM d', 'en_US'); // e.g. August 26
-    String formatted = formatter.format(dateTime);
-
-    return "$formatted$daySuffix"; // e.g. August 26th
   }
 }
