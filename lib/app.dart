@@ -20,6 +20,9 @@ class App extends StatelessWidget {
         builder: (BuildContext context, BoxConstraints constraints) {
       if (constraints.maxWidth < 1000) {
         return Scaffold(
+          appBar: PreferredSize(
+              preferredSize: Size(width, height * 0.07),
+              child: const NavBar(isDarkModeBtnVisible: true)),
           body: Stack(
             children: <Widget>[
               const PlasmaRenderer(
