@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -25,12 +26,6 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   runApp(const MyApp());
-  if (await FirebaseMessaging.instance.isSupported()) {
-    await FirebaseMessaging.instance.getToken(
-      vapidKey:
-          'BBwgiNd7-lSc0iqFjrIprkGQDgiV8Z67WprIVKqc3-hVFpanH9xOAnrHQKZ45h4JaMIp9nljQONhdqzBvpuJINE',
-    );
-  }
 }
 
 class MyApp extends StatefulWidget {
@@ -40,13 +35,35 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  static const String _webVapidKey =
+      'BBwgiNd7-lSc0iqFjrIprkGQDgiV8Z67WprIVKqc3-hVFpanH9xOAnrHQKZ45h4JaMIp9nljQONhdqzBvpuJINE';
+
   late final GoRouter _router;
+  bool _notificationsSupported = false;
+  bool _isCheckingNotificationSupport = true;
+  bool _isRequestingNotificationPermission = false;
+  bool _notificationPromptDismissed = false;
+  NotificationSettings? _notificationSettings;
+
+  bool get _hasNotificationPermission {
+    final AuthorizationStatus? status =
+        _notificationSettings?.authorizationStatus;
+    return status == AuthorizationStatus.authorized ||
+        status == AuthorizationStatus.provisional;
+  }
+
+  bool get _shouldShowNotificationPrompt {
+    return !_isCheckingNotificationSupport &&
+        _notificationsSupported &&
+        !_hasNotificationPermission &&
+        !_notificationPromptDismissed;
+  }
 
   @override
   void initState() {
-    getPermission();
-    messageListener();
     super.initState();
+    _initializeNotifications();
+    messageListener();
     currentTheme.addListener(() {
       setState(() {});
     });
@@ -107,12 +124,76 @@ class _MyAppState extends State<MyApp> {
     ], debugLogDiagnostics: true);
   }
 
-  Future<void> getPermission() async {
+  Future<void> _initializeNotifications() async {
     final FirebaseMessaging messaging = FirebaseMessaging.instance;
+    final bool supported = await messaging.isSupported();
+    if (!mounted) {
+      return;
+    }
 
-    final NotificationSettings settings = await messaging.requestPermission();
+    if (!supported) {
+      setState(() {
+        _notificationsSupported = false;
+        _isCheckingNotificationSupport = false;
+      });
+      return;
+    }
 
-    debugPrint('User granted permission: ${settings.authorizationStatus}');
+    final NotificationSettings settings =
+        await messaging.getNotificationSettings();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _notificationsSupported = true;
+      _notificationSettings = settings;
+      _isCheckingNotificationSupport = false;
+    });
+
+    if (_hasNotificationPermission) {
+      await _refreshMessagingToken();
+    }
+  }
+
+  Future<void> _refreshMessagingToken() async {
+    if (!_notificationsSupported) {
+      return;
+    }
+    final FirebaseMessaging messaging = FirebaseMessaging.instance;
+    await messaging.getToken(vapidKey: kIsWeb ? _webVapidKey : null);
+  }
+
+  Future<void> _requestPermissionFromUserAction() async {
+    if (_isRequestingNotificationPermission) {
+      return;
+    }
+    setState(() {
+      _isRequestingNotificationPermission = true;
+    });
+
+    try {
+      final FirebaseMessaging messaging = FirebaseMessaging.instance;
+      final NotificationSettings settings = await messaging.requestPermission();
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _notificationSettings = settings;
+        if (_hasNotificationPermission) {
+          _notificationPromptDismissed = true;
+        }
+      });
+
+      if (_hasNotificationPermission) {
+        await _refreshMessagingToken();
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRequestingNotificationPermission = false;
+        });
+      }
+    }
   }
 
   void messageListener() {
@@ -147,6 +228,86 @@ class _MyAppState extends State<MyApp> {
       theme: CustomTheme.darkTheme,
       darkTheme: CustomTheme.darkTheme,
       themeMode: currentTheme.currentTheme,
+      builder: (BuildContext context, Widget? child) {
+        final Widget content = child ?? const SizedBox.shrink();
+        if (!_shouldShowNotificationPrompt) {
+          return content;
+        }
+
+        final AuthorizationStatus status =
+            _notificationSettings?.authorizationStatus ??
+                AuthorizationStatus.notDetermined;
+        final bool isDenied = status == AuthorizationStatus.denied;
+
+        return Stack(
+          children: <Widget>[
+            content,
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: SafeArea(
+                minimum: const EdgeInsets.all(14),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 760),
+                  child: Card(
+                    color: Colors.black.withValues(alpha: 0.92),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            isDenied
+                                ? 'Notifications are currently blocked'
+                                : 'Enable Pluto notifications',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            isDenied
+                                ? 'Allow notifications in browser settings, then tap Enable again. On iPhone/iPad, use the Home Screen app.'
+                                : 'Get event drops and reward updates. On iPhone/iPad, install Pluto to Home Screen and open it there.',
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 10,
+                            children: <Widget>[
+                              ElevatedButton(
+                                onPressed: _isRequestingNotificationPermission
+                                    ? null
+                                    : _requestPermissionFromUserAction,
+                                child: Text(
+                                  _isRequestingNotificationPermission
+                                      ? 'Enabling...'
+                                      : 'Enable Notifications',
+                                ),
+                              ),
+                              OutlinedButton(
+                                onPressed: () {
+                                  setState(() {
+                                    _notificationPromptDismissed = true;
+                                  });
+                                },
+                                child: const Text('Not Now'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
