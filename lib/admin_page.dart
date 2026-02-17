@@ -6,8 +6,10 @@ import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:sa3_liquid/liquid/plasma/plasma.dart';
 
 import 'current_events_repository.dart';
@@ -38,6 +40,11 @@ class _AdminPageState extends State<AdminPage> {
       TextEditingController();
   final TextEditingController _rewardCategoryController =
       TextEditingController();
+  final TextEditingController _eventQrNameController = TextEditingController();
+  final TextEditingController _eventQrCodeController = TextEditingController();
+  final TextEditingController _eventQrPointsController =
+      TextEditingController(text: '50');
+  final TextEditingController _eventQrNotesController = TextEditingController();
 
   String? _editingEventId;
   String _flyerDataUrl = '';
@@ -47,7 +54,16 @@ class _AdminPageState extends State<AdminPage> {
   String _rewardImageDataUrl = '';
   bool _rewardIsActive = true;
   bool _isSavingReward = false;
+  String? _editingEventQrId;
+  bool _eventQrIsActive = true;
+  bool _isSavingEventQr = false;
   String _statusMessage = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _eventQrCodeController.text = _generateEventQrCodeValue();
+  }
 
   @override
   void dispose() {
@@ -60,6 +76,10 @@ class _AdminPageState extends State<AdminPage> {
     _rewardPointsCostController.dispose();
     _rewardInventoryController.dispose();
     _rewardCategoryController.dispose();
+    _eventQrNameController.dispose();
+    _eventQrCodeController.dispose();
+    _eventQrPointsController.dispose();
+    _eventQrNotesController.dispose();
     super.dispose();
   }
 
@@ -461,6 +481,217 @@ class _AdminPageState extends State<AdminPage> {
     });
   }
 
+  String _generateEventQrCodeValue() {
+    final String rawId = _firestore.collection('eventQrCodes').doc().id;
+    return 'PLUTO-${rawId.toUpperCase()}';
+  }
+
+  Stream<List<EventQrCode>> _watchEventQrCodes() {
+    return _firestore.collection('eventQrCodes').snapshots().map(
+      (QuerySnapshot<Map<String, dynamic>> snapshot) {
+        final List<EventQrCode> qrCodes =
+            snapshot.docs.map(EventQrCode.fromSnapshot).toList();
+        qrCodes.sort((EventQrCode a, EventQrCode b) {
+          if (a.isActive != b.isActive) {
+            return a.isActive ? -1 : 1;
+          }
+
+          final DateTime aDate = a.updatedAt ??
+              a.createdAt ??
+              DateTime.fromMillisecondsSinceEpoch(0);
+          final DateTime bDate = b.updatedAt ??
+              b.createdAt ??
+              DateTime.fromMillisecondsSinceEpoch(0);
+          return bDate.compareTo(aDate);
+        });
+        return qrCodes;
+      },
+    );
+  }
+
+  Future<void> _saveEventQrCode() async {
+    final String eventName = _eventQrNameController.text.trim();
+    if (eventName.isEmpty) {
+      setState(() {
+        _statusMessage = 'Event name is required for the QR code.';
+      });
+      return;
+    }
+
+    final int? pointsAwarded =
+        int.tryParse(_eventQrPointsController.text.trim());
+    if (pointsAwarded == null || pointsAwarded <= 0) {
+      setState(() {
+        _statusMessage = 'Points awarded must be a number greater than 0.';
+      });
+      return;
+    }
+
+    final String normalizedCode =
+        _eventQrCodeController.text.trim().toUpperCase();
+    if (normalizedCode.isEmpty) {
+      setState(() {
+        _statusMessage = 'QR code value is required.';
+      });
+      return;
+    }
+
+    setState(() {
+      _isSavingEventQr = true;
+      _statusMessage = '';
+    });
+
+    try {
+      final QuerySnapshot<Map<String, dynamic>> existingCodeQuery =
+          await _firestore
+              .collection('eventQrCodes')
+              .where('code', isEqualTo: normalizedCode)
+              .limit(2)
+              .get();
+      final bool codeUsedByAnotherDoc = existingCodeQuery.docs.any(
+        (QueryDocumentSnapshot<Map<String, dynamic>> doc) =>
+            doc.id != _editingEventQrId,
+      );
+      if (codeUsedByAnotherDoc) {
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _statusMessage =
+              'That QR code value is already used by another event QR record.';
+          _isSavingEventQr = false;
+        });
+        return;
+      }
+
+      final DocumentReference<Map<String, dynamic>> eventQrDoc =
+          (_editingEventQrId == null || _editingEventQrId!.isEmpty)
+              ? _firestore.collection('eventQrCodes').doc()
+              : _firestore.collection('eventQrCodes').doc(_editingEventQrId);
+      final DocumentSnapshot<Map<String, dynamic>> existingSnapshot =
+          await eventQrDoc.get();
+
+      final Map<String, dynamic> payload = <String, dynamic>{
+        'eventName': eventName,
+        'code': normalizedCode,
+        'pointsAwarded': pointsAwarded,
+        'notes': _eventQrNotesController.text.trim(),
+        'isActive': _eventQrIsActive,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+      if (!existingSnapshot.exists) {
+        payload['createdAt'] = FieldValue.serverTimestamp();
+        payload['totalClaims'] = 0;
+      }
+
+      await eventQrDoc.set(payload, SetOptions(merge: true));
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _editingEventQrId = eventQrDoc.id;
+        _eventQrCodeController.text = normalizedCode;
+        _statusMessage = 'Event QR code saved.';
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _statusMessage = 'Failed to save event QR code: $error';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSavingEventQr = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _deleteEventQrCode(EventQrCode eventQrCode) async {
+    final bool? shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Delete Event QR?'),
+          content: Text(
+            'Delete QR for "${eventQrCode.eventName}"? '
+            'This keeps past user points history but removes this code.',
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldDelete != true) {
+      return;
+    }
+
+    try {
+      await _firestore.collection('eventQrCodes').doc(eventQrCode.id).delete();
+      if (!mounted) {
+        return;
+      }
+      if (_editingEventQrId == eventQrCode.id) {
+        _startNewEventQrCode();
+      }
+      setState(() {
+        _statusMessage = 'Event QR code deleted.';
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _statusMessage = 'Failed to delete event QR code: $error';
+      });
+    }
+  }
+
+  Future<void> _copyEventQrCodeToClipboard(String code) async {
+    await Clipboard.setData(ClipboardData(text: code));
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _statusMessage = 'Copied QR code value to clipboard.';
+    });
+  }
+
+  void _editEventQrCode(EventQrCode eventQrCode) {
+    setState(() {
+      _editingEventQrId = eventQrCode.id;
+      _eventQrNameController.text = eventQrCode.eventName;
+      _eventQrCodeController.text = eventQrCode.code;
+      _eventQrPointsController.text = eventQrCode.pointsAwarded.toString();
+      _eventQrNotesController.text = eventQrCode.notes;
+      _eventQrIsActive = eventQrCode.isActive;
+      _statusMessage = 'Editing QR for "${eventQrCode.eventName}".';
+    });
+  }
+
+  void _startNewEventQrCode() {
+    setState(() {
+      _editingEventQrId = null;
+      _eventQrNameController.clear();
+      _eventQrCodeController.text = _generateEventQrCodeValue();
+      _eventQrPointsController.text = '50';
+      _eventQrNotesController.clear();
+      _eventQrIsActive = true;
+      _statusMessage = 'New event QR code form ready.';
+    });
+  }
+
   Widget _buildSignedOutState() {
     return Center(
       child: ConstrainedBox(
@@ -615,10 +846,16 @@ class _AdminPageState extends State<AdminPage> {
         final Widget events = _buildEventsCard();
         final Widget rewardEditor = _buildRewardEditorCard();
         final Widget rewardItems = _buildRewardItemsCard();
+        final Widget eventQrEditor = _buildEventQrEditorCard();
+        final Widget eventQrCodes = _buildEventQrCodesCard();
         final Widget managementPane = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             events,
+            const SizedBox(height: 16),
+            eventQrEditor,
+            const SizedBox(height: 16),
+            eventQrCodes,
             const SizedBox(height: 16),
             rewardEditor,
             const SizedBox(height: 16),
@@ -633,6 +870,10 @@ class _AdminPageState extends State<AdminPage> {
               editor,
               const SizedBox(height: 16),
               events,
+              const SizedBox(height: 16),
+              eventQrEditor,
+              const SizedBox(height: 16),
+              eventQrCodes,
               const SizedBox(height: 16),
               rewardEditor,
               const SizedBox(height: 16),
@@ -1027,6 +1268,284 @@ class _AdminPageState extends State<AdminPage> {
     );
   }
 
+  Widget _buildEventQrEditorCard() {
+    final String previewCode = _eventQrCodeController.text.trim().toUpperCase();
+
+    return Card(
+      color: Colors.black.withValues(alpha: 0.45),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              _editingEventQrId == null
+                  ? 'Create Event QR Code'
+                  : 'Edit Event QR Code',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Users scan this QR at the venue to receive points.',
+              style: TextStyle(color: Colors.white70),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: _eventQrNameController,
+              style: const TextStyle(color: Colors.white),
+              cursorColor: Colors.white,
+              decoration: _inputDecoration('Event Name'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _eventQrPointsController,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(color: Colors.white),
+              cursorColor: Colors.white,
+              decoration: _inputDecoration('Points Awarded'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _eventQrCodeController,
+              onChanged: (_) {
+                setState(() {});
+              },
+              style: const TextStyle(color: Colors.white),
+              cursorColor: Colors.white,
+              decoration: _inputDecoration('QR Code Value'),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: <Widget>[
+                OutlinedButton(
+                  onPressed: _isSavingEventQr
+                      ? null
+                      : () {
+                          setState(() {
+                            _eventQrCodeController.text =
+                                _generateEventQrCodeValue();
+                            _statusMessage = 'Generated a new QR code value.';
+                          });
+                        },
+                  child: const Text('Generate New Code'),
+                ),
+                OutlinedButton(
+                  onPressed: previewCode.isEmpty || _isSavingEventQr
+                      ? null
+                      : () {
+                          _copyEventQrCodeToClipboard(previewCode);
+                        },
+                  child: const Text('Copy Code'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _eventQrNotesController,
+              maxLines: 2,
+              style: const TextStyle(color: Colors.white),
+              cursorColor: Colors.white,
+              decoration: _inputDecoration('Notes (optional)'),
+            ),
+            SwitchListTile(
+              title: const Text('Active QR code'),
+              value: _eventQrIsActive,
+              onChanged: (bool value) {
+                setState(() {
+                  _eventQrIsActive = value;
+                });
+              },
+            ),
+            if (previewCode.isNotEmpty) ...<Widget>[
+              const SizedBox(height: 10),
+              Center(
+                child: Column(
+                  children: <Widget>[
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: QrImageView(
+                        data: previewCode,
+                        version: QrVersions.auto,
+                        size: 220,
+                        backgroundColor: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SelectableText(
+                      previewCode,
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: <Widget>[
+                ElevatedButton(
+                  onPressed: _isSavingEventQr ? null : _saveEventQrCode,
+                  child: Text(_isSavingEventQr ? 'Saving...' : 'Save Event QR'),
+                ),
+                OutlinedButton(
+                  onPressed: _isSavingEventQr ? null : _startNewEventQrCode,
+                  child: const Text('New QR Code'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEventQrCodesCard() {
+    return Card(
+      color: Colors.black.withValues(alpha: 0.45),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: StreamBuilder<List<EventQrCode>>(
+          stream: _watchEventQrCodes(),
+          builder: (BuildContext context,
+              AsyncSnapshot<List<EventQrCode>> snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const SizedBox(
+                height: 120,
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+
+            if (snapshot.hasError) {
+              return Text(
+                'Failed to load event QR codes: ${snapshot.error}',
+                style: const TextStyle(color: Colors.white70),
+              );
+            }
+
+            final List<EventQrCode> qrCodes = snapshot.data ?? <EventQrCode>[];
+            if (qrCodes.isEmpty) {
+              return const Text(
+                'No event QR codes yet. Create one using the form.',
+                style: TextStyle(color: Colors.white70),
+              );
+            }
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const Text(
+                  'Event QR Codes',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ...qrCodes.map((EventQrCode eventQrCode) {
+                  return Card(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    margin: const EdgeInsets.only(bottom: 10),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            eventQrCode.eventName.isEmpty
+                                ? '(Unnamed event)'
+                                : eventQrCode.eventName,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Active: ${eventQrCode.isActive} | '
+                            'Points: ${eventQrCode.pointsAwarded} | '
+                            'Claims: ${eventQrCode.totalClaims}',
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                          Text(
+                            'Updated: ${_formatDate(eventQrCode.updatedAt)}',
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                          const SizedBox(height: 8),
+                          SelectableText(
+                            eventQrCode.code,
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                          if (eventQrCode.code.isNotEmpty) ...<Widget>[
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: QrImageView(
+                                data: eventQrCode.code,
+                                version: QrVersions.auto,
+                                size: 130,
+                                backgroundColor: Colors.white,
+                              ),
+                            ),
+                          ],
+                          if (eventQrCode.notes.isNotEmpty) ...<Widget>[
+                            const SizedBox(height: 8),
+                            Text(
+                              eventQrCode.notes,
+                              style: const TextStyle(color: Colors.white70),
+                            ),
+                          ],
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 10,
+                            children: <Widget>[
+                              ElevatedButton(
+                                onPressed: () => _editEventQrCode(eventQrCode),
+                                child: const Text('Edit'),
+                              ),
+                              OutlinedButton(
+                                onPressed: () => _copyEventQrCodeToClipboard(
+                                  eventQrCode.code,
+                                ),
+                                child: const Text('Copy Code'),
+                              ),
+                              OutlinedButton(
+                                onPressed: () =>
+                                    _deleteEventQrCode(eventQrCode),
+                                child: const Text('Delete'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   Widget _buildEventsCard() {
     return Card(
       color: Colors.black.withValues(alpha: 0.45),
@@ -1156,7 +1675,7 @@ class _AdminPageState extends State<AdminPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Admin - Events & Rewards'),
+        title: const Text('Admin - Events, Rewards & QR'),
         actions: <Widget>[
           TextButton(
             onPressed: () => context.go('/'),
@@ -1219,7 +1738,7 @@ class _AdminPageState extends State<AdminPage> {
               );
             },
           ),
-          if (_isSaving || _isSavingReward)
+          if (_isSaving || _isSavingReward || _isSavingEventQr)
             Container(
               color: Colors.black45,
               child: const Center(child: CircularProgressIndicator()),

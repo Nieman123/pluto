@@ -426,6 +426,11 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ],
             ),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: () => context.go('/scan-qr'),
+              child: const Text('Scan Event QR'),
+            ),
             const SizedBox(height: 14),
             Text(
               'Tier: ${profile.tierName}',
@@ -817,6 +822,10 @@ class _ProfilePageState extends State<ProfilePage> {
           TextButton(
             onPressed: () => context.go('/sign-on'),
             child: const Text('Sign On'),
+          ),
+          TextButton(
+            onPressed: () => context.go('/scan-qr'),
+            child: const Text('Scan QR'),
           ),
         ],
       ),

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'admin_page.dart';
 import 'app.dart';
 import 'camping.dart';
+import 'event_qr_scan_page.dart';
 import 'firebase_options.dart';
 import 'links.dart';
 import 'profile_page.dart';
@@ -94,6 +95,12 @@ class _MyAppState extends State<MyApp> {
         path: '/profile',
         builder: (BuildContext context, GoRouterState state) {
           return const ProfilePage();
+        },
+      ),
+      GoRoute(
+        path: '/scan-qr',
+        builder: (BuildContext context, GoRouterState state) {
+          return const EventQrScanPage();
         },
       ),
     ], debugLogDiagnostics: true);

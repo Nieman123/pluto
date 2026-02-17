@@ -184,6 +184,61 @@ class PointsTransaction {
   final String referenceId;
 }
 
+class EventQrCode {
+  EventQrCode({
+    required this.id,
+    required this.eventName,
+    required this.code,
+    required this.pointsAwarded,
+    required this.isActive,
+    required this.notes,
+    required this.totalClaims,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory EventQrCode.fromSnapshot(
+    DocumentSnapshot<Map<String, dynamic>> snapshot,
+  ) {
+    final Map<String, dynamic> data = snapshot.data() ?? <String, dynamic>{};
+    return EventQrCode(
+      id: snapshot.id,
+      eventName: (data['eventName'] as String? ?? '').trim(),
+      code: (data['code'] as String? ?? '').trim().toUpperCase(),
+      pointsAwarded: _parseInt(data['pointsAwarded']),
+      isActive: data['isActive'] as bool? ?? true,
+      notes: (data['notes'] as String? ?? '').trim(),
+      totalClaims: _parseInt(data['totalClaims']),
+      createdAt: _parseTimestamp(data['createdAt']),
+      updatedAt: _parseTimestamp(data['updatedAt']),
+    );
+  }
+
+  final String id;
+  final String eventName;
+  final String code;
+  final int pointsAwarded;
+  final bool isActive;
+  final String notes;
+  final int totalClaims;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+}
+
+class EventQrClaimResult {
+  EventQrClaimResult({
+    required this.eventQrCodeId,
+    required this.eventName,
+    required this.pointsAwarded,
+    required this.newPointsBalance,
+  });
+
+  final String eventQrCodeId;
+  final String eventName;
+  final int pointsAwarded;
+  final int newPointsBalance;
+}
+
 class UserProfileRepository {
   UserProfileRepository({FirebaseFirestore? firestore})
       : _firestore = firestore ?? FirebaseFirestore.instance;
@@ -195,6 +250,9 @@ class UserProfileRepository {
 
   CollectionReference<Map<String, dynamic>> get _rewardItems =>
       _firestore.collection('rewardItems');
+
+  CollectionReference<Map<String, dynamic>> get _eventQrCodes =>
+      _firestore.collection('eventQrCodes');
 
   Stream<UserProfile?> watchProfile({
     required String uid,
@@ -228,6 +286,39 @@ class UserProfileRepository {
           return a.name.toLowerCase().compareTo(b.name.toLowerCase());
         });
         return items;
+      },
+    );
+  }
+
+  Stream<List<EventQrCode>> watchEventQrCodes({bool onlyActive = false}) {
+    return _eventQrCodes.snapshots().map(
+      (QuerySnapshot<Map<String, dynamic>> snapshot) {
+        final List<EventQrCode> codes =
+            snapshot.docs.map(EventQrCode.fromSnapshot).toList();
+
+        final List<EventQrCode> filteredCodes = onlyActive
+            ? codes.where((EventQrCode code) => code.isActive).toList()
+            : codes;
+
+        filteredCodes.sort((EventQrCode a, EventQrCode b) {
+          if (a.isActive != b.isActive) {
+            return a.isActive ? -1 : 1;
+          }
+
+          final DateTime aDate = a.updatedAt ??
+              a.createdAt ??
+              DateTime.fromMillisecondsSinceEpoch(0);
+          final DateTime bDate = b.updatedAt ??
+              b.createdAt ??
+              DateTime.fromMillisecondsSinceEpoch(0);
+          final int byDate = bDate.compareTo(aDate);
+          if (byDate != 0) {
+            return byDate;
+          }
+
+          return a.eventName.toLowerCase().compareTo(b.eventName.toLowerCase());
+        });
+        return filteredCodes;
       },
     );
   }
@@ -411,6 +502,180 @@ class UserProfileRepository {
         },
       );
     });
+  }
+
+  Future<EventQrClaimResult> claimEventQrCode({
+    required User user,
+    required String scannedCode,
+  }) async {
+    final String normalizedCode = scannedCode.trim().toUpperCase();
+    if (normalizedCode.isEmpty) {
+      throw FirebaseException(
+        plugin: 'cloud_firestore',
+        code: 'invalid-code',
+        message: 'QR code value is empty.',
+      );
+    }
+
+    await ensureProfileForUser(user);
+
+    final QuerySnapshot<Map<String, dynamic>> matchingCodes =
+        await _eventQrCodes
+            .where('code', isEqualTo: normalizedCode)
+            .limit(1)
+            .get();
+    if (matchingCodes.docs.isEmpty) {
+      throw FirebaseException(
+        plugin: 'cloud_firestore',
+        code: 'qr-not-found',
+        message: 'This QR code was not found.',
+      );
+    }
+
+    final DocumentReference<Map<String, dynamic>> qrRef =
+        matchingCodes.docs.first.reference;
+    final DocumentReference<Map<String, dynamic>> profileRef =
+        _profiles.doc(user.uid);
+    final CollectionReference<Map<String, dynamic>> transactionCollection =
+        profileRef.collection('pointsTransactions');
+
+    return _firestore.runTransaction(
+      (Transaction transaction) async {
+        final DocumentSnapshot<Map<String, dynamic>> qrSnapshot =
+            await transaction.get(qrRef);
+        if (!qrSnapshot.exists) {
+          throw FirebaseException(
+            plugin: 'cloud_firestore',
+            code: 'qr-not-found',
+            message: 'This QR code was not found.',
+          );
+        }
+
+        final Map<String, dynamic> qrData =
+            qrSnapshot.data() ?? <String, dynamic>{};
+        final String eventName =
+            (qrData['eventName'] as String? ?? 'Event Check-In').trim();
+        final bool isActive = qrData['isActive'] as bool? ?? true;
+        final int pointsAwarded = _parseInt(qrData['pointsAwarded']);
+        final DateTime? expiresAt = _parseTimestamp(qrData['expiresAt']);
+
+        if (!isActive) {
+          throw FirebaseException(
+            plugin: 'cloud_firestore',
+            code: 'qr-inactive',
+            message: 'This event QR code is not active.',
+          );
+        }
+
+        if (pointsAwarded <= 0) {
+          throw FirebaseException(
+            plugin: 'cloud_firestore',
+            code: 'invalid-points',
+            message: 'This event QR code has invalid points configuration.',
+          );
+        }
+
+        if (expiresAt != null && DateTime.now().isAfter(expiresAt)) {
+          throw FirebaseException(
+            plugin: 'cloud_firestore',
+            code: 'qr-expired',
+            message: 'This event QR code has expired.',
+          );
+        }
+
+        final DocumentReference<Map<String, dynamic>> claimRef =
+            qrRef.collection('claims').doc(user.uid);
+        final DocumentSnapshot<Map<String, dynamic>> claimSnapshot =
+            await transaction.get(claimRef);
+        if (claimSnapshot.exists) {
+          throw FirebaseException(
+            plugin: 'cloud_firestore',
+            code: 'already-claimed',
+            message: 'You already claimed points for this event.',
+          );
+        }
+
+        final DocumentSnapshot<Map<String, dynamic>> profileSnapshot =
+            await transaction.get(profileRef);
+        final Map<String, dynamic> profileData =
+            profileSnapshot.data() ?? <String, dynamic>{};
+
+        final int currentBalance = _parseInt(profileData['pointsBalance']);
+        final int currentLifetimePoints =
+            _parseInt(profileData['lifetimePoints']);
+        final int currentEventsAttended =
+            _parseInt(profileData['eventsAttended']);
+        final int newBalance = currentBalance + pointsAwarded;
+        final int newLifetimePoints = currentLifetimePoints + pointsAwarded;
+        final int newEventsAttended = currentEventsAttended + 1;
+
+        final String fallbackName = _fallbackDisplayNameForUser(user);
+        final Map<String, dynamic> profilePayload = <String, dynamic>{
+          'pointsBalance': newBalance,
+          'lifetimePoints': newLifetimePoints,
+          'eventsAttended': newEventsAttended,
+          'updatedAt': FieldValue.serverTimestamp(),
+          'lastAttendanceAt': FieldValue.serverTimestamp(),
+        };
+
+        if (!profileSnapshot.exists) {
+          profilePayload.addAll(<String, dynamic>{
+            'displayName': fallbackName,
+            'homeCity': '',
+            'favoriteGenre': '',
+            'bio': '',
+            'profileImageDataUrl': '',
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+        }
+
+        transaction.set(
+          profileRef,
+          profilePayload,
+          SetOptions(merge: true),
+        );
+
+        transaction.set(
+          claimRef,
+          <String, dynamic>{
+            'uid': user.uid,
+            'eventQrCodeId': qrRef.id,
+            'eventName': eventName,
+            'pointsAwarded': pointsAwarded,
+            'code': normalizedCode,
+            'createdAt': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
+
+        transaction.set(
+          qrRef,
+          <String, dynamic>{
+            'totalClaims': _parseInt(qrData['totalClaims']) + 1,
+            'updatedAt': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
+
+        transaction.set(
+          transactionCollection.doc(),
+          <String, dynamic>{
+            'type': 'attendance',
+            'reason': 'Event check-in: $eventName',
+            'pointsDelta': pointsAwarded,
+            'referenceId': qrRef.id,
+            'createdAt': FieldValue.serverTimestamp(),
+          },
+        );
+
+        return EventQrClaimResult(
+          eventQrCodeId: qrRef.id,
+          eventName: eventName,
+          pointsAwarded: pointsAwarded,
+          newPointsBalance: newBalance,
+        );
+      },
+    );
   }
 
   String _fallbackDisplayNameForUser(User user) {

@@ -135,6 +135,10 @@ class _SignOnPageState extends State<SignOnPage> {
             onPressed: () => context.go('/admin'),
             child: const Text('Admin'),
           ),
+          TextButton(
+            onPressed: () => context.go('/scan-qr'),
+            child: const Text('Scan QR'),
+          ),
         ],
       ),
       body: Stack(
@@ -194,6 +198,10 @@ class _SignOnPageState extends State<SignOnPage> {
                                   ElevatedButton(
                                     onPressed: () => context.go('/admin'),
                                     child: const Text('Open Admin'),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () => context.go('/scan-qr'),
+                                    child: const Text('Open Scanner'),
                                   ),
                                 ],
                               ),

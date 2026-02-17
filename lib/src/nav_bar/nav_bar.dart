@@ -53,6 +53,7 @@ class NavBar extends StatelessWidget {
             route: '/sign-on',
           ),
           const _ProfileNavButton(),
+          const _ScannerNavButton(),
           const _AdminNavButton(),
           const Visibility(
             visible: false,
@@ -147,6 +148,34 @@ class _ProfileNavButton extends StatelessWidget {
             _RouteNavButton(
               label: 'Profile',
               route: '/profile',
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ScannerNavButton extends StatelessWidget {
+  const _ScannerNavButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (BuildContext context, AsyncSnapshot<User?> authSnapshot) {
+        final User? user = authSnapshot.data;
+        if (user == null) {
+          return const SizedBox.shrink();
+        }
+
+        return const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            SizedBox(width: 10),
+            _RouteNavButton(
+              label: 'Scan QR',
+              route: '/scan-qr',
             ),
           ],
         );
