@@ -342,22 +342,34 @@ class SignedInHomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Pluto'),
+        backgroundColor: const Color(0xFF121212),
+        foregroundColor: Colors.white,
+        title: SizedBox(
+          height: 36,
+          child: Image.asset(
+            'assets/experience/pluto-logo-small.png',
+            fit: BoxFit.contain,
+          ),
+        ),
         actions: <Widget>[
           TextButton(
             onPressed: () => context.go('/profile'),
+            style: TextButton.styleFrom(foregroundColor: Colors.white),
             child: const Text('Profile'),
           ),
           TextButton(
             onPressed: () => context.go('/scan-qr'),
+            style: TextButton.styleFrom(foregroundColor: Colors.white),
             child: const Text('Scan QR'),
           ),
           TextButton(
             onPressed: () => context.go('/shop'),
+            style: TextButton.styleFrom(foregroundColor: Colors.white),
             child: const Text('Rewards Shop'),
           ),
           TextButton(
             onPressed: () => FirebaseAuth.instance.signOut(),
+            style: TextButton.styleFrom(foregroundColor: Colors.white),
             child: const Text('Sign Out'),
           ),
         ],

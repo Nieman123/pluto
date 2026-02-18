@@ -49,7 +49,7 @@ class NavBar extends StatelessWidget {
             ),
           ),
           const _RouteNavButton(
-            label: 'Sign On',
+            label: 'Sign in',
             route: '/sign-on',
           ),
           const _ShopNavButton(),
