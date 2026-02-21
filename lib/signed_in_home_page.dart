@@ -87,6 +87,11 @@ class SignedInHomePage extends StatelessWidget {
             onPressed: () => context.go('/profile'),
           ),
           _buildQuickActionButton(
+            label: 'ManaFest',
+            icon: Icons.festival,
+            onPressed: () => context.go('/manafest'),
+          ),
+          _buildQuickActionButton(
             label: 'Scan QR Code',
             icon: Icons.qr_code_scanner,
             onPressed: () => context.go('/scan-qr'),
@@ -352,6 +357,11 @@ class SignedInHomePage extends StatelessWidget {
           ),
         ),
         actions: <Widget>[
+          TextButton(
+            onPressed: () => context.go('/manafest'),
+            style: TextButton.styleFrom(foregroundColor: Colors.white),
+            child: const Text('ManaFest'),
+          ),
           TextButton(
             onPressed: () => context.go('/profile'),
             style: TextButton.styleFrom(foregroundColor: Colors.white),

@@ -11,6 +11,7 @@ import 'event_qr_scan_page.dart';
 import 'firebase_options.dart';
 import 'item_shop_page.dart';
 import 'links.dart';
+import 'manafest_page.dart';
 import 'profile_page.dart';
 import 'schedule.dart';
 import 'sign_on_page.dart';
@@ -119,6 +120,12 @@ class _MyAppState extends State<MyApp> {
         path: '/shop',
         builder: (BuildContext context, GoRouterState state) {
           return const ItemShopPage();
+        },
+      ),
+      GoRoute(
+        path: '/manafest',
+        builder: (BuildContext context, GoRouterState state) {
+          return const ManaFestPage();
         },
       ),
     ], debugLogDiagnostics: true);

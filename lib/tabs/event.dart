@@ -1,5 +1,6 @@
 import 'package:carousel_slider_plus/carousel_slider_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 import '../current_events_repository.dart';
@@ -142,15 +143,25 @@ class Event extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
               child: flyer,
             ),
-            if (ticketUrl.trim().isNotEmpty) ...<Widget>[
-              const SizedBox(height: 10),
-              Center(
-                child: ElevatedButton(
-                  onPressed: () => _openLink(ticketUrl),
-                  child: const Text('Click For Tickets'),
-                ),
+            const SizedBox(height: 10),
+            Center(
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 10,
+                runSpacing: 10,
+                children: <Widget>[
+                  if (ticketUrl.trim().isNotEmpty)
+                    ElevatedButton(
+                      onPressed: () => _openLink(ticketUrl),
+                      child: const Text('Click For Tickets'),
+                    ),
+                  OutlinedButton(
+                    onPressed: () => context.go('/manafest'),
+                    child: const Text('ManaFest Details'),
+                  ),
+                ],
               ),
-            ],
+            ),
           ],
         ),
       ),
