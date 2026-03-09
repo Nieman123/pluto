@@ -57,6 +57,17 @@ extension AdminSectionX on AdminSection {
         return 'Edit the buttons and sections displayed on the links page.';
     }
   }
+
+  IconData get icon {
+    switch (this) {
+      case AdminSection.events:
+        return Icons.event;
+      case AdminSection.rewards:
+        return Icons.redeem;
+      case AdminSection.links:
+        return Icons.link;
+    }
+  }
 }
 
 class AdminPage extends StatefulWidget {
@@ -1081,7 +1092,7 @@ class _AdminPageState extends State<AdminPage> {
                 const SizedBox(height: 14),
                 ElevatedButton(
                   onPressed: () => context.go('/sign-on'),
-                  child: const Text('Open Sign On'),
+                  child: const Text('Open Sign In'),
                 ),
               ],
             ),
@@ -1211,31 +1222,223 @@ class _AdminPageState extends State<AdminPage> {
     return spacedChildren;
   }
 
-  Widget _buildAdminHomeCard(AdminSection section) {
+  String _displayNameForUser(User user) {
+    final String explicitName = (user.displayName ?? '').trim();
+    if (explicitName.isNotEmpty) {
+      return explicitName;
+    }
+
+    final String email = (user.email ?? '').trim();
+    if (!email.contains('@')) {
+      return 'Admin';
+    }
+    final String localPart = email.split('@').first.trim();
+    if (localPart.isEmpty) {
+      return 'Admin';
+    }
+    return localPart;
+  }
+
+  bool _isDarkTheme(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark;
+  }
+
+  Color _adminFilledButtonBackground(BuildContext context) {
+    return _isDarkTheme(context)
+        ? const Color(0xFFF3EFF7)
+        : const Color(0xFF121212);
+  }
+
+  Color _adminFilledButtonForeground(BuildContext context) {
+    return _isDarkTheme(context) ? const Color(0xFF6D55B4) : Colors.white;
+  }
+
+  ThemeData _adminPageTheme(BuildContext context) {
+    final ThemeData baseTheme = Theme.of(context);
+    final bool isDark = _isDarkTheme(context);
+    final Color filledBackground = _adminFilledButtonBackground(context);
+    final Color filledForeground = _adminFilledButtonForeground(context);
+    final Color outlinedForeground =
+        isDark ? Colors.white : const Color(0xFF121212);
+    final Color outlinedBorder = isDark
+        ? Colors.white24
+        : const Color(0xFF121212).withValues(alpha: 0.28);
+    final Color textForeground =
+        isDark ? const Color(0xFFF3EFF7) : const Color(0xFF121212);
+
+    return baseTheme.copyWith(
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: filledBackground,
+          foregroundColor: filledForeground,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: outlinedForeground,
+          side: BorderSide(color: outlinedBorder),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: textForeground,
+        ),
+      ),
+    );
+  }
+
+  ButtonStyle _adminQuickActionStyle(BuildContext context) {
+    final bool isDark = _isDarkTheme(context);
+    return ElevatedButton.styleFrom(
+      backgroundColor: _adminFilledButtonBackground(context),
+      foregroundColor: _adminFilledButtonForeground(context),
+      elevation: 0,
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+      ),
+      side: isDark
+          ? null
+          : BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+    );
+  }
+
+  Widget _buildAdminQuickActionButton(
+    BuildContext context, {
+    required AdminSection section,
+  }) {
+    final Color foregroundColor = _adminFilledButtonForeground(context);
+    final Color secondaryColor = foregroundColor.withValues(
+      alpha: _isDarkTheme(context) ? 0.72 : 0.78,
+    );
+
+    return SizedBox.expand(
+      child: ElevatedButton(
+        onPressed: () => context.go(section.routePath),
+        style: _adminQuickActionStyle(context),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              Icon(section.icon, size: 34),
+              const SizedBox(height: 12),
+              Text(
+                'Edit ${section.label}',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: foregroundColor,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                section.description,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: secondaryColor,
+                  fontSize: 13,
+                  height: 1.35,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAdminQuickActions(BuildContext context) {
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        const double spacing = 16;
+        final double buttonWidth = constraints.maxWidth < 760
+            ? constraints.maxWidth
+            : (constraints.maxWidth - spacing) / 2;
+
+        return Wrap(
+          alignment: WrapAlignment.center,
+          spacing: spacing,
+          runSpacing: spacing,
+          children: AdminSection.values
+              .map(
+                (AdminSection section) => SizedBox(
+                  width: buttonWidth,
+                  height: 156,
+                  child: _buildAdminQuickActionButton(
+                    context,
+                    section: section,
+                  ),
+                ),
+              )
+              .toList(),
+        );
+      },
+    );
+  }
+
+  Widget _buildAdminHeaderCard(User user) {
+    final String displayName = _displayNameForUser(user);
+
     return Card(
       color: Colors.black.withValues(alpha: 0.45),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(18),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text(
-              section.label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+            Center(
+              child: SizedBox(
+                width: 144,
+                height: 144,
+                child: Image.asset(
+                  'assets/experience/pluto-logo-small.png',
+                  fit: BoxFit.contain,
+                ),
               ),
             ),
             const SizedBox(height: 10),
             Text(
-              section.description,
-              style: const TextStyle(color: Colors.white70, height: 1.4),
+              'Welcome back, $displayName',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 30,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => context.go(section.routePath),
-              child: Text('Edit ${section.label}'),
+            const SizedBox(height: 4),
+            Text(
+              'Signed in as ${user.email ?? user.uid}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white70),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Admin control panel',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Choose the editor you want to open.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white70, fontSize: 16),
             ),
           ],
         ),
@@ -1243,51 +1446,23 @@ class _AdminPageState extends State<AdminPage> {
     );
   }
 
-  Widget _buildAdminHome() {
+  Widget _buildAdminHome(User user) {
     return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 860),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              Card(
-                color: Colors.black.withValues(alpha: 0.45),
-                child: const Padding(
-                  padding: EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        'Admin',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 30,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 10),
-                      Text(
-                        'Choose a section to edit instead of loading every tool into one long page.',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 16,
-                          height: 1.4,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1200),
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: <Widget>[
+            _buildAdminHeaderCard(user),
+            const SizedBox(height: 14),
+            Card(
+              color: Colors.black.withValues(alpha: 0.45),
+              child: Padding(
+                padding: const EdgeInsets.all(18),
+                child: _buildAdminQuickActions(context),
               ),
-              const SizedBox(height: 18),
-              ..._withVerticalSpacing(
-                AdminSection.values
-                    .map(_buildAdminHomeCard)
-                    .toList(growable: false),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -1297,66 +1472,71 @@ class _AdminPageState extends State<AdminPage> {
     required List<Widget> primaryChildren,
     required List<Widget> secondaryChildren,
   }) {
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        final Widget primaryPane = Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: _withVerticalSpacing(primaryChildren),
-        );
-        final Widget secondaryPane = Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: _withVerticalSpacing(secondaryChildren),
-        );
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1200),
+        child: LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints constraints) {
+            final Widget primaryPane = Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: _withVerticalSpacing(primaryChildren),
+            );
+            final Widget secondaryPane = Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: _withVerticalSpacing(secondaryChildren),
+            );
 
-        if (constraints.maxWidth < 1100) {
-          final List<Widget> stackedChildren = <Widget>[
-            ...primaryChildren,
-            ...secondaryChildren,
-          ];
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: _withVerticalSpacing(stackedChildren),
-          );
-        }
+            if (constraints.maxWidth < 1100) {
+              final List<Widget> stackedChildren = <Widget>[
+                ...primaryChildren,
+                ...secondaryChildren,
+              ];
+              return ListView(
+                padding: const EdgeInsets.all(16),
+                children: _withVerticalSpacing(stackedChildren),
+              );
+            }
 
-        final bool hasBoundedHeight = constraints.maxHeight.isFinite;
-        final double paneHeight = hasBoundedHeight
-            ? (constraints.maxHeight - 32 >= 200
-                ? constraints.maxHeight - 32
-                : 200)
-            : 800;
+            final bool hasBoundedHeight = constraints.maxHeight.isFinite;
+            final double paneHeight = hasBoundedHeight
+                ? (constraints.maxHeight - 32 >= 200
+                    ? constraints.maxHeight - 32
+                    : 200)
+                : 800;
 
-        return Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Expanded(
-                flex: 5,
-                child: SizedBox(
-                  height: paneHeight,
-                  child: SingleChildScrollView(child: primaryPane),
-                ),
+            return Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Expanded(
+                    flex: 5,
+                    child: SizedBox(
+                      height: paneHeight,
+                      child: SingleChildScrollView(child: primaryPane),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    flex: 6,
+                    child: SizedBox(
+                      height: paneHeight,
+                      child: SingleChildScrollView(child: secondaryPane),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                flex: 6,
-                child: SizedBox(
-                  height: paneHeight,
-                  child: SingleChildScrollView(child: secondaryPane),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+            );
+          },
+        ),
+      ),
     );
   }
 
-  Widget _buildAuthorizedAdminContent() {
+  Widget _buildAuthorizedAdminContent(User user) {
     switch (widget.section) {
       case null:
-        return _buildAdminHome();
+        return _buildAdminHome(user);
       case AdminSection.events:
         return _buildSectionEditorLayout(
           primaryChildren: <Widget>[_buildEditorCard()],
@@ -2571,102 +2751,118 @@ class _AdminPageState extends State<AdminPage> {
     final String pageTitle =
         widget.section == null ? 'Admin' : 'Admin - ${widget.section!.label}';
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(pageTitle),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => context.go('/'),
-            child: const Text('Home'),
-          ),
-          if (widget.section != null)
-            TextButton(
-              onPressed: () => context.go('/admin'),
-              child: const Text('Admin Home'),
-            ),
-          TextButton(
-            onPressed: () => context.go('/sign-on'),
-            child: const Text('Sign On'),
-          ),
-        ],
-      ),
-      body: Stack(
-        children: <Widget>[
-          const PlasmaRenderer(
-            color: Color.fromARGB(68, 85, 0, 165),
-            blur: 0.5,
-            blendMode: BlendMode.plus,
-            particleType: ParticleType.atlas,
-            variation1: 1,
-          ),
-          StreamBuilder<User?>(
-            stream: FirebaseAuth.instance.authStateChanges(),
-            builder: (BuildContext context, AsyncSnapshot<User?> authSnapshot) {
-              if (authSnapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              final User? user = authSnapshot.data;
-              if (user == null) {
-                return _buildSignedOutState();
-              }
-
-              return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                stream: FirebaseFirestore.instance
-                    .collection('adminUsers')
-                    .doc(user.uid)
-                    .snapshots(),
-                builder: (BuildContext context,
-                    AsyncSnapshot<DocumentSnapshot<Map<String, dynamic>>>
-                        adminSnapshot) {
-                  if (adminSnapshot.connectionState ==
-                      ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  if (adminSnapshot.hasError) {
-                    return _buildAdminReadErrorState(
-                      user,
-                      adminSnapshot.error,
-                    );
-                  }
-
-                  final bool isAdmin = adminSnapshot.data?.exists ?? false;
-                  if (!isAdmin) {
-                    return _buildUnauthorizedState(user);
-                  }
-
-                  return _buildAuthorizedAdminContent();
-                },
-              );
-            },
-          ),
-          if (_isSaving ||
-              _isSavingReward ||
-              _isSavingEventQr ||
-              _isSavingLinkItem)
-            Container(
-              color: Colors.black45,
-              child: const Center(child: CircularProgressIndicator()),
-            ),
-          if (_statusMessage.isNotEmpty)
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: Container(
-                margin: const EdgeInsets.all(18),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.black87,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  _statusMessage,
-                  style: const TextStyle(color: Colors.white),
-                ),
+    return Theme(
+      data: _adminPageTheme(context),
+      child: Scaffold(
+        appBar: AppBar(
+          title: Semantics(
+            label: pageTitle,
+            child: SizedBox(
+              height: 36,
+              child: Image.asset(
+                'assets/experience/pluto-logo-small.png',
+                fit: BoxFit.contain,
               ),
             ),
-        ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => context.go('/'),
+              style: TextButton.styleFrom(foregroundColor: Colors.white),
+              child: const Text('Home'),
+            ),
+            if (widget.section != null)
+              TextButton(
+                onPressed: () => context.go('/admin'),
+                style: TextButton.styleFrom(foregroundColor: Colors.white),
+                child: const Text('Admin Home'),
+              ),
+            TextButton(
+              onPressed: () => context.go('/sign-on'),
+              style: TextButton.styleFrom(foregroundColor: Colors.white),
+              child: const Text('Sign in'),
+            ),
+          ],
+        ),
+        body: Stack(
+          children: <Widget>[
+            const PlasmaRenderer(
+              color: Color.fromARGB(68, 85, 0, 165),
+              blur: 0.5,
+              blendMode: BlendMode.plus,
+              particleType: ParticleType.atlas,
+              variation1: 1,
+            ),
+            StreamBuilder<User?>(
+              stream: FirebaseAuth.instance.authStateChanges(),
+              builder:
+                  (BuildContext context, AsyncSnapshot<User?> authSnapshot) {
+                if (authSnapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final User? user = authSnapshot.data;
+                if (user == null) {
+                  return _buildSignedOutState();
+                }
+
+                return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                  stream: FirebaseFirestore.instance
+                      .collection('adminUsers')
+                      .doc(user.uid)
+                      .snapshots(),
+                  builder: (BuildContext context,
+                      AsyncSnapshot<DocumentSnapshot<Map<String, dynamic>>>
+                          adminSnapshot) {
+                    if (adminSnapshot.connectionState ==
+                        ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    if (adminSnapshot.hasError) {
+                      return _buildAdminReadErrorState(
+                        user,
+                        adminSnapshot.error,
+                      );
+                    }
+
+                    final bool isAdmin = adminSnapshot.data?.exists ?? false;
+                    if (!isAdmin) {
+                      return _buildUnauthorizedState(user);
+                    }
+
+                    return _buildAuthorizedAdminContent(user);
+                  },
+                );
+              },
+            ),
+            if (_isSaving ||
+                _isSavingReward ||
+                _isSavingEventQr ||
+                _isSavingLinkItem)
+              Container(
+                color: Colors.black45,
+                child: const Center(child: CircularProgressIndicator()),
+              ),
+            if (_statusMessage.isNotEmpty)
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: Container(
+                  margin: const EdgeInsets.all(18),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.black87,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _statusMessage,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
