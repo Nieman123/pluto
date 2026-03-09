@@ -102,6 +102,11 @@ service cloud.firestore {
       }
     }
 
+    match /linksPageItems/{linkId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
     // Support collectionGroup('claims') analytics queries for admins.
     match /{documentPath=**}/claims/{claimUid} {
       allow read: if isAdmin();

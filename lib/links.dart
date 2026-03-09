@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sa3_liquid/liquid/plasma/plasma.dart';
+
 import 'link_box.dart';
+import 'links_repository.dart';
 
 class LinksPage extends StatelessWidget {
   const LinksPage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final LinksRepository linksRepository = LinksRepository();
+
     return Scaffold(
       body: Stack(children: [
         const PlasmaRenderer(
@@ -44,52 +48,69 @@ class LinksPage extends StatelessWidget {
                       fontSize: 30),
                 ),
                 const SizedBox(height: 20),
-                const LinkBox(
-                    icon: Icons.airplane_ticket,
-                    image: AssetImage('assets/pluto-campout-compressed.png'),
-                    text: 'PLUTO CAMPOUT INFO / PASSES',
-                    isImageCircular: true,
-                    url: 'https://pluto.events/campout'),
-                const LinkBox(
-                    icon: Icons.edit_document,
-                    text: 'PLUTO CAMPOUT VENDOR APPLICATION',
-                    isImageCircular: true,
-                    url: 'https://forms.gle/qMzyfN93o9zbgedY8'),
-                const LinkBox(
-                    icon: Icons.music_note,
-                    image: AssetImage('assets/home/constant/instagram.png'),
-                    text: 'INSTAGRAM',
-                    url: 'https://instagram.com/pluto.events.avl/'),
-                const LinkBox(
-                    icon: Icons.face,
-                    image: AssetImage('assets/home/constant/facebook.png'),
-                    text: 'FACEBOOK',
-                    url:
-                        'https://www.facebook.com/people/Pluto-Events/100095100467395/'),
-                const LinkBox(
-                    icon: Icons.face,
-                    image: AssetImage('assets/home/constant/tiktok.png'),
-                    text: 'TIKTOK',
-                    url: 'https://www.tiktok.com/@pluto.events'),
-                const SizedBox(height: 20),
-                const Text(
-                  'PLUTO MEMEBERS ON INSTA',
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      fontSize: 30),
+                StreamBuilder<List<LinksPageItem>>(
+                  stream: linksRepository.watchItems(onlyActive: true),
+                  builder: (BuildContext context,
+                      AsyncSnapshot<List<LinksPageItem>> snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Padding(
+                        padding: EdgeInsets.all(32),
+                        child: CircularProgressIndicator(),
+                      );
+                    }
+
+                    final List<LinksPageItem> items = snapshot.hasError
+                        ? LinksRepository.defaultItems
+                            .where((LinksPageItem item) => item.isActive)
+                            .toList()
+                        : (snapshot.data ?? <LinksPageItem>[]);
+                    if (items.isEmpty) {
+                      return const Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Text(
+                          'No links are available right now.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                      );
+                    }
+
+                    final List<Widget> children = <Widget>[];
+                    String? currentSectionHeading;
+                    for (final LinksPageItem item in items) {
+                      if (item.sectionHeading != currentSectionHeading) {
+                        currentSectionHeading = item.sectionHeading;
+                        if (currentSectionHeading.isNotEmpty) {
+                          children.add(const SizedBox(height: 20));
+                          children.add(
+                            Text(
+                              currentSectionHeading,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                fontSize: 30,
+                              ),
+                            ),
+                          );
+                          children.add(const SizedBox(height: 20));
+                        }
+                      }
+
+                      children.add(
+                        LinkBox(
+                          icon: item.iconData,
+                          image: item.imageProvider,
+                          text: item.title,
+                          isImageCircular: item.isImageCircular,
+                          url: item.url,
+                        ),
+                      );
+                    }
+
+                    return Column(children: children);
+                  },
                 ),
                 const SizedBox(height: 20),
-                const LinkBox(
-                    icon: Icons.face,
-                    image: NetworkImage('https://i.imgur.com/5I4TqyV.jpg'),
-                    text: 'JUST NIEMAN',
-                    url: 'https://www.instagram.com/justnieman/'),
-                const LinkBox(
-                    icon: Icons.face,
-                    image: NetworkImage('https://i.imgur.com/FiHtYq3.jpeg'),
-                    text: 'DIVINE THUD',
-                    url: 'https://www.instagram.com/divine_thud_/'),
               ],
             ),
           ),

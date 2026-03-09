@@ -258,32 +258,32 @@ class ManaFestPage extends StatelessWidget {
                             'Schedule and map updates will be posted here as needed.'),
                       ],
                     ),
-                    _buildSection(
-                      title: 'Set Times',
-                      children: <Widget>[
-                        const Text(
-                          'Set times are being finalized. This section is live and will be updated with the full artist-by-artist schedule.',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 16,
-                            height: 1.4,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildSetTimeRow(
-                          slot: 'Day 1',
-                          details: 'Full lineup and time slots: TBA',
-                        ),
-                        _buildSetTimeRow(
-                          slot: 'Day 2',
-                          details: 'Full lineup and time slots: TBA',
-                        ),
-                        _buildSetTimeRow(
-                          slot: 'Day 3',
-                          details: 'Full lineup and time slots: TBA',
-                        ),
-                      ],
-                    ),
+                      // _buildSection(
+                      //   title: 'Set Times',
+                      //   children: <Widget>[
+                      //     const Text(
+                      //       'Set times are being finalized. This section is live and will be updated with the full artist-by-artist schedule.',
+                      //       style: TextStyle(
+                      //         color: Colors.white70,
+                      //         fontSize: 16,
+                      //         height: 1.4,
+                      //       ),
+                      //     ),
+                      //     const SizedBox(height: 12),
+                      //     _buildSetTimeRow(
+                      //       slot: 'Day 1',
+                      //       details: 'Full lineup and time slots: TBA',
+                      //     ),
+                      //     _buildSetTimeRow(
+                      //       slot: 'Day 2',
+                      //       details: 'Full lineup and time slots: TBA',
+                      //     ),
+                      //     _buildSetTimeRow(
+                      //       slot: 'Day 3',
+                      //       details: 'Full lineup and time slots: TBA',
+                      //     ),
+                      //   ],
+                      // ),
                     _buildSection(
                       title: 'Directions',
                       children: <Widget>[
@@ -308,16 +308,16 @@ class ManaFestPage extends StatelessWidget {
                       title: 'Camping',
                       children: <Widget>[
                         _buildBullet(
-                          'Camp only in designated attendee camping areas assigned by event staff.',
+                          'Camp only in designated areas.',
                         ),
                         _buildBullet(
-                          'If car camping is allowed for your pass type, park only in marked zones.',
+                          'Car camping pass is a separate pass. (one per vehicle)',
                         ),
                         _buildBullet(
-                          'Pack for changing weather, including rain protection and warm layers.',
+                          'Pack for changing weather, including rain.',
                         ),
                         _buildBullet(
-                          'Bring reusable water containers, personal lighting, and basic campsite safety gear.',
+                          'Bring reusable water containers, personal lighting, and basic campsite gear.',
                         ),
                       ],
                     ),
@@ -332,12 +332,6 @@ class ManaFestPage extends StatelessWidget {
                         ),
                         _buildBullet(
                           'Use approved fire-safe cooking and lighting setups only where permitted.',
-                        ),
-                        _buildBullet(
-                          'No harassment, violence, or unsafe behavior. Attendee safety comes first.',
-                        ),
-                        _buildBullet(
-                          'Violation of venue or event rules may lead to removal without refund.',
                         ),
                       ],
                     ),

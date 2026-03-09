@@ -14,6 +14,8 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:sa3_liquid/liquid/plasma/plasma.dart';
 
 import 'current_events_repository.dart';
+import 'link_box.dart';
+import 'links_repository.dart';
 import 'user_profile_repository.dart';
 
 class AdminPage extends StatefulWidget {
@@ -25,6 +27,7 @@ class AdminPage extends StatefulWidget {
 
 class _AdminPageState extends State<AdminPage> {
   final CurrentEventsRepository _eventsRepository = CurrentEventsRepository();
+  final LinksRepository _linksRepository = LinksRepository();
   final UserProfileRepository _profileRepository = UserProfileRepository();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -47,6 +50,15 @@ class _AdminPageState extends State<AdminPage> {
   final TextEditingController _eventQrPointsController =
       TextEditingController(text: '50');
   final TextEditingController _eventQrNotesController = TextEditingController();
+  final TextEditingController _linkTitleController = TextEditingController();
+  final TextEditingController _linkUrlController = TextEditingController();
+  final TextEditingController _linkSectionHeadingController =
+      TextEditingController();
+  final TextEditingController _linkSectionOrderController =
+      TextEditingController(text: '0');
+  final TextEditingController _linkSortOrderController =
+      TextEditingController(text: '0');
+  final TextEditingController _linkImageUrlController = TextEditingController();
 
   String? _editingEventId;
   String _flyerDataUrl = '';
@@ -59,6 +71,13 @@ class _AdminPageState extends State<AdminPage> {
   String? _editingEventQrId;
   bool _eventQrIsActive = true;
   bool _isSavingEventQr = false;
+  String? _editingLinkItemId;
+  String _linkImageDataUrl = '';
+  String _linkAssetImagePath = '';
+  int _linkIconCodePoint = Icons.link.codePoint;
+  bool _linkIsActive = true;
+  bool _linkIsImageCircular = false;
+  bool _isSavingLinkItem = false;
   String _statusMessage = '';
 
   @override
@@ -82,6 +101,12 @@ class _AdminPageState extends State<AdminPage> {
     _eventQrCodeController.dispose();
     _eventQrPointsController.dispose();
     _eventQrNotesController.dispose();
+    _linkTitleController.dispose();
+    _linkUrlController.dispose();
+    _linkSectionHeadingController.dispose();
+    _linkSectionOrderController.dispose();
+    _linkSortOrderController.dispose();
+    _linkImageUrlController.dispose();
     super.dispose();
   }
 
@@ -482,6 +507,231 @@ class _AdminPageState extends State<AdminPage> {
       _rewardImageDataUrl = '';
       _statusMessage = 'New reward item form ready.';
     });
+  }
+
+  Future<void> _pickLinkImage() async {
+    final FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: <String>['png', 'jpg', 'jpeg', 'webp'],
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty) {
+      return;
+    }
+
+    final PlatformFile file = result.files.first;
+    final Uint8List? fileBytes = file.bytes;
+    if (fileBytes == null) {
+      setState(() {
+        _statusMessage = 'Unable to read link image bytes.';
+      });
+      return;
+    }
+
+    if (fileBytes.lengthInBytes > 900000) {
+      setState(() {
+        _statusMessage = 'Link image too large for Firestore document storage.';
+      });
+      return;
+    }
+
+    final String mimeType = _mimeTypeForExtension(file.extension ?? '');
+    setState(() {
+      _linkImageDataUrl = encodeDataUrl(bytes: fileBytes, mimeType: mimeType);
+      _linkImageUrlController.clear();
+      _linkAssetImagePath = '';
+      _statusMessage = 'Links page image selected.';
+    });
+  }
+
+  Future<void> _saveLinkItem() async {
+    final String title = _linkTitleController.text.trim();
+    final String url = _linkUrlController.text.trim();
+    if (title.isEmpty) {
+      setState(() {
+        _statusMessage = 'Links page item title is required.';
+      });
+      return;
+    }
+    if (url.isEmpty) {
+      setState(() {
+        _statusMessage = 'Links page item URL is required.';
+      });
+      return;
+    }
+
+    final int? sectionOrder =
+        int.tryParse(_linkSectionOrderController.text.trim());
+    if (sectionOrder == null) {
+      setState(() {
+        _statusMessage = 'Section order must be a number.';
+      });
+      return;
+    }
+
+    final int? sortOrder = int.tryParse(_linkSortOrderController.text.trim());
+    if (sortOrder == null) {
+      setState(() {
+        _statusMessage = 'Link sort order must be a number.';
+      });
+      return;
+    }
+
+    setState(() {
+      _isSavingLinkItem = true;
+      _statusMessage = '';
+    });
+
+    try {
+      final String linkId = await _linksRepository.saveItem(
+        id: _editingLinkItemId,
+        title: title,
+        url: url,
+        sectionHeading: _linkSectionHeadingController.text.trim(),
+        sectionOrder: sectionOrder,
+        sortOrder: sortOrder,
+        isActive: _linkIsActive,
+        isImageCircular: _linkIsImageCircular,
+        imageDataUrl: _linkImageDataUrl,
+        imageUrl: _linkImageUrlController.text.trim(),
+        assetImagePath: _linkAssetImagePath,
+        iconCodePoint: _linkIconCodePoint,
+      );
+
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _editingLinkItemId = linkId;
+        _statusMessage = 'Links page item saved.';
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _statusMessage = 'Failed to save links page item: $error';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSavingLinkItem = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _deleteLinkItem(LinksPageItem item) async {
+    final bool? shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Delete Links Page Item?'),
+          content: Text('Delete "${item.title}" from linksPageItems?'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldDelete != true) {
+      return;
+    }
+
+    try {
+      await _linksRepository.deleteItem(item.id);
+      if (!mounted) {
+        return;
+      }
+      if (_editingLinkItemId == item.id) {
+        _startNewLinkItem();
+      }
+      setState(() {
+        _statusMessage = 'Links page item deleted.';
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _statusMessage = 'Failed to delete links page item: $error';
+      });
+    }
+  }
+
+  void _editLinkItem(LinksPageItem item) {
+    setState(() {
+      _editingLinkItemId = item.id;
+      _linkTitleController.text = item.title;
+      _linkUrlController.text = item.url;
+      _linkSectionHeadingController.text = item.sectionHeading;
+      _linkSectionOrderController.text = item.sectionOrder.toString();
+      _linkSortOrderController.text = item.sortOrder.toString();
+      _linkImageUrlController.text = item.imageUrl;
+      _linkImageDataUrl = item.imageDataUrl;
+      _linkAssetImagePath = item.assetImagePath;
+      _linkIconCodePoint = item.iconCodePoint;
+      _linkIsActive = item.isActive;
+      _linkIsImageCircular = item.isImageCircular;
+      _statusMessage = 'Editing links page item "${item.title}".';
+    });
+  }
+
+  void _startNewLinkItem() {
+    setState(() {
+      _editingLinkItemId = null;
+      _linkTitleController.clear();
+      _linkUrlController.clear();
+      _linkSectionHeadingController.clear();
+      _linkSectionOrderController.text = '0';
+      _linkSortOrderController.text = '0';
+      _linkImageUrlController.clear();
+      _linkImageDataUrl = '';
+      _linkAssetImagePath = '';
+      _linkIconCodePoint = Icons.link.codePoint;
+      _linkIsActive = true;
+      _linkIsImageCircular = false;
+      _statusMessage = 'New links page item form ready.';
+    });
+  }
+
+  Widget _buildLinkPreview() {
+    final String previewTitle = _linkTitleController.text.trim().isEmpty
+        ? 'LINK PREVIEW'
+        : _linkTitleController.text.trim();
+    final String previewUrl = _linkUrlController.text.trim().isEmpty
+        ? 'https://pluto.events/links'
+        : _linkUrlController.text.trim();
+
+    final Uint8List? imageBytes = decodeDataUrl(_linkImageDataUrl);
+    final ImageProvider? imageProvider;
+    if (imageBytes != null) {
+      imageProvider = MemoryImage(imageBytes);
+    } else if (_linkImageUrlController.text.trim().isNotEmpty) {
+      imageProvider = NetworkImage(_linkImageUrlController.text.trim());
+    } else if (_linkAssetImagePath.isNotEmpty) {
+      imageProvider = AssetImage(_linkAssetImagePath);
+    } else {
+      imageProvider = null;
+    }
+
+    return AbsorbPointer(
+      child: LinkBox(
+        icon: IconData(_linkIconCodePoint, fontFamily: 'MaterialIcons'),
+        image: imageProvider,
+        text: previewTitle,
+        url: previewUrl,
+        isImageCircular: _linkIsImageCircular,
+      ),
+    );
   }
 
   String _generateEventQrCodeValue() {
@@ -911,6 +1161,8 @@ class _AdminPageState extends State<AdminPage> {
         final Widget events = _buildEventsCard();
         final Widget rewardEditor = _buildRewardEditorCard();
         final Widget rewardItems = _buildRewardItemsCard();
+        final Widget linksEditor = _buildLinksEditorCard();
+        final Widget linksItems = _buildLinksItemsCard();
         final Widget eventQrEditor = _buildEventQrEditorCard();
         final Widget eventQrCodes = _buildEventQrCodesCard();
         final Widget eventQrClaims = _buildEventQrClaimsAnalyticsCard();
@@ -928,6 +1180,10 @@ class _AdminPageState extends State<AdminPage> {
             rewardEditor,
             const SizedBox(height: 16),
             rewardItems,
+            const SizedBox(height: 16),
+            linksEditor,
+            const SizedBox(height: 16),
+            linksItems,
           ],
         );
 
@@ -948,6 +1204,10 @@ class _AdminPageState extends State<AdminPage> {
               rewardEditor,
               const SizedBox(height: 16),
               rewardItems,
+              const SizedBox(height: 16),
+              linksEditor,
+              const SizedBox(height: 16),
+              linksItems,
             ],
           );
         }
@@ -1323,6 +1583,304 @@ class _AdminPageState extends State<AdminPage> {
                                 onPressed: () => _deleteRewardItem(reward),
                                 child: const Text('Delete'),
                               ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLinksEditorCard() {
+    final Uint8List? linkImageBytes = decodeDataUrl(_linkImageDataUrl);
+
+    return Card(
+      color: Colors.black.withValues(alpha: 0.45),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              _editingLinkItemId == null
+                  ? 'Create Links Page Item'
+                  : 'Edit Links Page Item',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Controls the link cards shown at /links. Leave section heading blank for the top group.',
+              style: TextStyle(color: Colors.white70),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: _linkTitleController,
+              onChanged: (_) {
+                setState(() {});
+              },
+              style: const TextStyle(color: Colors.white),
+              cursorColor: Colors.white,
+              decoration: _inputDecoration('Button Title'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _linkUrlController,
+              onChanged: (_) {
+                setState(() {});
+              },
+              style: const TextStyle(color: Colors.white),
+              cursorColor: Colors.white,
+              decoration: _inputDecoration('Destination URL'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _linkSectionHeadingController,
+              style: const TextStyle(color: Colors.white),
+              cursorColor: Colors.white,
+              decoration: _inputDecoration('Section Heading (optional)'),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: TextField(
+                    controller: _linkSectionOrderController,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(color: Colors.white),
+                    cursorColor: Colors.white,
+                    decoration: _inputDecoration('Section Order'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: _linkSortOrderController,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(color: Colors.white),
+                    cursorColor: Colors.white,
+                    decoration: _inputDecoration('Link Order'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _linkImageUrlController,
+              onChanged: (_) {
+                setState(() {});
+              },
+              style: const TextStyle(color: Colors.white),
+              cursorColor: Colors.white,
+              decoration: _inputDecoration('External Image URL (optional)'),
+            ),
+            if (_linkAssetImagePath.isNotEmpty &&
+                _linkImageDataUrl.isEmpty &&
+                _linkImageUrlController.text.trim().isEmpty) ...<Widget>[
+              const SizedBox(height: 8),
+              Text(
+                'Using bundled asset: $_linkAssetImagePath',
+                style: const TextStyle(color: Colors.white70),
+              ),
+            ],
+            SwitchListTile(
+              title: const Text('Active on links page'),
+              value: _linkIsActive,
+              onChanged: (bool value) {
+                setState(() {
+                  _linkIsActive = value;
+                });
+              },
+            ),
+            SwitchListTile(
+              title: const Text('Use circular image crop'),
+              value: _linkIsImageCircular,
+              onChanged: (bool value) {
+                setState(() {
+                  _linkIsImageCircular = value;
+                });
+              },
+            ),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: <Widget>[
+                ElevatedButton(
+                  onPressed: _isSavingLinkItem ? null : _pickLinkImage,
+                  child: const Text('Upload Link Image'),
+                ),
+                OutlinedButton(
+                  onPressed: _isSavingLinkItem
+                      ? null
+                      : () {
+                          setState(() {
+                            _linkImageDataUrl = '';
+                            _linkImageUrlController.clear();
+                            _linkAssetImagePath = '';
+                            _statusMessage = 'Links page image removed.';
+                          });
+                        },
+                  child: const Text('Remove Image'),
+                ),
+              ],
+            ),
+            if (linkImageBytes != null) ...<Widget>[
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.memory(
+                  linkImageBytes,
+                  height: 180,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ],
+            const SizedBox(height: 14),
+            const Text(
+              'Preview',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Center(child: _buildLinkPreview()),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: <Widget>[
+                ElevatedButton(
+                  onPressed: _isSavingLinkItem ? null : _saveLinkItem,
+                  child: Text(
+                    _isSavingLinkItem ? 'Saving...' : 'Save Links Item',
+                  ),
+                ),
+                OutlinedButton(
+                  onPressed: _isSavingLinkItem ? null : _startNewLinkItem,
+                  child: const Text('New Links Item'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLinksItemsCard() {
+    return Card(
+      color: Colors.black.withValues(alpha: 0.45),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: StreamBuilder<List<LinksPageItem>>(
+          stream: _linksRepository.watchItems(onlyActive: false),
+          builder: (BuildContext context,
+              AsyncSnapshot<List<LinksPageItem>> snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const SizedBox(
+                height: 120,
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+
+            if (snapshot.hasError) {
+              return Text(
+                'Failed to load links page items: ${snapshot.error}',
+                style: const TextStyle(color: Colors.white70),
+              );
+            }
+
+            final List<LinksPageItem> items =
+                snapshot.data ?? <LinksPageItem>[];
+            if (items.isEmpty) {
+              return const Text(
+                'No links page items found.',
+                style: TextStyle(color: Colors.white70),
+              );
+            }
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const Text(
+                  'Links Page Items',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Default items can be edited here. Set Active to false if you want to hide one from /links.',
+                  style: TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 10),
+                ...items.map((LinksPageItem item) {
+                  final String headingLabel = item.sectionHeading.isEmpty
+                      ? '(top group)'
+                      : item.sectionHeading;
+                  final String sourceLabel =
+                      item.isDefaultItem ? 'Default' : 'Custom';
+
+                  return Card(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    margin: const EdgeInsets.only(bottom: 10),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            item.title.isEmpty ? '(Untitled link)' : item.title,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Active: ${item.isActive} | Section: $headingLabel | Order: ${item.sortOrder}',
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                          Text(
+                            'Source: $sourceLabel | Updated: ${_formatDate(item.updatedAt)}',
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                          if (item.url.isNotEmpty) ...<Widget>[
+                            const SizedBox(height: 6),
+                            SelectableText(
+                              item.url,
+                              style: const TextStyle(color: Colors.white70),
+                            ),
+                          ],
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 10,
+                            children: <Widget>[
+                              ElevatedButton(
+                                onPressed: () => _editLinkItem(item),
+                                child: const Text('Edit'),
+                              ),
+                              if (!item.isDefaultItem)
+                                OutlinedButton(
+                                  onPressed: () => _deleteLinkItem(item),
+                                  child: const Text('Delete'),
+                                ),
                             ],
                           ),
                         ],
@@ -1877,7 +2435,7 @@ class _AdminPageState extends State<AdminPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Admin - Events, Rewards & QR'),
+        title: const Text('Admin - Events, Rewards, QR & Links'),
         actions: <Widget>[
           TextButton(
             onPressed: () => context.go('/'),
@@ -1940,7 +2498,10 @@ class _AdminPageState extends State<AdminPage> {
               );
             },
           ),
-          if (_isSaving || _isSavingReward || _isSavingEventQr)
+          if (_isSaving ||
+              _isSavingReward ||
+              _isSavingEventQr ||
+              _isSavingLinkItem)
             Container(
               color: Colors.black45,
               child: const Center(child: CircularProgressIndicator()),
