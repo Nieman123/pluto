@@ -177,7 +177,7 @@ class ManaFestPage extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: const Color(0xFF121212),
         foregroundColor: Colors.white,
-        title: const Text('ManaFest Attendee Info'),
+        title: const Text('ManaFest Info'),
         actions: <Widget>[
           TextButton(
             onPressed: () => context.go('/'),
@@ -206,10 +206,12 @@ class ManaFestPage extends StatelessWidget {
                     _buildHeroCard(context),
                     const SizedBox(height: 12),
                     _buildSection(
-                      title: 'Event Info',
+                      title: 'Info',
                       children: <Widget>[
                         const Text(
-                          'ManaFest 2026 takes place at Three Creeks Campground in Anderson, South Carolina. '
+                          'For two nights in September, we’re taking over the woods at Three Creeks Campground in Anderson, SC. '
+                          'Raw energy, heavy bass, and your favorite regional DJs dropping heaters on 40,000 watts of sound. '
+                          'Bring your crew, set up camp, and lock in for a full weekend of underground sound in a setting that hits different. '
                           'Use this page as your single source for attendee information before and during the event.',
                           style: TextStyle(
                             color: Colors.white70,
