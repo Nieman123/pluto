@@ -72,41 +72,6 @@ class ManaFestPage extends StatelessWidget {
     );
   }
 
-  Widget _buildSetTimeRow({
-    required String slot,
-    required String details,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          SizedBox(
-            width: 180,
-            child: Text(
-              slot,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              details,
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 16,
-                height: 1.4,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildHeroCard(BuildContext context) {
     return Card(
       color: Colors.black.withValues(alpha: 0.48),
@@ -258,32 +223,6 @@ class ManaFestPage extends StatelessWidget {
                             'Schedule and map updates will be posted here as needed.'),
                       ],
                     ),
-                      // _buildSection(
-                      //   title: 'Set Times',
-                      //   children: <Widget>[
-                      //     const Text(
-                      //       'Set times are being finalized. This section is live and will be updated with the full artist-by-artist schedule.',
-                      //       style: TextStyle(
-                      //         color: Colors.white70,
-                      //         fontSize: 16,
-                      //         height: 1.4,
-                      //       ),
-                      //     ),
-                      //     const SizedBox(height: 12),
-                      //     _buildSetTimeRow(
-                      //       slot: 'Day 1',
-                      //       details: 'Full lineup and time slots: TBA',
-                      //     ),
-                      //     _buildSetTimeRow(
-                      //       slot: 'Day 2',
-                      //       details: 'Full lineup and time slots: TBA',
-                      //     ),
-                      //     _buildSetTimeRow(
-                      //       slot: 'Day 3',
-                      //       details: 'Full lineup and time slots: TBA',
-                      //     ),
-                      //   ],
-                      // ),
                     _buildSection(
                       title: 'Directions',
                       children: <Widget>[
