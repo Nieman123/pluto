@@ -4,6 +4,8 @@ class CustomTheme extends ChangeNotifier {
   bool isDarkTheme = true;
   ThemeMode get currentTheme => isDarkTheme ? ThemeMode.dark : ThemeMode.light;
 
+  static const Color _appBarColor = Color(0xFF121212);
+
   void toggleTheme() {
     isDarkTheme = !isDarkTheme;
     notifyListeners();
@@ -17,6 +19,11 @@ class CustomTheme extends ChangeNotifier {
       primaryColor: const Color(0xFF064635),
       primaryColorDark: Colors.white54,
       primaryColorLight: Colors.black,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: _appBarColor,
+        foregroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+      ),
     );
   }
 
@@ -28,6 +35,11 @@ class CustomTheme extends ChangeNotifier {
       primaryColor: const Color.fromARGB(255, 192, 190, 190),
       primaryColorDark: const Color.fromARGB(255, 192, 190, 190),
       primaryColorLight: Colors.white,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: _appBarColor,
+        foregroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+      ),
     );
   }
 }
