@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sa3_liquid/liquid/plasma/plasma.dart';
 
+import 'src/custom/auth_app_bar_action.dart';
 import 'user_profile_repository.dart';
 
 class ItemShopPage extends StatefulWidget {
@@ -403,16 +404,20 @@ class _ItemShopPageState extends State<ItemShopPage> {
         actions: <Widget>[
           TextButton(
             onPressed: () => context.go('/'),
+            style: TextButton.styleFrom(foregroundColor: Colors.white),
             child: const Text('Home'),
           ),
           TextButton(
             onPressed: () => context.go('/profile'),
+            style: TextButton.styleFrom(foregroundColor: Colors.white),
             child: const Text('Profile'),
           ),
           TextButton(
             onPressed: () => context.go('/scan-qr'),
+            style: TextButton.styleFrom(foregroundColor: Colors.white),
             child: const Text('Scan QR'),
           ),
+          const AuthAppBarAction(),
         ],
       ),
       body: Stack(

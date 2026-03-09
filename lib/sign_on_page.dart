@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sa3_liquid/liquid/plasma/plasma.dart';
 
+import 'src/custom/auth_app_bar_action.dart';
+
 enum _CredentialAction {
   signIn,
   createAccount,
@@ -220,6 +222,7 @@ class _SignOnPageState extends State<SignOnPage> {
             style: TextButton.styleFrom(foregroundColor: Colors.white),
             child: const Text('Rewards Shop'),
           ),
+          const AuthAppBarAction(),
         ],
       ),
       body: Stack(

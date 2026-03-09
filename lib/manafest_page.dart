@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:sa3_liquid/liquid/plasma/plasma.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
+import 'src/custom/auth_app_bar_action.dart';
+
 class ManaFestPage extends StatelessWidget {
   const ManaFestPage({Key? key}) : super(key: key);
 
@@ -182,6 +184,7 @@ class ManaFestPage extends StatelessWidget {
             style: TextButton.styleFrom(foregroundColor: Colors.white),
             child: const Text('Home'),
           ),
+          const AuthAppBarAction(),
         ],
       ),
       body: Stack(

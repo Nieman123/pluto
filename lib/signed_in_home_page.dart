@@ -8,6 +8,7 @@ import 'package:sa3_liquid/liquid/plasma/plasma.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 import 'current_events_repository.dart';
+import 'src/custom/auth_app_bar_action.dart';
 
 class SignedInHomePage extends StatelessWidget {
   SignedInHomePage({
@@ -43,7 +44,55 @@ class SignedInHomePage extends StatelessWidget {
     await launchUrlString(normalizedUrl, webOnlyWindowName: '_blank');
   }
 
-  Widget _buildQuickActionButton({
+  bool _isDarkTheme(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark;
+  }
+
+  Color _buttonBackground(BuildContext context) {
+    return _isDarkTheme(context)
+        ? const Color(0xFFF3EFF7)
+        : const Color(0xFF121212);
+  }
+
+  Color _buttonForeground(BuildContext context) {
+    return _isDarkTheme(context) ? const Color(0xFF6D55B4) : Colors.white;
+  }
+
+  ThemeData _pageTheme(BuildContext context) {
+    final ThemeData baseTheme = Theme.of(context);
+    final bool isDark = _isDarkTheme(context);
+
+    return baseTheme.copyWith(
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _buttonBackground(context),
+          foregroundColor: _buttonForeground(context),
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: isDark ? Colors.white : const Color(0xFF121212),
+          side: BorderSide(
+            color: isDark
+                ? Colors.white24
+                : const Color(0xFF121212).withValues(alpha: 0.28),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActionButton(
+    BuildContext context, {
     required String label,
     required IconData icon,
     required VoidCallback onPressed,
@@ -61,6 +110,9 @@ class SignedInHomePage extends StatelessWidget {
           ),
         ),
         style: ElevatedButton.styleFrom(
+          backgroundColor: _buttonBackground(context),
+          foregroundColor: _buttonForeground(context),
+          elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -82,26 +134,31 @@ class SignedInHomePage extends StatelessWidget {
 
         final List<Widget> actionButtons = <Widget>[
           _buildQuickActionButton(
+            context,
             label: 'Profile',
             icon: Icons.person,
             onPressed: () => context.go('/profile'),
           ),
           _buildQuickActionButton(
+            context,
             label: 'ManaFest',
             icon: Icons.festival,
             onPressed: () => context.go('/manafest'),
           ),
           _buildQuickActionButton(
+            context,
             label: 'Scan QR Code',
             icon: Icons.qr_code_scanner,
             onPressed: () => context.go('/scan-qr'),
           ),
           _buildQuickActionButton(
+            context,
             label: 'Rewards Shop',
             icon: Icons.redeem,
             onPressed: () => context.go('/shop'),
           ),
           _buildQuickActionButton(
+            context,
             label: 'Account',
             icon: Icons.settings,
             onPressed: () => context.go('/sign-on'),
@@ -111,6 +168,7 @@ class SignedInHomePage extends StatelessWidget {
         if (isAdmin) {
           actionButtons.add(
             _buildQuickActionButton(
+              context,
               label: 'Admin',
               icon: Icons.admin_panel_settings,
               onPressed: () => context.go('/admin'),
@@ -345,68 +403,67 @@ class SignedInHomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF121212),
-        foregroundColor: Colors.white,
-        title: SizedBox(
-          height: 36,
-          child: Image.asset(
-            'assets/experience/pluto-logo-small.png',
-            fit: BoxFit.contain,
-          ),
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => context.go('/manafest'),
-            style: TextButton.styleFrom(foregroundColor: Colors.white),
-            child: const Text('ManaFest'),
-          ),
-          TextButton(
-            onPressed: () => context.go('/profile'),
-            style: TextButton.styleFrom(foregroundColor: Colors.white),
-            child: const Text('Profile'),
-          ),
-          TextButton(
-            onPressed: () => context.go('/scan-qr'),
-            style: TextButton.styleFrom(foregroundColor: Colors.white),
-            child: const Text('Scan QR'),
-          ),
-          TextButton(
-            onPressed: () => context.go('/shop'),
-            style: TextButton.styleFrom(foregroundColor: Colors.white),
-            child: const Text('Rewards Shop'),
-          ),
-          TextButton(
-            onPressed: () => FirebaseAuth.instance.signOut(),
-            style: TextButton.styleFrom(foregroundColor: Colors.white),
-            child: const Text('Sign Out'),
-          ),
-        ],
-      ),
-      body: Stack(
-        children: <Widget>[
-          const PlasmaRenderer(
-            color: Color.fromARGB(68, 85, 0, 165),
-            blur: 0.5,
-            blendMode: BlendMode.plus,
-            particleType: ParticleType.atlas,
-            variation1: 1,
-          ),
-          Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1200),
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: <Widget>[
-                  _buildHeaderCard(context),
-                  const SizedBox(height: 14),
-                  _buildUpcomingEventsCard(context),
-                ],
-              ),
+    return Theme(
+      data: _pageTheme(context),
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF121212),
+          foregroundColor: Colors.white,
+          title: SizedBox(
+            height: 36,
+            child: Image.asset(
+              'assets/experience/pluto-logo-small.png',
+              fit: BoxFit.contain,
             ),
           ),
-        ],
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => context.go('/manafest'),
+              style: TextButton.styleFrom(foregroundColor: Colors.white),
+              child: const Text('ManaFest'),
+            ),
+            TextButton(
+              onPressed: () => context.go('/profile'),
+              style: TextButton.styleFrom(foregroundColor: Colors.white),
+              child: const Text('Profile'),
+            ),
+            TextButton(
+              onPressed: () => context.go('/scan-qr'),
+              style: TextButton.styleFrom(foregroundColor: Colors.white),
+              child: const Text('Scan QR'),
+            ),
+            TextButton(
+              onPressed: () => context.go('/shop'),
+              style: TextButton.styleFrom(foregroundColor: Colors.white),
+              child: const Text('Rewards Shop'),
+            ),
+            const AuthAppBarAction(),
+          ],
+        ),
+        body: Stack(
+          children: <Widget>[
+            const PlasmaRenderer(
+              color: Color.fromARGB(68, 85, 0, 165),
+              blur: 0.5,
+              blendMode: BlendMode.plus,
+              particleType: ParticleType.atlas,
+              variation1: 1,
+            ),
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1200),
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: <Widget>[
+                    _buildHeaderCard(context),
+                    const SizedBox(height: 14),
+                    _buildUpcomingEventsCard(context),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

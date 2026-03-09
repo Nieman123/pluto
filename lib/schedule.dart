@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sa3_liquid/liquid/plasma/plasma.dart';
 
+import 'src/custom/auth_app_bar_action.dart';
+
 class SchedulePage extends StatelessWidget {
   const SchedulePage({Key? key}) : super(key: key);
 
@@ -9,9 +11,11 @@ class SchedulePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color.fromARGB(255, 115, 60, 175),
         title: const Text('Schedule Info'),
         centerTitle: true,
+        actions: const <Widget>[
+          AuthAppBarAction(),
+        ],
       ),
       body: Stack(
         children: [

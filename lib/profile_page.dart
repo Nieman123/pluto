@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:sa3_liquid/liquid/plasma/plasma.dart';
 
+import 'src/custom/auth_app_bar_action.dart';
 import 'user_profile_repository.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -628,18 +629,18 @@ class _ProfilePageState extends State<ProfilePage> {
         actions: <Widget>[
           TextButton(
             onPressed: () => context.go('/'),
+            style: TextButton.styleFrom(foregroundColor: Colors.white),
             child: const Text('Home'),
           ),
-          TextButton(
-            onPressed: () => context.go('/sign-on'),
-            child: const Text('Sign On'),
-          ),
+          const AuthAppBarAction(),
           TextButton(
             onPressed: () => context.go('/scan-qr'),
+            style: TextButton.styleFrom(foregroundColor: Colors.white),
             child: const Text('Scan QR'),
           ),
           TextButton(
             onPressed: () => context.go('/shop'),
+            style: TextButton.styleFrom(foregroundColor: Colors.white),
             child: const Text('Rewards Shop'),
           ),
         ],

@@ -16,6 +16,7 @@ import 'package:sa3_liquid/liquid/plasma/plasma.dart';
 import 'current_events_repository.dart';
 import 'link_box.dart';
 import 'links_repository.dart';
+import 'src/custom/auth_app_bar_action.dart';
 import 'user_profile_repository.dart';
 
 enum AdminSection {
@@ -2777,11 +2778,7 @@ class _AdminPageState extends State<AdminPage> {
                 style: TextButton.styleFrom(foregroundColor: Colors.white),
                 child: const Text('Admin Home'),
               ),
-            TextButton(
-              onPressed: () => context.go('/sign-on'),
-              style: TextButton.styleFrom(foregroundColor: Colors.white),
-              child: const Text('Sign in'),
-            ),
+            const AuthAppBarAction(),
           ],
         ),
         body: Stack(

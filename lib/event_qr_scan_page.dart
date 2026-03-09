@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:sa3_liquid/liquid/plasma/plasma.dart';
 
+import 'src/custom/auth_app_bar_action.dart';
 import 'user_profile_repository.dart';
 
 class EventQrScanPage extends StatefulWidget {
@@ -277,16 +278,20 @@ class _EventQrScanPageState extends State<EventQrScanPage> {
         actions: <Widget>[
           TextButton(
             onPressed: () => context.go('/'),
+            style: TextButton.styleFrom(foregroundColor: Colors.white),
             child: const Text('Home'),
           ),
           TextButton(
             onPressed: () => context.go('/profile'),
+            style: TextButton.styleFrom(foregroundColor: Colors.white),
             child: const Text('Profile'),
           ),
           TextButton(
             onPressed: () => context.go('/shop'),
+            style: TextButton.styleFrom(foregroundColor: Colors.white),
             child: const Text('Rewards Shop'),
           ),
+          const AuthAppBarAction(),
         ],
       ),
       body: Stack(
