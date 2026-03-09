@@ -30,6 +30,7 @@ class LinksPageItem {
     required this.sectionOrder,
     required this.sortOrder,
     required this.isActive,
+    required this.isDeleted,
     required this.isImageCircular,
     required this.imageDataUrl,
     required this.imageUrl,
@@ -55,6 +56,7 @@ class LinksPageItem {
       sectionOrder: _parseInt(data['sectionOrder']),
       sortOrder: _parseInt(data['sortOrder']),
       isActive: data['isActive'] as bool? ?? true,
+      isDeleted: data['isDeleted'] as bool? ?? false,
       isImageCircular: data['isImageCircular'] as bool? ?? false,
       imageDataUrl: (data['imageDataUrl'] as String? ?? '').trim(),
       imageUrl: (data['imageUrl'] as String? ?? '').trim(),
@@ -75,6 +77,7 @@ class LinksPageItem {
   final int sectionOrder;
   final int sortOrder;
   final bool isActive;
+  final bool isDeleted;
   final bool isImageCircular;
   final String imageDataUrl;
   final String imageUrl;
@@ -111,6 +114,7 @@ class LinksPageItem {
       'sectionOrder': sectionOrder,
       'sortOrder': sortOrder,
       'isActive': isActive,
+      'isDeleted': isDeleted,
       'isImageCircular': isImageCircular,
       'imageDataUrl': imageDataUrl,
       'imageUrl': imageUrl,
@@ -155,6 +159,7 @@ class LinksRepository {
       sectionOrder: 0,
       sortOrder: 0,
       isActive: true,
+      isDeleted: false,
       isImageCircular: true,
       imageDataUrl: '',
       imageUrl: '',
@@ -171,6 +176,7 @@ class LinksRepository {
       sectionOrder: 0,
       sortOrder: 1,
       isActive: true,
+      isDeleted: false,
       isImageCircular: true,
       imageDataUrl: '',
       imageUrl: '',
@@ -187,6 +193,7 @@ class LinksRepository {
       sectionOrder: 0,
       sortOrder: 2,
       isActive: true,
+      isDeleted: false,
       isImageCircular: false,
       imageDataUrl: '',
       imageUrl: '',
@@ -203,6 +210,7 @@ class LinksRepository {
       sectionOrder: 0,
       sortOrder: 3,
       isActive: true,
+      isDeleted: false,
       isImageCircular: false,
       imageDataUrl: '',
       imageUrl: '',
@@ -219,6 +227,7 @@ class LinksRepository {
       sectionOrder: 0,
       sortOrder: 4,
       isActive: true,
+      isDeleted: false,
       isImageCircular: false,
       imageDataUrl: '',
       imageUrl: '',
@@ -235,6 +244,7 @@ class LinksRepository {
       sectionOrder: 1,
       sortOrder: 0,
       isActive: true,
+      isDeleted: false,
       isImageCircular: false,
       imageDataUrl: '',
       imageUrl: 'https://i.imgur.com/5I4TqyV.jpg',
@@ -251,6 +261,7 @@ class LinksRepository {
       sectionOrder: 1,
       sortOrder: 1,
       isActive: true,
+      isDeleted: false,
       isImageCircular: false,
       imageDataUrl: '',
       imageUrl: 'https://i.imgur.com/FiHtYq3.jpeg',
@@ -292,6 +303,7 @@ class LinksRepository {
         }
 
         final List<LinksPageItem> items = itemsById.values
+            .where((LinksPageItem item) => !item.isDeleted)
             .where((LinksPageItem item) => !onlyActive || item.isActive)
             .toList()
           ..sort(_sortItems);
@@ -328,6 +340,7 @@ class LinksRepository {
       'sectionOrder': sectionOrder,
       'sortOrder': sortOrder,
       'isActive': isActive,
+      'isDeleted': false,
       'isImageCircular': isImageCircular,
       'imageDataUrl': imageDataUrl.trim(),
       'imageUrl': imageUrl.trim(),
@@ -344,8 +357,17 @@ class LinksRepository {
     return document.id;
   }
 
-  Future<void> deleteItem(String id) async {
-    await _linksPageItems.doc(id).delete();
+  Future<void> deleteItem(LinksPageItem item) async {
+    final DocumentReference<Map<String, dynamic>> document =
+        _linksPageItems.doc(item.id);
+    if (item.isDefaultItem) {
+      await document.set(<String, dynamic>{
+        'isDeleted': true,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      return;
+    }
+    await document.delete();
   }
 
   static int _sortItems(LinksPageItem a, LinksPageItem b) {

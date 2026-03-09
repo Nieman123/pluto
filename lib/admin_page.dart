@@ -647,7 +647,7 @@ class _AdminPageState extends State<AdminPage> {
     }
 
     try {
-      await _linksRepository.deleteItem(item.id);
+      await _linksRepository.deleteItem(item);
       if (!mounted) {
         return;
       }
@@ -1626,9 +1626,6 @@ class _AdminPageState extends State<AdminPage> {
             const SizedBox(height: 14),
             TextField(
               controller: _linkTitleController,
-              onChanged: (_) {
-                setState(() {});
-              },
               style: const TextStyle(color: Colors.white),
               cursorColor: Colors.white,
               decoration: _inputDecoration('Button Title'),
@@ -1636,9 +1633,6 @@ class _AdminPageState extends State<AdminPage> {
             const SizedBox(height: 12),
             TextField(
               controller: _linkUrlController,
-              onChanged: (_) {
-                setState(() {});
-              },
               style: const TextStyle(color: Colors.white),
               cursorColor: Colors.white,
               decoration: _inputDecoration('Destination URL'),
@@ -1677,9 +1671,6 @@ class _AdminPageState extends State<AdminPage> {
             const SizedBox(height: 12),
             TextField(
               controller: _linkImageUrlController,
-              onChanged: (_) {
-                setState(() {});
-              },
               style: const TextStyle(color: Colors.white),
               cursorColor: Colors.white,
               decoration: _inputDecoration('External Image URL (optional)'),
@@ -1755,7 +1746,16 @@ class _AdminPageState extends State<AdminPage> {
               ),
             ),
             const SizedBox(height: 8),
-            Center(child: _buildLinkPreview()),
+            AnimatedBuilder(
+              animation: Listenable.merge(<Listenable>[
+                _linkTitleController,
+                _linkUrlController,
+                _linkImageUrlController,
+              ]),
+              builder: (BuildContext context, Widget? child) {
+                return Center(child: _buildLinkPreview());
+              },
+            ),
             const SizedBox(height: 16),
             Wrap(
               spacing: 12,
@@ -1876,11 +1876,10 @@ class _AdminPageState extends State<AdminPage> {
                                 onPressed: () => _editLinkItem(item),
                                 child: const Text('Edit'),
                               ),
-                              if (!item.isDefaultItem)
-                                OutlinedButton(
-                                  onPressed: () => _deleteLinkItem(item),
-                                  child: const Text('Delete'),
-                                ),
+                              OutlinedButton(
+                                onPressed: () => _deleteLinkItem(item),
+                                child: const Text('Delete'),
+                              ),
                             ],
                           ),
                         ],
