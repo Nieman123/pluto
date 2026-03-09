@@ -725,7 +725,7 @@ class _AdminPageState extends State<AdminPage> {
 
     return AbsorbPointer(
       child: LinkBox(
-        icon: IconData(_linkIconCodePoint, fontFamily: 'MaterialIcons'),
+        icon: iconForLinksCodePoint(_linkIconCodePoint),
         image: imageProvider,
         text: previewTitle,
         url: previewUrl,

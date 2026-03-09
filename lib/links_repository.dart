@@ -5,6 +5,22 @@ import 'package:flutter/material.dart';
 
 import 'user_profile_repository.dart';
 
+IconData iconForLinksCodePoint(int codePoint) {
+  if (codePoint == Icons.airplane_ticket.codePoint) {
+    return Icons.airplane_ticket;
+  }
+  if (codePoint == Icons.edit_document.codePoint) {
+    return Icons.edit_document;
+  }
+  if (codePoint == Icons.music_note.codePoint) {
+    return Icons.music_note;
+  }
+  if (codePoint == Icons.face.codePoint) {
+    return Icons.face;
+  }
+  return Icons.link;
+}
+
 class LinksPageItem {
   const LinksPageItem({
     required this.id,
@@ -85,7 +101,7 @@ class LinksPageItem {
     return null;
   }
 
-  IconData get iconData => IconData(iconCodePoint, fontFamily: 'MaterialIcons');
+  IconData get iconData => iconForLinksCodePoint(iconCodePoint);
 
   Map<String, dynamic> toDocumentData() {
     return <String, dynamic>{
