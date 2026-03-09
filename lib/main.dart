@@ -105,6 +105,24 @@ class _MyAppState extends State<MyApp> {
         },
       ),
       GoRoute(
+        path: '/admin/events',
+        builder: (BuildContext context, GoRouterState state) {
+          return const AdminPage(section: AdminSection.events);
+        },
+      ),
+      GoRoute(
+        path: '/admin/rewards',
+        builder: (BuildContext context, GoRouterState state) {
+          return const AdminPage(section: AdminSection.rewards);
+        },
+      ),
+      GoRoute(
+        path: '/admin/links',
+        builder: (BuildContext context, GoRouterState state) {
+          return const AdminPage(section: AdminSection.links);
+        },
+      ),
+      GoRoute(
         path: '/profile',
         builder: (BuildContext context, GoRouterState state) {
           return const ProfilePage();

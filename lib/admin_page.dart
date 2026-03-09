@@ -18,8 +18,54 @@ import 'link_box.dart';
 import 'links_repository.dart';
 import 'user_profile_repository.dart';
 
+enum AdminSection {
+  events,
+  rewards,
+  links,
+}
+
+extension AdminSectionX on AdminSection {
+  String get label {
+    switch (this) {
+      case AdminSection.events:
+        return 'Events';
+      case AdminSection.rewards:
+        return 'Rewards';
+      case AdminSection.links:
+        return 'Links';
+    }
+  }
+
+  String get routePath {
+    switch (this) {
+      case AdminSection.events:
+        return '/admin/events';
+      case AdminSection.rewards:
+        return '/admin/rewards';
+      case AdminSection.links:
+        return '/admin/links';
+    }
+  }
+
+  String get description {
+    switch (this) {
+      case AdminSection.events:
+        return 'Create and edit current event cards shown across the site.';
+      case AdminSection.rewards:
+        return 'Manage rewards shop items and event QR code point flows.';
+      case AdminSection.links:
+        return 'Edit the buttons and sections displayed on the links page.';
+    }
+  }
+}
+
 class AdminPage extends StatefulWidget {
-  const AdminPage({Key? key}) : super(key: key);
+  const AdminPage({
+    Key? key,
+    this.section,
+  }) : super(key: key);
+
+  final AdminSection? section;
 
   @override
   State<AdminPage> createState() => _AdminPageState();
@@ -1154,61 +1200,122 @@ class _AdminPageState extends State<AdminPage> {
     );
   }
 
-  Widget _buildEditorLayout() {
+  List<Widget> _withVerticalSpacing(List<Widget> children) {
+    final List<Widget> spacedChildren = <Widget>[];
+    for (int index = 0; index < children.length; index++) {
+      if (index > 0) {
+        spacedChildren.add(const SizedBox(height: 16));
+      }
+      spacedChildren.add(children[index]);
+    }
+    return spacedChildren;
+  }
+
+  Widget _buildAdminHomeCard(AdminSection section) {
+    return Card(
+      color: Colors.black.withValues(alpha: 0.45),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              section.label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              section.description,
+              style: const TextStyle(color: Colors.white70, height: 1.4),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => context.go(section.routePath),
+              child: Text('Edit ${section.label}'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAdminHome() {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 860),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Card(
+                color: Colors.black.withValues(alpha: 0.45),
+                child: const Padding(
+                  padding: EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Admin',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 30,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 10),
+                      Text(
+                        'Choose a section to edit instead of loading every tool into one long page.',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 16,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              ..._withVerticalSpacing(
+                AdminSection.values
+                    .map(_buildAdminHomeCard)
+                    .toList(growable: false),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionEditorLayout({
+    required List<Widget> primaryChildren,
+    required List<Widget> secondaryChildren,
+  }) {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
-        final Widget editor = _buildEditorCard();
-        final Widget events = _buildEventsCard();
-        final Widget rewardEditor = _buildRewardEditorCard();
-        final Widget rewardItems = _buildRewardItemsCard();
-        final Widget linksEditor = _buildLinksEditorCard();
-        final Widget linksItems = _buildLinksItemsCard();
-        final Widget eventQrEditor = _buildEventQrEditorCard();
-        final Widget eventQrCodes = _buildEventQrCodesCard();
-        final Widget eventQrClaims = _buildEventQrClaimsAnalyticsCard();
-        final Widget managementPane = Column(
+        final Widget primaryPane = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            events,
-            const SizedBox(height: 16),
-            eventQrEditor,
-            const SizedBox(height: 16),
-            eventQrCodes,
-            const SizedBox(height: 16),
-            eventQrClaims,
-            const SizedBox(height: 16),
-            rewardEditor,
-            const SizedBox(height: 16),
-            rewardItems,
-            const SizedBox(height: 16),
-            linksEditor,
-            const SizedBox(height: 16),
-            linksItems,
-          ],
+          children: _withVerticalSpacing(primaryChildren),
+        );
+        final Widget secondaryPane = Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: _withVerticalSpacing(secondaryChildren),
         );
 
         if (constraints.maxWidth < 1100) {
+          final List<Widget> stackedChildren = <Widget>[
+            ...primaryChildren,
+            ...secondaryChildren,
+          ];
           return ListView(
             padding: const EdgeInsets.all(16),
-            children: <Widget>[
-              editor,
-              const SizedBox(height: 16),
-              events,
-              const SizedBox(height: 16),
-              eventQrEditor,
-              const SizedBox(height: 16),
-              eventQrCodes,
-              const SizedBox(height: 16),
-              eventQrClaims,
-              const SizedBox(height: 16),
-              rewardEditor,
-              const SizedBox(height: 16),
-              rewardItems,
-              const SizedBox(height: 16),
-              linksEditor,
-              const SizedBox(height: 16),
-              linksItems,
-            ],
+            children: _withVerticalSpacing(stackedChildren),
           );
         }
 
@@ -1228,7 +1335,7 @@ class _AdminPageState extends State<AdminPage> {
                 flex: 5,
                 child: SizedBox(
                   height: paneHeight,
-                  child: SingleChildScrollView(child: editor),
+                  child: SingleChildScrollView(child: primaryPane),
                 ),
               ),
               const SizedBox(width: 16),
@@ -1236,7 +1343,7 @@ class _AdminPageState extends State<AdminPage> {
                 flex: 6,
                 child: SizedBox(
                   height: paneHeight,
-                  child: SingleChildScrollView(child: managementPane),
+                  child: SingleChildScrollView(child: secondaryPane),
                 ),
               ),
             ],
@@ -1244,6 +1351,35 @@ class _AdminPageState extends State<AdminPage> {
         );
       },
     );
+  }
+
+  Widget _buildAuthorizedAdminContent() {
+    switch (widget.section) {
+      case null:
+        return _buildAdminHome();
+      case AdminSection.events:
+        return _buildSectionEditorLayout(
+          primaryChildren: <Widget>[_buildEditorCard()],
+          secondaryChildren: <Widget>[_buildEventsCard()],
+        );
+      case AdminSection.rewards:
+        return _buildSectionEditorLayout(
+          primaryChildren: <Widget>[
+            _buildRewardEditorCard(),
+            _buildRewardItemsCard(),
+          ],
+          secondaryChildren: <Widget>[
+            _buildEventQrEditorCard(),
+            _buildEventQrCodesCard(),
+            _buildEventQrClaimsAnalyticsCard(),
+          ],
+        );
+      case AdminSection.links:
+        return _buildSectionEditorLayout(
+          primaryChildren: <Widget>[_buildLinksEditorCard()],
+          secondaryChildren: <Widget>[_buildLinksItemsCard()],
+        );
+    }
   }
 
   Widget _buildEditorCard() {
@@ -2432,14 +2568,22 @@ class _AdminPageState extends State<AdminPage> {
 
   @override
   Widget build(BuildContext context) {
+    final String pageTitle =
+        widget.section == null ? 'Admin' : 'Admin - ${widget.section!.label}';
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Admin - Events, Rewards, QR & Links'),
+        title: Text(pageTitle),
         actions: <Widget>[
           TextButton(
             onPressed: () => context.go('/'),
             child: const Text('Home'),
           ),
+          if (widget.section != null)
+            TextButton(
+              onPressed: () => context.go('/admin'),
+              child: const Text('Admin Home'),
+            ),
           TextButton(
             onPressed: () => context.go('/sign-on'),
             child: const Text('Sign On'),
@@ -2492,7 +2636,7 @@ class _AdminPageState extends State<AdminPage> {
                     return _buildUnauthorizedState(user);
                   }
 
-                  return _buildEditorLayout();
+                  return _buildAuthorizedAdminContent();
                 },
               );
             },
