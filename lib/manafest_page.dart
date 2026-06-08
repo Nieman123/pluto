@@ -103,7 +103,7 @@ class ManaFestPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Attendee guide for event info, set times, directions, camping, and festival rules.',
+                  'Two nights of underground sound, camping, and regional DJs at Three Creeks Campground in Anderson, SC.',
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: 18,
@@ -206,13 +206,12 @@ class ManaFestPage extends StatelessWidget {
                     _buildHeroCard(context),
                     const SizedBox(height: 12),
                     _buildSection(
-                      title: 'Info',
+                      title: 'Event Info',
                       children: <Widget>[
                         const Text(
-                          'For two nights in September, we’re taking over the woods at Three Creeks Campground in Anderson, SC. '
-                          'Raw energy, heavy bass, and your favorite regional DJs dropping heaters on 40,000 watts of sound. '
-                          'Bring your crew, set up camp, and lock in for a full weekend of underground sound in a setting that hits different. '
-                          'Use this page as your single source for attendee information before and during the event.',
+                          'For two nights in September, we’re taking over the woods at Three Creeks Campground in Anderson, SC.\n\n'
+                          'Raw energy, heavy bass, and your favorite regional DJs dropping heaters on 40,000 watts of sound.\n\n'
+                          'Bring your crew, set up camp, and lock in for a full weekend of underground sound in a setting that hits different.',
                           style: TextStyle(
                             color: Colors.white70,
                             fontSize: 16,
@@ -221,11 +220,14 @@ class ManaFestPage extends StatelessWidget {
                         ),
                         const SizedBox(height: 10),
                         _buildBullet(
-                            'Purchase passes at the official ticket link above.'),
+                          'Two nights of camping, music, and late-night energy at Three Creeks Campground in Anderson, SC.',
+                        ),
                         _buildBullet(
-                            'Bring a valid photo ID and your ticket confirmation for check-in.'),
+                          'Regional DJs, heavy bass, and 40,000 watts of sound are at the center of the weekend.',
+                        ),
                         _buildBullet(
-                            'Schedule and map updates will be posted here as needed.'),
+                          'Use the sections below for directions, camping details, and festival rules before you head in.',
+                        ),
                       ],
                     ),
                     _buildSection(
