@@ -19,48 +19,32 @@ class NavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
-      child: Row(
-        children: [
+      child: const Row(
+        children: <Widget>[
           Expanded(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                UnderlinedButton(
-                    context: context,
-                    tabNumber: 0,
-                    btnNumber: ' 00. ',
-                    btnName: 'Home'),
-                UnderlinedButton(
-                    context: context,
-                    tabNumber: 1,
-                    btnNumber: ' 01. ',
-                    btnName: 'Events'),
-                UnderlinedButton(
-                    context: context,
-                    tabNumber: 2,
-                    btnNumber: ' 02. ',
-                    btnName: 'Artists'),
-                UnderlinedButton(
-                    context: context,
-                    tabNumber: 3,
-                    btnNumber: ' 03. ',
-                    btnName: 'Contact'),
+              children: <Widget>[
+                UnderlinedButton(tabNumber: 0, btnName: 'Home'),
+                UnderlinedButton(tabNumber: 1, btnName: 'Events'),
+                UnderlinedButton(tabNumber: 2, btnName: 'Artists'),
+                UnderlinedButton(tabNumber: 3, btnName: 'Contact'),
               ],
             ),
           ),
-          const _RouteNavButton(
+          _RouteNavButton(
             label: 'Sign in',
             route: '/sign-on',
           ),
-          const _ShopNavButton(),
-          const _ProfileNavButton(),
-          const _ScannerNavButton(),
-          const _AdminNavButton(),
-          const Visibility(
+          _ShopNavButton(),
+          _ProfileNavButton(),
+          _ScannerNavButton(),
+          _AdminNavButton(),
+          Visibility(
             visible: false,
             child: ThemeButton(),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
         ],
       ),
     );

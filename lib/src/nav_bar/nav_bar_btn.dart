@@ -12,18 +12,13 @@ TextStyle textStyle(double fontSize, Color color) => TextStyle(
 //The buttons in the top Nav Bar
 class UnderlinedButton extends StatefulWidget {
   const UnderlinedButton(
-      {Key? key,
-      required this.context,
-      required this.btnName,
-      required this.btnNumber,
-      required this.tabNumber})
+      {Key? key, required this.btnName, required this.tabNumber})
       : super(key: key);
 
   @override
   _UnderlinedButtonState createState() => _UnderlinedButtonState();
 
-  final BuildContext context;
-  final String btnName, btnNumber;
+  final String btnName;
   final int tabNumber;
 }
 
@@ -34,7 +29,7 @@ class _UnderlinedButtonState extends State<UnderlinedButton> {
     return InkWell(
       borderRadius: BorderRadius.circular(5.0),
       hoverColor: Colors.transparent,
-      onTap: () => scrollToHomeSection(context, widget.tabNumber),
+      onTap: () => scrollToHomeSection(widget.tabNumber),
       onHover: (bool value) => setState(() => _isHover = value),
       child: SizedBox(
         width: MediaQuery.of(context).size.width * 0.13,
@@ -59,8 +54,6 @@ class _UnderlinedButtonState extends State<UnderlinedButton> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(widget.btnNumber,
-                    style: textStyle(11, Theme.of(context).primaryColorLight)),
                 Text(widget.btnName,
                     style: textStyle(15, Theme.of(context).primaryColor)),
               ],

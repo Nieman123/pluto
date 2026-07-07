@@ -12,6 +12,19 @@ class App extends StatelessWidget {
   const App({Key? key}) : super(key: key);
   static const String route = '/';
 
+  Widget _buildHomeList() {
+    return ListView.builder(
+      itemCount: widgetList.length,
+      controller: homeScrollController,
+      itemBuilder: (BuildContext context, int index) {
+        return KeyedSubtree(
+          key: homeSectionKeys[index],
+          child: widgetList[index],
+        );
+      },
+    );
+  }
+
   Widget _buildPublicHome(BuildContext context) {
     final double height = MediaQuery.of(context).size.height;
     final double width = MediaQuery.of(context).size.width;
@@ -26,13 +39,7 @@ class App extends StatelessWidget {
           body: Stack(
             children: <Widget>[
               const PlutoBackground(),
-              ListView.builder(
-                itemCount: widgetList.length,
-                controller: homeScrollController,
-                itemBuilder: (BuildContext context, int index) {
-                  return widgetList[index];
-                },
-              ),
+              _buildHomeList(),
             ],
           ),
         );
@@ -45,13 +52,7 @@ class App extends StatelessWidget {
         body: Stack(
           children: <Widget>[
             const PlutoBackground(),
-            ListView.builder(
-              itemCount: widgetList.length,
-              controller: homeScrollController,
-              itemBuilder: (BuildContext context, int index) {
-                return widgetList[index];
-              },
-            ),
+            _buildHomeList(),
           ],
         ),
       );
