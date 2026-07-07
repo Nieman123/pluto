@@ -2,8 +2,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:sa3_liquid/liquid/plasma/plasma.dart';
 
+import 'src/background/pluto_background.dart';
 import 'src/custom/auth_app_bar_action.dart';
 
 enum _CredentialAction {
@@ -197,7 +197,7 @@ class _SignOnPageState extends State<SignOnPage> {
         title: SizedBox(
           height: 36,
           child: Image.asset(
-            'assets/experience/pluto-logo-small.png',
+            'assets/experience/pluto-logo-small.webp',
             fit: BoxFit.contain,
           ),
         ),
@@ -227,13 +227,7 @@ class _SignOnPageState extends State<SignOnPage> {
       ),
       body: Stack(
         children: <Widget>[
-          const PlasmaRenderer(
-            color: Color.fromARGB(68, 85, 0, 165),
-            blur: 0.5,
-            blendMode: BlendMode.plus,
-            particleType: ParticleType.atlas,
-            variation1: 1,
-          ),
+          const PlutoBackground(),
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
@@ -246,7 +240,7 @@ class _SignOnPageState extends State<SignOnPage> {
                       width: 132,
                       height: 132,
                       child: Image.asset(
-                        'assets/experience/pluto-logo-small.png',
+                        'assets/experience/pluto-logo-small.webp',
                         fit: BoxFit.contain,
                       ),
                     ),

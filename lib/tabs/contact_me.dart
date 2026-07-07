@@ -67,7 +67,7 @@ class _ContactMeState extends State<ContactMe> {
                     width: 100.0,
                     height: 100.0,
                     child: Image.asset(
-                      'assets/experience/pluto-logo-small.png',
+                      'assets/experience/pluto-logo-small.webp',
                       fit: BoxFit.fill,
                     ),
                   ),
@@ -139,7 +139,7 @@ class _ContactMeState extends State<ContactMe> {
                             width: 100.0,
                             height: 100.0,
                             child: Image.asset(
-                              'assets/experience/pluto-logo-small.png',
+                              'assets/experience/pluto-logo-small.webp',
                               fit: BoxFit.fill,
                             ),
                           ),

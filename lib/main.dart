@@ -1,21 +1,21 @@
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import 'admin_page.dart';
+import 'admin_page.dart' deferred as admin_page hide AdminSectionX;
 import 'app.dart';
-import 'camping.dart';
-import 'event_qr_scan_page.dart';
+import 'camping.dart' deferred as camping;
+import 'event_qr_scan_page.dart' deferred as event_qr_scan_page;
 import 'firebase_options.dart';
-import 'item_shop_page.dart';
-import 'links.dart';
-import 'manafest_page.dart';
-import 'profile_page.dart';
-import 'schedule.dart';
-import 'sign_on_page.dart';
+import 'item_shop_page.dart' deferred as item_shop_page;
+import 'links.dart' deferred as links;
+import 'manafest_page.dart' deferred as manafest_page;
+import 'profile_page.dart' deferred as profile_page;
+import 'push_notifications.dart' deferred as push_notifications;
+import 'schedule.dart' deferred as schedule;
+import 'sign_on_page.dart' deferred as sign_on_page;
 import 'src/configure_web.dart';
+import 'src/deferred_widget.dart';
 import 'src/theme/config.dart';
 import 'src/theme/custom_theme.dart';
 
@@ -36,22 +36,14 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  static const String _webVapidKey =
-      'BBwgiNd7-lSc0iqFjrIprkGQDgiV8Z67WprIVKqc3-hVFpanH9xOAnrHQKZ45h4JaMIp9nljQONhdqzBvpuJINE';
-
   late final GoRouter _router;
   bool _notificationsSupported = false;
   bool _isCheckingNotificationSupport = true;
   bool _isRequestingNotificationPermission = false;
   bool _notificationPromptDismissed = false;
-  NotificationSettings? _notificationSettings;
-
-  bool get _hasNotificationPermission {
-    final AuthorizationStatus? status =
-        _notificationSettings?.authorizationStatus;
-    return status == AuthorizationStatus.authorized ||
-        status == AuthorizationStatus.provisional;
-  }
+  bool _hasNotificationPermission = false;
+  bool _isNotificationDenied = false;
+  bool _pushNotificationLibraryLoaded = false;
 
   bool get _shouldShowNotificationPrompt {
     return !_isCheckingNotificationSupport &&
@@ -63,8 +55,13 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    _initializeNotifications();
-    messageListener();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future<void>.delayed(const Duration(milliseconds: 1500), () {
+        if (mounted) {
+          _initializeNotifications();
+        }
+      });
+    });
     currentTheme.addListener(() {
       setState(() {});
     });
@@ -77,115 +74,147 @@ class _MyAppState extends State<MyApp> {
       GoRoute(
         path: '/links',
         builder: (BuildContext context, GoRouterState state) {
-          return const LinksPage();
+          return DeferredWidget(
+            loadLibrary: links.loadLibrary,
+            builder: (BuildContext context) => links.LinksPage(),
+          );
         },
       ),
       GoRoute(
         path: '/camping',
         builder: (BuildContext context, GoRouterState state) {
-          return const CampingInfoPage();
+          return DeferredWidget(
+            loadLibrary: camping.loadLibrary,
+            builder: (BuildContext context) => camping.CampingInfoPage(),
+          );
         },
       ),
       GoRoute(
         path: '/schedule',
         builder: (BuildContext context, GoRouterState state) {
-          return const SchedulePage();
+          return DeferredWidget(
+            loadLibrary: schedule.loadLibrary,
+            builder: (BuildContext context) => schedule.SchedulePage(),
+          );
         },
       ),
       GoRoute(
         path: '/sign-on',
         builder: (BuildContext context, GoRouterState state) {
-          return const SignOnPage();
+          return DeferredWidget(
+            loadLibrary: sign_on_page.loadLibrary,
+            builder: (BuildContext context) => sign_on_page.SignOnPage(),
+          );
         },
       ),
       GoRoute(
         path: '/admin',
         builder: (BuildContext context, GoRouterState state) {
-          return const AdminPage();
+          return DeferredWidget(
+            loadLibrary: admin_page.loadLibrary,
+            builder: (BuildContext context) => admin_page.AdminPage(),
+          );
         },
       ),
       GoRoute(
         path: '/admin/events',
         builder: (BuildContext context, GoRouterState state) {
-          return const AdminPage(section: AdminSection.events);
+          return DeferredWidget(
+            loadLibrary: admin_page.loadLibrary,
+            builder: (BuildContext context) => admin_page.AdminPage(
+              section: admin_page.AdminSection.events,
+            ),
+          );
         },
       ),
       GoRoute(
         path: '/admin/rewards',
         builder: (BuildContext context, GoRouterState state) {
-          return const AdminPage(section: AdminSection.rewards);
+          return DeferredWidget(
+            loadLibrary: admin_page.loadLibrary,
+            builder: (BuildContext context) => admin_page.AdminPage(
+              section: admin_page.AdminSection.rewards,
+            ),
+          );
         },
       ),
       GoRoute(
         path: '/admin/links',
         builder: (BuildContext context, GoRouterState state) {
-          return const AdminPage(section: AdminSection.links);
+          return DeferredWidget(
+            loadLibrary: admin_page.loadLibrary,
+            builder: (BuildContext context) => admin_page.AdminPage(
+              section: admin_page.AdminSection.links,
+            ),
+          );
         },
       ),
       GoRoute(
         path: '/profile',
         builder: (BuildContext context, GoRouterState state) {
-          return const ProfilePage();
+          return DeferredWidget(
+            loadLibrary: profile_page.loadLibrary,
+            builder: (BuildContext context) => profile_page.ProfilePage(),
+          );
         },
       ),
       GoRoute(
         path: '/scan-qr',
         builder: (BuildContext context, GoRouterState state) {
-          return const EventQrScanPage();
+          return DeferredWidget(
+            loadLibrary: event_qr_scan_page.loadLibrary,
+            builder: (BuildContext context) =>
+                event_qr_scan_page.EventQrScanPage(),
+          );
         },
       ),
       GoRoute(
         path: '/shop',
         builder: (BuildContext context, GoRouterState state) {
-          return const ItemShopPage();
+          return DeferredWidget(
+            loadLibrary: item_shop_page.loadLibrary,
+            builder: (BuildContext context) => item_shop_page.ItemShopPage(),
+          );
         },
       ),
       GoRoute(
         path: '/manafest',
         builder: (BuildContext context, GoRouterState state) {
-          return const ManaFestPage();
+          return DeferredWidget(
+            loadLibrary: manafest_page.loadLibrary,
+            builder: (BuildContext context) => manafest_page.ManaFestPage(),
+          );
         },
       ),
     ], debugLogDiagnostics: true);
   }
 
   Future<void> _initializeNotifications() async {
-    final FirebaseMessaging messaging = FirebaseMessaging.instance;
-    final bool supported = await messaging.isSupported();
-    if (!mounted) {
+    if (_pushNotificationLibraryLoaded) {
       return;
     }
 
-    if (!supported) {
+    try {
+      await push_notifications.loadLibrary();
+      _pushNotificationLibraryLoaded = true;
+      push_notifications.listenForForegroundPushNotifications(
+        _showForegroundNotification,
+      );
+      final Map<String, bool> status =
+          await push_notifications.initializePushNotifications();
+      if (!mounted) {
+        return;
+      }
+      _applyNotificationStatus(status);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _notificationsSupported = false;
         _isCheckingNotificationSupport = false;
       });
-      return;
     }
-
-    final NotificationSettings settings =
-        await messaging.getNotificationSettings();
-    if (!mounted) {
-      return;
-    }
-    setState(() {
-      _notificationsSupported = true;
-      _notificationSettings = settings;
-      _isCheckingNotificationSupport = false;
-    });
-
-    if (_hasNotificationPermission) {
-      await _refreshMessagingToken();
-    }
-  }
-
-  Future<void> _refreshMessagingToken() async {
-    if (!_notificationsSupported) {
-      return;
-    }
-    final FirebaseMessaging messaging = FirebaseMessaging.instance;
-    await messaging.getToken(vapidKey: kIsWeb ? _webVapidKey : null);
   }
 
   Future<void> _requestPermissionFromUserAction() async {
@@ -197,21 +226,14 @@ class _MyAppState extends State<MyApp> {
     });
 
     try {
-      final FirebaseMessaging messaging = FirebaseMessaging.instance;
-      final NotificationSettings settings = await messaging.requestPermission();
+      await push_notifications.loadLibrary();
+      _pushNotificationLibraryLoaded = true;
+      final Map<String, bool> status =
+          await push_notifications.requestPushNotificationPermission();
       if (!mounted) {
         return;
       }
-      setState(() {
-        _notificationSettings = settings;
-        if (_hasNotificationPermission) {
-          _notificationPromptDismissed = true;
-        }
-      });
-
-      if (_hasNotificationPermission) {
-        await _refreshMessagingToken();
-      }
+      _applyNotificationStatus(status);
     } finally {
       if (mounted) {
         setState(() {
@@ -221,26 +243,28 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-  void messageListener() {
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      //print('Got a message whilst in the foreground!');
-      //print('Message data: ${message.data}');
-
-      if (message.notification != null) {
-        if (!mounted) {
-          return;
-        }
-        //print(
-        //    'Message also contained a notification: ${message.notification!.body}');
-        showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return DynamicDialog(
-                  title: message.notification!.title,
-                  body: message.notification!.body);
-            });
+  void _applyNotificationStatus(Map<String, bool> status) {
+    setState(() {
+      _notificationsSupported = status['supported'] ?? false;
+      _hasNotificationPermission = status['hasPermission'] ?? false;
+      _isNotificationDenied = status['denied'] ?? false;
+      _isCheckingNotificationSupport = false;
+      if (_hasNotificationPermission) {
+        _notificationPromptDismissed = true;
       }
     });
+  }
+
+  void _showForegroundNotification(String? title, String? body) {
+    if (!mounted) {
+      return;
+    }
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return DynamicDialog(title: title, body: body);
+      },
+    );
   }
 
   @override
@@ -258,11 +282,6 @@ class _MyAppState extends State<MyApp> {
         if (!_shouldShowNotificationPrompt) {
           return content;
         }
-
-        final AuthorizationStatus status =
-            _notificationSettings?.authorizationStatus ??
-                AuthorizationStatus.notDetermined;
-        final bool isDenied = status == AuthorizationStatus.denied;
 
         return Stack(
           children: <Widget>[
@@ -282,7 +301,7 @@ class _MyAppState extends State<MyApp> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
                           Text(
-                            isDenied
+                            _isNotificationDenied
                                 ? 'Notifications are currently blocked'
                                 : 'Enable Pluto notifications',
                             style: const TextStyle(
@@ -293,7 +312,7 @@ class _MyAppState extends State<MyApp> {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            isDenied
+                            _isNotificationDenied
                                 ? 'Allow notifications in browser settings, then tap Enable again. On iPhone/iPad, use the Home Screen app.'
                                 : 'Get event drops and reward updates. On iPhone/iPad, install Pluto to Home Screen and open it there.',
                             style: const TextStyle(color: Colors.white70),

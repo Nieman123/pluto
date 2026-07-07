@@ -4,10 +4,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:sa3_liquid/liquid/plasma/plasma.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 import 'current_events_repository.dart';
+import 'src/background/pluto_background.dart';
 import 'src/custom/auth_app_bar_action.dart';
 
 class SignedInHomePage extends StatelessWidget {
@@ -215,7 +215,7 @@ class SignedInHomePage extends StatelessWidget {
                 width: 144,
                 height: 144,
                 child: Image.asset(
-                  'assets/experience/pluto-logo-small.png',
+                  'assets/experience/pluto-logo-small.webp',
                   fit: BoxFit.contain,
                 ),
               ),
@@ -412,7 +412,7 @@ class SignedInHomePage extends StatelessWidget {
           title: SizedBox(
             height: 36,
             child: Image.asset(
-              'assets/experience/pluto-logo-small.png',
+              'assets/experience/pluto-logo-small.webp',
               fit: BoxFit.contain,
             ),
           ),
@@ -442,13 +442,7 @@ class SignedInHomePage extends StatelessWidget {
         ),
         body: Stack(
           children: <Widget>[
-            const PlasmaRenderer(
-              color: Color.fromARGB(68, 85, 0, 165),
-              blur: 0.5,
-              blendMode: BlendMode.plus,
-              particleType: ParticleType.atlas,
-              variation1: 1,
-            ),
+            const PlutoBackground(),
             Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 1200),

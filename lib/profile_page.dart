@@ -5,8 +5,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:sa3_liquid/liquid/plasma/plasma.dart';
 
+import 'src/background/pluto_background.dart';
 import 'src/custom/auth_app_bar_action.dart';
 import 'user_profile_repository.dart';
 
@@ -647,13 +647,7 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
       body: Stack(
         children: <Widget>[
-          const PlasmaRenderer(
-            color: Color.fromARGB(68, 85, 0, 165),
-            blur: 0.5,
-            blendMode: BlendMode.plus,
-            particleType: ParticleType.atlas,
-            variation1: 1,
-          ),
+          const PlutoBackground(),
           StreamBuilder<User?>(
             stream: FirebaseAuth.instance.authStateChanges(),
             builder: (BuildContext context, AsyncSnapshot<User?> authSnapshot) {

@@ -1,4 +1,3 @@
-import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -54,27 +53,8 @@ class _HomePageState extends State<HomePage> {
                             'Events for dance music enthusiasts.\nAsheville, NC',
                         textScaleFactor: 1.5),
                   ),
-                  Row(
-                    children: [
-                      AnimatedTextKit(animatedTexts: [
-                        ColorizeAnimatedText(
-                          'Pluto',
-                          textStyle: const TextStyle(
-                            fontSize: 200.0,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          colors: [
-                            Colors.red,
-                            Colors.orange,
-                            Colors.yellow,
-                            Colors.green,
-                            Colors.blue,
-                            Colors.indigo,
-                          ],
-                          speed: const Duration(milliseconds: 1000),
-                        )
-                      ])
-                    ],
+                  const Row(
+                    children: <Widget>[_AnimatedPlutoTitle()],
                   ),
                   Designation(isMobile: true, context: context),
                   SocialMediaBar(
@@ -100,27 +80,8 @@ class _HomePageState extends State<HomePage> {
                             word:
                                 'Events for dance music enthusiasts.\nAsheville, NC',
                             textScaleFactor: 1.5),
-                        Row(
-                          children: [
-                            AnimatedTextKit(animatedTexts: [
-                              ColorizeAnimatedText(
-                                'Pluto',
-                                textStyle: const TextStyle(
-                                  fontSize: 200.0,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                colors: [
-                                  Colors.red,
-                                  Colors.orange,
-                                  Colors.yellow,
-                                  Colors.green,
-                                  Colors.blue,
-                                  Colors.indigo,
-                                ],
-                                speed: const Duration(milliseconds: 1000),
-                              )
-                            ])
-                          ],
+                        const Row(
+                          children: <Widget>[_AnimatedPlutoTitle()],
                         ),
                         Designation(isMobile: false, context: context),
                         SocialMediaBar(
@@ -136,6 +97,69 @@ class _HomePageState extends State<HomePage> {
           }
         }),
       ),
+    );
+  }
+}
+
+class _AnimatedPlutoTitle extends StatefulWidget {
+  const _AnimatedPlutoTitle();
+
+  @override
+  State<_AnimatedPlutoTitle> createState() => _AnimatedPlutoTitleState();
+}
+
+class _AnimatedPlutoTitleState extends State<_AnimatedPlutoTitle>
+    with SingleTickerProviderStateMixin {
+  static const List<Color> _colors = <Color>[
+    Colors.red,
+    Colors.orange,
+    Colors.yellow,
+    Colors.green,
+    Colors.blue,
+    Colors.indigo,
+  ];
+
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 6),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (BuildContext context, Widget? child) {
+        final double scaledValue = _controller.value * _colors.length;
+        final int colorIndex = scaledValue.floor() % _colors.length;
+        final int nextColorIndex = (colorIndex + 1) % _colors.length;
+        final Color color = Color.lerp(
+              _colors[colorIndex],
+              _colors[nextColorIndex],
+              scaledValue - colorIndex,
+            ) ??
+            _colors[colorIndex];
+
+        return Text(
+          'Pluto',
+          style: TextStyle(
+            color: color,
+            fontSize: 200,
+            fontWeight: FontWeight.bold,
+          ),
+        );
+      },
     );
   }
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:sa3_liquid/liquid/plasma/plasma.dart';
 
+import 'src/background/pluto_background.dart';
 import 'src/custom/auth_app_bar_action.dart';
 
 class SchedulePage extends StatelessWidget {
@@ -19,14 +19,7 @@ class SchedulePage extends StatelessWidget {
       ),
       body: Stack(
         children: [
-          // Nature-inspired background
-          const PlasmaRenderer(
-            color: Color.fromARGB(255, 63, 3, 132),
-            blur: 0.7,
-            particleType: ParticleType.atlas,
-            variation1: 0.7,
-            variation2: 0.3,
-          ),
+          const PlutoBackground(),
           SingleChildScrollView(
             child: Padding(
               padding: const EdgeInsets.all(16.0),

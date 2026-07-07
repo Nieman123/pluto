@@ -34,10 +34,7 @@ class _UnderlinedButtonState extends State<UnderlinedButton> {
     return InkWell(
       borderRadius: BorderRadius.circular(5.0),
       hoverColor: Colors.transparent,
-      onTap: () => scroll.scrollTo(
-          index: widget.tabNumber,
-          curve: Curves.decelerate,
-          duration: const Duration(milliseconds: 1000)),
+      onTap: () => scrollToHomeSection(context, widget.tabNumber),
       onHover: (bool value) => setState(() => _isHover = value),
       child: SizedBox(
         width: MediaQuery.of(context).size.width * 0.13,

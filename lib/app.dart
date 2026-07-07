@@ -1,10 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_improved_scrolling/flutter_improved_scrolling.dart';
-import 'package:sa3_liquid/sa3_liquid.dart';
 
-import 'signed_in_home_page.dart';
+import 'signed_in_home_page.dart' deferred as signed_in_home_page;
+import 'src/background/pluto_background.dart';
+import 'src/deferred_widget.dart';
 import 'src/nav_bar/nav_bar.dart';
+import 'tabs/scroll_controller.dart';
 import 'tabs/tabs.dart';
 
 class App extends StatelessWidget {
@@ -12,7 +13,6 @@ class App extends StatelessWidget {
   static const String route = '/';
 
   Widget _buildPublicHome(BuildContext context) {
-    final ScrollController controller = ScrollController();
     final double height = MediaQuery.of(context).size.height;
     final double width = MediaQuery.of(context).size.width;
 
@@ -25,23 +25,13 @@ class App extends StatelessWidget {
               child: const NavBar(isDarkModeBtnVisible: true)),
           body: Stack(
             children: <Widget>[
-              const PlasmaRenderer(
-                color: Color.fromARGB(68, 85, 0, 165),
-                blur: 0.5,
-                blendMode: BlendMode.plus,
-                particleType: ParticleType.atlas,
-                variation1: 1,
-              ),
-              ImprovedScrolling(
-                scrollController: controller,
-                enableKeyboardScrolling: true,
-                child: ListView.builder(
-                  itemCount: widgetList.length,
-                  controller: controller,
-                  itemBuilder: (BuildContext context, int index) {
-                    return widgetList[index];
-                  },
-                ),
+              const PlutoBackground(),
+              ListView.builder(
+                itemCount: widgetList.length,
+                controller: homeScrollController,
+                itemBuilder: (BuildContext context, int index) {
+                  return widgetList[index];
+                },
               ),
             ],
           ),
@@ -54,23 +44,13 @@ class App extends StatelessWidget {
             child: const NavBar(isDarkModeBtnVisible: true)),
         body: Stack(
           children: <Widget>[
-            const PlasmaRenderer(
-              color: Color.fromARGB(68, 85, 0, 165),
-              blur: 0.5,
-              blendMode: BlendMode.plus,
-              particleType: ParticleType.atlas,
-              variation1: 1,
-            ),
-            ImprovedScrolling(
-              scrollController: controller,
-              enableKeyboardScrolling: true,
-              child: ListView.builder(
-                itemCount: widgetList.length,
-                controller: controller,
-                itemBuilder: (BuildContext context, int index) {
-                  return widgetList[index];
-                },
-              ),
+            const PlutoBackground(),
+            ListView.builder(
+              itemCount: widgetList.length,
+              controller: homeScrollController,
+              itemBuilder: (BuildContext context, int index) {
+                return widgetList[index];
+              },
             ),
           ],
         ),
@@ -82,13 +62,7 @@ class App extends StatelessWidget {
     return const Scaffold(
       body: Stack(
         children: <Widget>[
-          PlasmaRenderer(
-            color: Color.fromARGB(68, 85, 0, 165),
-            blur: 0.5,
-            blendMode: BlendMode.plus,
-            particleType: ParticleType.atlas,
-            variation1: 1,
-          ),
+          PlutoBackground(),
           Center(child: CircularProgressIndicator()),
         ],
       ),
@@ -106,7 +80,11 @@ class App extends StatelessWidget {
 
         final User? user = authSnapshot.data;
         if (user != null) {
-          return SignedInHomePage(user: user);
+          return DeferredWidget(
+            loadLibrary: signed_in_home_page.loadLibrary,
+            builder: (BuildContext context) =>
+                signed_in_home_page.SignedInHomePage(user: user),
+          );
         }
 
         return _buildPublicHome(context);

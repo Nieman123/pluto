@@ -11,11 +11,11 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:sa3_liquid/liquid/plasma/plasma.dart';
 
 import 'current_events_repository.dart';
 import 'link_box.dart';
 import 'links_repository.dart';
+import 'src/background/pluto_background.dart';
 import 'src/custom/auth_app_bar_action.dart';
 import 'user_profile_repository.dart';
 
@@ -1404,7 +1404,7 @@ class _AdminPageState extends State<AdminPage> {
                 width: 144,
                 height: 144,
                 child: Image.asset(
-                  'assets/experience/pluto-logo-small.png',
+                  'assets/experience/pluto-logo-small.webp',
                   fit: BoxFit.contain,
                 ),
               ),
@@ -2761,7 +2761,7 @@ class _AdminPageState extends State<AdminPage> {
             child: SizedBox(
               height: 36,
               child: Image.asset(
-                'assets/experience/pluto-logo-small.png',
+                'assets/experience/pluto-logo-small.webp',
                 fit: BoxFit.contain,
               ),
             ),
@@ -2783,13 +2783,7 @@ class _AdminPageState extends State<AdminPage> {
         ),
         body: Stack(
           children: <Widget>[
-            const PlasmaRenderer(
-              color: Color.fromARGB(68, 85, 0, 165),
-              blur: 0.5,
-              blendMode: BlendMode.plus,
-              particleType: ParticleType.atlas,
-              variation1: 1,
-            ),
+            const PlutoBackground(),
             StreamBuilder<User?>(
               stream: FirebaseAuth.instance.authStateChanges(),
               builder:

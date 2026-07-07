@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:sa3_liquid/liquid/plasma/plasma.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
+import 'src/background/pluto_background.dart';
 import 'src/custom/auth_app_bar_action.dart';
 
 class ManaFestPage extends StatelessWidget {
@@ -85,7 +85,7 @@ class ManaFestPage extends StatelessWidget {
             final Widget flyer = ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: Image.asset(
-                'assets/events/Mana-Fest-2026-Flyer-half.png',
+                'assets/events/Mana-Fest-2026-Flyer-half.webp',
                 fit: BoxFit.cover,
               ),
             );
@@ -189,13 +189,7 @@ class ManaFestPage extends StatelessWidget {
       ),
       body: Stack(
         children: <Widget>[
-          const PlasmaRenderer(
-            color: Color.fromARGB(68, 85, 0, 165),
-            blur: 0.5,
-            blendMode: BlendMode.plus,
-            particleType: ParticleType.atlas,
-            variation1: 1,
-          ),
+          const PlutoBackground(),
           SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Center(

@@ -35,6 +35,9 @@ jobs:
       - name: Build web release
         run: flutter build web --release
 
+      - name: Remove unused local CanvasKit artifacts
+        run: rm -rf build/web/canvaskit
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v3
         with:

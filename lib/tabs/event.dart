@@ -1,4 +1,3 @@
-import 'package:carousel_slider_plus/carousel_slider_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher_string.dart';
@@ -12,60 +11,30 @@ class Event extends StatelessWidget {
   static const String _fallbackTitle = 'ManaFest 2026';
   static const String _fallbackDetails = 'Live music + community gathering';
   static const String _fallbackTicketUrl = 'https://posh.vip/e/manafest-2026';
+  static const String _galleryBaseUrl = String.fromEnvironment(
+    'GALLERY_BASE_URL',
+    defaultValue: '/gallery/',
+  );
 
   static const List<List<String>> _imageList = <List<String>>[
-    <String>['assets/gallery/2.webp', 'Photo by @tatehunna.photography'],
-    <String>[
-      'assets/gallery/elysium-10_resized.jpg',
-      'Photo by @tatehunna.photography'
-    ],
-    <String>['assets/gallery/13.webp', 'Photo by @tatehunna.photography'],
-    <String>[
-      'assets/gallery/elysium-12_resized.jpg',
-      'Photo by @tatehunna.photography'
-    ],
-    <String>['assets/gallery/15.webp', 'Photo by @tatehunna.photography'],
-    <String>[
-      'assets/gallery/elysium-3_resized.jpg',
-      'Photo by @tatehunna.photography'
-    ],
-    <String>['assets/gallery/4.webp', 'Photo by @nickyg.photos'],
-    <String>[
-      'assets/gallery/elysium-11_resized.jpg',
-      'Photo by @tatehunna.photography'
-    ],
-    <String>[
-      'assets/gallery/elysium-9_resized.jpg',
-      'Photo by @tatehunna.photography'
-    ],
-    <String>[
-      'assets/gallery/elysium-8_resized.jpg',
-      'Photo by @tatehunna.photography'
-    ],
-    <String>[
-      'assets/gallery/elysium-1_resized.jpg',
-      'Photo by @tatehunna.photography'
-    ],
-    <String>['assets/gallery/11.webp', 'Photo by @tatehunna.photography'],
-    <String>[
-      'assets/gallery/elysium-2_resized.jpg',
-      'Photo by @tatehunna.photography'
-    ],
-    <String>[
-      'assets/gallery/elysium-7_resized.jpg',
-      'Photo by @tatehunna.photography'
-    ],
-    <String>['assets/gallery/10.webp', 'Photo by @tatehunna.photography'],
-    <String>[
-      'assets/gallery/elysium-6_resized.jpg',
-      'Photo by @tatehunna.photography'
-    ],
-    <String>[
-      'assets/gallery/elysium-4_resized.jpg',
-      'Photo by @tatehunna.photography'
-    ],
-    <String>['assets/gallery/14.webp', 'Photo by @tatehunna.photography'],
-    <String>['assets/gallery/1.webp', 'Pluto at the Full Moon Gathering'],
+    <String>['2.webp', 'Photo by @tatehunna.photography'],
+    <String>['elysium-10.webp', 'Photo by @tatehunna.photography'],
+    <String>['elysium-12.webp', 'Photo by @tatehunna.photography'],
+    <String>['15.webp', 'Photo by @tatehunna.photography'],
+    <String>['elysium-3.webp', 'Photo by @tatehunna.photography'],
+    <String>['4.webp', 'Photo by @nickyg.photos'],
+    <String>['elysium-11.webp', 'Photo by @tatehunna.photography'],
+    <String>['elysium-9.webp', 'Photo by @tatehunna.photography'],
+    <String>['elysium-8.webp', 'Photo by @tatehunna.photography'],
+    <String>['elysium-1.webp', 'Photo by @tatehunna.photography'],
+    <String>['11.webp', 'Photo by @tatehunna.photography'],
+    <String>['elysium-2.webp', 'Photo by @tatehunna.photography'],
+    <String>['elysium-7.webp', 'Photo by @tatehunna.photography'],
+    <String>['10.webp', 'Photo by @tatehunna.photography'],
+    <String>['elysium-6.webp', 'Photo by @tatehunna.photography'],
+    <String>['elysium-4.webp', 'Photo by @tatehunna.photography'],
+    <String>['14.webp', 'Photo by @tatehunna.photography'],
+    <String>['1.webp', 'Pluto at the Full Moon Gathering'],
   ];
 
   static final CurrentEventsRepository _eventsRepository =
@@ -76,6 +45,10 @@ class Event extends StatelessWidget {
       return;
     }
     await launchUrlString(url, webOnlyWindowName: '_blank');
+  }
+
+  String _galleryUrl(String fileName) {
+    return '$_galleryBaseUrl$fileName';
   }
 
   Widget _buildFlyer({
@@ -176,7 +149,7 @@ class Event extends StatelessWidget {
         details: _fallbackDetails,
         ticketUrl: _fallbackTicketUrl,
         flyer: Image.asset(
-          'assets/events/Mana-Fest-2026-Flyer-half.png',
+          'assets/events/Mana-Fest-2026-Flyer-half.webp',
           fit: BoxFit.cover,
         ),
       );
@@ -212,44 +185,72 @@ class Event extends StatelessWidget {
   Widget _buildGalleryCarousel(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(8),
-      child: CarouselSlider(
-        options: CarouselOptions(
-          aspectRatio: 1,
-        ),
-        items: _imageList.map((List<String> item) {
-          return Builder(
-            builder: (BuildContext context) {
-              return Stack(
-                children: <Widget>[
-                  Container(
-                    width: MediaQuery.of(context).size.width,
-                    margin: const EdgeInsets.symmetric(horizontal: 5),
-                    decoration: BoxDecoration(
-                      color: Colors.black12,
-                      borderRadius: BorderRadius.circular(10),
+      child: AspectRatio(
+        aspectRatio: 1,
+        child: PageView.builder(
+          itemCount: _imageList.length,
+          itemBuilder: (BuildContext context, int index) {
+            final List<String> item = _imageList[index];
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 5),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: <Widget>[
+                    Image.network(
+                      _galleryUrl(item[0]),
+                      fit: BoxFit.cover,
+                      loadingBuilder: (
+                        BuildContext context,
+                        Widget child,
+                        ImageChunkEvent? loadingProgress,
+                      ) {
+                        if (loadingProgress == null) {
+                          return child;
+                        }
+                        return const ColoredBox(
+                          color: Colors.black12,
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      },
+                      errorBuilder: (
+                        BuildContext context,
+                        Object error,
+                        StackTrace? stackTrace,
+                      ) {
+                        return const ColoredBox(
+                          color: Colors.black12,
+                          child: Center(
+                            child: Icon(
+                              Icons.broken_image,
+                              color: Colors.white54,
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                    child: Image.asset(item[0], fit: BoxFit.cover),
-                  ),
-                  Align(
-                    alignment: const Alignment(0, 0.9),
-                    child: Padding(
-                      padding: const EdgeInsets.all(10),
-                      child: Text(
-                        item[1],
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w100,
-                          backgroundColor: Colors.black54,
+                    Align(
+                      alignment: const Alignment(0, 0.9),
+                      child: Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: Text(
+                          item[1],
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w100,
+                            backgroundColor: Colors.black54,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
-              );
-            },
-          );
-        }).toList(),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
   }

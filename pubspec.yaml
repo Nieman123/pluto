@@ -13,31 +13,17 @@ dependencies:
     sdk: flutter
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.2
-  scrollable_positioned_list: ^0.3.8
-  chewie: ^1.9.0
-  circle_flags: ^5.0.0
-  seo_renderer: ^0.6.0
-  sa3_liquid: ^1.0.1
   firebase_analytics: ^12.1.0
   firebase_core: ^4.3.0
   firebase_auth: ^6.1.1
   cloud_firestore: ^6.0.2
-  flutter_local_notifications: ^19.5.0
   file_picker: ^10.3.2
-  http: ^1.2.2
   url_launcher: ^6.1.7
-  carousel_slider_plus: ^7.0.1
   firebase_messaging: ^16.1.0
   flutter_native_splash: ^2.3.1
-  flutter_list_view: ^1.1.21
   intl: any
   go_router: ^16.1.0
-  flutter_improved_scrolling: ^0.0.3
-  flutter_glow: ^0.3.2
   flutter_widget_from_html: ^0.16.1
-  animated_text_kit: ^4.2.2
-  sensors_plus: ^7.0.0
   mobile_scanner: ^6.0.11
   qr_flutter: ^4.1.0
 
@@ -53,25 +39,15 @@ flutter:
     - family: SourceCodePro
       fonts:
         - asset: assets/fonts/SourceCodePro-SemiBold.ttf
-    - family: FjallaOne
-      fonts:
-        - asset: assets/fonts/FjallaOne-Regular.ttf
     - family: Montserrat
       fonts:
         - asset: assets/fonts/Montserrat-Medium.ttf
 
   assets:
-    - assets/home/
-    - assets/home/constant/
-    - assets/what_i_do/
-    - assets/what_i_do/constant/
-    - assets/experience/
-    - assets/gallery/
-    - assets/contact_me/
-    - assets/contact_me/constant/
-    - assets/projects/
-    - assets/projects/constant/
-    - assets/achievements/
-    - assets/events/
-    - assets/portfolio.json
-    - assets/test.html
+    - assets/home/constant/email.png
+    - assets/home/constant/facebook.png
+    - assets/home/constant/instagram.png
+    - assets/home/constant/link.png
+    - assets/home/constant/tiktok.png
+    - assets/experience/pluto-logo-small.webp
+    - assets/events/Mana-Fest-2026-Flyer-half.webp

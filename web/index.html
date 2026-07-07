@@ -7,7 +7,7 @@
     <meta property="og:type" content="website">
     <meta property="og:title" content="Pluto Events - Asheville">
     <meta property="og:description" content="Events For Dance Music Enthusiasts.">
-    <meta property="og:image" content="pluto-preview.png">
+    <meta property="og:image" content="pluto-preview.jpg">
     <link rel="stylesheet" href="style.css">
 
     <!-- iOS meta tags & icons -->
@@ -18,10 +18,6 @@
     <link rel="icon" type="image/png" href="favicon.png">
     <title>Pluto Events - Asheville</title>
     <link rel="manifest" href="manifest.json">
-
-    <!-- Firebase Scripts -->
-    <script src="https://www.gstatic.com/firebasejs/8.4.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.4.1/firebase-messaging.js"></script>
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
@@ -99,67 +95,24 @@
       <source srcset="splash/img/dark-1x.png 1x, splash/img/dark-2x.png 2x, splash/img/dark-3x.png 3x, splash/img/dark-4x.png 4x" media="(prefers-color-scheme: dark)">
       <img class="center" aria-hidden="true" src="splash/img/light-1x.png" alt="">
   </picture>
-    <!-- Splash Screen -->
-    
-
-    <!-- Custom Bootstrap Script for Service Worker & App Loading -->
+    <script src="flutter_bootstrap.js" async></script>
     <script>
-      // The value below is injected by the Flutter build.
-      var serviceWorkerVersion = {{flutter_service_worker_version}};
-      var scriptLoaded = false;
-      function loadMainDartJs() {
-        if (scriptLoaded) return;
-        scriptLoaded = true;
-        var scriptTag = document.createElement('script');
-        scriptTag.src = 'main.dart.js';
-        scriptTag.type = 'application/javascript';
-        document.body.append(scriptTag);
-      }
-
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function () {
-          // Register Firebase Messaging service worker.
-          navigator.serviceWorker.register('firebase-messaging-sw.js', {
-            scope: '/firebase-cloud-messaging-push-scope',
-          });
+          var registerMessagingWorker = function () {
+            navigator.serviceWorker.register('firebase-messaging-sw.js', {
+              scope: '/firebase-cloud-messaging-push-scope',
+            }).catch(function (error) {
+              console.warn('Firebase messaging service worker registration failed.', error);
+            });
+          };
 
-          // Register Flutter service worker.
-          var serviceWorkerUrl = 'flutter_service_worker.js?v=' + serviceWorkerVersion;
-          navigator.serviceWorker.register(serviceWorkerUrl).then((reg) => {
-            function waitForActivation(sw) {
-              sw.addEventListener('statechange', () => {
-                if (sw.state === 'activated') {
-                  console.log('Installed new service worker.');
-                  loadMainDartJs();
-                }
-              });
-            }
-            if (!reg.active && (reg.installing || reg.waiting)) {
-              // Wait for activation if there's no active worker.
-              waitForActivation(reg.installing ?? reg.waiting);
-            } else if (!reg.active.scriptURL.endsWith(serviceWorkerVersion)) {
-              // If version mismatch, update the service worker.
-              console.log('New service worker available.');
-              reg.update();
-              waitForActivation(reg.installing);
-            } else {
-              // Existing service worker is valid.
-              console.log('Loading app from service worker.');
-              loadMainDartJs();
-            }
-          });
-
-          // Fallback in case service worker registration times out.
-          setTimeout(() => {
-            if (!scriptLoaded) {
-              console.warn('Failed to load app from service worker. Falling back to plain <script> tag.');
-              loadMainDartJs();
-            }
-          }, 4000);
+          if ('requestIdleCallback' in window) {
+            window.requestIdleCallback(registerMessagingWorker, { timeout: 3000 });
+          } else {
+            window.setTimeout(registerMessagingWorker, 1500);
+          }
         });
-      } else {
-        // If service workers aren't supported, load the app directly.
-        loadMainDartJs();
       }
     </script>
   

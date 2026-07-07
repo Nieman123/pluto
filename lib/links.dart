@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:sa3_liquid/liquid/plasma/plasma.dart';
 
 import 'link_box.dart';
 import 'links_repository.dart';
+import 'src/background/pluto_background.dart';
 
 class LinksPage extends StatelessWidget {
   const LinksPage({Key? key}) : super(key: key);
@@ -14,13 +14,7 @@ class LinksPage extends StatelessWidget {
 
     return Scaffold(
       body: Stack(children: [
-        const PlasmaRenderer(
-          color: Color.fromARGB(68, 85, 0, 165),
-          blur: 0.5,
-          blendMode: BlendMode.plus,
-          particleType: ParticleType.atlas,
-          variation1: 1,
-        ),
+        const PlutoBackground(),
         SingleChildScrollView(
           // Make the column scrollable
           child: Center(
@@ -36,7 +30,7 @@ class LinksPage extends StatelessWidget {
                   child: const CircleAvatar(
                     radius: 50,
                     backgroundImage:
-                        AssetImage('assets/experience/pluto-logo-small.png'),
+                        AssetImage('assets/experience/pluto-logo-small.webp'),
                   ),
                 ),
                 const SizedBox(height: 20),
