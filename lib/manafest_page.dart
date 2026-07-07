@@ -10,6 +10,8 @@ class ManaFestPage extends StatelessWidget {
 
   static const String route = '/manafest';
   static const String _ticketUrl = 'https://posh.vip/e/manafest-2026';
+  static const String _lineupFlyerUrl =
+      '/manafest/manafest-2026-lineup-v1.webp';
   static const String _mapsUrl =
       'https://www.google.com/maps/search/?api=1&query=Three+Creeks+Campground+Anderson+South+Carolina';
 
@@ -18,7 +20,13 @@ class ManaFestPage extends StatelessWidget {
     if (normalizedUrl.isEmpty) {
       return;
     }
-    await launchUrlString(normalizedUrl, webOnlyWindowName: '_blank');
+
+    final Uri? parsedUrl = Uri.tryParse(normalizedUrl);
+    final String targetUrl = parsedUrl?.hasScheme ?? false
+        ? normalizedUrl
+        : Uri.base.resolve(normalizedUrl).toString();
+
+    await launchUrlString(targetUrl, webOnlyWindowName: '_blank');
   }
 
   Widget _buildSection({
@@ -171,6 +179,66 @@ class ManaFestPage extends StatelessWidget {
     );
   }
 
+  Widget _buildLineupSection() {
+    return _buildSection(
+      title: 'Lineup',
+      children: <Widget>[
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 760),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: AspectRatio(
+                aspectRatio: 4 / 5,
+                child: Image.network(
+                  _lineupFlyerUrl,
+                  fit: BoxFit.cover,
+                  semanticLabel: 'ManaFest 2026 lineup flyer',
+                  loadingBuilder: (
+                    BuildContext context,
+                    Widget child,
+                    ImageChunkEvent? loadingProgress,
+                  ) {
+                    if (loadingProgress == null) {
+                      return child;
+                    }
+                    return const ColoredBox(
+                      color: Colors.black26,
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  },
+                  errorBuilder: (
+                    BuildContext context,
+                    Object error,
+                    StackTrace? stackTrace,
+                  ) {
+                    return const ColoredBox(
+                      color: Colors.black26,
+                      child: Center(
+                        child: Icon(
+                          Icons.broken_image,
+                          color: Colors.white54,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Center(
+          child: TextButton.icon(
+            onPressed: () => _openLink(_lineupFlyerUrl),
+            icon: const Icon(Icons.open_in_new),
+            label: const Text('Open Full Flyer'),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -198,6 +266,8 @@ class ManaFestPage extends StatelessWidget {
                 child: Column(
                   children: <Widget>[
                     _buildHeroCard(context),
+                    const SizedBox(height: 12),
+                    _buildLineupSection(),
                     const SizedBox(height: 12),
                     _buildSection(
                       title: 'Event Info',
