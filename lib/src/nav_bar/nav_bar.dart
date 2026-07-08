@@ -24,6 +24,29 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
     _HomeSectionNavItem(label: 'Artists', sectionIndex: 2),
     _HomeSectionNavItem(label: 'Contact', sectionIndex: 3),
   ];
+  static const List<_NavMenuAction> _homeMenuActions = <_NavMenuAction>[
+    _NavMenuAction.homeSection(
+      label: 'Home',
+      icon: Icons.home,
+      sectionIndex: 0,
+    ),
+    _NavMenuAction.homeSection(
+      label: 'Events',
+      icon: Icons.event,
+      sectionIndex: 1,
+    ),
+    _NavMenuAction.homeSection(
+      label: 'Artists',
+      icon: Icons.music_note,
+      sectionIndex: 2,
+    ),
+    _NavMenuAction.homeSection(
+      label: 'Contact',
+      icon: Icons.email,
+      sectionIndex: 3,
+    ),
+  ];
+  static const double _compactBreakpoint = 760;
 
   @override
   Size get preferredSize => const Size.fromHeight(64);
@@ -31,6 +54,8 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final Color backgroundColor = Theme.of(context).scaffoldBackgroundColor;
+    final bool isCompact =
+        MediaQuery.sizeOf(context).width < _compactBreakpoint;
 
     return Material(
       color: backgroundColor,
@@ -58,35 +83,97 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
               ),
             ),
             const SizedBox(width: 8),
-            Expanded(
-              child: LayoutBuilder(
-                builder: (BuildContext context, BoxConstraints constraints) {
-                  return SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: ConstrainedBox(
-                      constraints:
-                          BoxConstraints(minWidth: constraints.maxWidth),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: _homeSections
-                            .map(
-                              (_HomeSectionNavItem item) =>
-                                  _HomeSectionButton(item: item),
-                            )
-                            .toList(),
+            if (isCompact)
+              const Spacer()
+            else
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (BuildContext context, BoxConstraints constraints) {
+                    return SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: ConstrainedBox(
+                        constraints:
+                            BoxConstraints(minWidth: constraints.maxWidth),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: _homeSections
+                              .map(
+                                (_HomeSectionNavItem item) =>
+                                    _HomeSectionButton(item: item),
+                              )
+                              .toList(),
+                        ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
-            ),
             const SizedBox(width: 8),
-            const _AuthNavActions(),
+            _AuthNavActions(isCompact: isCompact),
             const SizedBox(width: 12),
           ],
         ),
       ),
     );
+  }
+
+  static List<_NavMenuAction> compactSignedInActions({required bool isAdmin}) {
+    return <_NavMenuAction>[
+      ..._homeMenuActions,
+      const _NavMenuAction.route(
+        label: 'Rewards Shop',
+        icon: Icons.card_giftcard,
+        route: '/shop',
+      ),
+      if (isAdmin)
+        const _NavMenuAction.route(
+          label: 'Admin',
+          icon: Icons.admin_panel_settings,
+          route: '/admin',
+        ),
+      const _NavMenuAction.route(
+        label: 'Profile',
+        icon: Icons.person,
+        route: '/profile',
+      ),
+    ];
+  }
+
+  static List<_NavMenuAction> get compactSignedOutActions {
+    return <_NavMenuAction>[
+      ..._homeMenuActions,
+      const _NavMenuAction.route(
+        label: 'Sign in',
+        icon: Icons.login,
+        route: '/sign-on',
+      ),
+    ];
+  }
+
+  static Future<void> selectHomeSection(
+    BuildContext context,
+    int sectionIndex,
+  ) async {
+    if (!homeScrollController.hasClients) {
+      GoRouter.of(context).go(_homeRoute);
+      await WidgetsBinding.instance.endOfFrame;
+      await WidgetsBinding.instance.endOfFrame;
+    }
+
+    await scrollToHomeSection(sectionIndex);
+  }
+
+  static Future<void> handleMenuAction(
+    BuildContext context,
+    _NavMenuAction action,
+  ) async {
+    final int? sectionIndex = action.sectionIndex;
+    if (sectionIndex != null) {
+      await selectHomeSection(context, sectionIndex);
+      return;
+    }
+
+    GoRouter.of(context).go(action.route!);
   }
 }
 
@@ -115,13 +202,7 @@ class _HomeSectionButtonState extends State<_HomeSectionButton> {
   bool _isHovering = false;
 
   Future<void> _handlePressed(BuildContext context) async {
-    if (!homeScrollController.hasClients) {
-      GoRouter.of(context).go(NavBar._homeRoute);
-      await WidgetsBinding.instance.endOfFrame;
-      await WidgetsBinding.instance.endOfFrame;
-    }
-
-    await scrollToHomeSection(widget.item.sectionIndex);
+    await NavBar.selectHomeSection(context, widget.item.sectionIndex);
   }
 
   @override
@@ -168,7 +249,11 @@ class _HomeSectionButtonState extends State<_HomeSectionButton> {
 }
 
 class _AuthNavActions extends StatelessWidget {
-  const _AuthNavActions();
+  const _AuthNavActions({
+    required this.isCompact,
+  });
+
+  final bool isCompact;
 
   @override
   Widget build(BuildContext context) {
@@ -178,10 +263,21 @@ class _AuthNavActions extends StatelessWidget {
       builder: (BuildContext context, AsyncSnapshot<User?> authSnapshot) {
         final User? user = authSnapshot.data;
         if (user == null) {
+          if (isCompact) {
+            return _CompactNavMenuButton(
+              actions: NavBar.compactSignedOutActions,
+              tooltip: 'Open navigation menu',
+            );
+          }
+
           return const _RouteNavButton(
             label: 'Sign in',
             route: '/sign-on',
           );
+        }
+
+        if (isCompact) {
+          return _CompactSignedInNavActions(user: user);
         }
 
         return Row(
@@ -198,6 +294,118 @@ class _AuthNavActions extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+class _NavMenuAction {
+  const _NavMenuAction.homeSection({
+    required this.label,
+    required this.icon,
+    required this.sectionIndex,
+  }) : route = null;
+
+  const _NavMenuAction.route({
+    required this.label,
+    required this.icon,
+    required this.route,
+  }) : sectionIndex = null;
+
+  final String label;
+  final IconData icon;
+  final int? sectionIndex;
+  final String? route;
+}
+
+class _CompactSignedInNavActions extends StatelessWidget {
+  const _CompactSignedInNavActions({
+    required this.user,
+  });
+
+  final User user;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('adminUsers')
+          .doc(user.uid)
+          .snapshots(),
+      builder: (BuildContext context,
+          AsyncSnapshot<DocumentSnapshot<Map<String, dynamic>>> adminSnapshot) {
+        final bool isAdmin = adminSnapshot.data?.exists ?? false;
+        return _ProfileAvatarButton(
+          user: user,
+          menuActions: NavBar.compactSignedInActions(isAdmin: isAdmin),
+        );
+      },
+    );
+  }
+}
+
+class _CompactNavMenuButton extends StatelessWidget {
+  const _CompactNavMenuButton({
+    required this.actions,
+    required this.tooltip,
+    this.child,
+  });
+
+  final List<_NavMenuAction> actions;
+  final String tooltip;
+  final Widget? child;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color navTextColor = Theme.of(context).primaryColor;
+    final Widget? menuChild = child;
+
+    return PopupMenuButton<_NavMenuAction>(
+      tooltip: tooltip,
+      position: PopupMenuPosition.under,
+      offset: const Offset(0, 8),
+      color: Theme.of(context).scaffoldBackgroundColor,
+      elevation: 8,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: navTextColor.withValues(alpha: 0.18)),
+      ),
+      constraints: const BoxConstraints(minWidth: 210),
+      onSelected: (_NavMenuAction action) =>
+          NavBar.handleMenuAction(context, action),
+      itemBuilder: (BuildContext context) {
+        return actions
+            .map(
+              (_NavMenuAction action) => PopupMenuItem<_NavMenuAction>(
+                value: action,
+                child: Row(
+                  children: <Widget>[
+                    Icon(action.icon, size: 20, color: navTextColor),
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: Text(
+                        action.label,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: navTextColor,
+                          fontFamily: 'Montserrat',
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+            .toList();
+      },
+      icon: menuChild == null
+          ? Icon(
+              Icons.menu,
+              color: navTextColor,
+            )
+          : null,
+      child: menuChild,
     );
   }
 }
@@ -273,9 +481,11 @@ class _AdminNavButton extends StatelessWidget {
 class _ProfileAvatarButton extends StatelessWidget {
   const _ProfileAvatarButton({
     required this.user,
+    this.menuActions,
   });
 
   final User user;
+  final List<_NavMenuAction>? menuActions;
 
   @override
   Widget build(BuildContext context) {
@@ -297,35 +507,57 @@ class _ProfileAvatarButton extends StatelessWidget {
         final ImageProvider<Object>? avatarImage =
             _avatarImage(profileBytes, photoUrl);
         final Color navTextColor = Theme.of(context).primaryColor;
+        final Widget avatar = _buildAvatar(
+          navTextColor: navTextColor,
+          avatarImage: avatarImage,
+          fallbackText: _avatarFallbackText(user, profileDisplayName),
+        );
+
+        final List<_NavMenuAction>? compactMenuActions = menuActions;
+        if (compactMenuActions != null) {
+          return _CompactNavMenuButton(
+            actions: compactMenuActions,
+            tooltip: 'Open profile menu',
+            child: avatar,
+          );
+        }
 
         return Tooltip(
           message: 'Profile',
           child: InkWell(
             borderRadius: BorderRadius.circular(999),
             onTap: () => GoRouter.of(context).go('/profile'),
-            child: Container(
-              width: 42,
-              height: 42,
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: navTextColor, width: 1.5),
-              ),
-              child: CircleAvatar(
-                backgroundColor: navTextColor.withValues(alpha: 0.12),
-                backgroundImage: avatarImage,
-                foregroundColor: navTextColor,
-                child: avatarImage == null
-                    ? Text(
-                        _avatarFallbackText(user, profileDisplayName),
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      )
-                    : null,
-              ),
-            ),
+            child: avatar,
           ),
         );
       },
+    );
+  }
+
+  Widget _buildAvatar({
+    required Color navTextColor,
+    required ImageProvider<Object>? avatarImage,
+    required String fallbackText,
+  }) {
+    return Container(
+      width: 42,
+      height: 42,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: navTextColor, width: 1.5),
+      ),
+      child: CircleAvatar(
+        backgroundColor: navTextColor.withValues(alpha: 0.12),
+        backgroundImage: avatarImage,
+        foregroundColor: navTextColor,
+        child: avatarImage == null
+            ? Text(
+                fallbackText,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              )
+            : null,
+      ),
     );
   }
 
