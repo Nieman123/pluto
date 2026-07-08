@@ -85,11 +85,8 @@ class App extends StatelessWidget {
 
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
+      initialData: FirebaseAuth.instance.currentUser,
       builder: (BuildContext context, AsyncSnapshot<User?> authSnapshot) {
-        if (authSnapshot.connectionState == ConnectionState.waiting) {
-          return _buildLoadingHome();
-        }
-
         final User? user = authSnapshot.data;
         if (user != null) {
           return DeferredWidget(
@@ -97,6 +94,10 @@ class App extends StatelessWidget {
             builder: (BuildContext context) =>
                 signed_in_home_page.SignedInHomePage(user: user),
           );
+        }
+
+        if (authSnapshot.connectionState == ConnectionState.waiting) {
+          return _buildLoadingHome();
         }
 
         return _buildPublicHome(context);
