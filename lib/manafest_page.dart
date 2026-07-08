@@ -14,6 +14,10 @@ class ManaFestPage extends StatelessWidget {
       '/manafest/manafest-2026-lineup-v1.webp';
   static const String _mapsUrl =
       'https://www.google.com/maps/search/?api=1&query=Three+Creeks+Campground+Anderson+South+Carolina';
+  static const String _volunteerUrl =
+      'https://forms.gle/Cyh34mQduSKDUzpdA';
+  static const String _vendorFormUrl =
+      'https://forms.gle/zUdyMvJRgkdNXvdM7';
 
   Future<void> _openLink(String url) async {
     final String normalizedUrl = url.trim();
@@ -141,6 +145,16 @@ class ManaFestPage extends StatelessWidget {
                       onPressed: () => _openLink(_mapsUrl),
                       icon: const Icon(Icons.map),
                       label: const Text('Open Directions'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () => _openLink(_volunteerUrl),
+                      icon: const Icon(Icons.map),
+                      label: const Text('Volunteer Application'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () => _openLink(_vendorFormUrl),
+                      icon: const Icon(Icons.map),
+                      label: const Text('Vendor Application'),
                     ),
                     TextButton(
                       onPressed: () => context.go('/'),

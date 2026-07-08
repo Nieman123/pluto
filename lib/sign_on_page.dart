@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +10,44 @@ import 'src/custom/auth_app_bar_action.dart';
 enum _CredentialAction {
   signIn,
   createAccount,
+}
+
+class _AdminOnly extends StatelessWidget {
+  const _AdminOnly({
+    required this.builder,
+  });
+
+  final WidgetBuilder builder;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (BuildContext context, AsyncSnapshot<User?> authSnapshot) {
+        final User? user = authSnapshot.data;
+        if (user == null) {
+          return const SizedBox.shrink();
+        }
+
+        return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance
+              .collection('adminUsers')
+              .doc(user.uid)
+              .snapshots(),
+          builder: (BuildContext context,
+              AsyncSnapshot<DocumentSnapshot<Map<String, dynamic>>>
+                  adminSnapshot) {
+            final bool isAdmin = adminSnapshot.data?.exists ?? false;
+            if (!isAdmin) {
+              return const SizedBox.shrink();
+            }
+
+            return builder(context);
+          },
+        );
+      },
+    );
+  }
 }
 
 class SignOnPage extends StatefulWidget {
@@ -207,10 +246,14 @@ class _SignOnPageState extends State<SignOnPage> {
             style: TextButton.styleFrom(foregroundColor: Colors.white),
             child: const Text('Home'),
           ),
-          TextButton(
-            onPressed: () => context.go('/admin'),
-            style: TextButton.styleFrom(foregroundColor: Colors.white),
-            child: const Text('Admin'),
+          _AdminOnly(
+            builder: (BuildContext context) {
+              return TextButton(
+                onPressed: () => context.go('/admin'),
+                style: TextButton.styleFrom(foregroundColor: Colors.white),
+                child: const Text('Admin'),
+              );
+            },
           ),
           TextButton(
             onPressed: () => context.go('/scan-qr'),
@@ -302,9 +345,14 @@ class _SignOnPageState extends State<SignOnPage> {
                                         onPressed: _isBusy ? null : _signOut,
                                         child: const Text('Sign Out'),
                                       ),
-                                      ElevatedButton(
-                                        onPressed: () => context.go('/admin'),
-                                        child: const Text('Open Admin'),
+                                      _AdminOnly(
+                                        builder: (BuildContext context) {
+                                          return ElevatedButton(
+                                            onPressed: () =>
+                                                context.go('/admin'),
+                                            child: const Text('Open Admin'),
+                                          );
+                                        },
                                       ),
                                       ElevatedButton(
                                         onPressed: () => context.go('/scan-qr'),
