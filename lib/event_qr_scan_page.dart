@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import 'src/background/pluto_background.dart';
-import 'src/custom/auth_app_bar_action.dart';
+import 'src/nav_bar/nav_bar.dart';
 import 'user_profile_repository.dart';
 
 class EventQrScanPage extends StatefulWidget {
@@ -273,27 +273,7 @@ class _EventQrScanPageState extends State<EventQrScanPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Scan Event QR'),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => context.go('/'),
-            style: TextButton.styleFrom(foregroundColor: Colors.white),
-            child: const Text('Home'),
-          ),
-          TextButton(
-            onPressed: () => context.go('/profile'),
-            style: TextButton.styleFrom(foregroundColor: Colors.white),
-            child: const Text('Profile'),
-          ),
-          TextButton(
-            onPressed: () => context.go('/shop'),
-            style: TextButton.styleFrom(foregroundColor: Colors.white),
-            child: const Text('Rewards Shop'),
-          ),
-          const AuthAppBarAction(),
-        ],
-      ),
+      appBar: const NavBar(isDarkModeBtnVisible: true),
       body: Stack(
         children: <Widget>[
           const PlutoBackground(),

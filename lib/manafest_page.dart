@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 import 'src/background/pluto_background.dart';
-import 'src/custom/auth_app_bar_action.dart';
+import 'src/nav_bar/nav_bar.dart';
 
 class ManaFestPage extends StatelessWidget {
   const ManaFestPage({Key? key}) : super(key: key);
@@ -14,10 +14,8 @@ class ManaFestPage extends StatelessWidget {
       '/manafest/manafest-2026-lineup-v1.webp';
   static const String _mapsUrl =
       'https://www.google.com/maps/search/?api=1&query=Three+Creeks+Campground+Anderson+South+Carolina';
-  static const String _volunteerUrl =
-      'https://forms.gle/Cyh34mQduSKDUzpdA';
-  static const String _vendorFormUrl =
-      'https://forms.gle/zUdyMvJRgkdNXvdM7';
+  static const String _volunteerUrl = 'https://forms.gle/Cyh34mQduSKDUzpdA';
+  static const String _vendorFormUrl = 'https://forms.gle/zUdyMvJRgkdNXvdM7';
 
   Future<void> _openLink(String url) async {
     final String normalizedUrl = url.trim();
@@ -256,19 +254,7 @@ class ManaFestPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF121212),
-        foregroundColor: Colors.white,
-        title: const Text('ManaFest Info'),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => context.go('/'),
-            style: TextButton.styleFrom(foregroundColor: Colors.white),
-            child: const Text('Home'),
-          ),
-          const AuthAppBarAction(),
-        ],
-      ),
+      appBar: const NavBar(isDarkModeBtnVisible: true),
       body: Stack(
         children: <Widget>[
           const PlutoBackground(),

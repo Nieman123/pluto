@@ -6,11 +6,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../theme/theme_button.dart';
-import 'nav_bar_btn.dart';
+import '../../tabs/scroll_controller.dart';
 
 //The top Nav Bar
-class NavBar extends StatelessWidget {
+class NavBar extends StatelessWidget implements PreferredSizeWidget {
   const NavBar({
     Key? key,
     required this.isDarkModeBtnVisible,
@@ -18,30 +17,151 @@ class NavBar extends StatelessWidget {
 
   final bool isDarkModeBtnVisible;
 
+  static const String _homeRoute = '/home';
+  static const List<_HomeSectionNavItem> _homeSections = <_HomeSectionNavItem>[
+    _HomeSectionNavItem(label: 'Home', sectionIndex: 0),
+    _HomeSectionNavItem(label: 'Events', sectionIndex: 1),
+    _HomeSectionNavItem(label: 'Artists', sectionIndex: 2),
+    _HomeSectionNavItem(label: 'Contact', sectionIndex: 3),
+  ];
+
+  @override
+  Size get preferredSize => const Size.fromHeight(64);
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      child: const Row(
-        children: <Widget>[
-          Expanded(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: <Widget>[
-                UnderlinedButton(tabNumber: 0, btnName: 'Home'),
-                UnderlinedButton(tabNumber: 1, btnName: 'Events'),
-                UnderlinedButton(tabNumber: 2, btnName: 'Artists'),
-                UnderlinedButton(tabNumber: 3, btnName: 'Contact'),
-              ],
+    final Color backgroundColor = Theme.of(context).scaffoldBackgroundColor;
+
+    return Material(
+      color: backgroundColor,
+      child: SizedBox(
+        height: preferredSize.height,
+        child: Row(
+          children: <Widget>[
+            const SizedBox(width: 12),
+            Tooltip(
+              message: 'Dashboard',
+              child: InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () => GoRouter.of(context).go('/'),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  child: SizedBox(
+                    height: 38,
+                    width: 58,
+                    child: Image.asset(
+                      'assets/experience/pluto-logo-small.webp',
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: LayoutBuilder(
+                builder: (BuildContext context, BoxConstraints constraints) {
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: ConstrainedBox(
+                      constraints:
+                          BoxConstraints(minWidth: constraints.maxWidth),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: _homeSections
+                            .map(
+                              (_HomeSectionNavItem item) =>
+                                  _HomeSectionButton(item: item),
+                            )
+                            .toList(),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(width: 8),
+            const _AuthNavActions(),
+            const SizedBox(width: 12),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeSectionNavItem {
+  const _HomeSectionNavItem({
+    required this.label,
+    required this.sectionIndex,
+  });
+
+  final String label;
+  final int sectionIndex;
+}
+
+class _HomeSectionButton extends StatefulWidget {
+  const _HomeSectionButton({
+    required this.item,
+  });
+
+  final _HomeSectionNavItem item;
+
+  @override
+  State<_HomeSectionButton> createState() => _HomeSectionButtonState();
+}
+
+class _HomeSectionButtonState extends State<_HomeSectionButton> {
+  bool _isHovering = false;
+
+  Future<void> _handlePressed(BuildContext context) async {
+    if (!homeScrollController.hasClients) {
+      GoRouter.of(context).go(NavBar._homeRoute);
+      await WidgetsBinding.instance.endOfFrame;
+      await WidgetsBinding.instance.endOfFrame;
+    }
+
+    await scrollToHomeSection(widget.item.sectionIndex);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final Color navTextColor = Theme.of(context).primaryColor;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovering = true),
+      onExit: (_) => setState(() => _isHovering = false),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: TextButton(
+          onPressed: () => _handlePressed(context),
+          style: TextButton.styleFrom(
+            foregroundColor: navTextColor,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            textStyle: const TextStyle(
+              fontFamily: 'Montserrat',
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
             ),
           ),
-          _AuthNavActions(),
-          Visibility(
-            visible: false,
-            child: ThemeButton(),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Text(widget.item.label),
+              const SizedBox(height: 3),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 140),
+                curve: Curves.easeOutCubic,
+                width: _isHovering ? 28 : 0,
+                height: 3,
+                decoration: BoxDecoration(
+                  color: navTextColor,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ],
           ),
-          SizedBox(width: 8),
-        ],
+        ),
       ),
     );
   }
@@ -54,6 +174,7 @@ class _AuthNavActions extends StatelessWidget {
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
+      initialData: FirebaseAuth.instance.currentUser,
       builder: (BuildContext context, AsyncSnapshot<User?> authSnapshot) {
         final User? user = authSnapshot.data;
         if (user == null) {
@@ -98,6 +219,15 @@ class _RouteNavButton extends StatelessWidget {
       style: OutlinedButton.styleFrom(
         foregroundColor: navTextColor,
         side: BorderSide(color: navTextColor.withValues(alpha: 0.55)),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        textStyle: const TextStyle(
+          fontFamily: 'Montserrat',
+          fontSize: 15,
+          fontWeight: FontWeight.bold,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
       ),
       child: Text(label),
     );

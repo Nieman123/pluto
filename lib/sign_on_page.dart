@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'src/background/pluto_background.dart';
-import 'src/custom/auth_app_bar_action.dart';
+import 'src/nav_bar/nav_bar.dart';
 
 enum _CredentialAction {
   signIn,
@@ -230,44 +230,7 @@ class _SignOnPageState extends State<SignOnPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF121212),
-        foregroundColor: Colors.white,
-        title: SizedBox(
-          height: 36,
-          child: Image.asset(
-            'assets/experience/pluto-logo-small.webp',
-            fit: BoxFit.contain,
-          ),
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => context.go('/'),
-            style: TextButton.styleFrom(foregroundColor: Colors.white),
-            child: const Text('Home'),
-          ),
-          _AdminOnly(
-            builder: (BuildContext context) {
-              return TextButton(
-                onPressed: () => context.go('/admin'),
-                style: TextButton.styleFrom(foregroundColor: Colors.white),
-                child: const Text('Admin'),
-              );
-            },
-          ),
-          TextButton(
-            onPressed: () => context.go('/scan-qr'),
-            style: TextButton.styleFrom(foregroundColor: Colors.white),
-            child: const Text('Scan QR'),
-          ),
-          TextButton(
-            onPressed: () => context.go('/shop'),
-            style: TextButton.styleFrom(foregroundColor: Colors.white),
-            child: const Text('Rewards Shop'),
-          ),
-          const AuthAppBarAction(),
-        ],
-      ),
+      appBar: const NavBar(isDarkModeBtnVisible: true),
       body: Stack(
         children: <Widget>[
           const PlutoBackground(),

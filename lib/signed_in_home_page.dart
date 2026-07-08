@@ -8,7 +8,7 @@ import 'package:url_launcher/url_launcher_string.dart';
 
 import 'current_events_repository.dart';
 import 'src/background/pluto_background.dart';
-import 'src/custom/auth_app_bar_action.dart';
+import 'src/nav_bar/nav_bar.dart';
 
 class SignedInHomePage extends StatelessWidget {
   SignedInHomePage({
@@ -412,40 +412,7 @@ class SignedInHomePage extends StatelessWidget {
     return Theme(
       data: _pageTheme(context),
       child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: const Color(0xFF121212),
-          foregroundColor: Colors.white,
-          title: SizedBox(
-            height: 36,
-            child: Image.asset(
-              'assets/experience/pluto-logo-small.webp',
-              fit: BoxFit.contain,
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => context.go('/manafest'),
-              style: TextButton.styleFrom(foregroundColor: Colors.white),
-              child: const Text('ManaFest'),
-            ),
-            TextButton(
-              onPressed: () => context.go('/profile'),
-              style: TextButton.styleFrom(foregroundColor: Colors.white),
-              child: const Text('Profile'),
-            ),
-            TextButton(
-              onPressed: () => context.go('/scan-qr'),
-              style: TextButton.styleFrom(foregroundColor: Colors.white),
-              child: const Text('Scan QR'),
-            ),
-            TextButton(
-              onPressed: () => context.go('/shop'),
-              style: TextButton.styleFrom(foregroundColor: Colors.white),
-              child: const Text('Rewards Shop'),
-            ),
-            const AuthAppBarAction(),
-          ],
-        ),
+        appBar: const NavBar(isDarkModeBtnVisible: true),
         body: Stack(
           children: <Widget>[
             const PlutoBackground(),

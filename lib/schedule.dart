@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'src/background/pluto_background.dart';
-import 'src/custom/auth_app_bar_action.dart';
+import 'src/nav_bar/nav_bar.dart';
 
 class SchedulePage extends StatelessWidget {
   const SchedulePage({Key? key}) : super(key: key);
@@ -10,13 +10,7 @@ class SchedulePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Schedule Info'),
-        centerTitle: true,
-        actions: const <Widget>[
-          AuthAppBarAction(),
-        ],
-      ),
+      appBar: const NavBar(isDarkModeBtnVisible: true),
       body: Stack(
         children: [
           const PlutoBackground(),

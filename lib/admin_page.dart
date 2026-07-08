@@ -16,7 +16,7 @@ import 'current_events_repository.dart';
 import 'link_box.dart';
 import 'links_repository.dart';
 import 'src/background/pluto_background.dart';
-import 'src/custom/auth_app_bar_action.dart';
+import 'src/nav_bar/nav_bar.dart';
 import 'user_profile_repository.dart';
 
 enum AdminSection {
@@ -2749,38 +2749,10 @@ class _AdminPageState extends State<AdminPage> {
 
   @override
   Widget build(BuildContext context) {
-    final String pageTitle =
-        widget.section == null ? 'Admin' : 'Admin - ${widget.section!.label}';
-
     return Theme(
       data: _adminPageTheme(context),
       child: Scaffold(
-        appBar: AppBar(
-          title: Semantics(
-            label: pageTitle,
-            child: SizedBox(
-              height: 36,
-              child: Image.asset(
-                'assets/experience/pluto-logo-small.webp',
-                fit: BoxFit.contain,
-              ),
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => context.go('/'),
-              style: TextButton.styleFrom(foregroundColor: Colors.white),
-              child: const Text('Home'),
-            ),
-            if (widget.section != null)
-              TextButton(
-                onPressed: () => context.go('/admin'),
-                style: TextButton.styleFrom(foregroundColor: Colors.white),
-                child: const Text('Admin Home'),
-              ),
-            const AuthAppBarAction(),
-          ],
-        ),
+        appBar: const NavBar(isDarkModeBtnVisible: true),
         body: Stack(
           children: <Widget>[
             const PlutoBackground(),

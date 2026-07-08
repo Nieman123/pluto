@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'src/background/pluto_background.dart';
-import 'src/custom/auth_app_bar_action.dart';
+import 'src/nav_bar/nav_bar.dart';
 import 'user_profile_repository.dart';
 
 class ItemShopPage extends StatefulWidget {
@@ -399,27 +399,7 @@ class _ItemShopPageState extends State<ItemShopPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Rewards Shop'),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => context.go('/'),
-            style: TextButton.styleFrom(foregroundColor: Colors.white),
-            child: const Text('Home'),
-          ),
-          TextButton(
-            onPressed: () => context.go('/profile'),
-            style: TextButton.styleFrom(foregroundColor: Colors.white),
-            child: const Text('Profile'),
-          ),
-          TextButton(
-            onPressed: () => context.go('/scan-qr'),
-            style: TextButton.styleFrom(foregroundColor: Colors.white),
-            child: const Text('Scan QR'),
-          ),
-          const AuthAppBarAction(),
-        ],
-      ),
+      appBar: const NavBar(isDarkModeBtnVisible: true),
       body: Stack(
         children: <Widget>[
           const PlutoBackground(),

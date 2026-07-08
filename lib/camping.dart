@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 import 'src/background/pluto_background.dart';
-import 'src/custom/auth_app_bar_action.dart';
+import 'src/nav_bar/nav_bar.dart';
 
 class CampingInfoPage extends StatelessWidget {
   const CampingInfoPage({Key? key}) : super(key: key);
@@ -12,13 +12,7 @@ class CampingInfoPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Camping Info'),
-        centerTitle: true,
-        actions: const <Widget>[
-          AuthAppBarAction(),
-        ],
-      ),
+      appBar: const NavBar(isDarkModeBtnVisible: true),
       body: Stack(
         children: [
           const PlutoBackground(),

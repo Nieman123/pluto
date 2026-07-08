@@ -7,7 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import 'src/background/pluto_background.dart';
-import 'src/custom/auth_app_bar_action.dart';
+import 'src/nav_bar/nav_bar.dart';
 import 'user_profile_repository.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -624,27 +624,7 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Profile'),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => context.go('/'),
-            style: TextButton.styleFrom(foregroundColor: Colors.white),
-            child: const Text('Home'),
-          ),
-          const AuthAppBarAction(),
-          TextButton(
-            onPressed: () => context.go('/scan-qr'),
-            style: TextButton.styleFrom(foregroundColor: Colors.white),
-            child: const Text('Scan QR'),
-          ),
-          TextButton(
-            onPressed: () => context.go('/shop'),
-            style: TextButton.styleFrom(foregroundColor: Colors.white),
-            child: const Text('Rewards Shop'),
-          ),
-        ],
-      ),
+      appBar: const NavBar(isDarkModeBtnVisible: true),
       body: Stack(
         children: <Widget>[
           const PlutoBackground(),
