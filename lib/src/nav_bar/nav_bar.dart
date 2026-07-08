@@ -29,6 +29,11 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
     icon: Icons.home,
     sectionIndex: 0,
   );
+  static const _NavMenuAction _dashboardMenuAction = _NavMenuAction.route(
+    label: 'Dashboard',
+    icon: Icons.dashboard,
+    route: '/',
+  );
   static const List<_NavMenuAction> _homeSectionMenuActions = <_NavMenuAction>[
     _NavMenuAction.homeSection(
       label: 'Events',
@@ -129,6 +134,7 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
     required bool showHomeSectionSubItems,
   }) {
     return <_NavMenuAction>[
+      _dashboardMenuAction,
       ...compactHomeActions(showSectionSubItems: showHomeSectionSubItems),
       const _NavMenuAction.route(
         label: 'Rewards Shop',
@@ -386,10 +392,7 @@ class _CompactSignedInNavActions extends StatelessWidget {
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            _ProfileAvatarButton(
-              isInteractive: false,
-              user: user,
-            ),
+            _ProfileAvatarButton(user: user),
             const SizedBox(width: 6),
             _CompactNavMenuButton(
               actions: NavBar.compactSignedInActions(
@@ -545,11 +548,9 @@ class _AdminNavButton extends StatelessWidget {
 
 class _ProfileAvatarButton extends StatelessWidget {
   const _ProfileAvatarButton({
-    this.isInteractive = true,
     required this.user,
   });
 
-  final bool isInteractive;
   final User user;
 
   @override
@@ -577,13 +578,6 @@ class _ProfileAvatarButton extends StatelessWidget {
           avatarImage: avatarImage,
           fallbackText: _avatarFallbackText(user, profileDisplayName),
         );
-
-        if (!isInteractive) {
-          return Tooltip(
-            message: 'Profile',
-            child: avatar,
-          );
-        }
 
         return Tooltip(
           message: 'Profile',
