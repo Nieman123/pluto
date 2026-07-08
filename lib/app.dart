@@ -9,8 +9,15 @@ import 'tabs/scroll_controller.dart';
 import 'tabs/tabs.dart';
 
 class App extends StatelessWidget {
-  const App({Key? key}) : super(key: key);
+  const App({
+    Key? key,
+    this.showSignedInHome = true,
+  }) : super(key: key);
+
   static const String route = '/';
+  static const String publicHomeRoute = '/home';
+
+  final bool showSignedInHome;
 
   Widget _buildHomeList() {
     return ListView.builder(
@@ -72,6 +79,10 @@ class App extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!showSignedInHome) {
+      return _buildPublicHome(context);
+    }
+
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (BuildContext context, AsyncSnapshot<User?> authSnapshot) {

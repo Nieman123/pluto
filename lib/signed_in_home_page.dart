@@ -135,6 +135,12 @@ class SignedInHomePage extends StatelessWidget {
         final List<Widget> actionButtons = <Widget>[
           _buildQuickActionButton(
             context,
+            label: 'Homepage',
+            icon: Icons.home,
+            onPressed: () => context.go('/home'),
+          ),
+          _buildQuickActionButton(
+            context,
             label: 'Profile',
             icon: Icons.person,
             onPressed: () => context.go('/profile'),

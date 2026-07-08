@@ -72,6 +72,11 @@ class _MyAppState extends State<MyApp> {
         builder: (BuildContext context, GoRouterState state) => const App(),
       ),
       GoRoute(
+        path: App.publicHomeRoute,
+        builder: (BuildContext context, GoRouterState state) =>
+            const App(showSignedInHome: false),
+      ),
+      GoRoute(
         path: '/links',
         builder: (BuildContext context, GoRouterState state) {
           return DeferredWidget(
