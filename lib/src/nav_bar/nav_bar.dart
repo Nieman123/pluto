@@ -24,26 +24,29 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
     _HomeSectionNavItem(label: 'Artists', sectionIndex: 2),
     _HomeSectionNavItem(label: 'Contact', sectionIndex: 3),
   ];
-  static const List<_NavMenuAction> _homeMenuActions = <_NavMenuAction>[
-    _NavMenuAction.homeSection(
-      label: 'Home',
-      icon: Icons.home,
-      sectionIndex: 0,
-    ),
+  static const _NavMenuAction _homeMenuAction = _NavMenuAction.homeSection(
+    label: 'Home',
+    icon: Icons.home,
+    sectionIndex: 0,
+  );
+  static const List<_NavMenuAction> _homeSectionMenuActions = <_NavMenuAction>[
     _NavMenuAction.homeSection(
       label: 'Events',
       icon: Icons.event,
       sectionIndex: 1,
+      indentLevel: 1,
     ),
     _NavMenuAction.homeSection(
       label: 'Artists',
       icon: Icons.music_note,
       sectionIndex: 2,
+      indentLevel: 1,
     ),
     _NavMenuAction.homeSection(
       label: 'Contact',
       icon: Icons.email,
       sectionIndex: 3,
+      indentLevel: 1,
     ),
   ];
   static const double _compactBreakpoint = 760;
@@ -56,6 +59,7 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
     final Color backgroundColor = Theme.of(context).scaffoldBackgroundColor;
     final bool isCompact =
         MediaQuery.sizeOf(context).width < _compactBreakpoint;
+    final String currentPath = GoRouterState.of(context).uri.path;
 
     return Material(
       color: backgroundColor,
@@ -109,7 +113,10 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
                 ),
               ),
             const SizedBox(width: 8),
-            _AuthNavActions(isCompact: isCompact),
+            _AuthNavActions(
+              currentPath: currentPath,
+              isCompact: isCompact,
+            ),
             const SizedBox(width: 12),
           ],
         ),
@@ -117,9 +124,12 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
     );
   }
 
-  static List<_NavMenuAction> compactSignedInActions({required bool isAdmin}) {
+  static List<_NavMenuAction> compactSignedInActions({
+    required bool isAdmin,
+    required bool showHomeSectionSubItems,
+  }) {
     return <_NavMenuAction>[
-      ..._homeMenuActions,
+      ...compactHomeActions(showSectionSubItems: showHomeSectionSubItems),
       const _NavMenuAction.route(
         label: 'Rewards Shop',
         icon: Icons.card_giftcard,
@@ -139,15 +149,37 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
     ];
   }
 
-  static List<_NavMenuAction> get compactSignedOutActions {
+  static List<_NavMenuAction> compactSignedOutActions({
+    required bool showHomeSectionSubItems,
+  }) {
     return <_NavMenuAction>[
-      ..._homeMenuActions,
+      ...compactHomeActions(showSectionSubItems: showHomeSectionSubItems),
       const _NavMenuAction.route(
         label: 'Sign in',
         icon: Icons.login,
         route: '/sign-on',
       ),
     ];
+  }
+
+  static List<_NavMenuAction> compactHomeActions({
+    required bool showSectionSubItems,
+  }) {
+    return <_NavMenuAction>[
+      _homeMenuAction,
+      if (showSectionSubItems) ..._homeSectionMenuActions,
+    ];
+  }
+
+  static bool showHomeSectionSubItems({
+    required String currentPath,
+    required User? user,
+  }) {
+    if (currentPath == _homeRoute) {
+      return true;
+    }
+
+    return user == null && currentPath == '/';
   }
 
   static Future<void> selectHomeSection(
@@ -250,9 +282,11 @@ class _HomeSectionButtonState extends State<_HomeSectionButton> {
 
 class _AuthNavActions extends StatelessWidget {
   const _AuthNavActions({
+    required this.currentPath,
     required this.isCompact,
   });
 
+  final String currentPath;
   final bool isCompact;
 
   @override
@@ -262,10 +296,17 @@ class _AuthNavActions extends StatelessWidget {
       initialData: FirebaseAuth.instance.currentUser,
       builder: (BuildContext context, AsyncSnapshot<User?> authSnapshot) {
         final User? user = authSnapshot.data;
+        final bool showHomeSectionSubItems = NavBar.showHomeSectionSubItems(
+          currentPath: currentPath,
+          user: user,
+        );
+
         if (user == null) {
           if (isCompact) {
             return _CompactNavMenuButton(
-              actions: NavBar.compactSignedOutActions,
+              actions: NavBar.compactSignedOutActions(
+                showHomeSectionSubItems: showHomeSectionSubItems,
+              ),
               tooltip: 'Open navigation menu',
             );
           }
@@ -277,7 +318,10 @@ class _AuthNavActions extends StatelessWidget {
         }
 
         if (isCompact) {
-          return _CompactSignedInNavActions(user: user);
+          return _CompactSignedInNavActions(
+            showHomeSectionSubItems: showHomeSectionSubItems,
+            user: user,
+          );
         }
 
         return Row(
@@ -303,25 +347,30 @@ class _NavMenuAction {
     required this.label,
     required this.icon,
     required this.sectionIndex,
+    this.indentLevel = 0,
   }) : route = null;
 
   const _NavMenuAction.route({
     required this.label,
     required this.icon,
     required this.route,
-  }) : sectionIndex = null;
+  })  : indentLevel = 0,
+        sectionIndex = null;
 
   final String label;
   final IconData icon;
+  final int indentLevel;
   final int? sectionIndex;
   final String? route;
 }
 
 class _CompactSignedInNavActions extends StatelessWidget {
   const _CompactSignedInNavActions({
+    required this.showHomeSectionSubItems,
     required this.user,
   });
 
+  final bool showHomeSectionSubItems;
   final User user;
 
   @override
@@ -334,9 +383,22 @@ class _CompactSignedInNavActions extends StatelessWidget {
       builder: (BuildContext context,
           AsyncSnapshot<DocumentSnapshot<Map<String, dynamic>>> adminSnapshot) {
         final bool isAdmin = adminSnapshot.data?.exists ?? false;
-        return _ProfileAvatarButton(
-          user: user,
-          menuActions: NavBar.compactSignedInActions(isAdmin: isAdmin),
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            _ProfileAvatarButton(
+              isInteractive: false,
+              user: user,
+            ),
+            const SizedBox(width: 6),
+            _CompactNavMenuButton(
+              actions: NavBar.compactSignedInActions(
+                isAdmin: isAdmin,
+                showHomeSectionSubItems: showHomeSectionSubItems,
+              ),
+              tooltip: 'Open navigation menu',
+            ),
+          ],
         );
       },
     );
@@ -347,17 +409,14 @@ class _CompactNavMenuButton extends StatelessWidget {
   const _CompactNavMenuButton({
     required this.actions,
     required this.tooltip,
-    this.child,
   });
 
   final List<_NavMenuAction> actions;
   final String tooltip;
-  final Widget? child;
 
   @override
   Widget build(BuildContext context) {
     final Color navTextColor = Theme.of(context).primaryColor;
-    final Widget? menuChild = child;
 
     return PopupMenuButton<_NavMenuAction>(
       tooltip: tooltip,
@@ -373,13 +432,21 @@ class _CompactNavMenuButton extends StatelessWidget {
       onSelected: (_NavMenuAction action) =>
           NavBar.handleMenuAction(context, action),
       itemBuilder: (BuildContext context) {
-        return actions
-            .map(
-              (_NavMenuAction action) => PopupMenuItem<_NavMenuAction>(
-                value: action,
+        return actions.map(
+          (_NavMenuAction action) {
+            final bool isSubItem = action.indentLevel > 0;
+            return PopupMenuItem<_NavMenuAction>(
+              height: isSubItem ? 42 : kMinInteractiveDimension,
+              value: action,
+              child: Padding(
+                padding: EdgeInsets.only(left: action.indentLevel * 28.0),
                 child: Row(
                   children: <Widget>[
-                    Icon(action.icon, size: 20, color: navTextColor),
+                    Icon(
+                      action.icon,
+                      size: isSubItem ? 18 : 20,
+                      color: navTextColor,
+                    ),
                     const SizedBox(width: 12),
                     Flexible(
                       child: Text(
@@ -388,7 +455,7 @@ class _CompactNavMenuButton extends StatelessWidget {
                         style: TextStyle(
                           color: navTextColor,
                           fontFamily: 'Montserrat',
-                          fontSize: 15,
+                          fontSize: isSubItem ? 14 : 15,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -396,16 +463,14 @@ class _CompactNavMenuButton extends StatelessWidget {
                   ],
                 ),
               ),
-            )
-            .toList();
+            );
+          },
+        ).toList();
       },
-      icon: menuChild == null
-          ? Icon(
-              Icons.menu,
-              color: navTextColor,
-            )
-          : null,
-      child: menuChild,
+      icon: Icon(
+        Icons.menu,
+        color: navTextColor,
+      ),
     );
   }
 }
@@ -480,12 +545,12 @@ class _AdminNavButton extends StatelessWidget {
 
 class _ProfileAvatarButton extends StatelessWidget {
   const _ProfileAvatarButton({
+    this.isInteractive = true,
     required this.user,
-    this.menuActions,
   });
 
+  final bool isInteractive;
   final User user;
-  final List<_NavMenuAction>? menuActions;
 
   @override
   Widget build(BuildContext context) {
@@ -513,11 +578,9 @@ class _ProfileAvatarButton extends StatelessWidget {
           fallbackText: _avatarFallbackText(user, profileDisplayName),
         );
 
-        final List<_NavMenuAction>? compactMenuActions = menuActions;
-        if (compactMenuActions != null) {
-          return _CompactNavMenuButton(
-            actions: compactMenuActions,
-            tooltip: 'Open profile menu',
+        if (!isInteractive) {
+          return Tooltip(
+            message: 'Profile',
             child: avatar,
           );
         }
