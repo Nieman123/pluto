@@ -18,12 +18,6 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
   final bool isDarkModeBtnVisible;
 
   static const String _homeRoute = '/home';
-  static const List<_HomeSectionNavItem> _homeSections = <_HomeSectionNavItem>[
-    _HomeSectionNavItem(label: 'Home', sectionIndex: 0),
-    _HomeSectionNavItem(label: 'Events', sectionIndex: 1),
-    _HomeSectionNavItem(label: 'Artists', sectionIndex: 2),
-    _HomeSectionNavItem(label: 'Contact', sectionIndex: 3),
-  ];
   static const _NavMenuAction _homeMenuAction = _NavMenuAction.homeSection(
     label: 'Home',
     icon: Icons.home,
@@ -54,7 +48,6 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
       indentLevel: 1,
     ),
   ];
-  static const double _compactBreakpoint = 760;
 
   @override
   Size get preferredSize => const Size.fromHeight(64);
@@ -62,8 +55,6 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final Color backgroundColor = Theme.of(context).scaffoldBackgroundColor;
-    final bool isCompact =
-        MediaQuery.sizeOf(context).width < _compactBreakpoint;
     final String currentPath = GoRouterState.of(context).uri.path;
 
     return Material(
@@ -92,35 +83,10 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
               ),
             ),
             const SizedBox(width: 8),
-            if (isCompact)
-              const Spacer()
-            else
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (BuildContext context, BoxConstraints constraints) {
-                    return SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: ConstrainedBox(
-                        constraints:
-                            BoxConstraints(minWidth: constraints.maxWidth),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: _homeSections
-                              .map(
-                                (_HomeSectionNavItem item) =>
-                                    _HomeSectionButton(item: item),
-                              )
-                              .toList(),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
+            const Spacer(),
             const SizedBox(width: 8),
             _AuthNavActions(
               currentPath: currentPath,
-              isCompact: isCompact,
             ),
             const SizedBox(width: 12),
           ],
@@ -215,85 +181,12 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
   }
 }
 
-class _HomeSectionNavItem {
-  const _HomeSectionNavItem({
-    required this.label,
-    required this.sectionIndex,
-  });
-
-  final String label;
-  final int sectionIndex;
-}
-
-class _HomeSectionButton extends StatefulWidget {
-  const _HomeSectionButton({
-    required this.item,
-  });
-
-  final _HomeSectionNavItem item;
-
-  @override
-  State<_HomeSectionButton> createState() => _HomeSectionButtonState();
-}
-
-class _HomeSectionButtonState extends State<_HomeSectionButton> {
-  bool _isHovering = false;
-
-  Future<void> _handlePressed(BuildContext context) async {
-    await NavBar.selectHomeSection(context, widget.item.sectionIndex);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final Color navTextColor = Theme.of(context).primaryColor;
-
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovering = true),
-      onExit: (_) => setState(() => _isHovering = false),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: TextButton(
-          onPressed: () => _handlePressed(context),
-          style: TextButton.styleFrom(
-            foregroundColor: navTextColor,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            textStyle: const TextStyle(
-              fontFamily: 'Montserrat',
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Text(widget.item.label),
-              const SizedBox(height: 3),
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 140),
-                curve: Curves.easeOutCubic,
-                width: _isHovering ? 28 : 0,
-                height: 3,
-                decoration: BoxDecoration(
-                  color: navTextColor,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _AuthNavActions extends StatelessWidget {
   const _AuthNavActions({
     required this.currentPath,
-    required this.isCompact,
   });
 
   final String currentPath;
-  final bool isCompact;
 
   @override
   Widget build(BuildContext context) {
@@ -308,40 +201,17 @@ class _AuthNavActions extends StatelessWidget {
         );
 
         if (user == null) {
-          if (isCompact) {
-            return _CompactNavMenuButton(
-              actions: NavBar.compactSignedOutActions(
-                showHomeSectionSubItems: showHomeSectionSubItems,
-              ),
-              tooltip: 'Open navigation menu',
-            );
-          }
-
-          return const _RouteNavButton(
-            label: 'Sign in',
-            route: '/sign-on',
-          );
-        }
-
-        if (isCompact) {
-          return _CompactSignedInNavActions(
-            showHomeSectionSubItems: showHomeSectionSubItems,
-            user: user,
-          );
-        }
-
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            const SizedBox(width: 10),
-            const _RouteNavButton(
-              label: 'Rewards Shop',
-              route: '/shop',
+          return _CompactNavMenuButton(
+            actions: NavBar.compactSignedOutActions(
+              showHomeSectionSubItems: showHomeSectionSubItems,
             ),
-            _AdminNavButton(user: user),
-            const SizedBox(width: 10),
-            _ProfileAvatarButton(user: user),
-          ],
+            tooltip: 'Open navigation menu',
+          );
+        }
+
+        return _CompactSignedInNavActions(
+          showHomeSectionSubItems: showHomeSectionSubItems,
+          user: user,
         );
       },
     );
@@ -474,74 +344,6 @@ class _CompactNavMenuButton extends StatelessWidget {
         Icons.menu,
         color: navTextColor,
       ),
-    );
-  }
-}
-
-class _RouteNavButton extends StatelessWidget {
-  const _RouteNavButton({
-    required this.label,
-    required this.route,
-  });
-
-  final String label;
-  final String route;
-
-  @override
-  Widget build(BuildContext context) {
-    final Color navTextColor = Theme.of(context).primaryColor;
-    return OutlinedButton(
-      onPressed: () => GoRouter.of(context).go(route),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: navTextColor,
-        side: BorderSide(color: navTextColor.withValues(alpha: 0.55)),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        textStyle: const TextStyle(
-          fontFamily: 'Montserrat',
-          fontSize: 15,
-          fontWeight: FontWeight.bold,
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-      ),
-      child: Text(label),
-    );
-  }
-}
-
-class _AdminNavButton extends StatelessWidget {
-  const _AdminNavButton({
-    required this.user,
-  });
-
-  final User user;
-
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
-          .collection('adminUsers')
-          .doc(user.uid)
-          .snapshots(),
-      builder: (BuildContext context,
-          AsyncSnapshot<DocumentSnapshot<Map<String, dynamic>>> adminSnapshot) {
-        final bool isAdmin = adminSnapshot.data?.exists ?? false;
-        if (!isAdmin) {
-          return const SizedBox.shrink();
-        }
-
-        return const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            SizedBox(width: 10),
-            _RouteNavButton(
-              label: 'Admin',
-              route: '/admin',
-            ),
-          ],
-        );
-      },
     );
   }
 }
