@@ -107,6 +107,16 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
         icon: Icons.card_giftcard,
         route: '/shop',
       ),
+      const _NavMenuAction.route(
+        label: 'Scan QR Code',
+        icon: Icons.qr_code_scanner,
+        route: '/scan-qr',
+      ),
+      const _NavMenuAction.route(
+        label: 'Account',
+        icon: Icons.settings,
+        route: '/sign-on',
+      ),
       if (isAdmin)
         const _NavMenuAction.route(
           label: 'Admin',

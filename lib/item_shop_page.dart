@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'src/background/pluto_background.dart';
 import 'src/nav_bar/nav_bar.dart';
+import 'src/signed_in/signed_in_app_shell.dart';
 import 'user_profile_repository.dart';
 
 class ItemShopPage extends StatefulWidget {
@@ -180,6 +181,12 @@ class _ItemShopPageState extends State<ItemShopPage> {
                   value: profile.tierName,
                 ),
               ],
+            ),
+            const SizedBox(height: 14),
+            ElevatedButton.icon(
+              onPressed: () => context.go('/scan-qr'),
+              icon: const Icon(Icons.qr_code_scanner),
+              label: const Text('Scan QR Code'),
             ),
           ],
         ),
@@ -396,103 +403,132 @@ class _ItemShopPageState extends State<ItemShopPage> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildStandaloneScaffold(Widget body) {
     return Scaffold(
       appBar: const NavBar(isDarkModeBtnVisible: true),
       body: Stack(
         children: <Widget>[
           const PlutoBackground(),
-          StreamBuilder<User?>(
-            stream: FirebaseAuth.instance.authStateChanges(),
-            builder: (BuildContext context, AsyncSnapshot<User?> authSnapshot) {
-              if (authSnapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
+          body,
+        ],
+      ),
+    );
+  }
 
-              final User? user = authSnapshot.data;
-              if (user == null) {
-                return _buildSignedOutState();
-              }
+  Widget _buildStatusOverlay() {
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: Container(
+        margin: const EdgeInsets.all(18),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.black87,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          _statusMessage,
+          style: const TextStyle(color: Colors.white),
+        ),
+      ),
+    );
+  }
 
-              return FutureBuilder<void>(
-                future: _ensureProfileExists(user),
-                builder:
-                    (BuildContext context, AsyncSnapshot<void> ensureSnapshot) {
-                  if (ensureSnapshot.connectionState ==
-                      ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      initialData: FirebaseAuth.instance.currentUser,
+      builder: (BuildContext context, AsyncSnapshot<User?> authSnapshot) {
+        if (authSnapshot.connectionState == ConnectionState.waiting) {
+          return _buildStandaloneScaffold(
+            const Center(child: CircularProgressIndicator()),
+          );
+        }
 
-                  if (ensureSnapshot.hasError) {
-                    return Center(
+        final User? user = authSnapshot.data;
+        if (user == null) {
+          return _buildStandaloneScaffold(_buildSignedOutState());
+        }
+
+        return FutureBuilder<void>(
+          future: _ensureProfileExists(user),
+          builder: (BuildContext context, AsyncSnapshot<void> ensureSnapshot) {
+            if (ensureSnapshot.connectionState == ConnectionState.waiting) {
+              return const SignedInAppShell(
+                selectedTab: SignedInAppTab.rewards,
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+
+            if (ensureSnapshot.hasError) {
+              return SignedInAppShell(
+                selectedTab: SignedInAppTab.rewards,
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Text(
+                      'Could not initialize profile: ${ensureSnapshot.error}',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+              );
+            }
+
+            return StreamBuilder<UserProfile?>(
+              stream: _profileRepository.watchProfile(
+                uid: user.uid,
+                fallbackDisplayName: _fallbackDisplayNameForUser(user),
+              ),
+              builder: (BuildContext context,
+                  AsyncSnapshot<UserProfile?> profileSnapshot) {
+                if (profileSnapshot.connectionState ==
+                    ConnectionState.waiting) {
+                  return const SignedInAppShell(
+                    selectedTab: SignedInAppTab.rewards,
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+
+                if (profileSnapshot.hasError) {
+                  return SignedInAppShell(
+                    selectedTab: SignedInAppTab.rewards,
+                    child: Center(
                       child: Padding(
                         padding: const EdgeInsets.all(20),
                         child: Text(
-                          'Could not initialize profile: ${ensureSnapshot.error}',
+                          'Could not load profile: ${profileSnapshot.error}',
                           style: const TextStyle(color: Colors.white),
                         ),
                       ),
-                    );
-                  }
-
-                  return StreamBuilder<UserProfile?>(
-                    stream: _profileRepository.watchProfile(
-                      uid: user.uid,
-                      fallbackDisplayName: _fallbackDisplayNameForUser(user),
                     ),
-                    builder: (BuildContext context,
-                        AsyncSnapshot<UserProfile?> profileSnapshot) {
-                      if (profileSnapshot.connectionState ==
-                          ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-
-                      if (profileSnapshot.hasError) {
-                        return Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(20),
-                            child: Text(
-                              'Could not load profile: ${profileSnapshot.error}',
-                              style: const TextStyle(color: Colors.white),
-                            ),
-                          ),
-                        );
-                      }
-
-                      final UserProfile? profile = profileSnapshot.data;
-                      if (profile == null) {
-                        return const Center(
-                          child: CircularProgressIndicator(),
-                        );
-                      }
-
-                      return _buildShopContent(user: user, profile: profile);
-                    },
                   );
-                },
-              );
-            },
-          ),
-          if (_statusMessage.isNotEmpty)
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: Container(
-                margin: const EdgeInsets.all(18),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.black87,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  _statusMessage,
-                  style: const TextStyle(color: Colors.white),
-                ),
-              ),
-            ),
-        ],
-      ),
+                }
+
+                final UserProfile? profile = profileSnapshot.data;
+                if (profile == null) {
+                  return const SignedInAppShell(
+                    selectedTab: SignedInAppTab.rewards,
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+
+                return SignedInAppShell(
+                  selectedTab: SignedInAppTab.rewards,
+                  child: Stack(
+                    children: <Widget>[
+                      Positioned.fill(
+                        child: _buildShopContent(user: user, profile: profile),
+                      ),
+                      if (_statusMessage.isNotEmpty) _buildStatusOverlay(),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
     );
   }
 }

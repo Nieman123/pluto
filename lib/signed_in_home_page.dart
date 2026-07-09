@@ -1,14 +1,13 @@
 import 'dart:typed_data';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 import 'current_events_repository.dart';
-import 'src/background/pluto_background.dart';
-import 'src/nav_bar/nav_bar.dart';
+import 'src/signed_in/signed_in_app_shell.dart';
+import 'user_profile_repository.dart';
 
 class SignedInHomePage extends StatelessWidget {
   SignedInHomePage({
@@ -18,6 +17,7 @@ class SignedInHomePage extends StatelessWidget {
 
   final User user;
   final CurrentEventsRepository _eventsRepository = CurrentEventsRepository();
+  final UserProfileRepository _profileRepository = UserProfileRepository();
 
   String _displayNameForUser(User user) {
     final String explicitName = (user.displayName ?? '').trim();
@@ -91,122 +91,6 @@ class SignedInHomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickActionButton(
-    BuildContext context, {
-    required String label,
-    required IconData icon,
-    required VoidCallback onPressed,
-  }) {
-    return SizedBox.expand(
-      child: ElevatedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon, size: 28),
-        label: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: _buttonBackground(context),
-          foregroundColor: _buttonForeground(context),
-          elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickActions(BuildContext context) {
-    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
-          .collection('adminUsers')
-          .doc(user.uid)
-          .snapshots(),
-      builder: (BuildContext context,
-          AsyncSnapshot<DocumentSnapshot<Map<String, dynamic>>> adminSnapshot) {
-        final bool isAdmin = adminSnapshot.data?.exists ?? false;
-
-        final List<Widget> actionButtons = <Widget>[
-          _buildQuickActionButton(
-            context,
-            label: 'Homepage',
-            icon: Icons.home,
-            onPressed: () => context.go('/home'),
-          ),
-          _buildQuickActionButton(
-            context,
-            label: 'Profile',
-            icon: Icons.person,
-            onPressed: () => context.go('/profile'),
-          ),
-          _buildQuickActionButton(
-            context,
-            label: 'ManaFest',
-            icon: Icons.festival,
-            onPressed: () => context.go('/manafest'),
-          ),
-          _buildQuickActionButton(
-            context,
-            label: 'Scan QR Code',
-            icon: Icons.qr_code_scanner,
-            onPressed: () => context.go('/scan-qr'),
-          ),
-          _buildQuickActionButton(
-            context,
-            label: 'Rewards Shop',
-            icon: Icons.redeem,
-            onPressed: () => context.go('/shop'),
-          ),
-          _buildQuickActionButton(
-            context,
-            label: 'Account',
-            icon: Icons.settings,
-            onPressed: () => context.go('/sign-on'),
-          ),
-        ];
-
-        if (isAdmin) {
-          actionButtons.add(
-            _buildQuickActionButton(
-              context,
-              label: 'Admin',
-              icon: Icons.admin_panel_settings,
-              onPressed: () => context.go('/admin'),
-            ),
-          );
-        }
-
-        return LayoutBuilder(
-          builder: (BuildContext context, BoxConstraints constraints) {
-            const double spacing = 12;
-            final double buttonWidth = (constraints.maxWidth - spacing) / 2;
-
-            return Wrap(
-              alignment: WrapAlignment.center,
-              spacing: spacing,
-              runSpacing: spacing,
-              children: actionButtons
-                  .map(
-                    (Widget button) => SizedBox(
-                      width: buttonWidth,
-                      height: 96,
-                      child: button,
-                    ),
-                  )
-                  .toList(),
-            );
-          },
-        );
-      },
-    );
-  }
-
   Widget _buildHeaderCard(BuildContext context) {
     final String displayName = _displayNameForUser(user);
 
@@ -243,10 +127,58 @@ class SignedInHomePage extends StatelessWidget {
               style: const TextStyle(color: Colors.white70),
             ),
             const SizedBox(height: 16),
-            _buildQuickActions(context),
+            _buildPointsOverview(context),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildPointsOverview(BuildContext context) {
+    return FutureBuilder<void>(
+      future: _profileRepository.ensureProfileForUser(user),
+      builder: (BuildContext context, AsyncSnapshot<void> ensureSnapshot) {
+        if (ensureSnapshot.hasError) {
+          return const _DashboardStatusPanel(
+            icon: Icons.error_outline,
+            message: 'Could not initialize your Pluto Points.',
+          );
+        }
+
+        if (ensureSnapshot.connectionState == ConnectionState.waiting) {
+          return const _DashboardStatusPanel(
+            icon: Icons.hourglass_empty,
+            message: 'Loading Pluto Points...',
+          );
+        }
+
+        return StreamBuilder<UserProfile?>(
+          stream: _profileRepository.watchProfile(
+            uid: user.uid,
+            fallbackDisplayName: _displayNameForUser(user),
+          ),
+          builder:
+              (BuildContext context, AsyncSnapshot<UserProfile?> snapshot) {
+            if (snapshot.hasError) {
+              return const _DashboardStatusPanel(
+                icon: Icons.error_outline,
+                message: 'Could not load your Pluto Points.',
+              );
+            }
+
+            final UserProfile? profile = snapshot.data;
+            if (snapshot.connectionState == ConnectionState.waiting ||
+                profile == null) {
+              return const _DashboardStatusPanel(
+                icon: Icons.hourglass_empty,
+                message: 'Loading Pluto Points...',
+              );
+            }
+
+            return _DashboardPointsPanel(profile: profile);
+          },
+        );
+      },
     );
   }
 
@@ -411,26 +343,172 @@ class SignedInHomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Theme(
       data: _pageTheme(context),
-      child: Scaffold(
-        appBar: const NavBar(isDarkModeBtnVisible: true),
-        body: Stack(
+      child: SignedInAppShell(
+        selectedTab: SignedInAppTab.dashboard,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
           children: <Widget>[
-            const PlutoBackground(),
-            Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1200),
-                child: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: <Widget>[
-                    _buildHeaderCard(context),
-                    const SizedBox(height: 14),
-                    _buildUpcomingEventsCard(context),
-                  ],
-                ),
-              ),
-            ),
+            _buildHeaderCard(context),
+            const SizedBox(height: 14),
+            _buildUpcomingEventsCard(context),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _DashboardPointsPanel extends StatelessWidget {
+  const _DashboardPointsPanel({
+    required this.profile,
+  });
+
+  final UserProfile profile;
+
+  @override
+  Widget build(BuildContext context) {
+    final int? nextTier = profile.nextTierThreshold;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white10,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Column(
+        children: <Widget>[
+          const Text(
+            'Pluto Points',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${profile.pointsBalance}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 52,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 10,
+            runSpacing: 10,
+            children: <Widget>[
+              _DashboardMetric(
+                label: 'Tier',
+                value: profile.tierName,
+              ),
+              _DashboardMetric(
+                label: 'Lifetime',
+                value: '${profile.lifetimePoints}',
+              ),
+              _DashboardMetric(
+                label: 'Events',
+                value: '${profile.eventsAttended}',
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          LinearProgressIndicator(
+            value: profile.tierProgress,
+            minHeight: 8,
+            backgroundColor: Colors.white24,
+            color: Colors.purpleAccent,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            nextTier == null
+                ? 'Top tier unlocked.'
+                : '${profile.pointsToNextTier} Pluto Points to $nextTier lifetime points.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white70),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DashboardMetric extends StatelessWidget {
+  const _DashboardMetric({
+    required this.label,
+    required this.value,
+  });
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 132,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.32),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        children: <Widget>[
+          Text(
+            value,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white70),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DashboardStatusPanel extends StatelessWidget {
+  const _DashboardStatusPanel({
+    required this.icon,
+    required this.message,
+  });
+
+  final IconData icon;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white10,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          Icon(icon, color: Colors.white70),
+          const SizedBox(width: 10),
+          Flexible(
+            child: Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white70),
+            ),
+          ),
+        ],
       ),
     );
   }

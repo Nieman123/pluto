@@ -1,9 +1,11 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 import 'src/background/pluto_background.dart';
 import 'src/nav_bar/nav_bar.dart';
+import 'src/signed_in/signed_in_app_shell.dart';
 
 class ManaFestPage extends StatelessWidget {
   const ManaFestPage({Key? key}) : super(key: key);
@@ -251,108 +253,130 @@ class ManaFestPage extends StatelessWidget {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildPageContent(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1080),
+          child: Column(
+            children: <Widget>[
+              _buildHeroCard(context),
+              const SizedBox(height: 12),
+              _buildLineupSection(),
+              const SizedBox(height: 12),
+              _buildSection(
+                title: 'Event Info',
+                children: <Widget>[
+                  const Text(
+                    'For two nights in September, we’re taking over the woods at Three Creeks Campground in Anderson, SC.\n\n'
+                    'Raw energy, heavy bass, and your favorite regional DJs dropping heaters on 40,000 watts of sound.\n\n'
+                    'Bring your crew, set up camp, and lock in for a full weekend of underground sound in a setting that hits different.',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 16,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _buildBullet(
+                    'Two nights of camping, music, and late-night energy at Three Creeks Campground in Anderson, SC.',
+                  ),
+                  _buildBullet(
+                    'Regional DJs, heavy bass, and 40,000 watts of sound are at the center of the weekend.',
+                  ),
+                  _buildBullet(
+                    'Use the sections below for directions, camping details, and festival rules before you head in.',
+                  ),
+                ],
+              ),
+              _buildSection(
+                title: 'Directions',
+                children: <Widget>[
+                  _buildBullet(
+                    'Navigate to: Three Creeks Campground, Anderson, South Carolina.',
+                  ),
+                  _buildBullet(
+                    'Use Google Maps for the most reliable routing and traffic updates.',
+                  ),
+                  _buildBullet(
+                    'After turning into the campground area, follow event staff signs for parking and check-in.',
+                  ),
+                  const SizedBox(height: 8),
+                  ElevatedButton.icon(
+                    onPressed: () => _openLink(_mapsUrl),
+                    icon: const Icon(Icons.navigation),
+                    label: const Text('Open Directions in Maps'),
+                  ),
+                ],
+              ),
+              _buildSection(
+                title: 'Camping',
+                children: <Widget>[
+                  _buildBullet(
+                    'Camp only in designated areas.',
+                  ),
+                  _buildBullet(
+                    'Car camping pass is a separate pass. (one per vehicle)',
+                  ),
+                  _buildBullet(
+                    'Pack for changing weather, including rain.',
+                  ),
+                  _buildBullet(
+                    'Bring reusable water containers, personal lighting, and basic campsite gear.',
+                  ),
+                ],
+              ),
+              _buildSection(
+                title: 'Festival Rules',
+                children: <Widget>[
+                  _buildBullet(
+                    'Respect staff instructions, neighboring campsites, and all venue boundaries.',
+                  ),
+                  _buildBullet(
+                    'Keep camps and shared spaces clean. Pack out what you pack in.',
+                  ),
+                  _buildBullet(
+                    'Use approved fire-safe cooking and lighting setups only where permitted.',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStandaloneScaffold(BuildContext context) {
     return Scaffold(
       appBar: const NavBar(isDarkModeBtnVisible: true),
       body: Stack(
         children: <Widget>[
           const PlutoBackground(),
-          SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1080),
-                child: Column(
-                  children: <Widget>[
-                    _buildHeroCard(context),
-                    const SizedBox(height: 12),
-                    _buildLineupSection(),
-                    const SizedBox(height: 12),
-                    _buildSection(
-                      title: 'Event Info',
-                      children: <Widget>[
-                        const Text(
-                          'For two nights in September, we’re taking over the woods at Three Creeks Campground in Anderson, SC.\n\n'
-                          'Raw energy, heavy bass, and your favorite regional DJs dropping heaters on 40,000 watts of sound.\n\n'
-                          'Bring your crew, set up camp, and lock in for a full weekend of underground sound in a setting that hits different.',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 16,
-                            height: 1.4,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        _buildBullet(
-                          'Two nights of camping, music, and late-night energy at Three Creeks Campground in Anderson, SC.',
-                        ),
-                        _buildBullet(
-                          'Regional DJs, heavy bass, and 40,000 watts of sound are at the center of the weekend.',
-                        ),
-                        _buildBullet(
-                          'Use the sections below for directions, camping details, and festival rules before you head in.',
-                        ),
-                      ],
-                    ),
-                    _buildSection(
-                      title: 'Directions',
-                      children: <Widget>[
-                        _buildBullet(
-                          'Navigate to: Three Creeks Campground, Anderson, South Carolina.',
-                        ),
-                        _buildBullet(
-                          'Use Google Maps for the most reliable routing and traffic updates.',
-                        ),
-                        _buildBullet(
-                          'After turning into the campground area, follow event staff signs for parking and check-in.',
-                        ),
-                        const SizedBox(height: 8),
-                        ElevatedButton.icon(
-                          onPressed: () => _openLink(_mapsUrl),
-                          icon: const Icon(Icons.navigation),
-                          label: const Text('Open Directions in Maps'),
-                        ),
-                      ],
-                    ),
-                    _buildSection(
-                      title: 'Camping',
-                      children: <Widget>[
-                        _buildBullet(
-                          'Camp only in designated areas.',
-                        ),
-                        _buildBullet(
-                          'Car camping pass is a separate pass. (one per vehicle)',
-                        ),
-                        _buildBullet(
-                          'Pack for changing weather, including rain.',
-                        ),
-                        _buildBullet(
-                          'Bring reusable water containers, personal lighting, and basic campsite gear.',
-                        ),
-                      ],
-                    ),
-                    _buildSection(
-                      title: 'Festival Rules',
-                      children: <Widget>[
-                        _buildBullet(
-                          'Respect staff instructions, neighboring campsites, and all venue boundaries.',
-                        ),
-                        _buildBullet(
-                          'Keep camps and shared spaces clean. Pack out what you pack in.',
-                        ),
-                        _buildBullet(
-                          'Use approved fire-safe cooking and lighting setups only where permitted.',
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                ),
-              ),
-            ),
-          ),
+          _buildPageContent(context),
         ],
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      initialData: FirebaseAuth.instance.currentUser,
+      builder: (BuildContext context, AsyncSnapshot<User?> snapshot) {
+        if (snapshot.data == null) {
+          return _buildStandaloneScaffold(context);
+        }
+
+        return SignedInAppShell(
+          selectedTab: SignedInAppTab.manafest,
+          maxContentWidth: 1080,
+          child: _buildPageContent(context),
+        );
+      },
     );
   }
 }
