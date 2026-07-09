@@ -5,7 +5,6 @@ import 'package:url_launcher/url_launcher_string.dart';
 
 import 'src/background/pluto_background.dart';
 import 'src/nav_bar/nav_bar.dart';
-import 'src/signed_in/signed_in_app_shell.dart';
 
 class ManaFestPage extends StatelessWidget {
   const ManaFestPage({Key? key}) : super(key: key);
@@ -371,11 +370,7 @@ class ManaFestPage extends StatelessWidget {
           return _buildStandaloneScaffold(context);
         }
 
-        return SignedInAppShell(
-          selectedTab: SignedInAppTab.manafest,
-          maxContentWidth: 1080,
-          child: _buildPageContent(context),
-        );
+        return _buildPageContent(context);
       },
     );
   }

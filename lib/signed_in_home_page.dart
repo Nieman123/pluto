@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 import 'current_events_repository.dart';
-import 'src/signed_in/signed_in_app_shell.dart';
 import 'user_profile_repository.dart';
 
 class SignedInHomePage extends StatelessWidget {
@@ -343,16 +342,13 @@ class SignedInHomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Theme(
       data: _pageTheme(context),
-      child: SignedInAppShell(
-        selectedTab: SignedInAppTab.dashboard,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: <Widget>[
-            _buildHeaderCard(context),
-            const SizedBox(height: 14),
-            _buildUpcomingEventsCard(context),
-          ],
-        ),
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: <Widget>[
+          _buildHeaderCard(context),
+          const SizedBox(height: 14),
+          _buildUpcomingEventsCard(context),
+        ],
       ),
     );
   }

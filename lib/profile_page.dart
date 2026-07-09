@@ -8,7 +8,6 @@ import 'package:intl/intl.dart';
 
 import 'src/background/pluto_background.dart';
 import 'src/nav_bar/nav_bar.dart';
-import 'src/signed_in/signed_in_app_shell.dart';
 import 'user_profile_repository.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -673,22 +672,16 @@ class _ProfilePageState extends State<ProfilePage> {
           future: _ensureProfileExists(user),
           builder: (BuildContext context, AsyncSnapshot<void> ensureSnapshot) {
             if (ensureSnapshot.connectionState == ConnectionState.waiting) {
-              return const SignedInAppShell(
-                selectedTab: SignedInAppTab.profile,
-                child: Center(child: CircularProgressIndicator()),
-              );
+              return const Center(child: CircularProgressIndicator());
             }
 
             if (ensureSnapshot.hasError) {
-              return SignedInAppShell(
-                selectedTab: SignedInAppTab.profile,
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Text(
-                      'Could not initialize profile: ${ensureSnapshot.error}',
-                      style: const TextStyle(color: Colors.white),
-                    ),
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Text(
+                    'Could not initialize profile: ${ensureSnapshot.error}',
+                    style: const TextStyle(color: Colors.white),
                   ),
                 ),
               );
@@ -703,22 +696,16 @@ class _ProfilePageState extends State<ProfilePage> {
                   AsyncSnapshot<UserProfile?> profileSnapshot) {
                 if (profileSnapshot.connectionState ==
                     ConnectionState.waiting) {
-                  return const SignedInAppShell(
-                    selectedTab: SignedInAppTab.profile,
-                    child: Center(child: CircularProgressIndicator()),
-                  );
+                  return const Center(child: CircularProgressIndicator());
                 }
 
                 if (profileSnapshot.hasError) {
-                  return SignedInAppShell(
-                    selectedTab: SignedInAppTab.profile,
-                    child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Text(
-                          'Could not load profile: ${profileSnapshot.error}',
-                          style: const TextStyle(color: Colors.white),
-                        ),
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Text(
+                        'Could not load profile: ${profileSnapshot.error}',
+                        style: const TextStyle(color: Colors.white),
                       ),
                     ),
                   );
@@ -726,26 +713,20 @@ class _ProfilePageState extends State<ProfilePage> {
 
                 final UserProfile? profile = profileSnapshot.data;
                 if (profile == null) {
-                  return const SignedInAppShell(
-                    selectedTab: SignedInAppTab.profile,
-                    child: Center(child: CircularProgressIndicator()),
-                  );
+                  return const Center(child: CircularProgressIndicator());
                 }
 
                 _hydrateFormFromProfileIfNeeded(user: user, profile: profile);
-                return SignedInAppShell(
-                  selectedTab: SignedInAppTab.profile,
-                  child: Stack(
-                    children: <Widget>[
-                      Positioned.fill(
-                        child: _buildProfileContent(
-                          user: user,
-                          profile: profile,
-                        ),
+                return Stack(
+                  children: <Widget>[
+                    Positioned.fill(
+                      child: _buildProfileContent(
+                        user: user,
+                        profile: profile,
                       ),
-                      if (_statusMessage.isNotEmpty) _buildStatusOverlay(),
-                    ],
-                  ),
+                    ),
+                    if (_statusMessage.isNotEmpty) _buildStatusOverlay(),
+                  ],
                 );
               },
             );

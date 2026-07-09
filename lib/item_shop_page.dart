@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import 'src/background/pluto_background.dart';
 import 'src/nav_bar/nav_bar.dart';
-import 'src/signed_in/signed_in_app_shell.dart';
 import 'user_profile_repository.dart';
 
 class ItemShopPage extends StatefulWidget {
@@ -454,22 +453,16 @@ class _ItemShopPageState extends State<ItemShopPage> {
           future: _ensureProfileExists(user),
           builder: (BuildContext context, AsyncSnapshot<void> ensureSnapshot) {
             if (ensureSnapshot.connectionState == ConnectionState.waiting) {
-              return const SignedInAppShell(
-                selectedTab: SignedInAppTab.rewards,
-                child: Center(child: CircularProgressIndicator()),
-              );
+              return const Center(child: CircularProgressIndicator());
             }
 
             if (ensureSnapshot.hasError) {
-              return SignedInAppShell(
-                selectedTab: SignedInAppTab.rewards,
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Text(
-                      'Could not initialize profile: ${ensureSnapshot.error}',
-                      style: const TextStyle(color: Colors.white),
-                    ),
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Text(
+                    'Could not initialize profile: ${ensureSnapshot.error}',
+                    style: const TextStyle(color: Colors.white),
                   ),
                 ),
               );
@@ -484,22 +477,16 @@ class _ItemShopPageState extends State<ItemShopPage> {
                   AsyncSnapshot<UserProfile?> profileSnapshot) {
                 if (profileSnapshot.connectionState ==
                     ConnectionState.waiting) {
-                  return const SignedInAppShell(
-                    selectedTab: SignedInAppTab.rewards,
-                    child: Center(child: CircularProgressIndicator()),
-                  );
+                  return const Center(child: CircularProgressIndicator());
                 }
 
                 if (profileSnapshot.hasError) {
-                  return SignedInAppShell(
-                    selectedTab: SignedInAppTab.rewards,
-                    child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Text(
-                          'Could not load profile: ${profileSnapshot.error}',
-                          style: const TextStyle(color: Colors.white),
-                        ),
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Text(
+                        'Could not load profile: ${profileSnapshot.error}',
+                        style: const TextStyle(color: Colors.white),
                       ),
                     ),
                   );
@@ -507,22 +494,16 @@ class _ItemShopPageState extends State<ItemShopPage> {
 
                 final UserProfile? profile = profileSnapshot.data;
                 if (profile == null) {
-                  return const SignedInAppShell(
-                    selectedTab: SignedInAppTab.rewards,
-                    child: Center(child: CircularProgressIndicator()),
-                  );
+                  return const Center(child: CircularProgressIndicator());
                 }
 
-                return SignedInAppShell(
-                  selectedTab: SignedInAppTab.rewards,
-                  child: Stack(
-                    children: <Widget>[
-                      Positioned.fill(
-                        child: _buildShopContent(user: user, profile: profile),
-                      ),
-                      if (_statusMessage.isNotEmpty) _buildStatusOverlay(),
-                    ],
-                  ),
+                return Stack(
+                  children: <Widget>[
+                    Positioned.fill(
+                      child: _buildShopContent(user: user, profile: profile),
+                    ),
+                    if (_statusMessage.isNotEmpty) _buildStatusOverlay(),
+                  ],
                 );
               },
             );

@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -84,6 +85,59 @@ class SignedInAppShell extends StatelessWidget {
   }
 }
 
+class AuthAwareSignedInAppShell extends StatelessWidget {
+  const AuthAwareSignedInAppShell({
+    Key? key,
+    required this.currentPath,
+    required this.child,
+  }) : super(key: key);
+
+  final String currentPath;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      initialData: FirebaseAuth.instance.currentUser,
+      builder: (BuildContext context, AsyncSnapshot<User?> snapshot) {
+        final User? user = snapshot.data;
+        if (user == null) {
+          return child;
+        }
+
+        final SignedInAppTab selectedTab =
+            SignedInAppTabX.fromPath(currentPath);
+        return SignedInAppShell(
+          selectedTab: selectedTab,
+          maxContentWidth: selectedTab.maxContentWidth,
+          child: child,
+        );
+      },
+    );
+  }
+}
+
+extension SignedInAppTabX on SignedInAppTab {
+  static SignedInAppTab fromPath(String path) {
+    return SignedInAppTab.values.firstWhere(
+      (SignedInAppTab tab) => tab.route == path,
+      orElse: () => SignedInAppTab.dashboard,
+    );
+  }
+
+  double get maxContentWidth {
+    switch (this) {
+      case SignedInAppTab.manafest:
+        return 1080;
+      case SignedInAppTab.dashboard:
+      case SignedInAppTab.rewards:
+      case SignedInAppTab.profile:
+        return 1200;
+    }
+  }
+}
+
 class _SignedInBottomNavigation extends StatelessWidget {
   const _SignedInBottomNavigation({
     required this.selectedTab,
@@ -101,6 +155,8 @@ class _SignedInBottomNavigation extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color navTextColor = Theme.of(context).primaryColor;
+    final Color selectedColor = Colors.white.withValues(alpha: 0.96);
+    final Color unselectedColor = Colors.white.withValues(alpha: 0.72);
     final int selectedIndex = _tabs.indexOf(selectedTab);
 
     return SafeArea(
@@ -112,28 +168,54 @@ class _SignedInBottomNavigation extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 680),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(18),
-              child: NavigationBar(
-                selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
-                height: 72,
-                backgroundColor: Colors.black.withValues(alpha: 0.78),
-                indicatorColor: navTextColor.withValues(alpha: 0.18),
-                labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-                onDestinationSelected: (int index) {
-                  final SignedInAppTab tab = _tabs[index];
-                  if (tab == selectedTab) {
-                    return;
-                  }
-                  GoRouter.of(context).go(tab.route);
-                },
-                destinations: _tabs
-                    .map(
-                      (SignedInAppTab tab) => NavigationDestination(
-                        icon: Icon(tab.icon),
-                        selectedIcon: Icon(tab.selectedIcon),
-                        label: tab.label,
-                      ),
-                    )
-                    .toList(),
+              child: NavigationBarTheme(
+                data: NavigationBarThemeData(
+                  iconTheme: WidgetStateProperty.resolveWith<IconThemeData>(
+                    (Set<WidgetState> states) {
+                      final bool isSelected =
+                          states.contains(WidgetState.selected);
+                      return IconThemeData(
+                        color: isSelected ? selectedColor : unselectedColor,
+                        size: isSelected ? 27 : 25,
+                      );
+                    },
+                  ),
+                  labelTextStyle: WidgetStateProperty.resolveWith<TextStyle>(
+                    (Set<WidgetState> states) {
+                      final bool isSelected =
+                          states.contains(WidgetState.selected);
+                      return TextStyle(
+                        color: isSelected ? selectedColor : unselectedColor,
+                        fontSize: 12,
+                        fontWeight:
+                            isSelected ? FontWeight.w700 : FontWeight.w600,
+                      );
+                    },
+                  ),
+                ),
+                child: NavigationBar(
+                  selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
+                  height: 72,
+                  backgroundColor: Colors.black.withValues(alpha: 0.78),
+                  indicatorColor: navTextColor.withValues(alpha: 0.28),
+                  labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+                  onDestinationSelected: (int index) {
+                    final SignedInAppTab tab = _tabs[index];
+                    if (tab == selectedTab) {
+                      return;
+                    }
+                    GoRouter.of(context).go(tab.route);
+                  },
+                  destinations: _tabs
+                      .map(
+                        (SignedInAppTab tab) => NavigationDestination(
+                          icon: Icon(tab.icon),
+                          selectedIcon: Icon(tab.selectedIcon),
+                          label: tab.label,
+                        ),
+                      )
+                      .toList(),
+                ),
               ),
             ),
           ),

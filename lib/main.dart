@@ -16,6 +16,7 @@ import 'schedule.dart' deferred as schedule;
 import 'sign_on_page.dart' deferred as sign_on_page;
 import 'src/configure_web.dart';
 import 'src/deferred_widget.dart';
+import 'src/signed_in/signed_in_app_shell.dart';
 import 'src/theme/config.dart';
 import 'src/theme/custom_theme.dart';
 
@@ -52,6 +53,39 @@ class _MyAppState extends State<MyApp> {
         !_notificationPromptDismissed;
   }
 
+  Page<void> _buildTabPage({
+    required GoRouterState state,
+    required Widget child,
+  }) {
+    return CustomTransitionPage<void>(
+      key: state.pageKey,
+      child: child,
+      transitionDuration: const Duration(milliseconds: 180),
+      reverseTransitionDuration: const Duration(milliseconds: 140),
+      transitionsBuilder: (
+        BuildContext context,
+        Animation<double> animation,
+        Animation<double> secondaryAnimation,
+        Widget child,
+      ) {
+        final CurvedAnimation curvedAnimation = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+          reverseCurve: Curves.easeInCubic,
+        );
+        return FadeTransition(
+          opacity: curvedAnimation,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.985, end: 1).animate(
+              curvedAnimation,
+            ),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -67,9 +101,66 @@ class _MyAppState extends State<MyApp> {
     });
 
     _router = GoRouter(routes: [
-      GoRoute(
-        path: '/',
-        builder: (BuildContext context, GoRouterState state) => const App(),
+      ShellRoute(
+        builder: (
+          BuildContext context,
+          GoRouterState state,
+          Widget child,
+        ) {
+          return AuthAwareSignedInAppShell(
+            currentPath: state.uri.path,
+            child: child,
+          );
+        },
+        routes: <RouteBase>[
+          GoRoute(
+            path: '/',
+            pageBuilder: (BuildContext context, GoRouterState state) {
+              return _buildTabPage(
+                state: state,
+                child: const App(),
+              );
+            },
+          ),
+          GoRoute(
+            path: '/profile',
+            pageBuilder: (BuildContext context, GoRouterState state) {
+              return _buildTabPage(
+                state: state,
+                child: DeferredWidget(
+                  loadLibrary: profile_page.loadLibrary,
+                  builder: (BuildContext context) => profile_page.ProfilePage(),
+                ),
+              );
+            },
+          ),
+          GoRoute(
+            path: '/shop',
+            pageBuilder: (BuildContext context, GoRouterState state) {
+              return _buildTabPage(
+                state: state,
+                child: DeferredWidget(
+                  loadLibrary: item_shop_page.loadLibrary,
+                  builder: (BuildContext context) =>
+                      item_shop_page.ItemShopPage(),
+                ),
+              );
+            },
+          ),
+          GoRoute(
+            path: '/manafest',
+            pageBuilder: (BuildContext context, GoRouterState state) {
+              return _buildTabPage(
+                state: state,
+                child: DeferredWidget(
+                  loadLibrary: manafest_page.loadLibrary,
+                  builder: (BuildContext context) =>
+                      manafest_page.ManaFestPage(),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       GoRoute(
         path: App.publicHomeRoute,
@@ -155,39 +246,12 @@ class _MyAppState extends State<MyApp> {
         },
       ),
       GoRoute(
-        path: '/profile',
-        builder: (BuildContext context, GoRouterState state) {
-          return DeferredWidget(
-            loadLibrary: profile_page.loadLibrary,
-            builder: (BuildContext context) => profile_page.ProfilePage(),
-          );
-        },
-      ),
-      GoRoute(
         path: '/scan-qr',
         builder: (BuildContext context, GoRouterState state) {
           return DeferredWidget(
             loadLibrary: event_qr_scan_page.loadLibrary,
             builder: (BuildContext context) =>
                 event_qr_scan_page.EventQrScanPage(),
-          );
-        },
-      ),
-      GoRoute(
-        path: '/shop',
-        builder: (BuildContext context, GoRouterState state) {
-          return DeferredWidget(
-            loadLibrary: item_shop_page.loadLibrary,
-            builder: (BuildContext context) => item_shop_page.ItemShopPage(),
-          );
-        },
-      ),
-      GoRoute(
-        path: '/manafest',
-        builder: (BuildContext context, GoRouterState state) {
-          return DeferredWidget(
-            loadLibrary: manafest_page.loadLibrary,
-            builder: (BuildContext context) => manafest_page.ManaFestPage(),
           );
         },
       ),
