@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher_string.dart';
@@ -183,75 +185,9 @@ class Event extends StatelessWidget {
   }
 
   Widget _buildGalleryCarousel(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(8),
-      child: AspectRatio(
-        aspectRatio: 1,
-        child: PageView.builder(
-          itemCount: _imageList.length,
-          itemBuilder: (BuildContext context, int index) {
-            final List<String> item = _imageList[index];
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 5),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: <Widget>[
-                    Image.network(
-                      _galleryUrl(item[0]),
-                      fit: BoxFit.cover,
-                      loadingBuilder: (
-                        BuildContext context,
-                        Widget child,
-                        ImageChunkEvent? loadingProgress,
-                      ) {
-                        if (loadingProgress == null) {
-                          return child;
-                        }
-                        return const ColoredBox(
-                          color: Colors.black12,
-                          child: Center(child: CircularProgressIndicator()),
-                        );
-                      },
-                      errorBuilder: (
-                        BuildContext context,
-                        Object error,
-                        StackTrace? stackTrace,
-                      ) {
-                        return const ColoredBox(
-                          color: Colors.black12,
-                          child: Center(
-                            child: Icon(
-                              Icons.broken_image,
-                              color: Colors.white54,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    Align(
-                      alignment: const Alignment(0, 0.9),
-                      child: Padding(
-                        padding: const EdgeInsets.all(10),
-                        child: Text(
-                          item[1],
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w100,
-                            backgroundColor: Colors.black54,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
-      ),
+    return _GalleryCarousel(
+      imageList: _imageList,
+      imageUrlForFile: _galleryUrl,
     );
   }
 
@@ -298,6 +234,165 @@ class Event extends StatelessWidget {
           _buildGalleryCarousel(context),
         ],
       ),
+    );
+  }
+}
+
+class _GalleryCarousel extends StatefulWidget {
+  const _GalleryCarousel({
+    required this.imageList,
+    required this.imageUrlForFile,
+  });
+
+  final List<List<String>> imageList;
+  final String Function(String fileName) imageUrlForFile;
+
+  @override
+  State<_GalleryCarousel> createState() => _GalleryCarouselState();
+}
+
+class _GalleryCarouselState extends State<_GalleryCarousel> {
+  static const Duration _switchInterval = Duration(seconds: 5);
+  static const Duration _switchDuration = Duration(milliseconds: 450);
+  static const double _desktopBreakpoint = 780;
+  static const double _desktopGalleryWidth = 720;
+
+  final PageController _pageController = PageController();
+  Timer? _autoSwitchTimer;
+  int _currentPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _startAutoSwitching();
+  }
+
+  @override
+  void didUpdateWidget(_GalleryCarousel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.imageList.length != widget.imageList.length) {
+      _currentPage = 0;
+      _autoSwitchTimer?.cancel();
+      _startAutoSwitching();
+    }
+  }
+
+  @override
+  void dispose() {
+    _autoSwitchTimer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _startAutoSwitching() {
+    if (widget.imageList.length <= 1) {
+      return;
+    }
+
+    _autoSwitchTimer = Timer.periodic(_switchInterval, (_) {
+      if (!_pageController.hasClients || widget.imageList.isEmpty) {
+        return;
+      }
+
+      final int nextPage = (_currentPage + 1) % widget.imageList.length;
+      _currentPage = nextPage;
+      _pageController.animateToPage(
+        nextPage,
+        duration: _switchDuration,
+        curve: Curves.easeOutCubic,
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final double maxGalleryWidth =
+            constraints.maxWidth >= _desktopBreakpoint
+                ? _desktopGalleryWidth
+                : double.infinity;
+
+        return Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxGalleryWidth),
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: PageView.builder(
+                  controller: _pageController,
+                  itemCount: widget.imageList.length,
+                  onPageChanged: (int index) => _currentPage = index,
+                  itemBuilder: (BuildContext context, int index) {
+                    final List<String> item = widget.imageList[index];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 5),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: <Widget>[
+                            Image.network(
+                              widget.imageUrlForFile(item[0]),
+                              fit: BoxFit.cover,
+                              loadingBuilder: (
+                                BuildContext context,
+                                Widget child,
+                                ImageChunkEvent? loadingProgress,
+                              ) {
+                                if (loadingProgress == null) {
+                                  return child;
+                                }
+                                return const ColoredBox(
+                                  color: Colors.black12,
+                                  child: Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                );
+                              },
+                              errorBuilder: (
+                                BuildContext context,
+                                Object error,
+                                StackTrace? stackTrace,
+                              ) {
+                                return const ColoredBox(
+                                  color: Colors.black12,
+                                  child: Center(
+                                    child: Icon(
+                                      Icons.broken_image,
+                                      color: Colors.white54,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                            Align(
+                              alignment: const Alignment(0, 0.9),
+                              child: Padding(
+                                padding: const EdgeInsets.all(10),
+                                child: Text(
+                                  item[1],
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w100,
+                                    backgroundColor: Colors.black54,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

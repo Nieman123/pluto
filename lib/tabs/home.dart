@@ -21,7 +21,7 @@ class _HomePageState extends State<HomePage> {
       Future.microtask(() {
         SystemChrome.setApplicationSwitcherDescription(
             ApplicationSwitcherDescription(
-          label: 'Pluto - Private Underground Events in Asheville, NC',
+          label: 'Pluto - Events for dance music enthusiasts',
           primaryColor: Colors.black.toARGB32(),
         ));
       });
