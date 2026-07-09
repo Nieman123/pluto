@@ -137,6 +137,11 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
     return <_NavMenuAction>[
       ...compactHomeActions(showSectionSubItems: showHomeSectionSubItems),
       const _NavMenuAction.route(
+        label: 'Create Account',
+        icon: Icons.person_add_alt_1,
+        route: '/sign-up',
+      ),
+      const _NavMenuAction.route(
         label: 'Sign in',
         icon: Icons.login,
         route: '/sign-on',
@@ -211,11 +216,20 @@ class _AuthNavActions extends StatelessWidget {
         );
 
         if (user == null) {
-          return _CompactNavMenuButton(
-            actions: NavBar.compactSignedOutActions(
-              showHomeSectionSubItems: showHomeSectionSubItems,
-            ),
-            tooltip: 'Open navigation menu',
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              if (currentPath != '/sign-up') ...<Widget>[
+                const _CreateAccountNavButton(),
+                const SizedBox(width: 6),
+              ],
+              _CompactNavMenuButton(
+                actions: NavBar.compactSignedOutActions(
+                  showHomeSectionSubItems: showHomeSectionSubItems,
+                ),
+                tooltip: 'Open navigation menu',
+              ),
+            ],
           );
         }
 
@@ -284,6 +298,41 @@ class _CompactSignedInNavActions extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+class _CreateAccountNavButton extends StatelessWidget {
+  const _CreateAccountNavButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton(
+      onPressed: () => GoRouter.of(context).go('/sign-up'),
+      style: TextButton.styleFrom(
+        backgroundColor: const Color(0xFF7A3FD0).withValues(alpha: 0.24),
+        foregroundColor: const Color(0xFFF3E8FF),
+        minimumSize: const Size(0, 38),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(
+            color: const Color(0xFFD9A7FF).withValues(alpha: 0.34),
+          ),
+        ),
+      ),
+      child: const Text(
+        'Create Account',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontFamily: 'Montserrat',
+          fontSize: 13,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0,
+        ),
+      ),
     );
   }
 }

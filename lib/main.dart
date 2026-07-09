@@ -14,6 +14,7 @@ import 'profile_page.dart' deferred as profile_page;
 import 'push_notifications.dart' deferred as push_notifications;
 import 'schedule.dart' deferred as schedule;
 import 'sign_on_page.dart' deferred as sign_on_page;
+import 'sign_up_page.dart' deferred as sign_up_page;
 import 'src/configure_web.dart';
 import 'src/deferred_widget.dart';
 import 'src/signed_in/signed_in_app_shell.dart';
@@ -200,6 +201,15 @@ class _MyAppState extends State<MyApp> {
           return DeferredWidget(
             loadLibrary: sign_on_page.loadLibrary,
             builder: (BuildContext context) => sign_on_page.SignOnPage(),
+          );
+        },
+      ),
+      GoRoute(
+        path: '/sign-up',
+        builder: (BuildContext context, GoRouterState state) {
+          return DeferredWidget(
+            loadLibrary: sign_up_page.loadLibrary,
+            builder: (BuildContext context) => sign_up_page.SignUpPage(),
           );
         },
       ),
