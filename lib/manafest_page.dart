@@ -31,6 +31,7 @@ class _ManaFestPageState extends State<ManaFestPage> {
   static const Color _guideOrange = Color(0xFFFFB24D);
   static const Color _guideGreen = Color(0xFFA8E8C3);
   static const Color _guideRose = Color(0xFFFFA6BA);
+  static const IconData _principlesIcon = Icons.handshake_outlined;
 
   final ManaFestRepository _manaFestRepository = ManaFestRepository();
 
@@ -164,6 +165,9 @@ class _ManaFestPageState extends State<ManaFestPage> {
 
   IconData _guideIconForTitle(String title, {IconData? fallback}) {
     final String normalizedTitle = title.trim().toLowerCase();
+    if (normalizedTitle.contains('principle')) {
+      return _principlesIcon;
+    }
     if (normalizedTitle.contains('direction') ||
         normalizedTitle.contains('arrival') ||
         normalizedTitle.contains('parking')) {
@@ -515,9 +519,39 @@ class _ManaFestPageState extends State<ManaFestPage> {
                 borderRadius: BorderRadius.all(Radius.circular(6)),
               ),
               tabs: <Widget>[
-                Tab(icon: Icon(Icons.auto_stories_outlined), text: 'Guide'),
-                Tab(icon: Icon(Icons.campaign_outlined), text: 'Updates'),
-                Tab(icon: Icon(Icons.schedule_outlined), text: 'Schedule'),
+                Tab(
+                  height: 52,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      Icon(Icons.menu_book, size: 20),
+                      SizedBox(width: 7),
+                      Text('Guide'),
+                    ],
+                  ),
+                ),
+                Tab(
+                  height: 52,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      Icon(Icons.campaign, size: 20),
+                      SizedBox(width: 7),
+                      Text('Updates'),
+                    ],
+                  ),
+                ),
+                Tab(
+                  height: 52,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      Icon(Icons.calendar_today, size: 19),
+                      SizedBox(width: 7),
+                      Text('Schedule'),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -1084,7 +1118,7 @@ class _ManaFestPageState extends State<ManaFestPage> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(
-                    Icons.handshake_outlined,
+                    _principlesIcon,
                     color: _guidePurple,
                     size: 25,
                   ),
