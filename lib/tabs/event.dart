@@ -53,6 +53,12 @@ class Event extends StatelessWidget {
     return '$_galleryBaseUrl$fileName';
   }
 
+  bool _isManaFestEvent(String title) {
+    final String normalizedTitle =
+        title.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+    return normalizedTitle.startsWith('manafest');
+  }
+
   Widget _buildFlyer({
     required BuildContext context,
     required CurrentEvent event,
@@ -84,6 +90,7 @@ class Event extends StatelessWidget {
     required String details,
     required String ticketUrl,
     required Widget flyer,
+    required bool showManaFestDetails,
   }) {
     final Color textColor =
         Theme.of(context).primaryColorLight.withValues(alpha: 0.9);
@@ -130,10 +137,11 @@ class Event extends StatelessWidget {
                       onPressed: () => _openLink(ticketUrl),
                       child: const Text('Click For Tickets'),
                     ),
-                  OutlinedButton(
-                    onPressed: () => context.go('/manafest'),
-                    child: const Text('ManaFest Details'),
-                  ),
+                  if (showManaFestDetails)
+                    OutlinedButton(
+                      onPressed: () => context.go('/manafest'),
+                      child: const Text('ManaFest Details'),
+                    ),
                 ],
               ),
             ),
@@ -154,6 +162,7 @@ class Event extends StatelessWidget {
           'assets/events/Mana-Fest-2026-Flyer-half.webp',
           fit: BoxFit.cover,
         ),
+        showManaFestDetails: true,
       );
     }
 
@@ -176,6 +185,7 @@ class Event extends StatelessWidget {
                       details: event.details,
                       ticketUrl: event.ticketUrl,
                       flyer: _buildFlyer(context: context, event: event),
+                      showManaFestDetails: _isManaFestEvent(event.title),
                     ),
                   ))
               .toList(),

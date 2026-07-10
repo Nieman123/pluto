@@ -487,13 +487,39 @@ class _ManaFestPageState extends State<ManaFestPage> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           _buildAttendeeHeader(user),
-          const TabBar(
-            isScrollable: true,
-            tabs: <Widget>[
-              Tab(icon: Icon(Icons.article_outlined), text: 'Guide'),
-              Tab(icon: Icon(Icons.campaign_outlined), text: 'Updates'),
-              Tab(icon: Icon(Icons.schedule), text: 'Schedule'),
-            ],
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 2),
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: _guideSurface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: _guidePurple.withValues(alpha: 0.18),
+              ),
+            ),
+            child: const TabBar(
+              indicatorSize: TabBarIndicatorSize.tab,
+              dividerColor: Colors.transparent,
+              labelColor: _guideInk,
+              unselectedLabelColor: _guideMuted,
+              labelStyle: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+              unselectedLabelStyle: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+              indicator: BoxDecoration(
+                color: Color(0x33D9A7FF),
+                borderRadius: BorderRadius.all(Radius.circular(6)),
+              ),
+              tabs: <Widget>[
+                Tab(icon: Icon(Icons.auto_stories_outlined), text: 'Guide'),
+                Tab(icon: Icon(Icons.campaign_outlined), text: 'Updates'),
+                Tab(icon: Icon(Icons.schedule_outlined), text: 'Schedule'),
+              ],
+            ),
           ),
           Expanded(
             child: TabBarView(
@@ -512,18 +538,25 @@ class _ManaFestPageState extends State<ManaFestPage> {
   Widget _buildAttendeeHeader(User user) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
-      child: Card(
-        color: Colors.black.withValues(alpha: 0.42),
+      child: Container(
+        decoration: BoxDecoration(
+          color: _guideSurfaceStrong,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: _guidePurple.withValues(alpha: 0.22),
+          ),
+        ),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               ClipRRect(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(7),
                 child: Image.asset(
                   'assets/events/Mana-Fest-2026-Flyer-half.webp',
-                  width: 76,
-                  height: 76,
+                  width: 74,
+                  height: 88,
                   fit: BoxFit.cover,
                 ),
               ),
@@ -533,20 +566,46 @@ class _ManaFestPageState extends State<ManaFestPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     const Text(
-                      'ManaFest 2026',
+                      'ATTENDEE HUB',
                       style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 25,
-                        fontWeight: FontWeight.bold,
+                        color: _guideOrange,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1,
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      'Welcome, ${_fallbackDisplayNameForUser(user)}. Use this tab for guide info, updates, and the schedule.',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        height: 1.35,
+                    const Text(
+                      'ManaFest 2026',
+                      style: TextStyle(
+                        color: _guideInk,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
                       ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      'Welcome back, ${_fallbackDisplayNameForUser(user)}.',
+                      style: const TextStyle(
+                        color: _guideMuted,
+                        fontSize: 14,
+                        height: 1.3,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Wrap(
+                      spacing: 16,
+                      runSpacing: 7,
+                      children: <Widget>[
+                        _GuideMeta(
+                          icon: Icons.nights_stay_outlined,
+                          label: '2 nights',
+                        ),
+                        _GuideMeta(
+                          icon: Icons.location_on_outlined,
+                          label: 'Anderson, SC',
+                        ),
+                      ],
                     ),
                   ],
                 ),
