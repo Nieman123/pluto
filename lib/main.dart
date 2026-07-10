@@ -223,6 +223,17 @@ class _MyAppState extends State<MyApp> {
         },
       ),
       GoRoute(
+        path: '/admin/manafest',
+        builder: (BuildContext context, GoRouterState state) {
+          return DeferredWidget(
+            loadLibrary: admin_page.loadLibrary,
+            builder: (BuildContext context) => admin_page.AdminPage(
+              section: admin_page.AdminSection.manafest,
+            ),
+          );
+        },
+      ),
+      GoRoute(
         path: '/admin/events',
         builder: (BuildContext context, GoRouterState state) {
           return DeferredWidget(

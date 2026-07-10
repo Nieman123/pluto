@@ -15,11 +15,13 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'current_events_repository.dart';
 import 'link_box.dart';
 import 'links_repository.dart';
+import 'manafest_admin_panel.dart';
 import 'src/background/pluto_background.dart';
 import 'src/nav_bar/nav_bar.dart';
 import 'user_profile_repository.dart';
 
 enum AdminSection {
+  manafest,
   events,
   rewards,
   links,
@@ -28,6 +30,8 @@ enum AdminSection {
 extension AdminSectionX on AdminSection {
   String get label {
     switch (this) {
+      case AdminSection.manafest:
+        return 'ManaFest';
       case AdminSection.events:
         return 'Events';
       case AdminSection.rewards:
@@ -39,6 +43,8 @@ extension AdminSectionX on AdminSection {
 
   String get routePath {
     switch (this) {
+      case AdminSection.manafest:
+        return '/admin/manafest';
       case AdminSection.events:
         return '/admin/events';
       case AdminSection.rewards:
@@ -50,6 +56,8 @@ extension AdminSectionX on AdminSection {
 
   String get description {
     switch (this) {
+      case AdminSection.manafest:
+        return 'Manage festival schedule, guide, updates, hidden lineup, and hidden map data.';
       case AdminSection.events:
         return 'Create and edit current event cards shown across the site.';
       case AdminSection.rewards:
@@ -61,6 +69,8 @@ extension AdminSectionX on AdminSection {
 
   IconData get icon {
     switch (this) {
+      case AdminSection.manafest:
+        return Icons.festival;
       case AdminSection.events:
         return Icons.event;
       case AdminSection.rewards:
@@ -1538,6 +1548,8 @@ class _AdminPageState extends State<AdminPage> {
     switch (widget.section) {
       case null:
         return _buildAdminHome(user);
+      case AdminSection.manafest:
+        return const ManaFestAdminPanel();
       case AdminSection.events:
         return _buildSectionEditorLayout(
           primaryChildren: <Widget>[_buildEditorCard()],
