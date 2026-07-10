@@ -23,6 +23,15 @@ class _ManaFestPageState extends State<ManaFestPage> {
   static const String _volunteerUrl = 'https://forms.gle/Cyh34mQduSKDUzpdA';
   static const String _vendorFormUrl = 'https://forms.gle/zUdyMvJRgkdNXvdM7';
 
+  static const Color _guideInk = Color(0xFFF7F1FA);
+  static const Color _guideMuted = Color(0xFFC9BECE);
+  static const Color _guideSurface = Color(0xEB151019);
+  static const Color _guideSurfaceStrong = Color(0xF21B1420);
+  static const Color _guidePurple = Color(0xFFD9A7FF);
+  static const Color _guideOrange = Color(0xFFFFB24D);
+  static const Color _guideGreen = Color(0xFFA8E8C3);
+  static const Color _guideRose = Color(0xFFFFA6BA);
+
   final ManaFestRepository _manaFestRepository = ManaFestRepository();
 
   Future<void> _openLink(String url) async {
@@ -57,24 +66,67 @@ class _ManaFestPageState extends State<ManaFestPage> {
     required String title,
     required List<Widget> children,
   }) {
-    return Card(
-      color: Colors.black.withValues(alpha: 0.4),
+    final Color accent = _guideAccentForTitle(title);
+    final Widget sectionIcon = Container(
+      width: 46,
+      height: 46,
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.13),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Icon(
+        _guideIconForTitle(title),
+        color: accent,
+        size: 24,
+      ),
+    );
+    final Widget sectionContent = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 25,
+            fontWeight: FontWeight.w800,
+            color: _guideInk,
+          ),
+        ),
+        const SizedBox(height: 12),
+        ...children,
+      ],
+    );
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: _guideSurface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: accent.withValues(alpha: 0.2)),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 12),
-            ...children,
-          ],
+        padding: const EdgeInsets.all(22),
+        child: LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints constraints) {
+            if (constraints.maxWidth < 430) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  sectionIcon,
+                  const SizedBox(height: 14),
+                  sectionContent,
+                ],
+              );
+            }
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                sectionIcon,
+                const SizedBox(width: 16),
+                Expanded(child: sectionContent),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -87,8 +139,8 @@ class _ManaFestPageState extends State<ManaFestPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           const Padding(
-            padding: EdgeInsets.only(top: 2),
-            child: Icon(Icons.circle, size: 8, color: Colors.white70),
+            padding: EdgeInsets.only(top: 7),
+            child: Icon(Icons.circle, size: 6, color: _guideOrange),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -96,8 +148,8 @@ class _ManaFestPageState extends State<ManaFestPage> {
               text,
               style: const TextStyle(
                 fontSize: 16,
-                color: Colors.white70,
-                height: 1.4,
+                color: _guideMuted,
+                height: 1.48,
               ),
             ),
           ),
@@ -106,39 +158,117 @@ class _ManaFestPageState extends State<ManaFestPage> {
     );
   }
 
-  Widget _buildPublicPrinciplesSection() {
-    return _buildPublicSection(
-      title: 'ManaFest Principles',
-      children: <Widget>[
-        for (int index = 0; index < _festivalPrinciples.length; index++)
-          _buildPublicPrinciple(index, _festivalPrinciples[index]),
-      ],
+  bool _isDirectionsSection(String title) {
+    return title.trim().toLowerCase() == 'directions';
+  }
+
+  IconData _guideIconForTitle(String title, {IconData? fallback}) {
+    final String normalizedTitle = title.trim().toLowerCase();
+    if (normalizedTitle.contains('direction') ||
+        normalizedTitle.contains('arrival') ||
+        normalizedTitle.contains('parking')) {
+      return Icons.explore_outlined;
+    }
+    if (normalizedTitle.contains('camp')) {
+      return Icons.cabin_outlined;
+    }
+    if (normalizedTitle.contains('rule') ||
+        normalizedTitle.contains('safety')) {
+      return Icons.verified_user_outlined;
+    }
+    if (normalizedTitle.contains('event') || normalizedTitle.contains('info')) {
+      return Icons.local_activity_outlined;
+    }
+    return fallback ?? Icons.auto_stories_outlined;
+  }
+
+  Color _guideAccentForTitle(String title) {
+    final String normalizedTitle = title.trim().toLowerCase();
+    if (normalizedTitle.contains('direction') ||
+        normalizedTitle.contains('arrival') ||
+        normalizedTitle.contains('parking')) {
+      return _guideOrange;
+    }
+    if (normalizedTitle.contains('camp')) {
+      return _guideGreen;
+    }
+    if (normalizedTitle.contains('rule') ||
+        normalizedTitle.contains('safety')) {
+      return _guideRose;
+    }
+    return _guidePurple;
+  }
+
+  Widget _buildGoogleMapsButton() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 18),
+      child: ElevatedButton.icon(
+        onPressed: () => _openLink(_mapsUrl),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _guideOrange,
+          foregroundColor: const Color(0xFF21160B),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+        icon: const Icon(Icons.navigation_rounded),
+        label: const Text('Open in Google Maps'),
+      ),
     );
   }
 
-  Widget _buildPublicPrinciple(int index, _FestivalPrinciple principle) {
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: index == _festivalPrinciples.length - 1 ? 0 : 16,
-      ),
-      child: Column(
+  Widget _buildPublicPrinciplesSection() {
+    return _buildPrinciplesGuidePanel();
+  }
+
+  Widget _buildPublicGuideHeading() {
+    return const Padding(
+      padding: EdgeInsets.fromLTRB(4, 18, 4, 20),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(
-            '${index + 1}. ${principle.title}',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+          Padding(
+            padding: EdgeInsets.only(top: 4),
+            child: Icon(
+              Icons.auto_stories_outlined,
+              color: _guideOrange,
+              size: 30,
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            principle.body,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 16,
-              height: 1.42,
+          SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  'THE FIELD GUIDE',
+                  style: TextStyle(
+                    color: _guideOrange,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                SizedBox(height: 6),
+                Text(
+                  'Know before you go',
+                  style: TextStyle(
+                    color: _guideInk,
+                    fontSize: 32,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                SizedBox(height: 7),
+                Text(
+                  'The essentials for arriving, camping, and taking care of each other all weekend.',
+                  style: TextStyle(
+                    color: _guideMuted,
+                    fontSize: 16,
+                    height: 1.45,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -260,7 +390,7 @@ class _ManaFestPageState extends State<ManaFestPage> {
           child: Column(
             children: <Widget>[
               _buildPublicHeroCard(context),
-              const SizedBox(height: 12),
+              _buildPublicGuideHeading(),
               _buildPublicSection(
                 title: 'Event Info',
                 children: <Widget>[
@@ -269,9 +399,9 @@ class _ManaFestPageState extends State<ManaFestPage> {
                     'Raw energy, heavy bass, and regional DJs are at the center of the weekend.\n\n'
                     'Bring your crew, set up camp, and lock in for a full weekend of underground sound.',
                     style: TextStyle(
-                      color: Colors.white70,
+                      color: _guideMuted,
                       fontSize: 16,
-                      height: 1.4,
+                      height: 1.48,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -298,12 +428,7 @@ class _ManaFestPageState extends State<ManaFestPage> {
                   _buildBullet(
                     'After turning into the campground area, follow event staff signs for parking and check-in.',
                   ),
-                  const SizedBox(height: 8),
-                  ElevatedButton.icon(
-                    onPressed: () => _openLink(_mapsUrl),
-                    icon: const Icon(Icons.navigation),
-                    label: const Text('Open Directions in Maps'),
-                  ),
+                  _buildGoogleMapsButton(),
                 ],
               ),
               _buildPublicSection(
@@ -636,127 +761,393 @@ class _ManaFestPageState extends State<ManaFestPage> {
             ? _defaultGuideSections.map(_buildDefaultGuideSection).toList()
             : sections.map(_buildGuideSection).toList();
 
-        return _buildTabList(
-          children: <Widget>[
-            ...guideCards,
-            _buildPrinciplesGuidePanel(),
-          ],
+        return LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints constraints) {
+            final double contentWidth = constraints.maxWidth - 32;
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+              children: <Widget>[
+                _buildGuideIntro(),
+                const SizedBox(height: 16),
+                _buildGuideCardLayout(guideCards, contentWidth),
+                const SizedBox(height: 20),
+                _buildPrinciplesGuidePanel(),
+              ],
+            );
+          },
         );
       },
     );
   }
 
+  Widget _buildGuideIntro() {
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final bool isCompact = constraints.maxWidth < 560;
+        return Container(
+          height: isCompact ? 236 : 202,
+          decoration: BoxDecoration(
+            color: _guideSurfaceStrong,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: _guidePurple.withValues(alpha: 0.24),
+            ),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Stack(
+            children: <Widget>[
+              Positioned(
+                top: 0,
+                right: 0,
+                bottom: 0,
+                width: isCompact ? constraints.maxWidth : 330,
+                child: Opacity(
+                  opacity: isCompact ? 0.14 : 0.34,
+                  child: Image.asset(
+                    'assets/events/Mana-Fest-2026-Flyer-half.webp',
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: <Color>[
+                        _guideSurfaceStrong,
+                        _guideSurfaceStrong.withValues(alpha: 0.92),
+                        _guideSurfaceStrong.withValues(
+                          alpha: isCompact ? 0.74 : 0.22,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.all(isCompact ? 20 : 24),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 610),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      const Text(
+                        'MANAFEST FIELD GUIDE',
+                        style: TextStyle(
+                          color: _guideOrange,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 7),
+                      Text(
+                        'Everything you need for the weekend.',
+                        style: TextStyle(
+                          color: _guideInk,
+                          fontSize: isCompact ? 26 : 30,
+                          fontWeight: FontWeight.w800,
+                          height: 1.12,
+                        ),
+                      ),
+                      const SizedBox(height: 9),
+                      const Text(
+                        'Arrival details, camping essentials, and the shared agreements that keep the festival moving.',
+                        style: TextStyle(
+                          color: _guideMuted,
+                          fontSize: 15,
+                          height: 1.42,
+                        ),
+                      ),
+                      const Spacer(),
+                      const Wrap(
+                        spacing: 18,
+                        runSpacing: 8,
+                        children: <Widget>[
+                          _GuideMeta(
+                            icon: Icons.nights_stay_outlined,
+                            label: '2 nights',
+                          ),
+                          _GuideMeta(
+                            icon: Icons.location_on_outlined,
+                            label: 'Anderson, SC',
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildGuideCardLayout(List<Widget> cards, double contentWidth) {
+    if (contentWidth >= 760) {
+      final double cardWidth = (contentWidth - 14) / 2;
+      return Wrap(
+        spacing: 14,
+        runSpacing: 14,
+        children: cards
+            .map((Widget card) => SizedBox(width: cardWidth, child: card))
+            .toList(),
+      );
+    }
+
+    return Column(
+      children: <Widget>[
+        for (int index = 0; index < cards.length; index++) ...<Widget>[
+          if (index > 0) const SizedBox(height: 12),
+          cards[index],
+        ],
+      ],
+    );
+  }
+
   Widget _buildGuideSection(ManaFestGuideSection section) {
-    return _panel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          if (section.category.isNotEmpty)
+    return _buildGuideContentCard(
+      title: section.title,
+      body: section.body,
+      category: section.category,
+      icon: _guideIconForTitle(section.title),
+    );
+  }
+
+  Widget _buildGuideContentCard({
+    required String title,
+    required String body,
+    required IconData icon,
+    String category = '',
+  }) {
+    final Color accent = _guideAccentForTitle(title);
+    return Container(
+      decoration: BoxDecoration(
+        color: _guideSurface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: accent.withValues(alpha: 0.2)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.13),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, color: accent, size: 23),
+                ),
+                const SizedBox(width: 13),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        category.trim().isEmpty
+                            ? 'ESSENTIALS'
+                            : category.trim().toUpperCase(),
+                        style: TextStyle(
+                          color: accent,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          color: _guideInk,
+                          fontSize: 21,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
             Text(
-              section.category.toUpperCase(),
+              body,
               style: const TextStyle(
-                color: Colors.white54,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.7,
+                color: _guideMuted,
+                fontSize: 15,
+                height: 1.5,
               ),
             ),
-          if (section.category.isNotEmpty) const SizedBox(height: 6),
-          Text(
-            section.title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 23,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            section.body,
-            style: const TextStyle(color: Colors.white70, height: 1.45),
-          ),
-        ],
+            if (_isDirectionsSection(title)) _buildGoogleMapsButton(),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildDefaultGuideSection(_DefaultGuideSection section) {
-    return _panel(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Icon(section.icon, color: Colors.white70),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  section.title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 21,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  section.body,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    height: 1.45,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+    return _buildGuideContentCard(
+      title: section.title,
+      body: section.body,
+      icon: section.icon,
     );
   }
 
   Widget _buildPrinciplesGuidePanel() {
-    return _panel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          const Text(
-            'ManaFest Principles',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 23,
-              fontWeight: FontWeight.bold,
+    return Container(
+      decoration: BoxDecoration(
+        color: _guideSurfaceStrong,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: _guidePurple.withValues(alpha: 0.24),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(22),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: _guidePurple.withValues(alpha: 0.13),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.handshake_outlined,
+                    color: _guidePurple,
+                    size: 25,
+                  ),
+                ),
+                const SizedBox(width: 15),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'MANAFEST PRINCIPLES',
+                        style: TextStyle(
+                          color: _guidePurple,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                      SizedBox(height: 5),
+                      Text(
+                        'How we show up',
+                        style: TextStyle(
+                          color: _guideInk,
+                          fontSize: 25,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      SizedBox(height: 6),
+                      Text(
+                        'Five shared agreements for taking care of the land and each other.',
+                        style: TextStyle(
+                          color: _guideMuted,
+                          fontSize: 15,
+                          height: 1.42,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 12),
-          for (int index = 0; index < _festivalPrinciples.length; index++)
-            _buildGuidePrinciple(index, _festivalPrinciples[index]),
-        ],
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Divider(color: Color(0x2ED9A7FF), height: 1),
+            ),
+            for (int index = 0; index < _festivalPrinciples.length; index++)
+              _buildGuidePrinciple(index, _festivalPrinciples[index]),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildGuidePrinciple(int index, _FestivalPrinciple principle) {
+    const List<Color> accents = <Color>[
+      _guideOrange,
+      _guideGreen,
+      _guideRose,
+      _guidePurple,
+      Color(0xFF8FDDE6),
+    ];
+    final Color accent = accents[index % accents.length];
+    final bool isLast = index == _festivalPrinciples.length - 1;
+
     return Padding(
-      padding: EdgeInsets.only(
-        bottom: index == _festivalPrinciples.length - 1 ? 0 : 16,
-      ),
+      padding: EdgeInsets.only(bottom: isLast ? 0 : 18),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(
-            '${index + 1}. ${principle.title}',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 17,
-              fontWeight: FontWeight.bold,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Container(
+                width: 42,
+                height: 42,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: accent.withValues(alpha: 0.25)),
+                ),
+                child: Text(
+                  '${index + 1}'.padLeft(2, '0'),
+                  style: TextStyle(
+                    color: accent,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      principle.title,
+                      style: const TextStyle(
+                        color: _guideInk,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        height: 1.28,
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      principle.body,
+                      style: const TextStyle(
+                        color: _guideMuted,
+                        fontSize: 15,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (!isLast)
+            const Padding(
+              padding: EdgeInsets.only(top: 18),
+              child: Divider(color: Color(0x1FF7F1FA), height: 1),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            principle.body,
-            style: const TextStyle(color: Colors.white70, height: 1.45),
-          ),
         ],
       ),
     );
@@ -929,6 +1320,35 @@ class _FestivalPrinciple {
 
   final String title;
   final String body;
+}
+
+class _GuideMeta extends StatelessWidget {
+  const _GuideMeta({
+    required this.icon,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Icon(icon, size: 17, color: const Color(0xFFFFB24D)),
+        const SizedBox(width: 7),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xFFF7F1FA),
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 const List<_DefaultGuideSection> _defaultGuideSections = <_DefaultGuideSection>[
