@@ -6,7 +6,6 @@ import 'package:url_launcher/url_launcher_string.dart';
 import 'manafest_repository.dart';
 import 'src/background/pluto_background.dart';
 import 'src/nav_bar/nav_bar.dart';
-import 'user_profile_repository.dart';
 
 class ManaFestPage extends StatefulWidget {
   const ManaFestPage({Key? key}) : super(key: key);
@@ -25,10 +24,6 @@ class _ManaFestPageState extends State<ManaFestPage> {
   static const String _vendorFormUrl = 'https://forms.gle/zUdyMvJRgkdNXvdM7';
 
   final ManaFestRepository _manaFestRepository = ManaFestRepository();
-  final UserProfileRepository _profileRepository = UserProfileRepository();
-
-  String? _ensureProfileUid;
-  Future<void>? _ensureProfileFuture;
 
   Future<void> _openLink(String url) async {
     final String normalizedUrl = url.trim();
@@ -42,16 +37,6 @@ class _ManaFestPageState extends State<ManaFestPage> {
         : Uri.base.resolve(normalizedUrl).toString();
 
     await launchUrlString(targetUrl, webOnlyWindowName: '_blank');
-  }
-
-  Future<void> _ensureProfileExists(User user) {
-    if (_ensureProfileUid == user.uid && _ensureProfileFuture != null) {
-      return _ensureProfileFuture!;
-    }
-
-    _ensureProfileUid = user.uid;
-    _ensureProfileFuture = _profileRepository.ensureProfileForUser(user);
-    return _ensureProfileFuture!;
   }
 
   String _fallbackDisplayNameForUser(User user) {
@@ -114,6 +99,46 @@ class _ManaFestPageState extends State<ManaFestPage> {
                 color: Colors.white70,
                 height: 1.4,
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPublicPrinciplesSection() {
+    return _buildPublicSection(
+      title: 'ManaFest Principles',
+      children: <Widget>[
+        for (int index = 0; index < _festivalPrinciples.length; index++)
+          _buildPublicPrinciple(index, _festivalPrinciples[index]),
+      ],
+    );
+  }
+
+  Widget _buildPublicPrinciple(int index, _FestivalPrinciple principle) {
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: index == _festivalPrinciples.length - 1 ? 0 : 16,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            '${index + 1}. ${principle.title}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            principle.body,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 16,
+              height: 1.42,
             ),
           ),
         ],
@@ -310,6 +335,7 @@ class _ManaFestPageState extends State<ManaFestPage> {
                   ),
                 ],
               ),
+              _buildPublicPrinciplesSection(),
             ],
           ),
         ),
@@ -331,7 +357,7 @@ class _ManaFestPageState extends State<ManaFestPage> {
 
   Widget _buildSignedInHub(User user) {
     return DefaultTabController(
-      length: 4,
+      length: 3,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
@@ -339,19 +365,17 @@ class _ManaFestPageState extends State<ManaFestPage> {
           const TabBar(
             isScrollable: true,
             tabs: <Widget>[
-              Tab(icon: Icon(Icons.schedule), text: 'Schedule'),
               Tab(icon: Icon(Icons.article_outlined), text: 'Guide'),
               Tab(icon: Icon(Icons.campaign_outlined), text: 'Updates'),
-              Tab(icon: Icon(Icons.card_giftcard), text: 'Rewards'),
+              Tab(icon: Icon(Icons.schedule), text: 'Schedule'),
             ],
           ),
           Expanded(
             child: TabBarView(
               children: <Widget>[
-                _buildScheduleTab(),
                 _buildGuideTab(),
                 _buildUpdatesTab(),
-                _buildRewardsTab(user),
+                _buildScheduleTab(),
               ],
             ),
           ),
@@ -393,7 +417,7 @@ class _ManaFestPageState extends State<ManaFestPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Welcome, ${_fallbackDisplayNameForUser(user)}. Use this tab for schedule, guide info, updates, and check-ins.',
+                      'Welcome, ${_fallbackDisplayNameForUser(user)}. Use this tab for guide info, updates, and the schedule.',
                       style: const TextStyle(
                         color: Colors.white70,
                         height: 1.35,
@@ -612,7 +636,12 @@ class _ManaFestPageState extends State<ManaFestPage> {
             ? _defaultGuideSections.map(_buildDefaultGuideSection).toList()
             : sections.map(_buildGuideSection).toList();
 
-        return _buildTabList(children: guideCards);
+        return _buildTabList(
+          children: <Widget>[
+            ...guideCards,
+            _buildPrinciplesGuidePanel(),
+          ],
+        );
       },
     );
   }
@@ -680,6 +709,53 @@ class _ManaFestPageState extends State<ManaFestPage> {
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPrinciplesGuidePanel() {
+    return _panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Text(
+            'ManaFest Principles',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 23,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          for (int index = 0; index < _festivalPrinciples.length; index++)
+            _buildGuidePrinciple(index, _festivalPrinciples[index]),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGuidePrinciple(int index, _FestivalPrinciple principle) {
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: index == _festivalPrinciples.length - 1 ? 0 : 16,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            '${index + 1}. ${principle.title}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            principle.body,
+            style: const TextStyle(color: Colors.white70, height: 1.45),
           ),
         ],
       ),
@@ -780,142 +856,6 @@ class _ManaFestPageState extends State<ManaFestPage> {
     );
   }
 
-  Widget _buildRewardsTab(User user) {
-    return FutureBuilder<void>(
-      future: _ensureProfileExists(user),
-      builder: (BuildContext context, AsyncSnapshot<void> ensureSnapshot) {
-        if (ensureSnapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (ensureSnapshot.hasError) {
-          return _buildTabList(
-            children: <Widget>[
-              _panel(
-                child: Text(
-                  'Unable to prepare rewards wallet: ${ensureSnapshot.error}',
-                  style: const TextStyle(color: Colors.white70),
-                ),
-              ),
-            ],
-          );
-        }
-
-        return StreamBuilder<UserProfile?>(
-          stream: _profileRepository.watchProfile(
-            uid: user.uid,
-            fallbackDisplayName: _fallbackDisplayNameForUser(user),
-          ),
-          builder: (BuildContext context,
-              AsyncSnapshot<UserProfile?> profileSnapshot) {
-            final UserProfile? profile = profileSnapshot.data;
-            return _buildTabList(
-              children: <Widget>[
-                _panel(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      const Text(
-                        'ManaFest Rewards',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Scan event QR codes, earn Pluto Points, and redeem rewards from the shop.',
-                        style: TextStyle(color: Colors.white70, height: 1.4),
-                      ),
-                      const SizedBox(height: 14),
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: <Widget>[
-                          _metricChip(
-                            label: 'Pluto Points',
-                            value: profile == null
-                                ? '...'
-                                : profile.pointsBalance.toString(),
-                          ),
-                          _metricChip(
-                            label: 'Tier',
-                            value: profile?.tierName ?? '...',
-                          ),
-                          _metricChip(
-                            label: 'Events',
-                            value: profile == null
-                                ? '...'
-                                : profile.eventsAttended.toString(),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: <Widget>[
-                          ElevatedButton.icon(
-                            onPressed: () => context.go('/scan-qr'),
-                            icon: const Icon(Icons.qr_code_scanner),
-                            label: const Text('Scan QR Code'),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: () => context.go('/shop'),
-                            icon: const Icon(Icons.card_giftcard),
-                            label: const Text('Open Rewards Shop'),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _metricChip({
-    required String label,
-    required String value,
-  }) {
-    return Container(
-      width: 156,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white60,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _emptyPanel({
     required IconData icon,
     required String title,
@@ -981,29 +921,68 @@ class _DefaultGuideSection {
   final String body;
 }
 
+class _FestivalPrinciple {
+  const _FestivalPrinciple({
+    required this.title,
+    required this.body,
+  });
+
+  final String title;
+  final String body;
+}
+
 const List<_DefaultGuideSection> _defaultGuideSections = <_DefaultGuideSection>[
   _DefaultGuideSection(
-    icon: Icons.confirmation_number_outlined,
-    title: 'Arrival and Check-In',
+    icon: Icons.info_outline,
+    title: 'Event Info',
     body:
-        'Have your ticket ready, follow staff signage when you enter, and keep your account available for QR check-ins.',
+        'For two nights in September, we are taking over the woods at Three Creeks Campground in Anderson, SC.\n\nRaw energy, heavy bass, and regional DJs are at the center of the weekend.\n\nBring your crew, set up camp, and lock in for a full weekend of underground sound.',
   ),
   _DefaultGuideSection(
-    icon: Icons.campaign_outlined,
-    title: 'Updates',
+    icon: Icons.navigation_outlined,
+    title: 'Directions',
     body:
-        'Important schedule, weather, and site updates will appear in the Updates tab during the event.',
+        'Navigate to Three Creeks Campground in Anderson, South Carolina. Use Google Maps for the most reliable routing and traffic updates. After turning into the campground area, follow event staff signs for parking and check-in.',
   ),
   _DefaultGuideSection(
-    icon: Icons.local_fire_department_outlined,
-    title: 'Camping and Safety',
+    icon: Icons.cabin_outlined,
+    title: 'Camping',
     body:
-        'Camp in designated areas, keep shared spaces clean, pack lighting, and follow staff direction for fire-safe setups.',
+        'Camp only in designated areas. Car camping pass is a separate pass. One pass is required per vehicle. Pack for changing weather, including rain. Bring reusable water containers, personal lighting, and basic campsite gear.',
   ),
   _DefaultGuideSection(
-    icon: Icons.festival_outlined,
-    title: 'Stages',
+    icon: Icons.rule,
+    title: 'Festival Rules',
     body:
-        'ManaFest has a Main Stage and a Renegade Stage. Renegade Stage location details stay hidden until the team reveals them.',
+        'Respect staff instructions, neighboring campsites, and venue boundaries. Keep camps and shared spaces clean. Pack out what you pack in. Use approved fire-safe cooking and lighting setups only where permitted.',
+  ),
+];
+
+const List<_FestivalPrinciple> _festivalPrinciples = <_FestivalPrinciple>[
+  _FestivalPrinciple(
+    title: 'Be the vibe you want to see in the world.',
+    body:
+        'Successful manifestation requires participation! Dress up, dress down, just dress yourself, as yourself. Bring it all out, except for the phones, put those away as much as you can.',
+  ),
+  _FestivalPrinciple(
+    title: 'Leave no trace.',
+    body:
+        'Please help us keep this beautiful place clean, so events can continue to happen here. Clean up after yourselves, and support each other by cleaning up an extra piece. It only takes a small amount of awareness and effort from everyone, to leave the land the way we found it.',
+  ),
+  _FestivalPrinciple(
+    title: 'If you see something, say something.',
+    body:
+        'If you see someone acting strangely, by themselves, or toward another, find one of our volunteers, or find any of the festival staff.',
+  ),
+  _FestivalPrinciple(
+    title:
+        'Consent: A foundational potion ingredient for any successful festival brew.',
+    body:
+        "A lot of us are strangers to each other, or friends of friends. Please be cordial and respectful of each other's space and autonomy. We want everyone to feel safe.\n\nKind words, and asking before touching, is essential for everyone to have a good time.",
+  ),
+  _FestivalPrinciple(
+    title: 'Be self-reliant!',
+    body:
+        'Bring everything you need to party. The only things for purchase at the festival are from the food and art vendors.',
   ),
 ];

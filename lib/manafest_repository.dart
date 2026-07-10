@@ -333,16 +333,18 @@ class ManaFestRepository {
   Stream<List<ManaFestScheduleItem>> watchScheduleItems({
     required bool attendeeOnly,
   }) {
-    return _scheduleItems.snapshots().map(
+    Query<Map<String, dynamic>> query = _scheduleItems;
+    if (attendeeOnly) {
+      query = query
+          .where('isActive', isEqualTo: true)
+          .where('isPublished', isEqualTo: true);
+    }
+
+    return query.snapshots().map(
       (QuerySnapshot<Map<String, dynamic>> snapshot) {
         final List<ManaFestScheduleItem> items =
             snapshot.docs.map(ManaFestScheduleItem.fromSnapshot).toList();
-        final List<ManaFestScheduleItem> filtered = attendeeOnly
-            ? items
-                .where((ManaFestScheduleItem item) =>
-                    item.isActive && item.isPublished)
-                .toList()
-            : items;
+        final List<ManaFestScheduleItem> filtered = List.of(items);
         filtered.sort(_sortScheduleItems);
         return filtered;
       },
@@ -352,13 +354,16 @@ class ManaFestRepository {
   Stream<List<ManaFestGuideSection>> watchGuideSections({
     required bool attendeeOnly,
   }) {
-    return _guideSections.snapshots().map(
+    Query<Map<String, dynamic>> query = _guideSections;
+    if (attendeeOnly) {
+      query = query.where('isActive', isEqualTo: true);
+    }
+
+    return query.snapshots().map(
       (QuerySnapshot<Map<String, dynamic>> snapshot) {
         final List<ManaFestGuideSection> items =
             snapshot.docs.map(ManaFestGuideSection.fromSnapshot).toList();
-        final List<ManaFestGuideSection> filtered = attendeeOnly
-            ? items.where((ManaFestGuideSection item) => item.isActive).toList()
-            : items;
+        final List<ManaFestGuideSection> filtered = List.of(items);
         filtered.sort(_sortGuideSections);
         return filtered;
       },
@@ -366,13 +371,16 @@ class ManaFestRepository {
   }
 
   Stream<List<ManaFestUpdate>> watchUpdates({required bool attendeeOnly}) {
-    return _updates.snapshots().map(
+    Query<Map<String, dynamic>> query = _updates;
+    if (attendeeOnly) {
+      query = query.where('isActive', isEqualTo: true);
+    }
+
+    return query.snapshots().map(
       (QuerySnapshot<Map<String, dynamic>> snapshot) {
         final List<ManaFestUpdate> items =
             snapshot.docs.map(ManaFestUpdate.fromSnapshot).toList();
-        final List<ManaFestUpdate> filtered = attendeeOnly
-            ? items.where((ManaFestUpdate item) => item.isActive).toList()
-            : items;
+        final List<ManaFestUpdate> filtered = List.of(items);
         filtered.sort(_sortUpdates);
         return filtered;
       },
@@ -380,16 +388,18 @@ class ManaFestRepository {
   }
 
   Stream<List<ManaFestArtist>> watchArtists({required bool attendeeOnly}) {
-    return _artists.snapshots().map(
+    Query<Map<String, dynamic>> query = _artists;
+    if (attendeeOnly) {
+      query = query
+          .where('isActive', isEqualTo: true)
+          .where('isPublished', isEqualTo: true);
+    }
+
+    return query.snapshots().map(
       (QuerySnapshot<Map<String, dynamic>> snapshot) {
         final List<ManaFestArtist> items =
             snapshot.docs.map(ManaFestArtist.fromSnapshot).toList();
-        final List<ManaFestArtist> filtered = attendeeOnly
-            ? items
-                .where(
-                    (ManaFestArtist item) => item.isActive && item.isPublished)
-                .toList()
-            : items;
+        final List<ManaFestArtist> filtered = List.of(items);
         filtered.sort(_sortArtists);
         return filtered;
       },
@@ -397,16 +407,18 @@ class ManaFestRepository {
   }
 
   Stream<List<ManaFestMapPin>> watchMapPins({required bool attendeeOnly}) {
-    return _mapPins.snapshots().map(
+    Query<Map<String, dynamic>> query = _mapPins;
+    if (attendeeOnly) {
+      query = query
+          .where('isActive', isEqualTo: true)
+          .where('isPublished', isEqualTo: true);
+    }
+
+    return query.snapshots().map(
       (QuerySnapshot<Map<String, dynamic>> snapshot) {
         final List<ManaFestMapPin> items =
             snapshot.docs.map(ManaFestMapPin.fromSnapshot).toList();
-        final List<ManaFestMapPin> filtered = attendeeOnly
-            ? items
-                .where(
-                    (ManaFestMapPin item) => item.isActive && item.isPublished)
-                .toList()
-            : items;
+        final List<ManaFestMapPin> filtered = List.of(items);
         filtered.sort(_sortMapPins);
         return filtered;
       },

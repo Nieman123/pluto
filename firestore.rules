@@ -14,6 +14,22 @@ service cloud.firestore {
           exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid));
     }
 
+    function isManaFestLineupPublished() {
+      return exists(/databases/$(database)/documents/manaFestSettings/app) &&
+          get(/databases/$(database)/documents/manaFestSettings/app)
+              .data
+              .isLineupPublished ==
+          true;
+    }
+
+    function isManaFestMapPublished() {
+      return exists(/databases/$(database)/documents/manaFestSettings/app) &&
+          get(/databases/$(database)/documents/manaFestSettings/app)
+              .data
+              .isMapPublished ==
+          true;
+    }
+
     function knownProfileKeys() {
       return [
         'displayName',
@@ -104,6 +120,49 @@ service cloud.firestore {
 
     match /linksPageItems/{linkId} {
       allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /manaFestSettings/{settingsId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /manaFestScheduleItems/{scheduleItemId} {
+      allow read: if isAdmin() ||
+          (signedIn() &&
+              resource.data.isActive == true &&
+              resource.data.isPublished == true);
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /manaFestGuideSections/{guideSectionId} {
+      allow read: if isAdmin() ||
+          (signedIn() && resource.data.isActive == true);
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /manaFestUpdates/{updateId} {
+      allow read: if isAdmin() ||
+          (signedIn() && resource.data.isActive == true);
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /manaFestArtists/{artistId} {
+      allow read: if isAdmin() ||
+          (signedIn() &&
+              isManaFestLineupPublished() &&
+              resource.data.isActive == true &&
+              resource.data.isPublished == true);
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /manaFestMapPins/{pinId} {
+      allow read: if isAdmin() ||
+          (signedIn() &&
+              isManaFestMapPublished() &&
+              resource.data.isActive == true &&
+              resource.data.isPublished == true);
       allow create, update, delete: if isAdmin();
     }
 
