@@ -486,7 +486,7 @@ class _ManaFestPageState extends State<ManaFestPage> {
 
   Widget _buildSignedInHub(User user) {
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
@@ -521,35 +521,30 @@ class _ManaFestPageState extends State<ManaFestPage> {
               tabs: <Widget>[
                 Tab(
                   height: 52,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: <Widget>[
-                      Icon(Icons.menu_book, size: 20),
-                      SizedBox(width: 7),
-                      Text('Guide'),
-                    ],
+                  child: _ManaFestTabLabel(
+                    icon: Icons.menu_book,
+                    label: 'Guide',
                   ),
                 ),
                 Tab(
                   height: 52,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: <Widget>[
-                      Icon(Icons.campaign, size: 20),
-                      SizedBox(width: 7),
-                      Text('Updates'),
-                    ],
+                  child: _ManaFestTabLabel(
+                    icon: Icons.campaign,
+                    label: 'Updates',
                   ),
                 ),
                 Tab(
                   height: 52,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: <Widget>[
-                      Icon(Icons.calendar_today, size: 19),
-                      SizedBox(width: 7),
-                      Text('Schedule'),
-                    ],
+                  child: _ManaFestTabLabel(
+                    icon: Icons.queue_music,
+                    label: 'Lineup',
+                  ),
+                ),
+                Tab(
+                  height: 52,
+                  child: _ManaFestTabLabel(
+                    icon: Icons.calendar_today,
+                    label: 'Schedule',
                   ),
                 ),
               ],
@@ -560,6 +555,7 @@ class _ManaFestPageState extends State<ManaFestPage> {
               children: <Widget>[
                 _buildGuideTab(),
                 _buildUpdatesTab(),
+                _buildLineupTab(),
                 _buildScheduleTab(),
               ],
             ),
@@ -669,6 +665,26 @@ class _ManaFestPageState extends State<ManaFestPage> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
       children: children,
+    );
+  }
+
+  Widget _buildLineupTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 760),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.asset(
+              'assets/events/manafest-2026-lineup-v1.webp',
+              width: double.infinity,
+              fit: BoxFit.contain,
+              semanticLabel: 'ManaFest 2026 lineup flyer',
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -1413,6 +1429,31 @@ class _FestivalPrinciple {
 
   final String title;
   final String body;
+}
+
+class _ManaFestTabLabel extends StatelessWidget {
+  const _ManaFestTabLabel({
+    required this.icon,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(icon, size: 20),
+          const SizedBox(width: 6),
+          Text(label),
+        ],
+      ),
+    );
+  }
 }
 
 class _GuideMeta extends StatelessWidget {
