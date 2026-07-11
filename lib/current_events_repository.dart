@@ -67,6 +67,14 @@ class CurrentEvent {
   }
 }
 
+extension CurrentEventX on CurrentEvent {
+  bool get isManaFest {
+    final String normalizedTitle =
+        title.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+    return normalizedTitle.startsWith('manafest');
+  }
+}
+
 Uint8List? decodeFlyerDataUrl(String dataUrl) {
   if (dataUrl.isEmpty) {
     return null;

@@ -7,7 +7,6 @@ _site/
 .flutter-plugins-dependencies
 .packages
 
-/test/
 /build/flutter_assets/
 *.dill
 .dart_tool/

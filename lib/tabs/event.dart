@@ -53,12 +53,6 @@ class Event extends StatelessWidget {
     return '$_galleryBaseUrl$fileName';
   }
 
-  bool _isManaFestEvent(String title) {
-    final String normalizedTitle =
-        title.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
-    return normalizedTitle.startsWith('manafest');
-  }
-
   Widget _buildFlyer({
     required BuildContext context,
     required CurrentEvent event,
@@ -185,7 +179,7 @@ class Event extends StatelessWidget {
                       details: event.details,
                       ticketUrl: event.ticketUrl,
                       flyer: _buildFlyer(context: context, event: event),
-                      showManaFestDetails: _isManaFestEvent(event.title),
+                      showManaFestDetails: event.isManaFest,
                     ),
                   ))
               .toList(),
