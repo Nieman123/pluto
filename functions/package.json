@@ -1,0 +1,26 @@
+{
+  "name": "pluto-public-site-functions",
+  "private": true,
+  "main": "lib/index.js",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "build": "tsc && node scripts/copy-runtime-assets.mjs",
+    "test": "npm run build && node --test test/*.test.cjs",
+    "preview": "npm run build && node scripts/preview-server.mjs",
+    "migrate:media": "node scripts/migrate-media.mjs"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "firebase-admin": "^13.10.0",
+    "firebase-functions": "^7.2.5",
+    "nunjucks": "^3.2.4"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "@types/nunjucks": "^3.2.6",
+    "typescript": "^5.8.0"
+  }
+}

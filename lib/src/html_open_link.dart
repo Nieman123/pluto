@@ -6,3 +6,10 @@ Future<void> htmlOpenLink(String url) async {
   }
   await launchUrlString(url, webOnlyWindowName: '_blank');
 }
+
+Future<void> htmlNavigateTo(String url) async {
+  if (url.trim().isEmpty) {
+    return;
+  }
+  await launchUrlString(url, webOnlyWindowName: '_self');
+}

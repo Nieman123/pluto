@@ -100,7 +100,7 @@
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function () {
           var registerMessagingWorker = function () {
-            navigator.serviceWorker.register('firebase-messaging-sw.js', {
+            navigator.serviceWorker.register('/firebase-messaging-sw.js', {
               scope: '/firebase-cloud-messaging-push-scope',
             }).catch(function (error) {
               console.warn('Firebase messaging service worker registration failed.', error);

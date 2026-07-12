@@ -6,7 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../tabs/scroll_controller.dart';
+import '../html_open_link.dart';
 
 //The top Nav Bar
 class NavBar extends StatelessWidget implements PreferredSizeWidget {
@@ -17,7 +17,7 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
 
   final bool isDarkModeBtnVisible;
 
-  static const String _homeRoute = '/home';
+  static const String _homeRoute = '/__public-home';
   static const _NavMenuAction _homeMenuAction = _NavMenuAction.homeSection(
     label: 'Home',
     icon: Icons.home,
@@ -162,24 +162,14 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
     required String currentPath,
     required User? user,
   }) {
-    if (currentPath == _homeRoute) {
-      return true;
-    }
-
-    return user == null && currentPath == '/';
+    return false;
   }
 
   static Future<void> selectHomeSection(
     BuildContext context,
     int sectionIndex,
   ) async {
-    if (!homeScrollController.hasClients) {
-      GoRouter.of(context).go(_homeRoute);
-      await WidgetsBinding.instance.endOfFrame;
-      await WidgetsBinding.instance.endOfFrame;
-    }
-
-    await scrollToHomeSection(sectionIndex);
+    await htmlNavigateTo(sectionIndex == 1 ? '/#events' : '/');
   }
 
   static Future<void> handleMenuAction(
@@ -192,6 +182,10 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
       return;
     }
 
+    if (action.route == _homeRoute) {
+      await htmlNavigateTo('/');
+      return;
+    }
     GoRouter.of(context).go(action.route!);
   }
 }

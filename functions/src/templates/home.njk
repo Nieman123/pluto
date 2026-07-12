@@ -1,0 +1,62 @@
+{% extends "base.njk" %}
+
+{% block content %}
+  <section class="home-hero" aria-labelledby="home-title">
+    <div class="hero-media" data-gallery>
+      {% set gallery = ['1.webp', 'elysium-10.webp', '14.webp', 'elysium-4.webp', '10.webp'] %}
+      {% for image in gallery %}
+        <img src="/gallery/{{ image }}" width="1920" height="1080" alt="Pluto Events crowd and performers" {% if not loop.first %}hidden{% endif %} data-gallery-slide {% if not loop.first %}loading="lazy"{% endif %}>
+      {% endfor %}
+    </div>
+    <div class="hero-shade"></div>
+    <div class="hero-content">
+      <p class="eyebrow">ASHEVILLE · UNDERGROUND · TOGETHER</p>
+      <h1 id="home-title">PLUTO EVENTS</h1>
+      <p class="hero-copy">Immersive parties and campouts built around heavy sound, local art, and the people who make the night.</p>
+      <div class="hero-actions">
+        <a class="button button-primary button-large" href="#events">See upcoming events</a>
+        <a class="button button-glass button-large" href="/manafest">Explore ManaFest</a>
+      </div>
+    </div>
+    <div class="gallery-controls" aria-label="Gallery controls">
+      <button type="button" data-gallery-previous aria-label="Previous photo">←</button>
+      <span data-gallery-status aria-live="polite">1 / 5</span>
+      <button type="button" data-gallery-next aria-label="Next photo">→</button>
+    </div>
+  </section>
+
+  <section class="section events-section" id="events" aria-labelledby="events-title">
+    <div class="section-heading">
+      <div><p class="eyebrow">WHAT'S NEXT</p><h2 id="events-title">Upcoming events</h2></div>
+      <p>Tickets, details, and everything you need before you arrive.</p>
+    </div>
+    <div class="event-grid">
+      {% for event in events %}
+        <article class="event-card">
+          {% if event.flyerImageUrl %}
+            <img src="{{ event.flyerImageUrl }}" width="900" height="1200" alt="{{ event.title }} event artwork" loading="lazy">
+          {% else %}
+            <div class="event-art-fallback" aria-hidden="true">PLUTO</div>
+          {% endif %}
+          <div class="event-card-body">
+            <h3>{{ event.title }}</h3>
+            {% if event.details %}<p>{{ event.details }}</p>{% endif %}
+            <div class="event-actions">
+              {% if event.ticketUrl %}<a class="button button-primary" href="{{ event.ticketUrl }}" target="_blank" rel="noopener noreferrer">Get tickets</a>{% endif %}
+              {% if event.isManaFest %}<a class="button button-quiet" href="/manafest">ManaFest details</a>{% endif %}
+            </div>
+          </div>
+        </article>
+      {% else %}
+        <p class="empty-state">New events are being prepared. Check back soon.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="statement-band" aria-labelledby="community-title">
+    <p class="eyebrow">BUILT FOR PARTICIPATION</p>
+    <h2 id="community-title">The crowd is part of the show.</h2>
+    <p>Come expressive. Look out for each other. Leave the space better than you found it.</p>
+    <a class="text-link" href="/links">Find Pluto online →</a>
+  </section>
+{% endblock %}

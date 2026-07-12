@@ -1,0 +1,21 @@
+{
+  "name": "pluto-web",
+  "private": true,
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "build:site": "esbuild site/src/site.js --bundle --minify --sourcemap --external:https://* --outfile=site/dist/site.js",
+    "build:functions": "npm --prefix functions run build",
+    "build:public": "npm run build:site && npm run build:functions && node scripts/compose-web.mjs",
+    "test": "npm --prefix functions test && node --test test/config.test.mjs",
+    "test:storage": "node --test test/storage-rules.test.mjs"
+  },
+  "dependencies": {
+    "firebase": "^12.1.0"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.0",
+    "esbuild": "^0.25.0"
+  }
+}

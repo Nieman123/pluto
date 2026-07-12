@@ -1,0 +1,27 @@
+{% extends "base.njk" %}
+
+{% block content %}
+  <section class="links-hero" aria-labelledby="links-title">
+    <img src="/assets/images/pluto-logo.webp" width="150" height="150" alt="Pluto Events">
+    <p class="eyebrow">THE OFFICIAL CHANNELS</p>
+    <h1 id="links-title">Find Pluto</h1>
+    <p>Tickets, announcements, artists, and all the places we show up online.</p>
+  </section>
+
+  <div class="links-sections">
+    {% for heading, links in groupedLinks %}
+      <section class="links-group" aria-labelledby="links-group-{{ loop.index }}">
+        <h2 id="links-group-{{ loop.index }}">{{ heading if heading else 'Pluto online' }}</h2>
+        <div class="link-list">
+          {% for link in links %}
+            <a class="link-row" href="{{ link.url }}" target="_blank" rel="noopener noreferrer">
+              {% if link.imageUrl %}<img class="{% if link.isImageCircular %}circular{% endif %}" src="{{ link.imageUrl }}" width="64" height="64" alt="" loading="lazy">{% else %}<span class="link-icon" aria-hidden="true">↗</span>{% endif %}
+              <span>{{ link.title }}</span>
+              <span class="link-arrow" aria-hidden="true">↗</span>
+            </a>
+          {% endfor %}
+        </div>
+      </section>
+    {% endfor %}
+  </div>
+{% endblock %}

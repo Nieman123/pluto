@@ -57,6 +57,12 @@ class Event extends StatelessWidget {
     required BuildContext context,
     required CurrentEvent event,
   }) {
+    if (event.flyerImageUrl.isNotEmpty) {
+      return Image.network(
+        event.flyerImageUrl,
+        fit: BoxFit.cover,
+      );
+    }
     if (event.flyerBytes != null) {
       return Image.memory(
         event.flyerBytes!,

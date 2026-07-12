@@ -20,6 +20,7 @@ dependencies:
   file_picker: ^10.3.2
   url_launcher: ^6.1.7
   firebase_messaging: ^16.1.0
+  firebase_storage: ^13.0.4
   flutter_native_splash: ^2.3.1
   intl: any
   go_router: ^16.1.0

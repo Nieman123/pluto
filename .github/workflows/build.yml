@@ -20,23 +20,55 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            functions/package-lock.json
+
+      - name: Set up Java for Firebase emulators
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
 
-      - name: Install dependencies
+      - name: Install Node dependencies
+        run: |
+          npm ci
+          npm ci --prefix functions
+
+      - name: Install Flutter dependencies
         run: flutter pub get
 
-      - name: Analyze project
+      - name: Test public site and Functions
+        run: npm test
+
+      - name: Test Storage rules
+        run: npx firebase-tools@latest emulators:exec --project pluto-storage-rules-test --only firestore,storage "npm run test:storage"
+
+      - name: Analyze Flutter project
         run: flutter analyze .
 
-      - name: Build web release
-        run: flutter build web --release
+      - name: Test Flutter project
+        run: flutter test
+
+      - name: Build Flutter web under /app
+        run: flutter build web --release --base-href /app/
 
       - name: Remove unused local CanvasKit artifacts
         run: rm -rf build/web/canvaskit
+
+      - name: Build public assets and deployment package
+        run: npm run build:public
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v3
@@ -45,13 +77,5 @@ jobs:
           create_credentials_file: true
           export_environment_variables: true
 
-      - name: Deploy Firestore rules
-        run: npx firebase-tools@latest deploy --only firestore:rules --project pluto-9b6ca
-
-      - name: Deploy to Firebase Hosting (live)
-        uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PLUTO_9B6CA }}
-          channelId: live
-          projectId: pluto-9b6ca
+      - name: Deploy site, Function, and rules
+        run: npx firebase-tools@latest deploy --only firestore:rules,storage,functions:publicSite,hosting --project pluto-9b6ca --non-interactive

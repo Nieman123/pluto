@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ meta.title }}</title>
+    <meta name="description" content="{{ meta.description }}">
+    <link rel="canonical" href="{{ meta.canonical }}">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Pluto Events">
+    <meta property="og:title" content="{{ meta.title }}">
+    <meta property="og:description" content="{{ meta.description }}">
+    <meta property="og:url" content="{{ meta.canonical }}">
+    <meta property="og:image" content="{{ meta.image }}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ meta.title }}">
+    <meta name="twitter:description" content="{{ meta.description }}">
+    <meta name="twitter:image" content="{{ meta.image }}">
+    <meta name="theme-color" content="#111011">
+    <link rel="icon" href="/favicon.png">
+    <link rel="stylesheet" href="/assets/site.css">
+    {% if jsonLd %}<script type="application/ld+json">{{ jsonLd | safe }}</script>{% endif %}
+    <script id="firebase-config" type="application/json">{{ firebaseConfigJson | safe }}</script>
+    <script src="/assets/site.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="Pluto Events home">
+        <img src="/assets/images/pluto-logo.webp" width="54" height="54" alt="">
+        <span>PLUTO EVENTS</span>
+      </a>
+      <nav class="desktop-nav" aria-label="Primary navigation">
+        <a href="/" {% if path == '/' %}aria-current="page"{% endif %}>Home</a>
+        <a href="/manafest" {% if path == '/manafest' %}aria-current="page"{% endif %}>ManaFest</a>
+        <a href="/links" {% if path == '/links' %}aria-current="page"{% endif %}>Links</a>
+      </nav>
+      <div class="auth-actions">
+        <div class="signed-out-actions" data-auth-signed-out>
+          <a class="button button-primary" href="/app/sign-up">Create Account</a>
+          <a class="button button-quiet" href="/app/sign-on">Sign In</a>
+        </div>
+        <div class="signed-in-actions" data-auth-signed-in hidden>
+          <a class="avatar-link" href="/app/profile" aria-label="Open profile">
+            <img data-auth-avatar src="/assets/images/pluto-logo.webp" width="40" height="40" alt="Profile">
+          </a>
+          <a class="button button-primary" href="/app/">Open App</a>
+        </div>
+        <button class="menu-button" type="button" data-menu-button aria-expanded="false" aria-controls="mobile-menu" aria-label="Open menu">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+      <nav class="mobile-menu" id="mobile-menu" data-mobile-menu hidden aria-label="Mobile navigation">
+        <a href="/">Home</a>
+        <a href="/manafest">ManaFest</a>
+        <a href="/links">Links</a>
+        <a href="/app/sign-up" data-auth-signed-out>Create Account</a>
+        <a href="/app/sign-on" data-auth-signed-out>Sign In</a>
+        <a href="/app/" data-auth-signed-in hidden>Open App</a>
+        <a href="/app/profile" data-auth-signed-in hidden>Profile</a>
+      </nav>
+    </header>
+
+    <main id="main-content">{% block content %}{% endblock %}</main>
+
+    <footer class="site-footer">
+      <div>
+        <a class="brand footer-brand" href="/">
+          <img src="/assets/images/pluto-logo.webp" width="44" height="44" alt="">
+          <span>PLUTO EVENTS</span>
+        </a>
+        <p>Underground sound, strange gatherings, and room to be yourself.</p>
+      </div>
+      <nav aria-label="Footer navigation">
+        <a href="/manafest">ManaFest</a>
+        <a href="/links">Links</a>
+        <a href="mailto:plutopresentsavl@gmail.com">Contact</a>
+      </nav>
+      <p class="footer-meta">© 2026 Pluto Events</p>
+    </footer>
+  </body>
+</html>

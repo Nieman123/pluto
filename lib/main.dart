@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -8,7 +9,6 @@ import 'camping.dart' deferred as camping;
 import 'event_qr_scan_page.dart' deferred as event_qr_scan_page;
 import 'firebase_options.dart';
 import 'item_shop_page.dart' deferred as item_shop_page;
-import 'links.dart' deferred as links;
 import 'manafest_page.dart' deferred as manafest_page;
 import 'profile_page.dart' deferred as profile_page;
 import 'push_notifications.dart' deferred as push_notifications;
@@ -116,6 +116,11 @@ class _MyAppState extends State<MyApp> {
         routes: <RouteBase>[
           GoRoute(
             path: '/',
+            redirect: (BuildContext context, GoRouterState state) {
+              return FirebaseAuth.instance.currentUser == null
+                  ? '/sign-on'
+                  : null;
+            },
             pageBuilder: (BuildContext context, GoRouterState state) {
               return _buildTabPage(
                 state: state,
@@ -162,20 +167,6 @@ class _MyAppState extends State<MyApp> {
             },
           ),
         ],
-      ),
-      GoRoute(
-        path: App.publicHomeRoute,
-        builder: (BuildContext context, GoRouterState state) =>
-            const App(showSignedInHome: false),
-      ),
-      GoRoute(
-        path: '/links',
-        builder: (BuildContext context, GoRouterState state) {
-          return DeferredWidget(
-            loadLibrary: links.loadLibrary,
-            builder: (BuildContext context) => links.LinksPage(),
-          );
-        },
       ),
       GoRoute(
         path: '/camping',

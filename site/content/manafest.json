@@ -1,0 +1,58 @@
+{
+  "name": "ManaFest 2026",
+  "description": "Two nights of underground sound, camping, and regional DJs at Three Creeks Campground in Anderson, South Carolina.",
+  "startDate": "2026-09-18",
+  "endDate": "2026-09-20",
+  "dateLabel": "September 18-20, 2026",
+  "venue": "Three Creeks Campground",
+  "locality": "Anderson",
+  "region": "SC",
+  "ticketUrl": "https://posh.vip/e/manafest-2026",
+  "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Three+Creeks+Campground+Anderson+South+Carolina",
+  "volunteerUrl": "https://forms.gle/Cyh34mQduSKDUzpdA",
+  "vendorUrl": "https://forms.gle/zUdyMvJRgkdNXvdM7",
+  "sections": [
+    {
+      "title": "Event Info",
+      "icon": "ticket",
+      "body": "For two nights in September, we are taking over the woods at Three Creeks Campground in Anderson, SC. Raw energy, heavy bass, and regional DJs are at the center of the weekend. Bring your crew, set up camp, and lock in for a full weekend of underground sound."
+    },
+    {
+      "title": "Directions",
+      "icon": "compass",
+      "body": "Navigate to Three Creeks Campground in Anderson, South Carolina. Use Google Maps for the most reliable routing and traffic updates. After turning into the campground area, follow event staff signs for parking and check-in."
+    },
+    {
+      "title": "Camping",
+      "icon": "tent",
+      "body": "Camp only in designated areas. A car camping pass is separate and one pass is required per vehicle. Pack for changing weather, including rain. Bring reusable water containers, personal lighting, and basic campsite gear."
+    },
+    {
+      "title": "Festival Rules",
+      "icon": "shield",
+      "body": "Respect staff instructions, neighboring campsites, and venue boundaries. Keep camps and shared spaces clean. Pack out what you pack in. Use approved fire-safe cooking and lighting setups only where permitted."
+    }
+  ],
+  "principles": [
+    {
+      "title": "Be the vibe you want to see in the world.",
+      "body": "Successful manifestation requires participation! Dress up, dress down, just dress yourself, as yourself. Bring it all out, except for the phones, put those away as much as you can."
+    },
+    {
+      "title": "Leave no trace.",
+      "body": "Please help us keep this beautiful place clean, so events can continue to happen here. Clean up after yourselves, and support each other by cleaning up an extra piece. It only takes a small amount of awareness and effort from everyone to leave the land the way we found it."
+    },
+    {
+      "title": "If you see something, say something.",
+      "body": "If you see someone acting strangely, by themselves, or toward another, find one of our volunteers or any festival staff member."
+    },
+    {
+      "title": "Consent is foundational.",
+      "body": "Please be cordial and respectful of each other's space and autonomy. Kind words and asking before touching are essential for everyone to have a good time."
+    },
+    {
+      "title": "Be self-reliant!",
+      "body": "Bring everything you need to party. The only things for purchase at the festival are from the food and art vendors."
+    }
+  ]
+}

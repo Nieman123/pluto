@@ -13,6 +13,13 @@ _site/
 .dart_tool/package_config.json
 .dart_tool/package_config_subset
 /build/
+/dist/
+/node_modules/
+/functions/lib/
+/functions/node_modules/
+/site/dist/
+*-debug.log
+firepit-log.txt
 pubspec.lock
 dotenv
 .DS_Store

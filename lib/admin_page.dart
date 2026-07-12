@@ -16,6 +16,7 @@ import 'current_events_repository.dart';
 import 'link_box.dart';
 import 'links_repository.dart';
 import 'manafest_admin_panel.dart';
+import 'public_media_repository.dart';
 import 'src/background/pluto_background.dart';
 import 'src/nav_bar/nav_bar.dart';
 import 'user_profile_repository.dart';
@@ -97,6 +98,7 @@ class _AdminPageState extends State<AdminPage> {
   final CurrentEventsRepository _eventsRepository = CurrentEventsRepository();
   final LinksRepository _linksRepository = LinksRepository();
   final UserProfileRepository _profileRepository = UserProfileRepository();
+  final PublicMediaRepository _publicMediaRepository = PublicMediaRepository();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   final TextEditingController _titleController = TextEditingController();
@@ -130,6 +132,9 @@ class _AdminPageState extends State<AdminPage> {
 
   String? _editingEventId;
   String _flyerDataUrl = '';
+  String _flyerImageUrl = '';
+  String _flyerStoragePath = '';
+  bool _flyerUploadPending = false;
   bool _isActive = true;
   bool _isSaving = false;
   String? _editingRewardId;
@@ -141,6 +146,8 @@ class _AdminPageState extends State<AdminPage> {
   bool _isSavingEventQr = false;
   String? _editingLinkItemId;
   String _linkImageDataUrl = '';
+  String _linkImageStoragePath = '';
+  bool _linkImageUploadPending = false;
   String _linkAssetImagePath = '';
   int _linkIconCodePoint = Icons.link.codePoint;
   bool _linkIsActive = true;
@@ -197,10 +204,9 @@ class _AdminPageState extends State<AdminPage> {
       return;
     }
 
-    if (fileBytes.lengthInBytes > 900000) {
+    if (fileBytes.lengthInBytes > PublicMediaRepository.maxImageBytes) {
       setState(() {
-        _statusMessage =
-            'Image is too large for Firestore document storage. Use a smaller file.';
+        _statusMessage = 'Flyer images must be 5 MB or smaller.';
       });
       return;
     }
@@ -210,6 +216,7 @@ class _AdminPageState extends State<AdminPage> {
 
     setState(() {
       _flyerDataUrl = dataUrl;
+      _flyerUploadPending = true;
       _statusMessage = 'Flyer selected.';
     });
   }
@@ -237,12 +244,30 @@ class _AdminPageState extends State<AdminPage> {
     });
 
     try {
+      final String documentId =
+          _editingEventId ?? _eventsRepository.newEventId();
+      String flyerImageUrl = _flyerImageUrl;
+      String flyerStoragePath = _flyerStoragePath;
+      String flyerDataUrl = _flyerDataUrl;
+      if (_flyerUploadPending) {
+        final PublicMediaUpload upload =
+            await _publicMediaRepository.uploadEventFlyer(
+          eventId: documentId,
+          dataUrl: _flyerDataUrl,
+        );
+        flyerImageUrl = upload.downloadUrl;
+        flyerStoragePath = upload.storagePath;
+        flyerDataUrl = '';
+      }
+
       final String eventId = await _eventsRepository.saveEvent(
-        id: _editingEventId,
+        id: documentId,
         title: title,
         details: _detailsController.text,
         ticketUrl: _ticketUrlController.text,
-        flyerDataUrl: _flyerDataUrl,
+        flyerDataUrl: flyerDataUrl,
+        flyerImageUrl: flyerImageUrl,
+        flyerStoragePath: flyerStoragePath,
         isActive: _isActive,
         sortOrder: parsedSortOrder,
       );
@@ -252,6 +277,10 @@ class _AdminPageState extends State<AdminPage> {
       }
       setState(() {
         _editingEventId = eventId;
+        _flyerDataUrl = flyerDataUrl;
+        _flyerImageUrl = flyerImageUrl;
+        _flyerStoragePath = flyerStoragePath;
+        _flyerUploadPending = false;
         _statusMessage = 'Event saved.';
       });
     } catch (error) {
@@ -325,6 +354,9 @@ class _AdminPageState extends State<AdminPage> {
       _sortOrderController.text = event.sortOrder.toString();
       _isActive = event.isActive;
       _flyerDataUrl = event.flyerDataUrl;
+      _flyerImageUrl = event.flyerImageUrl;
+      _flyerStoragePath = event.flyerStoragePath;
+      _flyerUploadPending = false;
       _statusMessage = 'Editing "${event.title}".';
     });
   }
@@ -337,6 +369,9 @@ class _AdminPageState extends State<AdminPage> {
       _ticketUrlController.clear();
       _sortOrderController.text = '0';
       _flyerDataUrl = '';
+      _flyerImageUrl = '';
+      _flyerStoragePath = '';
+      _flyerUploadPending = false;
       _isActive = true;
       _statusMessage = 'New event form ready.';
     });
@@ -596,9 +631,9 @@ class _AdminPageState extends State<AdminPage> {
       return;
     }
 
-    if (fileBytes.lengthInBytes > 900000) {
+    if (fileBytes.lengthInBytes > PublicMediaRepository.maxImageBytes) {
       setState(() {
-        _statusMessage = 'Link image too large for Firestore document storage.';
+        _statusMessage = 'Link images must be 5 MB or smaller.';
       });
       return;
     }
@@ -608,6 +643,7 @@ class _AdminPageState extends State<AdminPage> {
       _linkImageDataUrl = encodeDataUrl(bytes: fileBytes, mimeType: mimeType);
       _linkImageUrlController.clear();
       _linkAssetImagePath = '';
+      _linkImageUploadPending = true;
       _statusMessage = 'Links page image selected.';
     });
   }
@@ -651,8 +687,24 @@ class _AdminPageState extends State<AdminPage> {
     });
 
     try {
+      final String documentId =
+          _editingLinkItemId ?? _linksRepository.newItemId();
+      String imageDataUrl = _linkImageDataUrl;
+      String imageUrl = _linkImageUrlController.text.trim();
+      String imageStoragePath = _linkImageStoragePath;
+      if (_linkImageUploadPending) {
+        final PublicMediaUpload upload =
+            await _publicMediaRepository.uploadLinkImage(
+          linkId: documentId,
+          dataUrl: _linkImageDataUrl,
+        );
+        imageDataUrl = '';
+        imageUrl = upload.downloadUrl;
+        imageStoragePath = upload.storagePath;
+      }
+
       final String linkId = await _linksRepository.saveItem(
-        id: _editingLinkItemId,
+        id: documentId,
         title: title,
         url: url,
         sectionHeading: _linkSectionHeadingController.text.trim(),
@@ -660,8 +712,9 @@ class _AdminPageState extends State<AdminPage> {
         sortOrder: sortOrder,
         isActive: _linkIsActive,
         isImageCircular: _linkIsImageCircular,
-        imageDataUrl: _linkImageDataUrl,
-        imageUrl: _linkImageUrlController.text.trim(),
+        imageDataUrl: imageDataUrl,
+        imageUrl: imageUrl,
+        imageStoragePath: imageStoragePath,
         assetImagePath: _linkAssetImagePath,
         iconCodePoint: _linkIconCodePoint,
       );
@@ -671,6 +724,10 @@ class _AdminPageState extends State<AdminPage> {
       }
       setState(() {
         _editingLinkItemId = linkId;
+        _linkImageDataUrl = imageDataUrl;
+        _linkImageUrlController.text = imageUrl;
+        _linkImageStoragePath = imageStoragePath;
+        _linkImageUploadPending = false;
         _statusMessage = 'Links page item saved.';
       });
     } catch (error) {
@@ -745,6 +802,8 @@ class _AdminPageState extends State<AdminPage> {
       _linkSortOrderController.text = item.sortOrder.toString();
       _linkImageUrlController.text = item.imageUrl;
       _linkImageDataUrl = item.imageDataUrl;
+      _linkImageStoragePath = item.imageStoragePath;
+      _linkImageUploadPending = false;
       _linkAssetImagePath = item.assetImagePath;
       _linkIconCodePoint = item.iconCodePoint;
       _linkIsActive = item.isActive;
@@ -763,6 +822,8 @@ class _AdminPageState extends State<AdminPage> {
       _linkSortOrderController.text = '0';
       _linkImageUrlController.clear();
       _linkImageDataUrl = '';
+      _linkImageStoragePath = '';
+      _linkImageUploadPending = false;
       _linkAssetImagePath = '';
       _linkIconCodePoint = Icons.link.codePoint;
       _linkIsActive = true;
@@ -1649,6 +1710,9 @@ class _AdminPageState extends State<AdminPage> {
                       : () {
                           setState(() {
                             _flyerDataUrl = '';
+                            _flyerImageUrl = '';
+                            _flyerStoragePath = '';
+                            _flyerUploadPending = false;
                             _statusMessage = 'Flyer image removed.';
                           });
                         },
@@ -1656,15 +1720,21 @@ class _AdminPageState extends State<AdminPage> {
                 ),
               ],
             ),
-            if (flyerBytes != null) ...<Widget>[
+            if (flyerBytes != null || _flyerImageUrl.isNotEmpty) ...<Widget>[
               const SizedBox(height: 12),
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.memory(
-                  flyerBytes,
-                  height: 260,
-                  fit: BoxFit.cover,
-                ),
+                child: flyerBytes != null
+                    ? Image.memory(
+                        flyerBytes,
+                        height: 260,
+                        fit: BoxFit.cover,
+                      )
+                    : Image.network(
+                        _flyerImageUrl,
+                        height: 260,
+                        fit: BoxFit.cover,
+                      ),
               ),
             ],
             const SizedBox(height: 16),
@@ -2046,6 +2116,8 @@ class _AdminPageState extends State<AdminPage> {
                           setState(() {
                             _linkImageDataUrl = '';
                             _linkImageUrlController.clear();
+                            _linkImageStoragePath = '';
+                            _linkImageUploadPending = false;
                             _linkAssetImagePath = '';
                             _statusMessage = 'Links page image removed.';
                           });

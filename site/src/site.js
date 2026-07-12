@@ -1,0 +1,95 @@
+const menuButton = document.querySelector("[data-menu-button]");
+const mobileMenu = document.querySelector("[data-mobile-menu]");
+
+menuButton?.addEventListener("click", () => {
+  const isOpen = menuButton.getAttribute("aria-expanded") === "true";
+  menuButton.setAttribute("aria-expanded", String(!isOpen));
+  menuButton.setAttribute("aria-label", isOpen ? "Open menu" : "Close menu");
+  mobileMenu.hidden = isOpen;
+});
+
+document.addEventListener("click", (event) => {
+  if (!mobileMenu || mobileMenu.hidden || !menuButton) return;
+  if (mobileMenu.contains(event.target) || menuButton.contains(event.target)) return;
+  mobileMenu.hidden = true;
+  menuButton.setAttribute("aria-expanded", "false");
+});
+
+const slides = [...document.querySelectorAll("[data-gallery-slide]")];
+const status = document.querySelector("[data-gallery-status]");
+let currentSlide = 0;
+let galleryTimer;
+
+function showSlide(nextIndex) {
+  if (!slides.length) return;
+  slides[currentSlide].hidden = true;
+  slides[currentSlide].classList.remove("is-entering");
+  currentSlide = (nextIndex + slides.length) % slides.length;
+  slides[currentSlide].hidden = false;
+  slides[currentSlide].classList.add("is-entering");
+  if (status) status.textContent = `${currentSlide + 1} / ${slides.length}`;
+}
+
+function startGallery() {
+  window.clearInterval(galleryTimer);
+  if (slides.length < 2 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  galleryTimer = window.setInterval(() => showSlide(currentSlide + 1), 5000);
+}
+
+document.querySelector("[data-gallery-previous]")?.addEventListener("click", () => {
+  showSlide(currentSlide - 1);
+  startGallery();
+});
+document.querySelector("[data-gallery-next]")?.addEventListener("click", () => {
+  showSlide(currentSlide + 1);
+  startGallery();
+});
+startGallery();
+
+function showAuthState(isSignedIn) {
+  document.querySelectorAll("[data-auth-signed-in]").forEach((element) => {
+    element.hidden = !isSignedIn;
+  });
+  document.querySelectorAll("[data-auth-signed-out]").forEach((element) => {
+    element.hidden = isSignedIn;
+  });
+}
+
+async function enhanceAuth() {
+  const configElement = document.querySelector("#firebase-config");
+  if (!configElement?.textContent) return;
+
+  const [appModule, authModule, firestoreModule] = await Promise.all([
+    import("https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js"),
+    import("https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js"),
+    import("https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js"),
+  ]);
+  const firebaseConfig = JSON.parse(configElement.textContent);
+  const { initializeApp } = appModule;
+  const { getAuth, onAuthStateChanged } = authModule;
+  const { doc, getDoc, getFirestore } = firestoreModule;
+  const firebaseApp = initializeApp(firebaseConfig);
+  const auth = getAuth(firebaseApp);
+  const firestore = getFirestore(firebaseApp);
+
+  onAuthStateChanged(auth, async (user) => {
+    showAuthState(Boolean(user));
+    if (!user) return;
+
+    let avatarUrl = user.photoURL || "/assets/images/pluto-logo.webp";
+    try {
+      const snapshot = await getDoc(doc(firestore, "userProfiles", user.uid));
+      const profileImage = snapshot.data()?.profileImageDataUrl;
+      if (typeof profileImage === "string" && profileImage.startsWith("data:image/")) {
+        avatarUrl = profileImage;
+      }
+    } catch (error) {
+      console.warn("Profile enhancement unavailable", error);
+    }
+    document.querySelectorAll("[data-auth-avatar]").forEach((image) => {
+      image.src = avatarUrl;
+    });
+  });
+}
+
+enhanceAuth().catch((error) => console.warn("Auth enhancement unavailable", error));

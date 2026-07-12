@@ -227,6 +227,14 @@ class SignedInHomePage extends StatelessWidget {
   }
 
   Widget _buildEventFlyer(CurrentEvent event, double size) {
+    if (event.flyerImageUrl.isNotEmpty) {
+      return Image.network(
+        event.flyerImageUrl,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+      );
+    }
     final Uint8List? flyerBytes = event.flyerBytes;
     if (flyerBytes != null) {
       return Image.memory(

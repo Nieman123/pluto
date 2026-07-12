@@ -1,0 +1,69 @@
+{% extends "base.njk" %}
+
+{% block content %}
+  <section class="manafest-hero" aria-labelledby="manafest-title">
+    <img class="manafest-hero-image" src="/assets/images/manafest-flyer.webp" width="900" height="1200" alt="ManaFest 2026 festival artwork">
+    <div class="manafest-hero-copy">
+      <p class="eyebrow">TWO NIGHTS IN THE WOODS</p>
+      <h1 id="manafest-title">{{ manaFest.name }}</h1>
+      <p class="hero-copy">{{ manaFest.description }}</p>
+      <dl class="event-facts">
+        <div><dt>WHEN</dt><dd>{{ manaFest.dateLabel }}</dd></div>
+        <div><dt>WHERE</dt><dd>{{ manaFest.venue }} · {{ manaFest.locality }}, {{ manaFest.region }}</dd></div>
+      </dl>
+      <div class="hero-actions">
+        <a class="button button-primary button-large" href="{{ manaFest.ticketUrl }}" target="_blank" rel="noopener noreferrer">Get tickets</a>
+        <a class="button button-quiet button-large" href="#guide">Read the guide</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section guide-section" id="guide" aria-labelledby="guide-title">
+    <div class="section-heading">
+      <div><p class="eyebrow">PLAN THE WEEKEND</p><h2 id="guide-title">Festival guide</h2></div>
+      <p>Practical details for getting in, setting up, and taking care of the land.</p>
+    </div>
+    <div class="guide-grid">
+      {% for section in manaFest.sections %}
+        <article class="guide-item">
+          <span class="guide-number" aria-hidden="true">0{{ loop.index }}</span>
+          <div>
+            <h3>{{ section.title }}</h3>
+            <p>{{ section.body }}</p>
+            {% if section.title == 'Directions' %}
+              <a class="text-link" href="{{ manaFest.mapsUrl }}" target="_blank" rel="noopener noreferrer">Open Google Maps →</a>
+            {% endif %}
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="lineup-band" aria-labelledby="lineup-title">
+    <div class="section-heading">
+      <div><p class="eyebrow">THE SOUND</p><h2 id="lineup-title">2026 lineup</h2></div>
+      <p>The schedule and stage times will be released closer to the weekend.</p>
+    </div>
+    <img src="/assets/images/manafest-lineup.webp" width="1200" height="1500" alt="ManaFest 2026 artist lineup" loading="lazy">
+  </section>
+
+  <section class="section principles-section" aria-labelledby="principles-title">
+    <div class="principles-heading">
+      <span class="handshake" aria-hidden="true">🤝</span>
+      <div><p class="eyebrow">HOW WE SHOW UP</p><h2 id="principles-title">ManaFest principles</h2></div>
+    </div>
+    <ol class="principles-list">
+      {% for principle in manaFest.principles %}
+        <li><span>{{ loop.index }}</span><div><h3>{{ principle.title }}</h3><p>{{ principle.body }}</p></div></li>
+      {% endfor %}
+    </ol>
+  </section>
+
+  <section class="action-band" aria-label="ManaFest applications">
+    <div><p class="eyebrow">HELP BUILD THE WEEKEND</p><h2>Bring your energy to ManaFest.</h2></div>
+    <div class="hero-actions">
+      <a class="button button-primary" href="{{ manaFest.volunteerUrl }}" target="_blank" rel="noopener noreferrer">Volunteer</a>
+      <a class="button button-quiet" href="{{ manaFest.vendorUrl }}" target="_blank" rel="noopener noreferrer">Apply as a vendor</a>
+    </div>
+  </section>
+{% endblock %}

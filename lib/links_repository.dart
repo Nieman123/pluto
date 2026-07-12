@@ -34,6 +34,7 @@ class LinksPageItem {
     required this.isImageCircular,
     required this.imageDataUrl,
     required this.imageUrl,
+    this.imageStoragePath = '',
     required this.assetImagePath,
     required this.iconCodePoint,
     required this.isDefaultItem,
@@ -60,6 +61,7 @@ class LinksPageItem {
       isImageCircular: data['isImageCircular'] as bool? ?? false,
       imageDataUrl: (data['imageDataUrl'] as String? ?? '').trim(),
       imageUrl: (data['imageUrl'] as String? ?? '').trim(),
+      imageStoragePath: (data['imageStoragePath'] as String? ?? '').trim(),
       assetImagePath: (data['assetImagePath'] as String? ?? '').trim(),
       iconCodePoint:
           _parseInt(data['iconCodePoint'], fallback: Icons.link.codePoint),
@@ -81,6 +83,7 @@ class LinksPageItem {
   final bool isImageCircular;
   final String imageDataUrl;
   final String imageUrl;
+  final String imageStoragePath;
   final String assetImagePath;
   final int iconCodePoint;
   final bool isDefaultItem;
@@ -91,12 +94,12 @@ class LinksPageItem {
   Uint8List? get imageBytes => decodeDataUrl(imageDataUrl);
 
   ImageProvider? get imageProvider {
+    if (imageUrl.isNotEmpty) {
+      return NetworkImage(imageUrl);
+    }
     final Uint8List? bytes = imageBytes;
     if (bytes != null) {
       return MemoryImage(bytes);
-    }
-    if (imageUrl.isNotEmpty) {
-      return NetworkImage(imageUrl);
     }
     if (assetImagePath.isNotEmpty) {
       return AssetImage(assetImagePath);
@@ -118,6 +121,7 @@ class LinksPageItem {
       'isImageCircular': isImageCircular,
       'imageDataUrl': imageDataUrl,
       'imageUrl': imageUrl,
+      'imageStoragePath': imageStoragePath,
       'assetImagePath': assetImagePath,
       'iconCodePoint': iconCodePoint,
     };
@@ -246,6 +250,8 @@ class LinksRepository {
   CollectionReference<Map<String, dynamic>> get _linksPageItems =>
       _firestore.collection('linksPageItems');
 
+  String newItemId() => _linksPageItems.doc().id;
+
   Stream<List<LinksPageItem>> watchItems({required bool onlyActive}) {
     return _linksPageItems.snapshots().map(
       (QuerySnapshot<Map<String, dynamic>> snapshot) {
@@ -289,6 +295,7 @@ class LinksRepository {
     required bool isImageCircular,
     required String imageDataUrl,
     required String imageUrl,
+    String imageStoragePath = '',
     required String assetImagePath,
     required int iconCodePoint,
   }) async {
@@ -310,6 +317,7 @@ class LinksRepository {
       'isImageCircular': isImageCircular,
       'imageDataUrl': imageDataUrl.trim(),
       'imageUrl': imageUrl.trim(),
+      'imageStoragePath': imageStoragePath.trim(),
       'assetImagePath': assetImagePath.trim(),
       'iconCodePoint': iconCodePoint,
       'updatedAt': FieldValue.serverTimestamp(),

@@ -1,86 +1,65 @@
 {
+  "functions": {
+    "source": "functions",
+    "runtime": "nodejs22",
+    "predeploy": [
+      "npm --prefix functions run build"
+    ]
+  },
   "firestore": {
     "rules": "firestore.rules"
   },
+  "storage": {
+    "rules": "storage.rules"
+  },
   "hosting": {
-    "public": "build/web",
+    "public": "dist",
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**",
-      "canvaskit/**",
+      "app/canvaskit/**",
       "**/*.symbols"
+    ],
+    "redirects": [
+      { "source": "/home", "destination": "/", "type": 301 },
+      { "source": "/profile", "destination": "/app/profile", "type": 301 },
+      { "source": "/shop", "destination": "/app/shop", "type": 301 },
+      { "source": "/sign-on", "destination": "/app/sign-on", "type": 301 },
+      { "source": "/sign-up", "destination": "/app/sign-up", "type": 301 },
+      { "source": "/scan-qr", "destination": "/app/scan-qr", "type": 301 },
+      { "source": "/camping", "destination": "/app/camping", "type": 301 },
+      { "source": "/schedule", "destination": "/app/schedule", "type": 301 },
+      { "source": "/admin", "destination": "/app/admin", "type": 301 },
+      { "source": "/admin/manafest", "destination": "/app/admin/manafest", "type": 301 },
+      { "source": "/admin/events", "destination": "/app/admin/events", "type": 301 },
+      { "source": "/admin/rewards", "destination": "/app/admin/rewards", "type": 301 },
+      { "source": "/admin/links", "destination": "/app/admin/links", "type": 301 }
     ],
     "headers": [
       {
-        "source": "/",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "no-cache"
-          }
-        ]
+        "source": "/app/**",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
       },
       {
-        "source": "/*",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "no-cache"
-          }
-        ]
+        "source": "/firebase-messaging-sw.js",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
       },
       {
-        "source": "index.html",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "no-cache"
-          }
-        ]
+        "source": "/assets/**",
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600" }]
       },
       {
-        "source": "**/*.js",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "no-cache"
-          }
-        ]
-      },
-      {
-        "source": "**/*.mjs",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "no-cache"
-          }
-        ]
-      },
-      {
-        "source": "gallery/**",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "public, max-age=31536000, immutable"
-          }
-        ]
-      },
-      {
-        "source": "manafest/**",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "public, max-age=31536000, immutable"
-          }
-        ]
+        "source": "/gallery/**",
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
       }
     ],
     "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
+      { "source": "/app", "destination": "/app/index.html" },
+      { "source": "/app/**", "destination": "/app/index.html" },
+      { "source": "/", "function": { "functionId": "publicSite", "region": "us-central1" } },
+      { "source": "/manafest", "function": { "functionId": "publicSite", "region": "us-central1" } },
+      { "source": "/links", "function": { "functionId": "publicSite", "region": "us-central1" } }
     ]
   }
 }

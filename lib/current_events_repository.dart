@@ -10,6 +10,8 @@ class CurrentEvent {
     required this.details,
     required this.ticketUrl,
     required this.flyerDataUrl,
+    this.flyerImageUrl = '',
+    this.flyerStoragePath = '',
     required this.isActive,
     required this.sortOrder,
     required this.createdAt,
@@ -27,6 +29,8 @@ class CurrentEvent {
       details: (data['details'] as String? ?? '').trim(),
       ticketUrl: (data['ticketUrl'] as String? ?? '').trim(),
       flyerDataUrl: (data['flyerDataUrl'] as String? ?? '').trim(),
+      flyerImageUrl: (data['flyerImageUrl'] as String? ?? '').trim(),
+      flyerStoragePath: (data['flyerStoragePath'] as String? ?? '').trim(),
       isActive: data['isActive'] as bool? ?? true,
       sortOrder: _parseInt(data['sortOrder']),
       createdAt: _parseTimestamp(data['createdAt']),
@@ -39,6 +43,8 @@ class CurrentEvent {
   final String details;
   final String ticketUrl;
   final String flyerDataUrl;
+  final String flyerImageUrl;
+  final String flyerStoragePath;
   final bool isActive;
   final int sortOrder;
   final DateTime? createdAt;
@@ -100,6 +106,8 @@ class CurrentEventsRepository {
   CollectionReference<Map<String, dynamic>> get _currentEventsCollection =>
       _firestore.collection('currentEvents');
 
+  String newEventId() => _currentEventsCollection.doc().id;
+
   Stream<List<CurrentEvent>> watchEvents({required bool onlyActive}) {
     return _currentEventsCollection
         .snapshots()
@@ -121,6 +129,8 @@ class CurrentEventsRepository {
     required String details,
     required String ticketUrl,
     required String flyerDataUrl,
+    String flyerImageUrl = '',
+    String flyerStoragePath = '',
     required bool isActive,
     required int sortOrder,
   }) async {
@@ -136,6 +146,8 @@ class CurrentEventsRepository {
       'details': details.trim(),
       'ticketUrl': ticketUrl.trim(),
       'flyerDataUrl': flyerDataUrl,
+      'flyerImageUrl': flyerImageUrl.trim(),
+      'flyerStoragePath': flyerStoragePath.trim(),
       'isActive': isActive,
       'sortOrder': sortOrder,
       'updatedAt': FieldValue.serverTimestamp(),
