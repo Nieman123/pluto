@@ -77,5 +77,8 @@ jobs:
           create_credentials_file: true
           export_environment_variables: true
 
+      - name: Configure Functions artifact cleanup
+        run: npx firebase-tools@latest functions:artifacts:setpolicy --location us-central1 --days 7 --project pluto-9b6ca --force
+
       - name: Deploy site, Function, and rules
         run: npx firebase-tools@latest deploy --only firestore:rules,storage,functions:publicSite,hosting --project pluto-9b6ca --non-interactive
