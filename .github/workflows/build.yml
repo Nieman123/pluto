@@ -47,7 +47,7 @@ jobs:
           npm ci --prefix functions
 
       - name: Install Flutter dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Test public site and Functions
         run: npm test

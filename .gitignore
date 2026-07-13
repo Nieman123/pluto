@@ -20,7 +20,6 @@ _site/
 /site/dist/
 *-debug.log
 firepit-log.txt
-pubspec.lock
 dotenv
 .DS_Store
 ._*
