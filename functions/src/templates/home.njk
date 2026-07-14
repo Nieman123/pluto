@@ -34,7 +34,7 @@
       {% for event in events %}
         <article class="event-card">
           {% if event.flyerImageUrl %}
-            <img src="{{ event.flyerImageUrl }}" width="900" height="1200" alt="{{ event.title }} event artwork" loading="lazy">
+            <img class="deferred-event-image" src="/assets/images/pluto-logo.webp" data-deferred-src="{{ event.flyerImageUrl }}" width="900" height="1200" alt="{{ event.title }} event artwork" loading="lazy" decoding="async" fetchpriority="low">
           {% else %}
             <div class="event-art-fallback" aria-hidden="true">PLUTO</div>
           {% endif %}

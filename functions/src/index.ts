@@ -23,6 +23,7 @@ if (!getApps().length) initializeApp();
 const db = getFirestore();
 const runtimeRoot = __dirname;
 const templates = join(runtimeRoot, "templates");
+const googleAnalyticsId = "G-Y6GBW8P032";
 const manaFest = JSON.parse(
   readFileSync(join(runtimeRoot, "content/manafest.json"), "utf8"),
 ) as Record<string, unknown>;
@@ -91,11 +92,12 @@ function commonContext(path: string) {
     projectId: "pluto-9b6ca",
     authDomain: "pluto-9b6ca.firebaseapp.com",
     storageBucket: "pluto-9b6ca.appspot.com",
-    measurementId: "G-Y6GBW8P032",
+    measurementId: googleAnalyticsId,
   };
   return {
     path,
     meta: pageMeta(path),
+    googleAnalyticsId,
     firebaseConfigJson: serializeJsonLd(firebaseConfig),
   };
 }

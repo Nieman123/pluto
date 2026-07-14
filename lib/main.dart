@@ -1,3 +1,4 @@
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -46,6 +47,7 @@ class _MyAppState extends State<MyApp> {
   bool _hasNotificationPermission = false;
   bool _isNotificationDenied = false;
   bool _pushNotificationLibraryLoaded = false;
+  String? _lastTrackedAnalyticsPath;
 
   bool get _shouldShowNotificationPrompt {
     return !_isCheckingNotificationSupport &&
@@ -268,6 +270,28 @@ class _MyAppState extends State<MyApp> {
         },
       ),
     ], debugLogDiagnostics: true);
+    _router.routeInformationProvider.addListener(_trackCurrentRoute);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _trackCurrentRoute());
+  }
+
+  void _trackCurrentRoute() {
+    final String path = _router.routeInformationProvider.value.uri.path;
+    final String analyticsPath = path == '/' ? '/app/' : '/app$path';
+    if (_lastTrackedAnalyticsPath == analyticsPath) {
+      return;
+    }
+    _lastTrackedAnalyticsPath = analyticsPath;
+    FirebaseAnalytics.instance.logScreenView(
+      screenName: analyticsPath,
+      screenClass: 'PlutoWebApp',
+    );
+  }
+
+  @override
+  void dispose() {
+    _router.routeInformationProvider.removeListener(_trackCurrentRoute);
+    _router.dispose();
+    super.dispose();
   }
 
   Future<void> _initializeNotifications() async {

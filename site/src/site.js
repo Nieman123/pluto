@@ -46,6 +46,34 @@ document.querySelector("[data-gallery-next]")?.addEventListener("click", () => {
 });
 startGallery();
 
+const deferredEventImages = [...document.querySelectorAll("[data-deferred-src]")];
+
+function loadDeferredEventImage(image) {
+  const source = image.dataset.deferredSrc;
+  if (!source) return;
+  image.addEventListener("load", () => image.classList.add("is-loaded"), { once: true });
+  image.addEventListener("error", () => {
+    image.src = "/assets/images/pluto-logo.webp";
+  }, { once: true });
+  image.src = source;
+  delete image.dataset.deferredSrc;
+}
+
+if (deferredEventImages.length && "IntersectionObserver" in window) {
+  const eventImageObserver = new IntersectionObserver((entries, observer) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      loadDeferredEventImage(entry.target);
+      observer.unobserve(entry.target);
+    });
+  }, { rootMargin: "0px 0px 32px 0px" });
+  deferredEventImages.forEach((image) => eventImageObserver.observe(image));
+} else if (deferredEventImages.length) {
+  window.addEventListener("load", () => {
+    deferredEventImages.forEach(loadDeferredEventImage);
+  }, { once: true });
+}
+
 function showAuthState(isSignedIn) {
   document.querySelectorAll("[data-auth-signed-in]").forEach((element) => {
     element.hidden = !isSignedIn;

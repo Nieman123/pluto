@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const { readFileSync } = require("node:fs");
 const { join } = require("node:path");
+const { gzipSync } = require("node:zlib");
 const nunjucks = require("nunjucks");
 const {
   publicHtmlCacheControl,
@@ -23,6 +24,7 @@ test("ManaFest source is complete without client-side rendering", () => {
       canonical: "https://pluto.events/manafest",
       image: "https://pluto.events/assets/images/manafest-flyer.webp",
     },
+    googleAnalyticsId: "G-Y6GBW8P032",
     firebaseConfigJson: "{}",
     jsonLd: serializeJsonLd({ "@type": "MusicEvent" }),
   });
@@ -43,6 +45,8 @@ test("ManaFest source is complete without client-side rendering", () => {
   assert.match(html, /ManaFest principles/);
   assert.match(html, /application\/ld\+json/);
   assert.match(html, /rel="canonical" href="https:\/\/pluto.events\/manafest"/);
+  assert.match(html, /googletagmanager\.com\/gtag\/js\?id=G-Y6GBW8P032/);
+  assert.match(html, /gtag\("config", "G-Y6GBW8P032"\)/);
 });
 
 test("homepage prioritizes its hero without embedding event media", () => {
@@ -65,6 +69,7 @@ test("homepage prioritizes its hero without embedding event media", () => {
       canonical: "https://pluto.events/",
       image: "https://pluto.events/assets/images/pluto-preview.jpg",
     },
+    googleAnalyticsId: "G-Y6GBW8P032",
     firebaseConfigJson: "{}",
     jsonLd: serializeJsonLd({ "@type": "Organization" }),
   });
@@ -72,5 +77,7 @@ test("homepage prioritizes its hero without embedding event media", () => {
   assert.doesNotMatch(html, /data:image\//);
   assert.match(html, /rel="preload" as="image" href="\/gallery\/1\.webp"/);
   assert.match(html, /src="\/gallery\/1\.webp"[^>]*fetchpriority="high"/);
-  assert.ok(Buffer.byteLength(html) < 20_000);
+  assert.match(html, /data-deferred-src="\/assets\/images\/pluto-preview\.jpg"/);
+  assert.doesNotMatch(html, /<link rel="stylesheet" href="\/assets\/site\.css">/);
+  assert.ok(gzipSync(html).byteLength < 10_000);
 });

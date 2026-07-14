@@ -15,3 +15,7 @@ await cp(
   resolve(repoRoot, "site/content/manafest.json"),
   resolve(functionsRoot, "lib/content/manafest.json"),
 );
+await cp(
+  resolve(repoRoot, "site/static/assets/site.css"),
+  resolve(functionsRoot, "lib/templates/site.css.njk"),
+);

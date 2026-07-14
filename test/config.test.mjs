@@ -4,6 +4,8 @@ import { test } from "node:test";
 
 const firebase = JSON.parse(await readFile("firebase.json", "utf8"));
 const manifest = JSON.parse(await readFile("web/manifest.json", "utf8"));
+const firebaseOptions = await readFile("lib/firebase_options.dart", "utf8");
+const appEntryPoint = await readFile("lib/main.dart", "utf8");
 
 test("Hosting exposes public SSR routes and Flutter deep links", () => {
   const rewrites = firebase.hosting.rewrites;
@@ -32,4 +34,10 @@ test("legacy routes redirect beneath /app", () => {
 test("Flutter web manifest is scoped to /app", () => {
   assert.equal(manifest.start_url, "/app/");
   assert.equal(manifest.scope, "/app/");
+});
+
+test("Flutter web routes use the Pluto Google Analytics property", () => {
+  assert.match(firebaseOptions, /measurementId: 'G-Y6GBW8P032'/);
+  assert.match(appEntryPoint, /FirebaseAnalytics\.instance\.logScreenView/);
+  assert.match(appEntryPoint, /'\/app\$path'/);
 });
