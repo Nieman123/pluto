@@ -66,9 +66,9 @@
         </button>
       </div>
       <nav class="mobile-menu" id="mobile-menu" data-mobile-menu hidden aria-label="Mobile navigation">
-        <a href="/">Home</a>
-        <a href="/manafest">ManaFest</a>
-        <a href="/links">Links</a>
+        <a href="/" {% if path == '/' %}aria-current="page"{% endif %}>Home</a>
+        <a href="/manafest" {% if path == '/manafest' %}aria-current="page"{% endif %}>ManaFest</a>
+        <a href="/links" {% if path == '/links' %}aria-current="page"{% endif %}>Links</a>
         <a href="/app/sign-up" data-auth-signed-out>Create Account</a>
         <a href="/app/sign-on" data-auth-signed-out>Sign In</a>
         <a href="/app/" data-auth-signed-in hidden>Open App</a>
@@ -80,15 +80,15 @@
 
     <footer class="site-footer">
       <div>
-        <a class="brand footer-brand" href="/">
+        <a class="brand footer-brand" href="/" aria-label="Pluto Events home">
           <img src="/assets/images/pluto-logo.webp" width="44" height="44" alt="">
           <span>PLUTO EVENTS</span>
         </a>
         <p>Underground sound, strange gatherings, and room to be yourself.</p>
       </div>
       <nav aria-label="Footer navigation">
-        <a href="/manafest">ManaFest</a>
-        <a href="/links">Links</a>
+        <a href="/manafest" {% if path == '/manafest' %}aria-current="page"{% endif %}>ManaFest</a>
+        <a href="/links" {% if path == '/links' %}aria-current="page"{% endif %}>Links</a>
         <a href="mailto:plutopresentsavl@gmail.com">Contact</a>
       </nav>
       <p class="footer-meta">© 2026 Pluto Events</p>

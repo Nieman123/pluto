@@ -25,10 +25,10 @@
     </div>
     <div class="guide-grid">
       {% for section in manaFest.sections %}
-        <article class="guide-item">
+        <article class="guide-item" aria-labelledby="guide-item-{{ loop.index }}-title">
           <span class="guide-number" aria-hidden="true">0{{ loop.index }}</span>
           <div>
-            <h3>{{ section.title }}</h3>
+            <h3 id="guide-item-{{ loop.index }}-title">{{ section.title }}</h3>
             <p>{{ section.body }}</p>
             {% if section.title == 'Directions' %}
               <a class="text-link" href="{{ manaFest.mapsUrl }}" target="_blank" rel="noopener noreferrer">Open Google Maps →</a>
@@ -89,8 +89,8 @@
     </ol>
   </section>
 
-  <section class="action-band" aria-label="ManaFest applications">
-    <div><p class="eyebrow">HELP BUILD THE WEEKEND</p><h2>Bring your energy to ManaFest.</h2></div>
+  <section class="action-band" aria-labelledby="applications-title">
+    <div><p class="eyebrow">HELP BUILD THE WEEKEND</p><h2 id="applications-title">Bring your energy to ManaFest.</h2></div>
     <div class="hero-actions">
       <a class="button button-primary" href="{{ manaFest.volunteerUrl }}" target="_blank" rel="noopener noreferrer">Volunteer</a>
       <a class="button button-quiet" href="{{ manaFest.vendorUrl }}" target="_blank" rel="noopener noreferrer">Apply as a vendor</a>

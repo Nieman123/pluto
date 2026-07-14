@@ -1,6 +1,14 @@
 const menuButton = document.querySelector("[data-menu-button]");
 const mobileMenu = document.querySelector("[data-mobile-menu]");
 
+function closeMenu({ restoreFocus = false } = {}) {
+  if (!mobileMenu || !menuButton) return;
+  mobileMenu.hidden = true;
+  menuButton.setAttribute("aria-expanded", "false");
+  menuButton.setAttribute("aria-label", "Open menu");
+  if (restoreFocus) menuButton.focus();
+}
+
 menuButton?.addEventListener("click", () => {
   const isOpen = menuButton.getAttribute("aria-expanded") === "true";
   menuButton.setAttribute("aria-expanded", String(!isOpen));
@@ -11,8 +19,12 @@ menuButton?.addEventListener("click", () => {
 document.addEventListener("click", (event) => {
   if (!mobileMenu || mobileMenu.hidden || !menuButton) return;
   if (mobileMenu.contains(event.target) || menuButton.contains(event.target)) return;
-  mobileMenu.hidden = true;
-  menuButton.setAttribute("aria-expanded", "false");
+  closeMenu();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape" || !mobileMenu || mobileMenu.hidden) return;
+  closeMenu({ restoreFocus: true });
 });
 
 const slides = [...document.querySelectorAll("[data-gallery-slide]")];
@@ -27,7 +39,10 @@ function showSlide(nextIndex) {
   currentSlide = (nextIndex + slides.length) % slides.length;
   slides[currentSlide].hidden = false;
   slides[currentSlide].classList.add("is-entering");
-  if (status) status.textContent = `${currentSlide + 1} / ${slides.length}`;
+  if (status) {
+    status.textContent = `${currentSlide + 1} / ${slides.length}`;
+    status.setAttribute("aria-label", `Photo ${currentSlide + 1} of ${slides.length}`);
+  }
 }
 
 function startGallery() {

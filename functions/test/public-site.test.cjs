@@ -43,6 +43,15 @@ test("ManaFest source is complete without client-side rendering", () => {
     /href="https:\/\/www\.instagram\.com\/banh\.gvl\/"/,
   );
   assert.match(html, /ManaFest principles/);
+  assert.match(
+    html,
+    /<article class="guide-item" aria-labelledby="guide-item-1-title">/,
+  );
+  assert.match(html, /<h3 id="guide-item-1-title">/);
+  assert.match(
+    html,
+    /<section class="action-band" aria-labelledby="applications-title">/,
+  );
   assert.match(html, /application\/ld\+json/);
   assert.match(html, /rel="canonical" href="https:\/\/pluto.events\/manafest"/);
   assert.match(html, /googletagmanager\.com\/gtag\/js\?id=G-Y6GBW8P032/);
@@ -77,7 +86,57 @@ test("homepage prioritizes its hero without embedding event media", () => {
   assert.doesNotMatch(html, /data:image\//);
   assert.match(html, /rel="preload" as="image" href="\/gallery\/1\.webp"/);
   assert.match(html, /src="\/gallery\/1\.webp"[^>]*fetchpriority="high"/);
+  assert.match(
+    html,
+    /id="home-gallery" role="group" aria-roledescription="carousel"/,
+  );
+  assert.match(
+    html,
+    /aria-label="Previous photo" aria-controls="home-gallery"/,
+  );
+  assert.match(
+    html,
+    /role="status" aria-live="polite" aria-atomic="true"/,
+  );
+  assert.match(
+    html,
+    /<article class="event-card" aria-labelledby="event-1-title">/,
+  );
+  assert.match(html, /<h3 id="event-1-title">Subterranea<\/h3>/);
+  assert.match(
+    html,
+    /class="brand footer-brand" href="\/" aria-label="Pluto Events home"/,
+  );
   assert.match(html, /data-deferred-src="\/assets\/images\/pluto-preview\.jpg"/);
   assert.doesNotMatch(html, /<link rel="stylesheet" href="\/assets\/site\.css">/);
   assert.ok(gzipSync(html).byteLength < 10_000);
+});
+
+test("link collections expose native list and navigation semantics", () => {
+  const templates = join(__dirname, "../lib/templates");
+  const env = nunjucks.configure(templates, { autoescape: true });
+  const html = env.render("links.njk", {
+    path: "/links",
+    groupedLinks: {
+      Social: [
+        {
+          title: "Instagram",
+          url: "https://www.instagram.com/plutopresents/",
+          imageUrl: "",
+          isImageCircular: false,
+        },
+      ],
+    },
+    meta: {
+      title: "Links | Pluto Events",
+      description: "Find Pluto online.",
+      canonical: "https://pluto.events/links",
+      image: "https://pluto.events/assets/images/pluto-preview.jpg",
+    },
+    firebaseConfigJson: "{}",
+  });
+
+  assert.match(html, /<ul class="link-list">/);
+  assert.match(html, /<li>\s*<a class="link-row"/);
+  assert.match(html, /href="\/links" aria-current="page">Links<\/a>/);
 });

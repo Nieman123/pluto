@@ -76,28 +76,33 @@ class _ManaFestPageState extends State<ManaFestPage> {
     required List<Widget> children,
   }) {
     final Color accent = _guideAccentForTitle(title);
-    final Widget sectionIcon = Container(
-      width: 46,
-      height: 46,
-      decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.13),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Icon(
-        _guideIconForTitle(title),
-        color: accent,
-        size: 24,
+    final Widget sectionIcon = ExcludeSemantics(
+      child: Container(
+        width: 46,
+        height: 46,
+        decoration: BoxDecoration(
+          color: accent.withValues(alpha: 0.13),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          _guideIconForTitle(title),
+          color: accent,
+          size: 24,
+        ),
       ),
     );
     final Widget sectionContent = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 25,
-            fontWeight: FontWeight.w800,
-            color: _guideInk,
+        Semantics(
+          headingLevel: 2,
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 25,
+              fontWeight: FontWeight.w800,
+              color: _guideInk,
+            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -105,37 +110,41 @@ class _ManaFestPageState extends State<ManaFestPage> {
       ],
     );
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      decoration: BoxDecoration(
-        color: _guideSurface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: accent.withValues(alpha: 0.2)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(22),
-        child: LayoutBuilder(
-          builder: (BuildContext context, BoxConstraints constraints) {
-            if (constraints.maxWidth < 430) {
-              return Column(
+    return Semantics(
+      container: true,
+      explicitChildNodes: true,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        decoration: BoxDecoration(
+          color: _guideSurface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: accent.withValues(alpha: 0.2)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(22),
+          child: LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+              if (constraints.maxWidth < 430) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    sectionIcon,
+                    const SizedBox(height: 14),
+                    sectionContent,
+                  ],
+                );
+              }
+
+              return Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   sectionIcon,
-                  const SizedBox(height: 14),
-                  sectionContent,
+                  const SizedBox(width: 16),
+                  Expanded(child: sectionContent),
                 ],
               );
-            }
-
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                sectionIcon,
-                const SizedBox(width: 16),
-                Expanded(child: sectionContent),
-              ],
-            );
-          },
+            },
+          ),
         ),
       ),
     );
@@ -211,12 +220,15 @@ class _ManaFestPageState extends State<ManaFestPage> {
                           ),
                         ),
                         const SizedBox(height: 6),
-                        Text(
-                          experience.title,
-                          style: const TextStyle(
-                            color: _guideInk,
-                            fontSize: 25,
-                            fontWeight: FontWeight.w800,
+                        Semantics(
+                          headingLevel: 2,
+                          child: Text(
+                            experience.title,
+                            style: const TextStyle(
+                              color: _guideInk,
+                              fontSize: 25,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -352,12 +364,15 @@ class _ManaFestPageState extends State<ManaFestPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(
-            group.title,
-            style: const TextStyle(
-              color: _guideInk,
-              fontSize: 17,
-              fontWeight: FontWeight.w800,
+          Semantics(
+            headingLevel: 3,
+            child: Text(
+              group.title,
+              style: const TextStyle(
+                color: _guideInk,
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
           const SizedBox(height: 15),
@@ -381,6 +396,7 @@ class _ManaFestPageState extends State<ManaFestPage> {
               Text('${item.text} ', style: textStyle),
               Semantics(
                 link: true,
+                linkUrl: Uri.tryParse(item.url),
                 label: 'Open ${item.linkText} on Instagram',
                 child: InkWell(
                   onTap: () => _openLink(item.url),
@@ -486,12 +502,12 @@ class _ManaFestPageState extends State<ManaFestPage> {
   }
 
   Widget _buildPublicGuideHeading() {
-    return const Padding(
-      padding: EdgeInsets.fromLTRB(4, 18, 4, 20),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 18, 4, 20),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Padding(
+          const Padding(
             padding: EdgeInsets.only(top: 4),
             child: Icon(
               Icons.auto_stories_outlined,
@@ -499,12 +515,12 @@ class _ManaFestPageState extends State<ManaFestPage> {
               size: 30,
             ),
           ),
-          SizedBox(width: 14),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(
+                const Text(
                   'THE FIELD GUIDE',
                   style: TextStyle(
                     color: _guideOrange,
@@ -513,17 +529,20 @@ class _ManaFestPageState extends State<ManaFestPage> {
                     letterSpacing: 1.2,
                   ),
                 ),
-                SizedBox(height: 6),
-                Text(
-                  'Know before you go',
-                  style: TextStyle(
-                    color: _guideInk,
-                    fontSize: 32,
-                    fontWeight: FontWeight.w800,
+                const SizedBox(height: 6),
+                Semantics(
+                  headingLevel: 2,
+                  child: const Text(
+                    'Know before you go',
+                    style: TextStyle(
+                      color: _guideInk,
+                      fontSize: 32,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
-                SizedBox(height: 7),
-                Text(
+                const SizedBox(height: 7),
+                const Text(
                   'The essentials for arriving, camping, and taking care of each other all weekend.',
                   style: TextStyle(
                     color: _guideMuted,
@@ -541,6 +560,7 @@ class _ManaFestPageState extends State<ManaFestPage> {
 
   Widget _buildPublicHeroCard(BuildContext context) {
     return Card(
+      semanticContainer: false,
       color: Colors.black.withValues(alpha: 0.48),
       child: Padding(
         padding: const EdgeInsets.all(18),
@@ -552,18 +572,22 @@ class _ManaFestPageState extends State<ManaFestPage> {
               child: Image.asset(
                 'assets/events/Mana-Fest-2026-Flyer-half.webp',
                 fit: BoxFit.cover,
+                semanticLabel: 'ManaFest 2026 festival flyer',
               ),
             );
 
             final Widget content = Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                const Text(
-                  'ManaFest 2026',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 38,
-                    fontWeight: FontWeight.bold,
+                Semantics(
+                  headingLevel: 1,
+                  child: const Text(
+                    'ManaFest 2026',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 38,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -849,6 +873,7 @@ class _ManaFestPageState extends State<ManaFestPage> {
                   width: 74,
                   height: 88,
                   fit: BoxFit.cover,
+                  semanticLabel: 'ManaFest 2026 festival flyer',
                 ),
               ),
               const SizedBox(width: 14),
@@ -1178,6 +1203,7 @@ class _ManaFestPageState extends State<ManaFestPage> {
                   child: Image.asset(
                     'assets/events/Mana-Fest-2026-Flyer-half.webp',
                     fit: BoxFit.cover,
+                    excludeFromSemantics: true,
                   ),
                 ),
               ),
@@ -1213,13 +1239,16 @@ class _ManaFestPageState extends State<ManaFestPage> {
                         ),
                       ),
                       const SizedBox(height: 7),
-                      Text(
-                        'Everything you need for the weekend.',
-                        style: TextStyle(
-                          color: _guideInk,
-                          fontSize: isCompact ? 26 : 30,
-                          fontWeight: FontWeight.w800,
-                          height: 1.12,
+                      Semantics(
+                        headingLevel: 2,
+                        child: Text(
+                          'Everything you need for the weekend.',
+                          style: TextStyle(
+                            color: _guideInk,
+                            fontSize: isCompact ? 26 : 30,
+                            fontWeight: FontWeight.w800,
+                            height: 1.12,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 9),
@@ -1335,12 +1364,15 @@ class _ManaFestPageState extends State<ManaFestPage> {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          color: _guideInk,
-                          fontSize: 21,
-                          fontWeight: FontWeight.w800,
+                      Semantics(
+                        headingLevel: 3,
+                        child: Text(
+                          title,
+                          style: const TextStyle(
+                            color: _guideInk,
+                            fontSize: 21,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
                     ],
@@ -1403,11 +1435,11 @@ class _ManaFestPageState extends State<ManaFestPage> {
                   ),
                 ),
                 const SizedBox(width: 15),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Text(
+                      const Text(
                         'MANAFEST PRINCIPLES',
                         style: TextStyle(
                           color: _guidePurple,
@@ -1416,17 +1448,20 @@ class _ManaFestPageState extends State<ManaFestPage> {
                           letterSpacing: 1,
                         ),
                       ),
-                      SizedBox(height: 5),
-                      Text(
-                        'How we show up',
-                        style: TextStyle(
-                          color: _guideInk,
-                          fontSize: 25,
-                          fontWeight: FontWeight.w800,
+                      const SizedBox(height: 5),
+                      Semantics(
+                        headingLevel: 2,
+                        child: const Text(
+                          'How we show up',
+                          style: TextStyle(
+                            color: _guideInk,
+                            fontSize: 25,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
-                      SizedBox(height: 6),
-                      Text(
+                      const SizedBox(height: 6),
+                      const Text(
                         'Five shared agreements for taking care of the land and each other.',
                         style: TextStyle(
                           color: _guideMuted,
@@ -1492,13 +1527,16 @@ class _ManaFestPageState extends State<ManaFestPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(
-                      principle.title,
-                      style: const TextStyle(
-                        color: _guideInk,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                        height: 1.28,
+                    Semantics(
+                      headingLevel: 3,
+                      child: Text(
+                        principle.title,
+                        style: const TextStyle(
+                          color: _guideInk,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          height: 1.28,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 7),

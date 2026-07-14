@@ -1,7 +1,9 @@
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:go_router/go_router.dart';
 
 import 'admin_page.dart' deferred as admin_page hide AdminSectionX;
@@ -29,11 +31,18 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(const MyApp());
+  // The root widget retains this handle for the full app session so Flutter
+  // exposes its semantic DOM without requiring a screen reader or opt-in tap.
+  final SemanticsHandle? webSemanticsHandle =
+      kIsWeb ? SemanticsBinding.instance.ensureSemantics() : null;
+  runApp(MyApp(webSemanticsHandle: webSemanticsHandle));
 }
 
 class MyApp extends StatefulWidget {
-  const MyApp({Key? key}) : super(key: key);
+  const MyApp({Key? key, this.webSemanticsHandle}) : super(key: key);
+
+  final SemanticsHandle? webSemanticsHandle;
+
   @override
   _MyAppState createState() => _MyAppState();
 }

@@ -6,6 +6,10 @@ const firebase = JSON.parse(await readFile("firebase.json", "utf8"));
 const manifest = JSON.parse(await readFile("web/manifest.json", "utf8"));
 const firebaseOptions = await readFile("lib/firebase_options.dart", "utf8");
 const appEntryPoint = await readFile("lib/main.dart", "utf8");
+const manaFestPage = await readFile("lib/manafest_page.dart", "utf8");
+const publicSiteEntryPoint = await readFile("site/src/site.js", "utf8");
+const flutterWebShell = await readFile("web/index.html", "utf8");
+const flutterBootstrap = await readFile("web/flutter_bootstrap.js", "utf8");
 
 test("Hosting exposes public SSR routes and Flutter deep links", () => {
   const rewrites = firebase.hosting.rewrites;
@@ -40,4 +44,22 @@ test("Flutter web routes use the Pluto Google Analytics property", () => {
   assert.match(firebaseOptions, /measurementId: 'G-Y6GBW8P032'/);
   assert.match(appEntryPoint, /FirebaseAnalytics\.instance\.logScreenView/);
   assert.match(appEntryPoint, /'\/app\$path'/);
+});
+
+test("web accessibility trees and keyboard navigation are always available", () => {
+  assert.match(
+    appEntryPoint,
+    /kIsWeb \? SemanticsBinding\.instance\.ensureSemantics\(\)/,
+  );
+  assert.match(publicSiteEntryPoint, /event\.key !== "Escape"/);
+  assert.match(publicSiteEntryPoint, /restoreFocus: true/);
+  assert.doesNotMatch(flutterWebShell, /user-scalable=no/);
+  assert.doesNotMatch(flutterWebShell, /maximum-scale=/);
+  assert.match(flutterWebShell, /<html lang="en">/);
+  assert.match(flutterWebShell, /<div id="flutter-app"><\/div>/);
+  assert.match(
+    flutterBootstrap,
+    /hostElement: document\.querySelector\("#flutter-app"\)/,
+  );
+  assert.match(manaFestPage, /linkUrl: Uri\.tryParse\(item\.url\)/);
 });

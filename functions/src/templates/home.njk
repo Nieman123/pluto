@@ -2,10 +2,16 @@
 
 {% block content %}
   <section class="home-hero" aria-labelledby="home-title">
-    <div class="hero-media" data-gallery>
-      {% set gallery = ['1.webp', 'elysium-10.webp', '14.webp', 'elysium-4.webp', '10.webp'] %}
+    <div class="hero-media" id="home-gallery" role="group" aria-roledescription="carousel" aria-label="Pluto Events photo gallery" data-gallery>
+      {% set gallery = [
+        { src: '1.webp', alt: 'Performers onstage behind pink caution tape at a Pluto Events party' },
+        { src: 'elysium-10.webp', alt: 'Green and magenta light trails moving through a Pluto Events dance floor' },
+        { src: '14.webp', alt: 'Two attendees dancing together at a Pluto Events party' },
+        { src: 'elysium-4.webp', alt: 'Three friends smiling with their arms around each other at a Pluto Events party' },
+        { src: '10.webp', alt: 'Three attendees posing together in front of a brick wall at a Pluto Events party' }
+      ] %}
       {% for image in gallery %}
-        <img src="/gallery/{{ image }}" width="1920" height="1080" alt="Pluto Events crowd and performers" decoding="async" {% if loop.first %}loading="eager" fetchpriority="high"{% else %}hidden loading="lazy"{% endif %} data-gallery-slide>
+        <img src="/gallery/{{ image.src }}" width="1920" height="1080" alt="{{ image.alt }}" decoding="async" {% if loop.first %}loading="eager" fetchpriority="high"{% else %}hidden loading="lazy"{% endif %} data-gallery-slide>
       {% endfor %}
     </div>
     <div class="hero-shade"></div>
@@ -18,10 +24,10 @@
         <a class="button button-glass button-large" href="/manafest">Explore ManaFest</a>
       </div>
     </div>
-    <div class="gallery-controls" aria-label="Gallery controls">
-      <button type="button" data-gallery-previous aria-label="Previous photo">←</button>
-      <span data-gallery-status aria-live="polite">1 / 5</span>
-      <button type="button" data-gallery-next aria-label="Next photo">→</button>
+    <div class="gallery-controls" role="group" aria-label="Photo gallery controls">
+      <button type="button" data-gallery-previous aria-label="Previous photo" aria-controls="home-gallery">←</button>
+      <span data-gallery-status role="status" aria-live="polite" aria-atomic="true" aria-label="Photo 1 of 5">1 / 5</span>
+      <button type="button" data-gallery-next aria-label="Next photo" aria-controls="home-gallery">→</button>
     </div>
   </section>
 
@@ -32,14 +38,14 @@
     </div>
     <div class="event-grid">
       {% for event in events %}
-        <article class="event-card">
+        <article class="event-card" aria-labelledby="event-{{ loop.index }}-title">
           {% if event.flyerImageUrl %}
             <img class="deferred-event-image" src="/assets/images/pluto-logo.webp" data-deferred-src="{{ event.flyerImageUrl }}" width="900" height="1200" alt="{{ event.title }} event artwork" loading="lazy" decoding="async" fetchpriority="low">
           {% else %}
             <div class="event-art-fallback" aria-hidden="true">PLUTO</div>
           {% endif %}
           <div class="event-card-body">
-            <h3>{{ event.title }}</h3>
+            <h3 id="event-{{ loop.index }}-title">{{ event.title }}</h3>
             {% if event.details %}<p>{{ event.details }}</p>{% endif %}
             <div class="event-actions">
               {% if event.ticketUrl %}<a class="button button-primary" href="{{ event.ticketUrl }}" target="_blank" rel="noopener noreferrer">Get tickets</a>{% endif %}

@@ -311,7 +311,8 @@ p { color: var(--muted); }
 .links-sections { width: min(820px, calc(100% - 40px)); margin: 0 auto; padding-bottom: 100px; }
 .links-group { margin-bottom: 50px; }
 .links-group h2 { font-size: 1rem; color: var(--orange); font-family: "Source Code Pro", monospace; text-transform: uppercase; }
-.link-list { border-top: 1px solid var(--line); }
+.link-list { margin: 0; padding: 0; border-top: 1px solid var(--line); list-style: none; }
+.link-list li { margin: 0; padding: 0; }
 .link-row { min-height: 88px; padding: 12px 4px; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 64px 1fr 40px; align-items: center; gap: 20px; color: var(--text); text-decoration: none; }
 .link-row:hover { color: var(--orange); }
 .link-row img { width: 64px; height: 64px; border-radius: 6px; object-fit: cover; }
