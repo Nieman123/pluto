@@ -11,6 +11,63 @@
   "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Three+Creeks+Campground+Anderson+South+Carolina",
   "volunteerUrl": "https://forms.gle/Cyh34mQduSKDUzpdA",
   "vendorUrl": "https://forms.gle/zUdyMvJRgkdNXvdM7",
+  "festivalExperience": {
+    "eyebrow": "BEYOND THE STAGES",
+    "title": "Around the festival",
+    "intro": "Start the day slowly, make something, learn a new flow, and refuel with friends between sets.",
+    "notice": "21+ event",
+    "groups": [
+      {
+        "title": "Morning rituals",
+        "items": [
+          {
+            "text": "Sunrise sound bath"
+          },
+          {
+            "text": "Sunrise yoga"
+          },
+          {
+            "text": "Free tea each morning"
+          }
+        ]
+      },
+      {
+        "title": "Create and flow",
+        "items": [
+          {
+            "text": "Custom T-shirt booth"
+          },
+          {
+            "text": "Free festival-wear boutique"
+          },
+          {
+            "text": "Fire-flow artists organized by",
+            "linkText": "@pyro.possum",
+            "url": "https://www.instagram.com/pyro.possum/"
+          },
+          {
+            "text": "Instructional flow-arts classes"
+          },
+          {
+            "text": "Live painting"
+          }
+        ]
+      },
+      {
+        "title": "Food and drinks",
+        "items": [
+          {
+            "text": "Food by our friend Evan and",
+            "linkText": "@banh.gvl",
+            "url": "https://www.instagram.com/banh.gvl/"
+          },
+          {
+            "text": "BYOB event. No alcohol will be sold on site."
+          }
+        ]
+      }
+    ]
+  },
   "sections": [
     {
       "title": "Event Info",

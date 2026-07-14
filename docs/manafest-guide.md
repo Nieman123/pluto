@@ -8,6 +8,29 @@ Raw energy, heavy bass, and regional DJs are at the center of the weekend.
 
 Bring your crew, set up camp, and lock in for a full weekend of underground sound.
 
+## Around the Festival
+
+ManaFest is a 21+ event.
+
+### Morning Rituals
+
+- Sunrise sound bath
+- Sunrise yoga
+- Free tea each morning
+
+### Create and Flow
+
+- Custom T-shirt booth
+- Free festival-wear boutique
+- Fire-flow artists organized by [@pyro.possum](https://www.instagram.com/pyro.possum/)
+- Instructional flow-arts classes
+- Live painting
+
+### Food and Drinks
+
+- Food by our friend Evan and [@banh.gvl](https://www.instagram.com/banh.gvl/)
+- BYOB event. No alcohol will be sold on site.
+
 ## Directions
 
 Navigate to Three Creeks Campground in Anderson, South Carolina.

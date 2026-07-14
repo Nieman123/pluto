@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
+import 'manafest_content.dart';
 import 'manafest_repository.dart';
 import 'src/background/pluto_background.dart';
 import 'src/nav_bar/nav_bar.dart';
@@ -34,6 +35,13 @@ class _ManaFestPageState extends State<ManaFestPage> {
   static const IconData _principlesIcon = Icons.handshake_outlined;
 
   final ManaFestRepository _manaFestRepository = ManaFestRepository();
+  late final Future<ManaFestExperience> _festivalExperience;
+
+  @override
+  void initState() {
+    super.initState();
+    _festivalExperience = ManaFestExperience.load();
+  }
 
   Future<void> _openLink(String url) async {
     final String normalizedUrl = url.trim();
@@ -154,6 +162,257 @@ class _ManaFestPageState extends State<ManaFestPage> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFestivalExperiencePanel() {
+    return FutureBuilder<ManaFestExperience>(
+      future: _festivalExperience,
+      builder:
+          (BuildContext context, AsyncSnapshot<ManaFestExperience> snapshot) {
+        if (snapshot.hasError) {
+          return _buildFestivalExperienceStatus(
+            'Festival highlights are temporarily unavailable.',
+          );
+        }
+
+        final ManaFestExperience? experience = snapshot.data;
+        if (experience == null) {
+          return _buildFestivalExperienceStatus('Loading festival highlights…');
+        }
+
+        return Container(
+          decoration: BoxDecoration(
+            color: _guideSurfaceStrong,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: _guideOrange.withValues(alpha: 0.24),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(22),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                LayoutBuilder(
+                  builder: (BuildContext context, BoxConstraints constraints) {
+                    final Widget heading = Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          experience.eyebrow,
+                          style: const TextStyle(
+                            color: _guideOrange,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.1,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          experience.title,
+                          style: const TextStyle(
+                            color: _guideInk,
+                            fontSize: 25,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          experience.intro,
+                          style: const TextStyle(
+                            color: _guideMuted,
+                            fontSize: 15,
+                            height: 1.45,
+                          ),
+                        ),
+                      ],
+                    );
+                    final Widget notice = _buildFestivalAgeNotice(
+                      experience.notice,
+                    );
+
+                    if (constraints.maxWidth < 560) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          heading,
+                          const SizedBox(height: 16),
+                          notice,
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Expanded(child: heading),
+                        const SizedBox(width: 24),
+                        notice,
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 26),
+                LayoutBuilder(
+                  builder: (BuildContext context, BoxConstraints constraints) {
+                    if (constraints.maxWidth < 760) {
+                      return Column(
+                        children: <Widget>[
+                          for (int index = 0;
+                              index < experience.groups.length;
+                              index++) ...<Widget>[
+                            if (index > 0) const SizedBox(height: 24),
+                            _buildFestivalExperienceGroup(
+                              experience.groups[index],
+                            ),
+                          ],
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        for (int index = 0;
+                            index < experience.groups.length;
+                            index++) ...<Widget>[
+                          if (index > 0) const SizedBox(width: 28),
+                          Expanded(
+                            child: _buildFestivalExperienceGroup(
+                              experience.groups[index],
+                            ),
+                          ),
+                        ],
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildFestivalExperienceStatus(String message) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: _guideSurfaceStrong,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: _guideOrange.withValues(alpha: 0.24),
+        ),
+      ),
+      child: Text(
+        message,
+        style: const TextStyle(color: _guideMuted, fontSize: 15),
+      ),
+    );
+  }
+
+  Widget _buildFestivalAgeNotice(String notice) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: _guideOrange.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: _guideOrange.withValues(alpha: 0.48),
+        ),
+      ),
+      child: Text(
+        notice.toUpperCase(),
+        style: const TextStyle(
+          color: _guideOrange,
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.7,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFestivalExperienceGroup(ManaFestExperienceGroup group) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.only(top: 16),
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(
+            color: _guideInk.withValues(alpha: 0.14),
+          ),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            group.title,
+            style: const TextStyle(
+              color: _guideInk,
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 15),
+          for (final ManaFestExperienceItem item in group.items)
+            _buildFestivalExperienceItem(item),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFestivalExperienceItem(ManaFestExperienceItem item) {
+    const TextStyle textStyle = TextStyle(
+      color: _guideMuted,
+      fontSize: 15,
+      height: 1.4,
+    );
+    final Widget itemText = item.hasLink
+        ? Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: <Widget>[
+              Text('${item.text} ', style: textStyle),
+              Semantics(
+                link: true,
+                label: 'Open ${item.linkText} on Instagram',
+                child: InkWell(
+                  onTap: () => _openLink(item.url),
+                  borderRadius: BorderRadius.circular(4),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Text(
+                      item.linkText,
+                      style: textStyle.copyWith(
+                        color: const Color(0xFF8FDDE6),
+                        decoration: TextDecoration.underline,
+                        decorationColor: const Color(0xFF8FDDE6),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          )
+        : Text(item.text, style: textStyle);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 11),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Padding(
+            padding: EdgeInsets.only(top: 5),
+            child: Icon(Icons.auto_awesome, size: 13, color: _guidePurple),
+          ),
+          const SizedBox(width: 9),
+          Expanded(child: itemText),
         ],
       ),
     );
@@ -435,6 +694,8 @@ class _ManaFestPageState extends State<ManaFestPage> {
                   _buildGoogleMapsButton(),
                 ],
               ),
+              _buildFestivalExperiencePanel(),
+              const SizedBox(height: 14),
               _buildPublicSection(
                 title: 'Camping',
                 children: <Widget>[
@@ -877,6 +1138,8 @@ class _ManaFestPageState extends State<ManaFestPage> {
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
               children: <Widget>[
                 _buildGuideIntro(),
+                const SizedBox(height: 16),
+                _buildFestivalExperiencePanel(),
                 const SizedBox(height: 16),
                 _buildGuideCardLayout(guideCards, contentWidth),
                 const SizedBox(height: 20),

@@ -264,6 +264,19 @@ p { color: var(--muted); }
 .guide-item { padding: 34px 0; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 90px 1fr; gap: 30px; }
 .guide-number { color: var(--magenta); font: 1rem "Source Code Pro", monospace; }
 .guide-item p { max-width: 850px; margin-bottom: 12px; }
+.experience-band { padding: 96px max(20px, calc((100vw - var(--content)) / 2)); background: oklch(22.5% .028 326); }
+.experience-heading { margin-bottom: 44px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, .7fr); gap: 48px; align-items: end; }
+.experience-heading h2, .experience-intro p { margin-bottom: 0; }
+.experience-intro { display: flex; flex-direction: column; align-items: flex-start; gap: 18px; }
+.age-notice { padding: 8px 12px; border: 1px solid rgba(255,178,77,.5); border-radius: 999px; color: var(--orange); font: .75rem "Source Code Pro", monospace; letter-spacing: .04em; text-transform: uppercase; }
+.experience-groups { display: grid; grid-template-columns: .8fr 1.25fr 1fr; gap: clamp(30px, 5vw, 64px); }
+.experience-group { padding-top: 18px; border-top: 1px solid var(--line); }
+.experience-group h3 { margin-bottom: 22px; color: var(--orange); font-size: 1rem; }
+.experience-group ul { margin: 0; padding: 0; list-style: none; }
+.experience-group li { margin-bottom: 15px; display: grid; grid-template-columns: 16px 1fr; gap: 10px; color: var(--muted); line-height: 1.55; }
+.experience-group li > span:first-child { color: var(--magenta); }
+.experience-group a { color: var(--cyan); text-underline-offset: 4px; }
+.experience-group a:hover { color: var(--orange); }
 .lineup-band { padding: 96px max(20px, calc((100vw - var(--content)) / 2)); background: #19121e; }
 .lineup-band img { width: min(720px, 100%); margin: 0 auto; border: 1px solid var(--line); border-radius: 8px; }
 .principles-heading { margin-bottom: 38px; display: flex; align-items: center; gap: 22px; }
@@ -339,6 +352,9 @@ p { color: var(--muted); }
   .manafest-hero-copy h1 { font-size: clamp(3rem, 16vw, 4.6rem); }
   .event-facts { grid-template-columns: 1fr; gap: 18px; }
   .guide-item { grid-template-columns: 44px 1fr; gap: 14px; }
+  .experience-band { padding-block: 68px; }
+  .experience-heading { grid-template-columns: 1fr; gap: 16px; margin-bottom: 36px; }
+  .experience-groups { grid-template-columns: 1fr; gap: 26px; }
   .lineup-band { padding-block: 68px; }
   .principles-heading { align-items: flex-start; }
   .principles-list li { grid-template-columns: 38px 1fr; gap: 10px; }

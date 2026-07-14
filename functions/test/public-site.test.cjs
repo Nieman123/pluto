@@ -29,6 +29,17 @@ test("ManaFest source is complete without client-side rendering", () => {
 
   assert.match(publicHtmlCacheControl, /s-maxage=60/);
   assert.match(html, /<h1[^>]*>ManaFest 2026<\/h1>/);
+  assert.match(html, /Around the festival/);
+  assert.match(html, /Sunrise sound bath/);
+  assert.match(html, /21\+ event/);
+  assert.match(
+    html,
+    /href="https:\/\/www\.instagram\.com\/pyro\.possum\/"/,
+  );
+  assert.match(
+    html,
+    /href="https:\/\/www\.instagram\.com\/banh\.gvl\/"/,
+  );
   assert.match(html, /ManaFest principles/);
   assert.match(html, /application\/ld\+json/);
   assert.match(html, /rel="canonical" href="https:\/\/pluto.events\/manafest"/);

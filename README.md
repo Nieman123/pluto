@@ -168,7 +168,7 @@ Without `PUBLIC_SITE_PREVIEW`, the local Function uses Firebase Admin default cr
 
 ### Editing Public ManaFest Content
 
-Public ManaFest copy lives in [site/content/manafest.json](site/content/manafest.json). The Function build copies this file into its runtime package. The crew-editable Markdown equivalent is [docs/manafest-guide.md](docs/manafest-guide.md).
+Public ManaFest copy lives in [site/content/manafest.json](site/content/manafest.json). The Function build copies this file into its runtime package. The attendee app also bundles the `festivalExperience` block from this file so the public and signed-in ManaFest pages share the same festival highlights, notices, and links. The crew-editable Markdown equivalent is [docs/manafest-guide.md](docs/manafest-guide.md).
 
 Signed-in ManaFest content is managed separately through Firestore and the Flutter admin panel.
 

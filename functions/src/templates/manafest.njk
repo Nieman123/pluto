@@ -39,6 +39,36 @@
     </div>
   </section>
 
+  <section class="experience-band" aria-labelledby="experience-title">
+    <div class="experience-heading">
+      <div>
+        <p class="eyebrow">{{ manaFest.festivalExperience.eyebrow }}</p>
+        <h2 id="experience-title">{{ manaFest.festivalExperience.title }}</h2>
+      </div>
+      <div class="experience-intro">
+        <p>{{ manaFest.festivalExperience.intro }}</p>
+        <p class="age-notice">{{ manaFest.festivalExperience.notice }}</p>
+      </div>
+    </div>
+    <div class="experience-groups">
+      {% for group in manaFest.festivalExperience.groups %}
+        <section class="experience-group" aria-labelledby="experience-group-{{ loop.index }}">
+          <h3 id="experience-group-{{ loop.index }}">{{ group.title }}</h3>
+          <ul>
+            {% for item in group.items %}
+              <li>
+                <span aria-hidden="true">✦</span>
+                <span>
+                  {{ item.text }}{% if item.url %} <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.linkText }}</a>{% endif %}
+                </span>
+              </li>
+            {% endfor %}
+          </ul>
+        </section>
+      {% endfor %}
+    </div>
+  </section>
+
   <section class="lineup-band" aria-labelledby="lineup-title">
     <div class="section-heading">
       <div><p class="eyebrow">THE SOUND</p><h2 id="lineup-title">2026 lineup</h2></div>
