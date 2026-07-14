@@ -15,6 +15,8 @@ test("URL validation accepts approved schemes and rejects executable URLs", () =
   assert.equal(safeExternalUrl("ftp://example.com/file"), "");
   assert.equal(safeExternalUrl("mailto:crew@pluto.events"), "mailto:crew@pluto.events");
   assert.equal(safeImageUrl("data:text/html;base64,abc"), "");
+  assert.equal(safeImageUrl("data:image/png;base64,abc"), "");
+  assert.equal(safeImageUrl("mailto:crew@pluto.events"), "");
   assert.equal(safeImageUrl("/assets/image.webp"), "/assets/image.webp");
 });
 
@@ -31,6 +33,14 @@ test("event normalization filters inactive records and prefers Storage URLs", ()
   assert.equal(event.isManaFest, true);
   assert.equal(event.sortOrder, 2);
   assert.equal(event.updatedAtMs, 99);
+});
+
+test("event normalization never embeds legacy flyer data in public HTML", () => {
+  const event = normalizeEvent("legacy", {
+    title: "Subterranea",
+    flyerDataUrl: "data:image/jpeg;base64,legacy-payload",
+  });
+  assert.equal(event.flyerImageUrl, "/assets/images/pluto-preview.jpg");
 });
 
 test("events sort by explicit order and then newest update", () => {

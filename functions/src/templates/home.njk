@@ -5,7 +5,7 @@
     <div class="hero-media" data-gallery>
       {% set gallery = ['1.webp', 'elysium-10.webp', '14.webp', 'elysium-4.webp', '10.webp'] %}
       {% for image in gallery %}
-        <img src="/gallery/{{ image }}" width="1920" height="1080" alt="Pluto Events crowd and performers" {% if not loop.first %}hidden{% endif %} data-gallery-slide {% if not loop.first %}loading="lazy"{% endif %}>
+        <img src="/gallery/{{ image }}" width="1920" height="1080" alt="Pluto Events crowd and performers" decoding="async" {% if loop.first %}loading="eager" fetchpriority="high"{% else %}hidden loading="lazy"{% endif %} data-gallery-slide>
       {% endfor %}
     </div>
     <div class="hero-shade"></div>

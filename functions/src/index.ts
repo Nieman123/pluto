@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import compression from "compression";
 import express, { type Request, type Response } from "express";
 import { getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
@@ -27,6 +28,7 @@ const manaFest = JSON.parse(
 ) as Record<string, unknown>;
 
 const app = express();
+app.use(compression());
 const env = nunjucks.configure(templates, { autoescape: true, noCache: true });
 env.express(app);
 app.set("view engine", "njk");

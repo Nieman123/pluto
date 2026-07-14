@@ -44,3 +44,33 @@ test("ManaFest source is complete without client-side rendering", () => {
   assert.match(html, /application\/ld\+json/);
   assert.match(html, /rel="canonical" href="https:\/\/pluto.events\/manafest"/);
 });
+
+test("homepage prioritizes its hero without embedding event media", () => {
+  const templates = join(__dirname, "../lib/templates");
+  const env = nunjucks.configure(templates, { autoescape: true });
+  const html = env.render("home.njk", {
+    path: "/",
+    events: [
+      {
+        title: "Subterranea",
+        details: "Underground sound in Asheville.",
+        flyerImageUrl: "/assets/images/pluto-preview.jpg",
+        ticketUrl: "https://tickets.example.com",
+        isManaFest: false,
+      },
+    ],
+    meta: {
+      title: "Pluto Events",
+      description: "Underground events in Asheville.",
+      canonical: "https://pluto.events/",
+      image: "https://pluto.events/assets/images/pluto-preview.jpg",
+    },
+    firebaseConfigJson: "{}",
+    jsonLd: serializeJsonLd({ "@type": "Organization" }),
+  });
+
+  assert.doesNotMatch(html, /data:image\//);
+  assert.match(html, /rel="preload" as="image" href="\/gallery\/1\.webp"/);
+  assert.match(html, /src="\/gallery\/1\.webp"[^>]*fetchpriority="high"/);
+  assert.ok(Buffer.byteLength(html) < 20_000);
+});

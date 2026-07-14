@@ -126,10 +126,12 @@ export function safeExternalUrl(value: unknown): string {
 export function safeImageUrl(value: unknown): string {
   const candidate = asString(value);
   if (candidate.startsWith("/")) return candidate;
-  if (/^data:image\/(png|jpe?g|webp|gif);base64,/i.test(candidate)) {
-    return candidate;
+  try {
+    const parsed = new URL(candidate);
+    return ["https:", "http:"].includes(parsed.protocol) ? parsed.toString() : "";
+  } catch {
+    return "";
   }
-  return safeExternalUrl(candidate);
 }
 
 export function isManaFestTitle(title: string): boolean {
@@ -142,8 +144,9 @@ export function normalizeEvent(id: string, data: DocumentData): PublicEvent | nu
   const isManaFest = isManaFestTitle(title);
   const flyerImageUrl =
     safeImageUrl(data.flyerImageUrl) ||
-    safeImageUrl(data.flyerDataUrl) ||
-    (isManaFest ? "/assets/images/manafest-flyer.webp" : "");
+    (isManaFest
+      ? "/assets/images/manafest-flyer.webp"
+      : "/assets/images/pluto-preview.jpg");
   return {
     id,
     title,
@@ -200,7 +203,6 @@ export function mergeLinks(
         : data.isImageCircular === true,
       imageUrl:
         safeImageUrl(data.imageUrl) ||
-        safeImageUrl(data.imageDataUrl) ||
         assetImageUrl ||
         current?.imageUrl ||
         "",

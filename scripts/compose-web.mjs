@@ -18,7 +18,7 @@ await cp(resolve(root, "web/firebase-messaging-sw.js"), resolve(dist, "firebase-
 await cp(resolve(root, "web/favicon.png"), resolve(dist, "favicon.png"));
 await cp(resolve(root, "web/pluto-preview.jpg"), resolve(dist, "assets/images/pluto-preview.jpg"));
 await cp(
-  resolve(root, "assets/experience/pluto-logo-small.webp"),
+  resolve(root, "assets/experience/pluto-logo-public.webp"),
   resolve(dist, "assets/images/pluto-logo.webp"),
 );
 await cp(

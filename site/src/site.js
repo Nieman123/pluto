@@ -59,18 +59,15 @@ async function enhanceAuth() {
   const configElement = document.querySelector("#firebase-config");
   if (!configElement?.textContent) return;
 
-  const [appModule, authModule, firestoreModule] = await Promise.all([
+  const [appModule, authModule] = await Promise.all([
     import("https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js"),
     import("https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js"),
-    import("https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js"),
   ]);
   const firebaseConfig = JSON.parse(configElement.textContent);
   const { initializeApp } = appModule;
   const { getAuth, onAuthStateChanged } = authModule;
-  const { doc, getDoc, getFirestore } = firestoreModule;
   const firebaseApp = initializeApp(firebaseConfig);
   const auth = getAuth(firebaseApp);
-  const firestore = getFirestore(firebaseApp);
 
   onAuthStateChanged(auth, async (user) => {
     showAuthState(Boolean(user));
@@ -78,6 +75,10 @@ async function enhanceAuth() {
 
     let avatarUrl = user.photoURL || "/assets/images/pluto-logo.webp";
     try {
+      const { doc, getDoc, getFirestore } = await import(
+        "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js"
+      );
+      const firestore = getFirestore(firebaseApp);
       const snapshot = await getDoc(doc(firestore, "userProfiles", user.uid));
       const profileImage = snapshot.data()?.profileImageDataUrl;
       if (typeof profileImage === "string" && profileImage.startsWith("data:image/")) {
@@ -92,4 +93,26 @@ async function enhanceAuth() {
   });
 }
 
-enhanceAuth().catch((error) => console.warn("Auth enhancement unavailable", error));
+function scheduleAuthEnhancement() {
+  const run = () => {
+    if ("requestIdleCallback" in window) {
+      window.requestIdleCallback(
+        () => enhanceAuth().catch((error) => console.warn("Auth enhancement unavailable", error)),
+        { timeout: 4000 },
+      );
+      return;
+    }
+    window.setTimeout(
+      () => enhanceAuth().catch((error) => console.warn("Auth enhancement unavailable", error)),
+      1000,
+    );
+  };
+
+  if (document.readyState === "complete") {
+    run();
+  } else {
+    window.addEventListener("load", run, { once: true });
+  }
+}
+
+scheduleAuthEnhancement();

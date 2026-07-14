@@ -3,11 +3,14 @@ import { getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 
-if (!getApps().length) initializeApp();
+const storageBucket =
+  process.env.FIREBASE_STORAGE_BUCKET || "pluto-9b6ca.appspot.com";
+const projectId = process.env.GCLOUD_PROJECT || "pluto-9b6ca";
+if (!getApps().length) initializeApp({ projectId, storageBucket });
 
 const write = process.argv.includes("--write");
 const db = getFirestore();
-const bucket = getStorage().bucket();
+const bucket = getStorage().bucket(storageBucket);
 
 function parseDataUrl(value) {
   if (typeof value !== "string") return null;
