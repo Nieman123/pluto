@@ -6,7 +6,14 @@ For two nights in September, we are taking over the woods at Three Creeks Campgr
 
 Raw energy, heavy bass, and regional DJs are at the center of the weekend.
 
+The Main Stage will be powered by BASSBOSS speakers for deep, high-impact sound all weekend.
+
 Bring your crew, set up camp, and lock in for a full weekend of underground sound.
+
+## Gate Times
+
+- Thursday: 2–9 PM
+- Friday and Saturday: 10 AM–9 PM
 
 ## Around the Festival
 
@@ -28,7 +35,7 @@ ManaFest is a 21+ event.
 
 ### Food and Drinks
 
-- Food by our friend Evan and [@banh.gvl](https://www.instagram.com/banh.gvl/)
+- Food by In Woking Distance and [@banh.gvl](https://www.instagram.com/banh.gvl/)
 - BYOB event. No alcohol will be sold on site.
 
 ## Directions

@@ -34,6 +34,11 @@ test("ManaFest source is complete without client-side rendering", () => {
   assert.match(html, /Around the festival/);
   assert.match(html, /Sunrise sound bath/);
   assert.match(html, /21\+ event/);
+  assert.match(html, /Main Stage will be powered by BASSBOSS speakers/);
+  assert.match(html, /Gate Times/);
+  assert.match(html, /Thursday: 2–9 PM/);
+  assert.match(html, /Friday and Saturday: 10 AM–9 PM/);
+  assert.match(html, /Food by In Woking Distance and/);
   assert.match(
     html,
     /href="https:\/\/www\.instagram\.com\/pyro\.possum\/"/,

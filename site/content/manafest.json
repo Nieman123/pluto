@@ -57,7 +57,7 @@
         "title": "Food and drinks",
         "items": [
           {
-            "text": "Food by our friend Evan and",
+            "text": "Food by In Woking Distance and",
             "linkText": "@banh.gvl",
             "url": "https://www.instagram.com/banh.gvl/"
           },
@@ -72,7 +72,12 @@
     {
       "title": "Event Info",
       "icon": "ticket",
-      "body": "For two nights in September, we are taking over the woods at Three Creeks Campground in Anderson, SC. Raw energy, heavy bass, and regional DJs are at the center of the weekend. Bring your crew, set up camp, and lock in for a full weekend of underground sound."
+      "body": "For two nights in September, we are taking over the woods at Three Creeks Campground in Anderson, SC. Raw energy, heavy bass, and regional DJs are at the center of the weekend. The Main Stage will be powered by BASSBOSS speakers for deep, high-impact sound all weekend. Bring your crew, set up camp, and lock in for a full weekend of underground sound."
+    },
+    {
+      "title": "Gate Times",
+      "icon": "clock",
+      "body": "Thursday: 2–9 PM. Friday and Saturday: 10 AM–9 PM."
     },
     {
       "title": "Directions",

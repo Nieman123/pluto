@@ -448,6 +448,11 @@ class _ManaFestPageState extends State<ManaFestPage> {
         normalizedTitle.contains('parking')) {
       return Icons.explore_outlined;
     }
+    if (normalizedTitle.contains('gate') ||
+        normalizedTitle.contains('hour') ||
+        normalizedTitle.contains('time')) {
+      return Icons.schedule_outlined;
+    }
     if (normalizedTitle.contains('camp')) {
       return Icons.cabin_outlined;
     }
@@ -466,6 +471,11 @@ class _ManaFestPageState extends State<ManaFestPage> {
     if (normalizedTitle.contains('direction') ||
         normalizedTitle.contains('arrival') ||
         normalizedTitle.contains('parking')) {
+      return _guideOrange;
+    }
+    if (normalizedTitle.contains('gate') ||
+        normalizedTitle.contains('hour') ||
+        normalizedTitle.contains('time')) {
       return _guideOrange;
     }
     if (normalizedTitle.contains('camp')) {
@@ -683,7 +693,7 @@ class _ManaFestPageState extends State<ManaFestPage> {
                 children: <Widget>[
                   const Text(
                     'For two nights in September, we are taking over the woods at Three Creeks Campground in Anderson, SC.\n\n'
-                    'Raw energy, heavy bass, and regional DJs are at the center of the weekend.\n\n'
+                    'Raw energy, heavy bass, and regional DJs are at the center of the weekend. The Main Stage will be powered by BASSBOSS speakers for deep, high-impact sound all weekend.\n\n'
                     'Bring your crew, set up camp, and lock in for a full weekend of underground sound.',
                     style: TextStyle(
                       color: _guideMuted,
@@ -696,11 +706,21 @@ class _ManaFestPageState extends State<ManaFestPage> {
                     'Two nights of camping, music, and late-night energy at Three Creeks Campground in Anderson, SC.',
                   ),
                   _buildBullet(
-                    'Main Stage and Renegade Stage programming will be managed inside the app.',
+                    'The Main Stage is powered by BASSBOSS speakers.',
+                  ),
+                  _buildBullet(
+                    'Main Stage and Renegade Stage schedules will be managed inside the app.',
                   ),
                   _buildBullet(
                     'Create an account before the event to use the attendee tools and Pluto Points.',
                   ),
+                ],
+              ),
+              _buildPublicSection(
+                title: 'Gate Times',
+                children: <Widget>[
+                  _buildBullet('Thursday: 2–9 PM'),
+                  _buildBullet('Friday and Saturday: 10 AM–9 PM'),
                 ],
               ),
               _buildPublicSection(
@@ -1791,7 +1811,12 @@ const List<_DefaultGuideSection> _defaultGuideSections = <_DefaultGuideSection>[
     icon: Icons.info_outline,
     title: 'Event Info',
     body:
-        'For two nights in September, we are taking over the woods at Three Creeks Campground in Anderson, SC.\n\nRaw energy, heavy bass, and regional DJs are at the center of the weekend.\n\nBring your crew, set up camp, and lock in for a full weekend of underground sound.',
+        'For two nights in September, we are taking over the woods at Three Creeks Campground in Anderson, SC.\n\nRaw energy, heavy bass, and regional DJs are at the center of the weekend. The Main Stage will be powered by BASSBOSS speakers for deep, high-impact sound all weekend.\n\nBring your crew, set up camp, and lock in for a full weekend of underground sound.',
+  ),
+  _DefaultGuideSection(
+    icon: Icons.schedule_outlined,
+    title: 'Gate Times',
+    body: 'Thursday: 2–9 PM. Friday and Saturday: 10 AM–9 PM.',
   ),
   _DefaultGuideSection(
     icon: Icons.navigation_outlined,
