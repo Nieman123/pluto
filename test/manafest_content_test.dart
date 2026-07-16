@@ -61,12 +61,36 @@ void main() {
         .cast<Map<String, dynamic>>()
         .singleWhere(
             (Map<String, dynamic> section) => section['title'] == 'Gate Times');
+    final Map<String, dynamic> camping = sections
+        .cast<Map<String, dynamic>>()
+        .singleWhere(
+            (Map<String, dynamic> section) => section['title'] == 'Camping');
+    final Map<String, dynamic> checkIn = sections
+        .cast<Map<String, dynamic>>()
+        .singleWhere(
+            (Map<String, dynamic> section) => section['title'] == 'Check-in');
+    final Map<String, dynamic> festivalRules = sections
+        .cast<Map<String, dynamic>>()
+        .singleWhere((Map<String, dynamic> section) =>
+            section['title'] == 'Festival Rules');
 
     expect(
       eventInfo['body'],
       contains('Main Stage will be powered by BASSBOSS speakers'),
     );
-    expect(gateTimes['body'], contains('Thursday: 2–9 PM'));
+    expect(gateTimes['body'], contains('Thursday Early Arrival: 2–9 PM'));
     expect(gateTimes['body'], contains('Friday and Saturday: 10 AM–9 PM'));
+    expect(gateTimes['body'], contains('Early Arrival pass is required'));
+    expect(gateTimes['body'], contains('leave and re-enter during the day'));
+    expect(checkIn['body'], contains('valid government-issued photo ID'));
+    expect(checkIn['body'], contains('Festival tickets are digital'));
+    expect(checkIn['body'], contains('Car camping passes are also digital'));
+    expect(camping['body'], contains('No generators, please'));
+    expect(camping['body'], contains('No glass'));
+    expect(festivalRules['body'], contains('No weapons'));
+    expect(festivalRules['body'], contains('No pets'));
+    expect(festivalRules['body'], contains('No campfires or grills'));
+    expect(
+        festivalRules['body'], contains('Personal sound systems are allowed'));
   });
 }

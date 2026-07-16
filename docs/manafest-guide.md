@@ -12,8 +12,22 @@ Bring your crew, set up camp, and lock in for a full weekend of underground soun
 
 ## Gate Times
 
-- Thursday: 2–9 PM
+- Thursday Early Arrival: 2–9 PM
 - Friday and Saturday: 10 AM–9 PM
+
+You may arrive as soon as gates open at 2 PM on Thursday. A Thursday Early Arrival pass is required.
+
+Entry ends when gates close for the night. You may leave and re-enter during the day while gates are open.
+
+## Check-in
+
+Bring a valid government-issued photo ID. ManaFest is a 21+ event.
+
+Festival tickets are digital, so have yours ready on your phone at check-in.
+
+Car camping passes are also digital. One pass is required per vehicle.
+
+You will receive your wristband at check-in.
 
 ## Around the Festival
 
@@ -54,17 +68,27 @@ Camp only in designated areas.
 
 Car camping pass is a separate pass. One pass is required per vehicle.
 
+No generators, please.
+
+No glass.
+
 Pack for changing weather, including rain.
 
 Bring reusable water containers, personal lighting, and basic campsite gear.
 
 ## Festival Rules
 
-Respect staff instructions, neighboring campsites, and venue boundaries.
+No weapons.
+
+No pets.
+
+No campfires or grills.
+
+Personal sound systems are allowed, but please be mindful of neighboring campsites and keep the volume respectful.
+
+Follow staff instructions and venue boundaries.
 
 Keep camps and shared spaces clean. Pack out what you pack in.
-
-Use approved fire-safe cooking and lighting setups only where permitted.
 
 ## ManaFest Principles
 

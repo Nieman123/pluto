@@ -453,6 +453,10 @@ class _ManaFestPageState extends State<ManaFestPage> {
         normalizedTitle.contains('time')) {
       return Icons.schedule_outlined;
     }
+    if (normalizedTitle.contains('check') ||
+        normalizedTitle.contains('wristband')) {
+      return Icons.fact_check_outlined;
+    }
     if (normalizedTitle.contains('camp')) {
       return Icons.cabin_outlined;
     }
@@ -477,6 +481,10 @@ class _ManaFestPageState extends State<ManaFestPage> {
         normalizedTitle.contains('hour') ||
         normalizedTitle.contains('time')) {
       return _guideOrange;
+    }
+    if (normalizedTitle.contains('check') ||
+        normalizedTitle.contains('wristband')) {
+      return _guideGreen;
     }
     if (normalizedTitle.contains('camp')) {
       return _guideGreen;
@@ -719,8 +727,29 @@ class _ManaFestPageState extends State<ManaFestPage> {
               _buildPublicSection(
                 title: 'Gate Times',
                 children: <Widget>[
-                  _buildBullet('Thursday: 2–9 PM'),
+                  _buildBullet('Thursday Early Arrival: 2–9 PM'),
                   _buildBullet('Friday and Saturday: 10 AM–9 PM'),
+                  _buildBullet(
+                    'You may arrive as soon as gates open at 2 PM on Thursday. A Thursday Early Arrival pass is required.',
+                  ),
+                  _buildBullet(
+                    'Entry ends when gates close for the night. You may leave and re-enter during the day while gates are open.',
+                  ),
+                ],
+              ),
+              _buildPublicSection(
+                title: 'Check-in',
+                children: <Widget>[
+                  _buildBullet(
+                    'Bring a valid government-issued photo ID. ManaFest is a 21+ event.',
+                  ),
+                  _buildBullet(
+                    'Festival tickets are digital, so have yours ready on your phone at check-in.',
+                  ),
+                  _buildBullet(
+                    'Car camping passes are also digital. One pass is required per vehicle.',
+                  ),
+                  _buildBullet('You will receive your wristband at check-in.'),
                 ],
               ),
               _buildPublicSection(
@@ -747,6 +776,8 @@ class _ManaFestPageState extends State<ManaFestPage> {
                   _buildBullet(
                     'Car camping pass is a separate pass. One pass is required per vehicle.',
                   ),
+                  _buildBullet('No generators, please.'),
+                  _buildBullet('No glass.'),
                   _buildBullet(
                     'Pack for changing weather, including rain.',
                   ),
@@ -758,14 +789,17 @@ class _ManaFestPageState extends State<ManaFestPage> {
               _buildPublicSection(
                 title: 'Festival Rules',
                 children: <Widget>[
+                  _buildBullet('No weapons.'),
+                  _buildBullet('No pets.'),
+                  _buildBullet('No campfires or grills.'),
                   _buildBullet(
-                    'Respect staff instructions, neighboring campsites, and venue boundaries.',
+                    'Personal sound systems are allowed, but please be mindful of neighboring campsites and keep the volume respectful.',
+                  ),
+                  _buildBullet(
+                    'Follow staff instructions and venue boundaries.',
                   ),
                   _buildBullet(
                     'Keep camps and shared spaces clean. Pack out what you pack in.',
-                  ),
-                  _buildBullet(
-                    'Use approved fire-safe cooking and lighting setups only where permitted.',
                   ),
                 ],
               ),
@@ -1816,7 +1850,14 @@ const List<_DefaultGuideSection> _defaultGuideSections = <_DefaultGuideSection>[
   _DefaultGuideSection(
     icon: Icons.schedule_outlined,
     title: 'Gate Times',
-    body: 'Thursday: 2–9 PM. Friday and Saturday: 10 AM–9 PM.',
+    body:
+        'Thursday Early Arrival: 2–9 PM. You may arrive as soon as gates open at 2 PM, and a Thursday Early Arrival pass is required. Friday and Saturday: 10 AM–9 PM. Entry ends when gates close for the night. You may leave and re-enter during the day while gates are open.',
+  ),
+  _DefaultGuideSection(
+    icon: Icons.fact_check_outlined,
+    title: 'Check-in',
+    body:
+        'Bring a valid government-issued photo ID. ManaFest is a 21+ event. Festival tickets are digital, so have yours ready on your phone at check-in. Car camping passes are also digital, and one pass is required per vehicle. You will receive your wristband at check-in.',
   ),
   _DefaultGuideSection(
     icon: Icons.navigation_outlined,
@@ -1828,13 +1869,13 @@ const List<_DefaultGuideSection> _defaultGuideSections = <_DefaultGuideSection>[
     icon: Icons.cabin_outlined,
     title: 'Camping',
     body:
-        'Camp only in designated areas. Car camping pass is a separate pass. One pass is required per vehicle. Pack for changing weather, including rain. Bring reusable water containers, personal lighting, and basic campsite gear.',
+        'Camp only in designated areas. Car camping pass is a separate pass. One pass is required per vehicle. No generators, please. No glass. Pack for changing weather, including rain. Bring reusable water containers, personal lighting, and basic campsite gear.',
   ),
   _DefaultGuideSection(
     icon: Icons.rule,
     title: 'Festival Rules',
     body:
-        'Respect staff instructions, neighboring campsites, and venue boundaries. Keep camps and shared spaces clean. Pack out what you pack in. Use approved fire-safe cooking and lighting setups only where permitted.',
+        'No weapons. No pets. No campfires or grills. Personal sound systems are allowed, but please be mindful of neighboring campsites and keep the volume respectful. Follow staff instructions and venue boundaries. Keep camps and shared spaces clean, and pack out what you pack in.',
   ),
 ];
 

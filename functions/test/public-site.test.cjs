@@ -36,9 +36,20 @@ test("ManaFest source is complete without client-side rendering", () => {
   assert.match(html, /21\+ event/);
   assert.match(html, /Main Stage will be powered by BASSBOSS speakers/);
   assert.match(html, /Gate Times/);
-  assert.match(html, /Thursday: 2–9 PM/);
+  assert.match(html, /Thursday Early Arrival: 2–9 PM/);
   assert.match(html, /Friday and Saturday: 10 AM–9 PM/);
+  assert.match(html, /Thursday Early Arrival pass is required/);
+  assert.match(html, /leave and re-enter during the day/);
+  assert.match(html, /Festival tickets are digital/);
+  assert.match(html, /Car camping passes are also digital/);
+  assert.match(html, /valid government-issued photo ID/);
   assert.match(html, /Food by In Woking Distance and/);
+  assert.match(html, /No generators, please/);
+  assert.match(html, /No glass/);
+  assert.match(html, /No weapons/);
+  assert.match(html, /No pets/);
+  assert.match(html, /No campfires or grills/);
+  assert.match(html, /Personal sound systems are allowed/);
   assert.match(
     html,
     /href="https:\/\/www\.instagram\.com\/pyro\.possum\/"/,

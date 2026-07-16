@@ -77,7 +77,12 @@
     {
       "title": "Gate Times",
       "icon": "clock",
-      "body": "Thursday: 2–9 PM. Friday and Saturday: 10 AM–9 PM."
+      "body": "Thursday Early Arrival: 2–9 PM. You may arrive as soon as gates open at 2 PM, and a Thursday Early Arrival pass is required. Friday and Saturday: 10 AM–9 PM. Entry ends when gates close for the night. You may leave and re-enter during the day while gates are open."
+    },
+    {
+      "title": "Check-in",
+      "icon": "check",
+      "body": "Bring a valid government-issued photo ID. ManaFest is a 21+ event. Festival tickets are digital, so have yours ready on your phone at check-in. Car camping passes are also digital, and one pass is required per vehicle. You will receive your wristband at check-in."
     },
     {
       "title": "Directions",
@@ -87,12 +92,12 @@
     {
       "title": "Camping",
       "icon": "tent",
-      "body": "Camp only in designated areas. A car camping pass is separate and one pass is required per vehicle. Pack for changing weather, including rain. Bring reusable water containers, personal lighting, and basic campsite gear."
+      "body": "Camp only in designated areas. A car camping pass is separate and one pass is required per vehicle. No generators, please. No glass. Pack for changing weather, including rain. Bring reusable water containers, personal lighting, and basic campsite gear."
     },
     {
       "title": "Festival Rules",
       "icon": "shield",
-      "body": "Respect staff instructions, neighboring campsites, and venue boundaries. Keep camps and shared spaces clean. Pack out what you pack in. Use approved fire-safe cooking and lighting setups only where permitted."
+      "body": "No weapons. No pets. No campfires or grills. Personal sound systems are allowed, but please be mindful of neighboring campsites and keep the volume respectful. Follow staff instructions and venue boundaries. Keep camps and shared spaces clean, and pack out what you pack in."
     }
   ],
   "principles": [
