@@ -61,5 +61,14 @@ test("web accessibility trees and keyboard navigation are always available", () 
     flutterBootstrap,
     /hostElement: document\.querySelector\("#flutter-app"\)/,
   );
+  assert.match(
+    flutterBootstrap,
+    /addEventListener\("flutter-first-frame", removeSplashOnFirstFrame/,
+  );
+  assert.match(
+    flutterBootstrap,
+    /requestAnimationFrame\(\(\) => \{\s*requestAnimationFrame\(removeSplashOnFirstFrame\)/,
+  );
+  assert.match(flutterBootstrap, /window\.removeSplashFromWeb\?\.\(\)/);
   assert.match(manaFestPage, /linkUrl: Uri\.tryParse\(item\.url\)/);
 });
