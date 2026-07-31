@@ -56,11 +56,9 @@ test("web accessibility trees and keyboard navigation are always available", () 
   assert.doesNotMatch(flutterWebShell, /user-scalable=no/);
   assert.doesNotMatch(flutterWebShell, /maximum-scale=/);
   assert.match(flutterWebShell, /<html lang="en">/);
-  assert.match(flutterWebShell, /<div id="flutter-app"><\/div>/);
-  assert.match(
-    flutterBootstrap,
-    /hostElement: document\.querySelector\("#flutter-app"\)/,
-  );
+  assert.doesNotMatch(flutterWebShell, /id="flutter-app"/);
+  assert.match(flutterBootstrap, /initializeEngine\(\)/);
+  assert.doesNotMatch(flutterBootstrap, /hostElement/);
   assert.match(
     flutterBootstrap,
     /addEventListener\("flutter-first-frame", removeSplashOnFirstFrame/,

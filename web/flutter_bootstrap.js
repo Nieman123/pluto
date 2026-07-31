@@ -15,12 +15,11 @@ _flutter.loader.load({
     serviceWorkerVersion: {{flutter_service_worker_version}},
   },
   onEntrypointLoaded: async (engineInitializer) => {
-    const appRunner = await engineInitializer.initializeEngine({
-      hostElement: document.querySelector("#flutter-app"),
-    });
+    // Pluto owns the browser viewport. Let Flutter use full-page mode so its
+    // text-editing DOM stays anchored to the viewport when a field is focused.
+    const appRunner = await engineInitializer.initializeEngine();
     await appRunner.runApp();
 
-    // Embedded Flutter views do not consistently emit flutter-first-frame.
     // Wait for the browser to paint the running app before removing the shell.
     requestAnimationFrame(() => {
       requestAnimationFrame(removeSplashOnFirstFrame);
