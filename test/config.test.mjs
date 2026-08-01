@@ -46,11 +46,8 @@ test("Flutter web routes use the Pluto Google Analytics property", () => {
   assert.match(appEntryPoint, /'\/app\$path'/);
 });
 
-test("web accessibility trees and keyboard navigation are always available", () => {
-  assert.match(
-    appEntryPoint,
-    /kIsWeb \? SemanticsBinding\.instance\.ensureSemantics\(\)/,
-  );
+test("web accessibility activates without forcing Flutter semantics", () => {
+  assert.doesNotMatch(appEntryPoint, /ensureSemantics\(\)/);
   assert.match(publicSiteEntryPoint, /event\.key !== "Escape"/);
   assert.match(publicSiteEntryPoint, /restoreFocus: true/);
   assert.doesNotMatch(flutterWebShell, /user-scalable=no/);
