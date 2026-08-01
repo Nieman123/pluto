@@ -19,6 +19,7 @@ import 'manafest_admin_panel.dart';
 import 'public_media_repository.dart';
 import 'src/background/pluto_background.dart';
 import 'src/nav_bar/nav_bar.dart';
+import 'src/web_semantics_scroll_guard.dart';
 import 'user_profile_repository.dart';
 
 enum AdminSection {
@@ -1565,7 +1566,14 @@ class _AdminPageState extends State<AdminPage> {
               ];
               return ListView(
                 padding: const EdgeInsets.all(16),
-                children: _withVerticalSpacing(stackedChildren),
+                children: <Widget>[
+                  guardWebSemanticsScrollableChild(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: _withVerticalSpacing(stackedChildren),
+                    ),
+                  ),
+                ],
               );
             }
 
@@ -1585,7 +1593,11 @@ class _AdminPageState extends State<AdminPage> {
                     flex: 5,
                     child: SizedBox(
                       height: paneHeight,
-                      child: SingleChildScrollView(child: primaryPane),
+                      child: SingleChildScrollView(
+                        child: guardWebSemanticsScrollableChild(
+                          child: primaryPane,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -1593,7 +1605,11 @@ class _AdminPageState extends State<AdminPage> {
                     flex: 6,
                     child: SizedBox(
                       height: paneHeight,
-                      child: SingleChildScrollView(child: secondaryPane),
+                      child: SingleChildScrollView(
+                        child: guardWebSemanticsScrollableChild(
+                          child: secondaryPane,
+                        ),
+                      ),
                     ),
                   ),
                 ],
