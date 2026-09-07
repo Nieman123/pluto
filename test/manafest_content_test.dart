@@ -14,7 +14,7 @@ void main() {
         .expand((ManaFestExperienceGroup group) => group.items)
         .toList(growable: false);
 
-    expect(experience.title, 'Around the festival');
+    expect(experience.title, 'What else can I do at Manafest?');
     expect(experience.notice, '21+ event');
     expect(
       items.map((ManaFestExperienceItem item) => item.text),
@@ -22,9 +22,11 @@ void main() {
         'Sunrise sound bath',
         'Sunrise yoga',
         'Free tea each morning',
-        'Custom T-shirt booth',
-        'Free festival-wear boutique',
-        'Instructional flow-arts classes',
+        'Make your own merch with live T-shirt printing',
+        'Decorate clothes at the free festival-wear boutique',
+        'Take one of the many flow-arts workshops',
+        'Shop a selection of regional handmade vendors',
+        'Watch a late-night movie under the stars',
         'Live painting',
         'Food by In Woking Distance and',
         'BYOB event. No alcohol will be sold on site.',

@@ -1017,7 +1017,7 @@ class _ManaFestPageState extends State<ManaFestPage> {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: Image.asset(
-              'assets/events/manafest-2026-lineup-v1.webp',
+              'assets/events/manafest-2026-lineup-v2.webp',
               width: double.infinity,
               fit: BoxFit.contain,
               semanticLabel: 'ManaFest 2026 lineup flyer',

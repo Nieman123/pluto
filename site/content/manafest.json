@@ -13,8 +13,8 @@
   "vendorUrl": "https://forms.gle/zUdyMvJRgkdNXvdM7",
   "festivalExperience": {
     "eyebrow": "BEYOND THE STAGES",
-    "title": "Around the festival",
-    "intro": "Start the day slowly, make something, learn a new flow, and refuel with friends between sets.",
+    "title": "What else can I do at Manafest?",
+    "intro": "Beyond the music: learn a new flow, make something your own, and unwind under the stars.",
     "notice": "21+ event",
     "groups": [
       {
@@ -35,10 +35,10 @@
         "title": "Create and flow",
         "items": [
           {
-            "text": "Custom T-shirt booth"
+            "text": "Make your own merch with live T-shirt printing"
           },
           {
-            "text": "Free festival-wear boutique"
+            "text": "Decorate clothes at the free festival-wear boutique"
           },
           {
             "text": "Fire-flow artists organized by",
@@ -46,10 +46,21 @@
             "url": "https://www.instagram.com/pyro.possum/"
           },
           {
-            "text": "Instructional flow-arts classes"
+            "text": "Take one of the many flow-arts workshops"
           },
           {
             "text": "Live painting"
+          }
+        ]
+      },
+      {
+        "title": "Explore and unwind",
+        "items": [
+          {
+            "text": "Shop a selection of regional handmade vendors"
+          },
+          {
+            "text": "Watch a late-night movie under the stars"
           }
         ]
       },
@@ -68,6 +79,36 @@
       }
     ]
   },
+  "faqs": [
+    {
+      "question": "What are the gate hours?",
+      "answer": "Thursday Early Arrival: 2–9 PM. Friday: 10 AM–9 PM. Saturday: 10 AM–9 PM. A Thursday Early Arrival pass is required."
+    },
+    {
+      "question": "Can I bring an RV?",
+      "answer": "No RVs, buses, or campers are permitted."
+    },
+    {
+      "question": "What about my van?",
+      "answer": "If your van fits in a parking space, you can bring it!"
+    },
+    {
+      "question": "Can I camp next to my car?",
+      "answer": "Yes, car camping is encouraged. A separate car camping pass is required, one per vehicle."
+    },
+    {
+      "question": "Is there camping Sunday night?",
+      "answer": "No, you must be packed up by Sunday evening. This is a leave-no-trace event, so everything you bring must leave with you."
+    },
+    {
+      "question": "Will there be food for sale?",
+      "answer": "Yes! Multiple vendors will be selling food throughout the weekend."
+    },
+    {
+      "question": "Can I buy alcohol?",
+      "answer": "No alcohol will be for sale. ManaFest is a BYOB event."
+    }
+  ],
   "sections": [
     {
       "title": "Event Info",

@@ -29,7 +29,7 @@ Car camping passes are also digital. One pass is required per vehicle.
 
 You will receive your wristband at check-in.
 
-## Around the Festival
+## What else can I do at Manafest?
 
 ManaFest is a 21+ event.
 
@@ -41,16 +41,51 @@ ManaFest is a 21+ event.
 
 ### Create and Flow
 
-- Custom T-shirt booth
-- Free festival-wear boutique
+- Make your own merch with live T-shirt printing
+- Decorate clothes at the free festival-wear boutique
 - Fire-flow artists organized by [@pyro.possum](https://www.instagram.com/pyro.possum/)
-- Instructional flow-arts classes
+- Take one of the many flow-arts workshops
 - Live painting
+
+### Explore and Unwind
+
+- Shop a selection of regional handmade vendors
+- Watch a late-night movie under the stars
 
 ### Food and Drinks
 
 - Food by In Woking Distance and [@banh.gvl](https://www.instagram.com/banh.gvl/)
 - BYOB event. No alcohol will be sold on site.
+
+## Frequently Asked Questions
+
+### What are the gate hours?
+
+Thursday Early Arrival: 2–9 PM. Friday: 10 AM–9 PM. Saturday: 10 AM–9 PM. A Thursday Early Arrival pass is required.
+
+### Can I bring an RV?
+
+No RVs, buses, or campers are permitted.
+
+### What about my van?
+
+If your van fits in a parking space, you can bring it!
+
+### Can I camp next to my car?
+
+Yes, car camping is encouraged. A separate car camping pass is required, one per vehicle.
+
+### Is there camping Sunday night?
+
+No, you must be packed up by Sunday evening. This is a leave-no-trace event, so everything you bring must leave with you.
+
+### Will there be food for sale?
+
+Yes! Multiple vendors will be selling food throughout the weekend.
+
+### Can I buy alcohol?
+
+No alcohol will be for sale. ManaFest is a BYOB event.
 
 ## Directions
 

@@ -14,6 +14,7 @@
       <div class="hero-actions">
         <a class="button button-primary button-large" href="{{ manaFest.ticketUrl }}" target="_blank" rel="noopener noreferrer">Get tickets</a>
         <a class="button button-quiet button-large" href="#guide">Read the guide</a>
+        <a class="button button-quiet button-large" href="#faq">FAQs</a>
       </div>
     </div>
   </section>
@@ -39,7 +40,7 @@
     </div>
   </section>
 
-  <section class="experience-band" aria-labelledby="experience-title">
+  <section class="experience-band" id="activities" aria-labelledby="experience-title">
     <div class="experience-heading">
       <div>
         <p class="eyebrow">{{ manaFest.festivalExperience.eyebrow }}</p>
@@ -69,12 +70,27 @@
     </div>
   </section>
 
+  <section class="section faq-section" id="faq" aria-labelledby="faq-title">
+    <div class="section-heading">
+      <div><p class="eyebrow">KNOW BEFORE YOU GO</p><h2 id="faq-title">Frequently asked questions</h2></div>
+      <p>Gate hours, camping, and what to expect on site.</p>
+    </div>
+    <div class="faq-list">
+      {% for faq in manaFest.faqs %}
+        <details class="faq-item">
+          <summary>{{ faq.question }}<span class="faq-indicator" aria-hidden="true"></span></summary>
+          <p>{{ faq.answer }}</p>
+        </details>
+      {% endfor %}
+    </div>
+  </section>
+
   <section class="lineup-band" aria-labelledby="lineup-title">
     <div class="section-heading">
       <div><p class="eyebrow">THE SOUND</p><h2 id="lineup-title">2026 lineup</h2></div>
       <p>The schedule and stage times will be released closer to the weekend.</p>
     </div>
-    <img src="/assets/images/manafest-lineup.webp" width="1200" height="1500" alt="ManaFest 2026 artist lineup" loading="lazy">
+    <img src="/assets/images/manafest-lineup-v2.webp" width="1080" height="1350" alt="ManaFest 2026 artist lineup" loading="lazy">
   </section>
 
   <section class="section principles-section" aria-labelledby="principles-title">

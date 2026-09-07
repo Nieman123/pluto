@@ -26,8 +26,8 @@ await cp(
   resolve(dist, "assets/images/manafest-flyer.webp"),
 );
 await cp(
-  resolve(root, "assets/events/manafest-2026-lineup-v1.webp"),
-  resolve(dist, "assets/images/manafest-lineup.webp"),
+  resolve(root, "assets/events/manafest-2026-lineup-v2.webp"),
+  resolve(dist, "assets/images/manafest-lineup-v2.webp"),
 );
 
 for (const name of ["email", "facebook", "instagram", "link", "tiktok"]) {

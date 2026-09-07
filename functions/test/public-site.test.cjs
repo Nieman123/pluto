@@ -31,7 +31,7 @@ test("ManaFest source is complete without client-side rendering", () => {
 
   assert.match(publicHtmlCacheControl, /s-maxage=60/);
   assert.match(html, /<h1[^>]*>ManaFest 2026<\/h1>/);
-  assert.match(html, /Around the festival/);
+  assert.match(html, /What else can I do at Manafest\?/);
   assert.match(html, /Sunrise sound bath/);
   assert.match(html, /21\+ event/);
   assert.match(html, /Main Stage will be powered by BASSBOSS speakers/);
