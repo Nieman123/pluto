@@ -272,6 +272,23 @@ p { color: var(--muted); }
 .event-facts { margin: 32px 0; padding: 24px 0; border-block: 1px solid var(--line); display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
 .event-facts dt { color: var(--orange); font: .72rem "Source Code Pro", monospace; }
 .event-facts dd { margin: 6px 0 0; color: var(--text); }
+.day-pass-announcement { margin: 0 0 24px; padding: 18px 20px; border: 1px solid var(--orange); border-radius: 6px; background: var(--surface); color: var(--text); }
+.day-pass-announcement a { display: block; width: fit-content; margin-top: 10px; padding-block: 6px; color: var(--cyan); text-underline-offset: 5px; }
+.tickets-section { padding-top: 0; scroll-margin-top: 96px; }
+.weekend-pass { padding: clamp(24px, 4vw, 40px); border: 1px solid var(--orange); border-radius: 8px; background: var(--surface); display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 32px; align-items: center; }
+.weekend-pass h3 { font-size: clamp(1.6rem, 3vw, 2rem); }
+.weekend-pass p { max-width: 65ch; }
+.weekend-pass p:last-child { margin-bottom: 0; }
+.weekend-purchase { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; }
+.weekend-purchase p { margin: 0; }
+.day-pass-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(24px, 5vw, 64px); margin-top: 36px; }
+.day-pass { min-width: 0; padding-top: 24px; border-top: 1px solid var(--line); }
+.day-pass-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px; }
+.day-pass-heading h3 { margin: 0; }
+.ticket-price { margin: 0; color: var(--orange); font: 600 1.8rem "Source Code Pro", monospace; }
+.pass-date { color: var(--text); }
+.day-pass-camping { max-width: 75ch; margin: 32px 0 0; padding-top: 24px; border-top: 1px solid var(--line); }
+.day-pass .button { white-space: normal; text-align: center; }
 .guide-grid { border-top: 1px solid var(--line); }
 .guide-item { padding: 34px 0; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 90px 1fr; gap: 30px; }
 .guide-number { color: var(--magenta); font: 1rem "Source Code Pro", monospace; }
@@ -377,6 +394,10 @@ p { color: var(--muted); }
   .manafest-hero-image { width: min(100%, 430px); margin: 0 auto; }
   .manafest-hero-copy h1 { font-size: clamp(3rem, 16vw, 4.6rem); }
   .event-facts { grid-template-columns: 1fr; gap: 18px; }
+  .tickets-section { padding-top: 0; }
+  .weekend-pass, .day-pass-options { grid-template-columns: 1fr; }
+  .weekend-pass { gap: 24px; }
+  .weekend-purchase, .weekend-purchase .button, .day-pass .button { width: 100%; }
   .guide-item { grid-template-columns: 44px 1fr; gap: 14px; }
   .experience-band { padding-block: 68px; }
   .experience-heading { grid-template-columns: 1fr; gap: 16px; margin-bottom: 36px; }

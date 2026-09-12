@@ -11,12 +11,49 @@
         <div><dt>WHEN</dt><dd>{{ manaFest.dateLabel }}</dd></div>
         <div><dt>WHERE</dt><dd>{{ manaFest.venue }} · {{ manaFest.locality }}, {{ manaFest.region }}</dd></div>
       </dl>
+      <p class="day-pass-announcement">
+        {{ manaFest.tickets.announcement }}
+        <a href="#tickets">Compare passes ↓</a>
+      </p>
       <div class="hero-actions">
         <a class="button button-primary button-large" href="{{ manaFest.ticketUrl }}" target="_blank" rel="noopener noreferrer">Get tickets</a>
         <a class="button button-quiet button-large" href="#guide">Read the guide</a>
         <a class="button button-quiet button-large" href="#faq">FAQs</a>
       </div>
     </div>
+  </section>
+
+  <section class="section tickets-section" id="tickets" aria-labelledby="tickets-title">
+    <div class="section-heading">
+      <div><p class="eyebrow">YOUR TIME IN THE WOODS</p><h2 id="tickets-title">Choose your pass</h2></div>
+      <p>Stay for the full weekend, or join us for one day and a night under the trees.</p>
+    </div>
+    <article class="weekend-pass" aria-labelledby="weekend-pass-title">
+      <div>
+        <p class="eyebrow">THE FULL EXPERIENCE</p>
+        <h3 id="weekend-pass-title">{{ manaFest.tickets.weekend.name }}</h3>
+        <p>{{ manaFest.tickets.weekend.description }}</p>
+        <p>{{ manaFest.tickets.weekend.camping }}</p>
+      </div>
+      <div class="weekend-purchase">
+        <p>{{ manaFest.tickets.weekend.priceLabel }}</p>
+        <a class="button button-primary button-large" href="{{ manaFest.ticketUrl }}" target="_blank" rel="noopener noreferrer">Get weekend passes</a>
+      </div>
+    </article>
+    <div class="day-pass-options">
+      {% for pass in manaFest.tickets.dayPasses %}
+        <article class="day-pass" aria-labelledby="day-pass-{{ loop.index }}-title" aria-describedby="day-pass-camping">
+          <div class="day-pass-heading">
+            <h3 id="day-pass-{{ loop.index }}-title">{{ pass.name }}</h3>
+            <p class="ticket-price">${{ pass.price }}</p>
+          </div>
+          <p class="pass-date"><time datetime="{{ pass.date }}">{{ pass.dateLabel }}</time></p>
+          <p>{{ pass.access }}</p>
+          <a class="button button-quiet button-large" href="{{ manaFest.ticketUrl }}" target="_blank" rel="noopener noreferrer" aria-label="View {{ pass.name }} on Posh">View on Posh</a>
+        </article>
+      {% endfor %}
+    </div>
+    <p class="day-pass-camping" id="day-pass-camping">{{ manaFest.tickets.parking }}</p>
   </section>
 
   <section class="lineup-band" aria-labelledby="lineup-title">

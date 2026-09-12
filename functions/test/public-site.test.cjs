@@ -74,6 +74,38 @@ test("ManaFest source is complete without client-side rendering", () => {
   assert.match(html, /gtag\("config", "G-Y6GBW8P032"\)/);
 });
 
+test("day passes link to Posh with shared camping details below both options", () => {
+  const content = JSON.parse(
+    readFileSync(join(__dirname, "../lib/content/manafest.json"), "utf8"),
+  );
+  const env = nunjucks.configure(join(__dirname, "../lib/templates"), { autoescape: true });
+  const html = env.render("manafest.njk", { manaFest: content, meta: {} });
+  assert.match(html, /day passes are now available/);
+  assert.doesNotMatch(html, /Online sales coming soon|Purchases are handled by Posh|Review the final total and fee breakdown/);
+  assert.match(html, /href="#tickets">Compare passes/);
+  assert.ok(html.includes(`href="${content.ticketUrl}" target="_blank" rel="noopener noreferrer">Get tickets`));
+  assert.ok(html.includes(`href="${content.ticketUrl}" target="_blank" rel="noopener noreferrer">Get weekend passes`));
+  assert.ok(html.indexOf('id="weekend-pass-title"') < html.indexOf('class="day-pass-options"'));
+  const options = [...html.matchAll(/<article class="day-pass"[\s\S]*?<\/article>/g)];
+  assert.equal(options.length, 2);
+  for (const [index, [option]] of options.entries()) {
+    const day = index === 0 ? "Friday" : "Saturday";
+    assert.ok(option.includes(`${day} Day Pass`));
+    assert.ok(option.includes(`${day}, September ${18 + index}, 2026`));
+    assert.ok(option.includes(`${day}-night camping only`));
+    assert.match(option, /\$60/);
+    assert.match(option, /not a full-weekend pass/);
+    assert.match(option, /aria-describedby="day-pass-camping"/);
+    assert.doesNotMatch(option, /designated day parking lot/);
+    assert.ok(option.includes(`href="${content.ticketUrl}" target="_blank" rel="noopener noreferrer" aria-label="View ${day} Day Pass on Posh">View on Posh</a>`));
+  }
+  const tickets = html.match(/<section class="section tickets-section"[\s\S]*?<\/section>/)[0];
+  assert.equal(tickets.split(content.tickets.parking).length - 1, 1);
+  assert.ok(tickets.indexOf('id="day-pass-camping"') > tickets.indexOf('id="day-pass-2-title"'));
+  assert.match(tickets, /Parking is included in the ticket price/);
+  assert.match(tickets, /Camping beside your vehicle is not included/);
+});
+
 test("homepage prioritizes its hero without embedding event media", () => {
   const templates = join(__dirname, "../lib/templates");
   const env = nunjucks.configure(templates, { autoescape: true });

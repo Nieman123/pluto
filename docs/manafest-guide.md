@@ -8,7 +8,18 @@ Raw energy, heavy bass, and regional DJs are at the center of the weekend.
 
 The Main Stage will be powered by BASSBOSS speakers for deep, high-impact sound all weekend.
 
-Bring your crew, set up camp, and lock in for a full weekend of underground sound.
+Bring your crew, set up camp, and lock in for a full weekend of underground sound. Or join us for a single day and its night’s camping with a Friday or Saturday day pass.
+
+## Day Passes
+
+- Friday Day Pass: $60 for Friday, September 18, 2026 admission and Friday-night camping.
+- Saturday Day Pass: $60 for Saturday, September 19, 2026 admission and Saturday-night camping.
+
+Each pass covers only its selected day and that night’s camping, not the full weekend.
+
+Overnight camping is included for your selected night. Day-pass guests park in the designated day parking lot and carry their gear to the camping area. Parking is included in the ticket price. Camping beside your vehicle is not included.
+
+View day passes on the [Posh ticket page](https://posh.vip/e/manafest-2026).
 
 ## Gate Times
 
@@ -17,7 +28,7 @@ Bring your crew, set up camp, and lock in for a full weekend of underground soun
 
 You may arrive as soon as gates open at 2 PM on Thursday. A Thursday Early Arrival pass is required.
 
-Entry ends when gates close for the night. You may leave and re-enter during the day while gates are open.
+Entry ends when gates close for the night. You may leave and re-enter during the day covered by your pass while gates are open. Day-pass guests arrive after noon on their selected day and leave by 8 AM the next morning.
 
 ## Check-in
 
@@ -25,7 +36,7 @@ Bring a valid government-issued photo ID. ManaFest is a 21+ event.
 
 Festival tickets are digital, so have yours ready on your phone at check-in.
 
-Car camping passes are also digital. One pass is required per vehicle.
+Car camping passes are also digital. Weekend car camping requires one pass per vehicle. Day-pass parking is included in the designated day parking lot; camping beside your vehicle is not included.
 
 You will receive your wristband at check-in.
 
@@ -59,9 +70,17 @@ ManaFest is a 21+ event.
 
 ## Frequently Asked Questions
 
+### What does a day pass include?
+
+The Friday Day Pass is $60 for Friday, September 18, 2026 admission and Friday-night camping. The Saturday Day Pass is $60 for Saturday, September 19, 2026 admission and Saturday-night camping. Each pass covers only its selected day and that night’s camping, not the full weekend.
+
+### Where do day-pass guests park and camp?
+
+Overnight camping is included for your selected night. Day-pass guests park in the designated day parking lot and carry their gear to the camping area. Parking is included in the ticket price. Camping beside your vehicle is not included.
+
 ### What are the gate hours?
 
-Thursday Early Arrival: 2–9 PM. Friday: 10 AM–9 PM. Saturday: 10 AM–9 PM. A Thursday Early Arrival pass is required.
+General gate hours: Thursday Early Arrival: 2–9 PM. Friday: 10 AM–9 PM. Saturday: 10 AM–9 PM. A Thursday Early Arrival pass is required for Thursday entry. Day-pass guests arrive after noon on their selected day and leave by 8 AM the next morning.
 
 ### Can I bring an RV?
 
@@ -73,11 +92,11 @@ If your van fits in a parking space, you can bring it!
 
 ### Can I camp next to my car?
 
-Yes, car camping is encouraged. A separate car camping pass is required, one per vehicle.
+With a weekend pass, car camping is encouraged. A separate car camping pass is required, one per vehicle. Camping beside your vehicle is not included with either day pass. Day-pass guests use the designated day parking lot and carry their gear to the camping area.
 
 ### Is there camping Sunday night?
 
-No, you must be packed up by Sunday evening. This is a leave-no-trace event, so everything you bring must leave with you.
+No. Weekend guests must be packed up by Sunday evening. Day passes cover only the selected day and that night’s camping. This is a leave-no-trace event, so everything you bring must leave with you.
 
 ### Will there be food for sale?
 
@@ -101,7 +120,9 @@ Google Maps: [Open Three Creeks Campground in Google Maps](https://www.google.co
 
 Camp only in designated areas.
 
-Car camping pass is a separate pass. One pass is required per vehicle.
+For weekend guests, a car camping pass is separate. One pass is required per vehicle.
+
+Overnight camping is included for your selected night. Day-pass guests park in the designated day parking lot and carry their gear to the camping area. Parking is included in the ticket price. Camping beside your vehicle is not included.
 
 No generators, please.
 
