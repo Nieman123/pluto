@@ -1,0 +1,71 @@
+{% extends "base.njk" %}
+{% block content %}
+<div class="waiver-page" data-waiver-page>
+  <header class="waiver-intro">
+    <a class="waiver-back" href="/manafest">← Back to ManaFest</a>
+    <p class="eyebrow">MANAFEST 2026 · BEFORE YOU ARRIVE</p>
+    <h1>Attendee waiver</h1>
+    <p class="waiver-lead">Read the agreement. Add your details. Sign when you’re ready.</p>
+    <p>September 18–20, 2026 · Three Creeks Campground<br>Anderson, South Carolina · Organized by Pluto Events LLC<br>Authorized early arrival: September 17 · Ages 21+</p>
+    <p class="waiver-note">Signing does not purchase a ticket or guarantee entry. Prefer paper? A paper-signing alternative is available at event check-in.</p>
+    {% if waiverPreview %}<p class="waiver-alert">Local test preview. Submissions save to local Firebase emulators, not event records. Use fictional details only.</p>{% endif %}
+    <nav class="waiver-steps" aria-label="Waiver sections"><a href="#read-waiver">1. Read</a><a href="#your-details">2. Your details</a><a href="#sign-waiver">3. Sign</a></nav>
+  </header>
+  <section id="read-waiver" aria-labelledby="read-title">
+    <div class="waiver-section-heading"><h2 id="read-title">1. Read the waiver</h2><a href="/manafest-waiver/original.pdf">Download original PDF</a></div>
+    <article class="waiver-copy" aria-label="Complete original attendee waiver">
+      {% for line in legalView.header %}<p class="waiver-original-heading">{{ line }}</p>{% endfor %}
+      <p class="waiver-legal-warning"><strong>{{ legalView.warning }}</strong></p>
+      {% for clause in legalView.clauses %}<section><h3>{{ clause.heading }}</h3><p>{{ clause.body }}</p></section>{% endfor %}
+      <div class="waiver-source-labels">{% for line in legalView.formLabels %}<p>{{ line }}</p>{% endfor %}</div>
+    </article>
+    <p class="waiver-meta">Original PDF wording, with line wrapping adapted for this page. The electronic fields and consent below are additional.</p>
+  </section>
+  <noscript><p class="waiver-alert">JavaScript is needed to sign and save online. You can still read the complete waiver above and sign on paper at event check-in.</p></noscript>
+  <form method="post" action="/manafest-waiver/api/submit" id="waiver-form" data-version="{{ version }}" data-document-hash="{{ documentHash }}" data-consent-version="{{ consentVersion }}">
+    <fieldset id="waiver-inputs">
+      <section id="your-details" aria-labelledby="details-title">
+        <h2 id="details-title">2. Your details</h2>
+        <p>All fields are required. Your information is kept in private event records for authorized staff.</p>
+        <div class="waiver-fields">
+          <label class="waiver-full">Full legal name<input name="fullName" autocomplete="name" required minlength="2" maxlength="120"></label>
+          <label>Email<input name="email" type="email" autocomplete="email" required maxlength="254"></label>
+          <label>Attendee phone<input name="phone" type="tel" autocomplete="tel" required minlength="7" maxlength="32"></label>
+          <label>Emergency contact name<input name="emergencyName" autocomplete="section-emergency name" required minlength="2" maxlength="120"></label>
+          <label>Relationship to you<input name="emergencyRelationship" autocomplete="off" placeholder="For example, friend or sibling" required maxlength="80"></label>
+          <label class="waiver-full">Emergency contact phone<input name="emergencyPhone" type="tel" autocomplete="section-emergency tel" required minlength="7" maxlength="32"></label>
+        </div>
+        <label class="waiver-honeypot" aria-hidden="true">Leave empty<input name="website" tabindex="-1" autocomplete="off"></label>
+      </section>
+      <section id="sign-waiver" aria-labelledby="sign-title">
+        <h2 id="sign-title">3. Acknowledge & sign</h2>
+        <div class="waiver-consent"><h3>Electronic signing</h3><p>{{ electronicDisclosure }}</p></div>
+        <div class="waiver-acknowledgments">
+          {% for key, label in consents %}<label><input type="checkbox" name="{{ key }}" required><span>{{ label }}</span></label>{% endfor %}
+        </div>
+        <fieldset class="waiver-signature-method"><legend>Choose how to sign</legend><label><input type="radio" name="signatureMethod" value="drawn" checked> Draw signature</label><label><input type="radio" name="signatureMethod" value="typed"> Type signature (accessible alternative)</label></fieldset>
+        <div id="drawn-signature">
+          <p id="signature-help">Draw in the box using your finger, mouse, or stylus. You can use the typed alternative above instead.</p>
+          <canvas id="signature-canvas" width="960" height="320" aria-label="Draw your signature" aria-describedby="signature-help" role="img"></canvas>
+          <div class="waiver-signature-tools"><span id="signature-state" role="status">No signature drawn</span><button class="button button-quiet" type="button" id="clear-signature">Clear signature</button></div>
+        </div>
+        <label id="typed-signature" hidden>Type your full legal name<input name="typedSignature" autocomplete="off" minlength="2" maxlength="120" disabled><span class="waiver-meta">This must match the full legal name entered above.</span></label>
+      </section>
+    </fieldset>
+    <p id="waiver-error" class="waiver-alert" role="alert" tabindex="-1" hidden></p>
+    <p id="waiver-progress" role="status" aria-live="polite"></p>
+    <button id="waiver-submit" class="button button-primary button-large" type="submit" disabled>Sign and submit waiver</button>
+    <p class="waiver-meta">Wait for your confirmation number before closing this page. If the connection fails, keep the page open and retry the same signing attempt.</p>
+  </form>
+  <section id="waiver-confirmation" class="waiver-confirmation" aria-labelledby="confirmation-title" tabindex="-1" hidden>
+    <p class="eyebrow">SAVED SUCCESSFULLY</p><h2 id="confirmation-title">Your waiver is signed.</h2>
+    <p>Your signed record and PDF have been saved. Keep your confirmation number for check-in.</p>
+    <dl><dt>Confirmation number</dt><dd id="confirmation-number"></dd><dt>Signed at (UTC)</dt><dd id="confirmation-time"></dd></dl>
+    <button class="button button-primary button-large" id="download-waiver" type="button">Download signed PDF</button>
+    <p id="download-status" role="status"></p>
+    <p>No email copy is sent. Download your PDF before leaving this page. If you need a copy later, ask authorized staff at check-in.</p>
+    <p>Signing does not purchase a ticket or guarantee entry.</p><a href="/manafest">Return to the festival guide</a>
+  </section>
+  <p class="waiver-staff-link"><a href="/manafest-waiver/staff">Staff waiver check-in</a></p>
+</div>
+{% endblock %}

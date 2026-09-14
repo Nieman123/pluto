@@ -419,3 +419,72 @@ p { color: var(--muted); }
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* Waiver: the existing Pluto palette, with a paper reading surface for long legal text. */
+.waiver-page { max-width: 840px; margin: 0 auto; padding: 40px 24px 64px; }
+.waiver-page h1 { font-size: 2.5rem; line-height: 1.15; margin: 16px 0; }
+.waiver-page h2 { font-size: 1.5rem; line-height: 1.35; }
+.waiver-page h3 { font-size: 1.1rem; }
+.waiver-page p { max-width: 72ch; }
+.waiver-page a { text-underline-offset: 4px; }
+.waiver-back { display: inline-block; padding: 8px 0; color: var(--muted); }
+.waiver-intro .eyebrow { margin-top: 28px; }
+.waiver-lead { font-size: 1.125rem; color: var(--text); }
+.waiver-note, .waiver-consent { background: var(--surface); padding: 18px 20px; border: 1px solid var(--line); border-radius: 6px; }
+.waiver-consent h3 { margin-top: 0; }
+.waiver-consent p { margin-bottom: 0; }
+.waiver-steps { display: flex; flex-wrap: wrap; gap: 12px 28px; padding: 16px 0 28px; border-bottom: 1px solid var(--line); margin-bottom: 36px; }
+.waiver-steps a { padding: 8px 0; color: var(--orange); }
+.waiver-page section[id] { scroll-margin-top: 110px; }
+.waiver-section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+.waiver-section-heading h2 { margin: 0; }
+.waiver-section-heading a { color: var(--muted); font-size: .875rem; }
+.waiver-copy { background: oklch(97% .005 310); color: oklch(22% .012 310); padding: 36px; border-radius: 6px; font-family: Arial, sans-serif; font-size: 1rem; line-height: 1.65; }
+.waiver-original-heading { margin: 0; }
+.waiver-original-heading:first-child { font-size: 1.5rem; font-weight: 700; }
+.waiver-original-heading:nth-child(3) { margin: 14px 0; font-size: 1.15rem; font-weight: 700; }
+.waiver-legal-warning { padding-top: 20px; margin-top: 24px; border-top: 1px solid oklch(65% .01 310); }
+.waiver-copy h3 { margin: 24px 0 4px; font-size: 1rem; }
+.waiver-copy section p { margin: 0; }
+.waiver-source-labels { border-top: 1px solid oklch(75% .01 310); padding-top: 16px; margin-top: 28px; font-size: .875rem; }
+.waiver-source-labels p { margin: 6px 0; }
+.waiver-meta { font-size: .875rem; color: var(--muted); overflow-wrap: anywhere; }
+#waiver-inputs { border: 0; padding: 0; margin: 0; min-width: 0; }
+#your-details, #sign-waiver { margin-top: 48px; }
+.waiver-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 24px 20px; margin-top: 24px; }
+.waiver-full { grid-column: 1 / -1; }
+.waiver-fields label, #typed-signature, #staff-search label { display: flex; flex-direction: column; gap: 8px; font-size: .95rem; }
+.waiver-page input:not([type=checkbox]):not([type=radio]) { width: 100%; min-width: 0; min-height: 48px; padding: 12px; border: 1px solid var(--line); border-radius: 6px; color: var(--text); background: var(--surface); }
+.waiver-page input::placeholder { color: var(--muted); }
+.waiver-page :is(input, button, a, canvas):focus-visible { outline: 3px solid var(--cyan); outline-offset: 4px; }
+.waiver-page :is(input, button):disabled { opacity: .6; cursor: default; }
+.waiver-page .button { min-height: 48px; white-space: normal; }
+.waiver-acknowledgments { margin: 28px 0; }
+.waiver-acknowledgments label { display: flex; align-items: flex-start; gap: 14px; padding: 16px 0; cursor: pointer; }
+.waiver-page input[type=checkbox], .waiver-page input[type=radio] { width: 22px; height: 22px; flex: 0 0 22px; accent-color: var(--orange); margin: 2px 0; }
+.waiver-signature-method { padding: 18px 0; border: 0; border-top: 1px solid var(--line); margin: 0; }
+.waiver-signature-method legend { padding: 0 12px 0 0; }
+.waiver-signature-method label { display: flex; align-items: center; gap: 12px; padding: 12px 0; }
+#signature-canvas { display: block; background: oklch(97% .005 310); border: 2px solid var(--line); width: 100%; height: auto; aspect-ratio: 3 / 1; border-radius: 6px; touch-action: none; cursor: crosshair; }
+.waiver-signature-tools { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin: 12px 0 28px; font-size: .875rem; color: var(--muted); }
+.waiver-alert { padding: 18px; border: 1px solid var(--orange); border-radius: 6px; background: var(--surface); color: var(--text); overflow-wrap: anywhere; }
+.waiver-honeypot { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+#waiver-submit { width: 100%; margin-top: 24px; }
+.waiver-confirmation { padding: 32px 0; margin-top: 36px; border-top: 1px solid var(--cyan); }
+.waiver-confirmation dt { color: var(--muted); font-size: .875rem; }
+.waiver-confirmation dd { margin: 6px 0 20px; overflow-wrap: anywhere; font-family: monospace; font-size: 1rem; }
+.waiver-staff-link { border-top: 1px solid var(--line); margin-top: 40px; padding-top: 24px; font-size: .875rem; color: var(--muted); }
+#staff-search { display: grid; gap: 16px; margin: 30px 0; }
+.waiver-results { padding: 0; list-style: none; }
+.waiver-results li { padding: 24px 0; border-top: 1px solid var(--line); }
+.waiver-results h2 { margin-top: 0; }
+.waiver-results p { white-space: pre-line; overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  .waiver-page { padding: 24px 20px 48px; }
+  .waiver-page h1 { font-size: 2rem; }
+  .waiver-copy { padding: 24px 18px; }
+  .waiver-fields { grid-template-columns: 1fr; }
+  .waiver-signature-tools { align-items: flex-start; }
+}
+.waiver-copy :is(p, h3) { color: inherit; }
+.waiver-page { overflow-wrap: anywhere; }

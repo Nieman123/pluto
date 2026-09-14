@@ -25,3 +25,5 @@ dotenv
 ._*
 .dartServer
 .dart-tool
+
+/tmp/

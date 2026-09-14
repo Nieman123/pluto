@@ -6,6 +6,7 @@ import { getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { onRequest } from "firebase-functions/v2/https";
 import nunjucks from "nunjucks";
+import { waiverRouter } from "./waiver/routes";
 import {
   docsForLinks,
   fallbackEvents,
@@ -93,6 +94,7 @@ function commonContext(path: string) {
     authDomain: "pluto-9b6ca.firebaseapp.com",
     storageBucket: "pluto-9b6ca.appspot.com",
     measurementId: googleAnalyticsId,
+    ...(process.env.FIREBASE_AUTH_EMULATOR_HOST ? { authEmulatorUrl: `http://${process.env.FIREBASE_AUTH_EMULATOR_HOST}`, projectId: process.env.GCLOUD_PROJECT || "demo-pluto-waiver" } : {}),
   };
   return {
     path,
@@ -107,6 +109,8 @@ app.use((request, response, next) => {
   response.set("Content-Type", "text/html; charset=utf-8");
   next();
 });
+
+app.use("/manafest-waiver", waiverRouter(commonContext));
 
 app.get("/", async (_request: Request, response: Response) => {
   const events = await loadEvents();
@@ -196,6 +200,6 @@ app.use((_request: Request, response: Response) => {
 
 export { app };
 export const publicSite = onRequest(
-  { region: "us-central1", memory: "256MiB", maxInstances: 10 },
+  { region: "us-central1", memory: "256MiB", maxInstances: 10, concurrency: 8 },
   app,
 );

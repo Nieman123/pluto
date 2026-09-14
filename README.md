@@ -278,3 +278,7 @@ Do not deploy Hosting before generating `dist/`.
 [PRODUCT.md](PRODUCT.md) defines the product audience, brand personality, accessibility expectations, and interface principles. Pluto is designed mobile-first for attendees who may be outdoors, in low light, moving between stages, or using an inconsistent connection.
 
 Public pages should remain semantic and useful without JavaScript. JavaScript on those routes is limited to progressive enhancements such as the mobile menu, five-second gallery rotation, and auth-aware navigation.
+
+## ManaFest electronic waiver
+
+`/manafest-waiver` provides the complete source waiver, accessible electronic signing, durable private Firebase records and signed-PDF downloads. `/manafest-waiver/staff` uses existing Firebase staff authorization for check-in searches and record downloads. See [waiver setup, legal-review additions, recovery behavior, preview, and tests](docs/manafest-waiver.md) before publishing.

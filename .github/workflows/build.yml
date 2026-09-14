@@ -56,6 +56,12 @@ jobs:
       - name: Test Storage rules
         run: npx firebase-tools@latest emulators:exec --project pluto-storage-rules-test --only firestore,storage "npm run test:storage"
 
+      - name: Test private waiver saving and access controls
+        env:
+          GCLOUD_PROJECT: demo-pluto-waiver
+          WAIVER_STORAGE_BUCKET: demo-pluto-waiver.appspot.com
+        run: npx firebase-tools@latest emulators:exec --project demo-pluto-waiver --config firebase.waiver-preview.json --only auth,firestore,storage "npm run test:waiver:integration && npm run test:waiver:rules"
+
       - name: Analyze Flutter project
         run: flutter analyze .
 

@@ -1,0 +1,17 @@
+{% extends "base.njk" %}
+{% block content %}
+<div class="waiver-page" data-waiver-staff>
+  <a class="waiver-back" href="/app/admin">← Admin tools</a>
+  <p class="eyebrow">MANAFEST 2026 · STAFF</p><h1>Waiver check-in</h1>
+  <p>Find a completed waiver by the beginning of an attendee’s full name, email, or confirmation number.</p>
+  {% if waiverPreview %}<p class="waiver-alert">Local test preview. These are fictional records in local Firebase emulators.</p>{% endif %}
+  <p id="staff-status" role="status">Checking your staff access…</p>
+  <div id="staff-sign-in" hidden><p>Use your existing Pluto staff account, then return here.</p>{% if waiverPreview %}<p>Use the local test account to review fictional records.</p><button type="button" class="button button-primary" id="preview-staff-login" disabled>Sign in as preview staff</button>{% else %}<a class="button button-primary" href="/app/sign-on">Sign in to Pluto</a>{% endif %}<button type="button" class="button button-quiet" id="staff-recheck">Check access again</button></div>
+  <section id="staff-tools" hidden>
+    <form id="staff-search" method="post" action="/manafest-waiver/api/staff/search"><label>Full name, email, or confirmation number<input name="query" type="search" required minlength="2" maxlength="254" autocomplete="off"></label><button class="button button-primary" type="submit">Search completed waivers</button></form>
+    <p id="staff-results-status" role="status"></p><ul id="staff-results" class="waiver-results"></ul>
+    <p>Only completed records appear here. If an attendee has no completed waiver, offer the online page or the paper form at check-in.</p>
+  </section>
+  <p><a href="/manafest-waiver">Open attendee waiver</a> · <a href="/manafest-waiver/original.pdf">Download paper form</a></p>
+</div>
+{% endblock %}

@@ -19,3 +19,6 @@ await cp(
   resolve(repoRoot, "site/static/assets/site.css"),
   resolve(functionsRoot, "lib/templates/site.css.njk"),
 );
+
+await cp(resolve(functionsRoot, "src/waiver/legal"), resolve(functionsRoot, "lib/waiver/legal"), { recursive: true });
+await cp(resolve(repoRoot, "assets/fonts/Montserrat-Medium.ttf"), resolve(functionsRoot, "lib/waiver/legal/Montserrat-Medium.ttf"));

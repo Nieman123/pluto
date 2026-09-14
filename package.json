@@ -9,13 +9,19 @@
     "build:functions": "npm --prefix functions run build",
     "build:public": "npm run build:site && npm run build:functions && node scripts/compose-web.mjs",
     "test": "npm --prefix functions test && node --test test/config.test.mjs",
-    "test:storage": "node --test test/storage-rules.test.mjs"
+    "test:storage": "node --test test/storage-rules.test.mjs",
+    "test:waiver:integration": "npm --prefix functions run test:waiver:integration",
+    "test:waiver:rules": "node --test test/waiver-rules.test.mjs",
+    "test:waiver:browser": "node scripts/waiver/browser-test.cjs",
+    "preview:waiver": "node scripts/waiver/preview.mjs"
   },
   "dependencies": {
     "firebase": "^12.1.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@firebase/rules-unit-testing": "^5.0.0",
-    "esbuild": "^0.25.0"
+    "esbuild": "^0.25.0",
+    "playwright": "^1.63.0"
   }
 }

@@ -71,7 +71,9 @@
       { "source": "/app/**", "destination": "/app/index.html" },
       { "source": "/", "function": { "functionId": "publicSite", "region": "us-central1" } },
       { "source": "/manafest", "function": { "functionId": "publicSite", "region": "us-central1" } },
-      { "source": "/links", "function": { "functionId": "publicSite", "region": "us-central1" } }
+      { "source": "/links", "function": { "functionId": "publicSite", "region": "us-central1" } },
+      { "source": "/manafest-waiver", "function": { "functionId": "publicSite", "region": "us-central1" } },
+      { "source": "/manafest-waiver/**", "function": { "functionId": "publicSite", "region": "us-central1" } }
     ]
   }
 }

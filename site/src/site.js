@@ -1,3 +1,7 @@
+import { initWaiver, initStaff } from './waiver.js';
+initWaiver();
+initStaff();
+
 const menuButton = document.querySelector("[data-menu-button]");
 const mobileMenu = document.querySelector("[data-mobile-menu]");
 
@@ -111,10 +115,14 @@ async function enhanceAuth() {
   const { getAuth, onAuthStateChanged } = authModule;
   const firebaseApp = initializeApp(firebaseConfig);
   const auth = getAuth(firebaseApp);
+  if (firebaseConfig.authEmulatorUrl && ['localhost', '127.0.0.1'].includes(location.hostname)) {
+    authModule.connectAuthEmulator(auth, firebaseConfig.authEmulatorUrl, { disableWarnings: true });
+  }
 
   onAuthStateChanged(auth, async (user) => {
     showAuthState(Boolean(user));
-    if (!user) return;
+    window.dispatchEvent(new CustomEvent("pluto-auth", { detail: user }));
+    if (!user || document.querySelector('[data-waiver-page], [data-waiver-staff]')) return;
 
     let avatarUrl = user.photoURL || "/assets/images/pluto-logo.webp";
     try {
@@ -140,13 +148,13 @@ function scheduleAuthEnhancement() {
   const run = () => {
     if ("requestIdleCallback" in window) {
       window.requestIdleCallback(
-        () => enhanceAuth().catch((error) => console.warn("Auth enhancement unavailable", error)),
+        () => enhanceAuth().catch((error) => (console.warn("Auth enhancement unavailable", error), window.dispatchEvent(new Event("pluto-auth-error")))),
         { timeout: 4000 },
       );
       return;
     }
     window.setTimeout(
-      () => enhanceAuth().catch((error) => console.warn("Auth enhancement unavailable", error)),
+      () => enhanceAuth().catch((error) => (console.warn("Auth enhancement unavailable", error), window.dispatchEvent(new Event("pluto-auth-error")))),
       1000,
     );
   };

@@ -17,7 +17,7 @@ test("Hosting exposes public SSR routes and Flutter deep links", () => {
     { source: "/app", destination: "/app/index.html" },
     { source: "/app/**", destination: "/app/index.html" },
   ]);
-  for (const route of ["/", "/manafest", "/links"]) {
+  for (const route of ["/", "/manafest", "/links", "/manafest-waiver", "/manafest-waiver/**"]) {
     const rewrite = rewrites.find((entry) => entry.source === route);
     assert.equal(rewrite.function.functionId, "publicSite");
     assert.equal(rewrite.function.region, "us-central1");
