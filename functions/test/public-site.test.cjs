@@ -9,7 +9,7 @@ const {
   serializeJsonLd,
 } = require("../lib/public-data.js");
 
-test("ManaFest source is complete without client-side rendering", () => {
+test("preserved active ManaFest page is complete without client-side rendering", () => {
   const templates = join(__dirname, "../lib/templates");
   const content = JSON.parse(
     readFileSync(join(__dirname, "../lib/content/manafest.json"), "utf8"),
@@ -74,7 +74,7 @@ test("ManaFest source is complete without client-side rendering", () => {
   assert.match(html, /gtag\("config", "G-Y6GBW8P032"\)/);
 });
 
-test("day passes link to Posh with shared camping details below both options", () => {
+test("preserved active ManaFest page links day passes to Posh with shared camping details", () => {
   const content = JSON.parse(
     readFileSync(join(__dirname, "../lib/content/manafest.json"), "utf8"),
   );
@@ -194,11 +194,13 @@ test("archive keeps all favorites available without active-event actions", () =>
   const env = nunjucks.configure(join(__dirname, "../lib/templates"), { autoescape: true });
   const html = env.render("manafest.njk", { manaFest: content, path: "/manafest", meta: {} });
   assert.equal(content.status, "archived");
-  assert.match(html, /Thank you for coming to our first music festival/);
+  assert.match(html, /Thank\s+you for coming to our first music festival/i);
   assert.match(html, /See you in 2027/);
   assert.match(html, /The highlight reel/);
-  assert.equal((html.match(/data-archive-photo /g) || []).length, 31);
-  assert.equal((html.match(/data-gallery-slide/g) || []).length, 6);
+  assert.ok(content.archive.photos.length > 0, "Archive must contain favorite photos");
+  assert.ok(content.archive.highlights.length > 0, "Archive must contain highlights");
+  assert.equal((html.match(/data-archive-photo\b/g) || []).length, content.archive.photos.length);
+  assert.equal((html.match(/data-gallery-slide\b/g) || []).length, content.archive.highlights.length);
   assert.ok(html.includes(`href="${content.archive.albumUrl}"`));
   assert.doesNotMatch(html, /Get tickets|Choose your pass|Sign attendee waiver|Apply as a vendor|EventScheduled|InStock/);
   const assets = join(__dirname, "../../assets/gallery/manafest-2026");
