@@ -1358,7 +1358,7 @@ class _AdminPageState extends State<AdminPage> {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: outlinedForeground,
-          side: BorderSide(color: outlinedBorder),
+          side: const BorderSide(color: outlinedBorder),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
