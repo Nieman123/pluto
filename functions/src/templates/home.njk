@@ -4,16 +4,18 @@
   <section class="home-hero" aria-labelledby="home-title">
     <div class="hero-media" id="home-gallery" role="group" aria-roledescription="carousel" aria-label="Pluto Events photo gallery" data-gallery>
       {% set gallery = [
-        { src: '1.webp', width: 614, height: 407, alt: 'Performers onstage behind pink caution tape at a Pluto Events party' },
         { src: 'elysium-4.webp', width: 1400, height: 1120, alt: 'Three friends smiling with their arms around each other at a Pluto Events party' },
-        { src: '10.webp', width: 1400, height: 1120, alt: 'Three attendees posing together in front of a brick wall at a Pluto Events party' },
         { src: 'manafest-2026-friends.webp', width: 1743, height: 1307, position: '49% 60%', alt: 'Two friends smiling beneath colorful string lights, one wearing a mushroom hat' },
         { src: 'manafest-2026-light-canopy.webp', width: 1743, height: 1307, position: '50% 42%', alt: 'Glowing string lights and fabric canopies above the nighttime dance floor' },
         { src: 'manafest-2026-fire-fans.webp', width: 2560, height: 1707, position: '63% 25%', alt: 'A fire performer holding flaming fans overhead at ManaFest 2026' },
         { src: 'manafest-2026-dj-duo.webp', width: 2560, height: 1707, position: '50% 42%', alt: 'Two DJs performing on a stage illuminated by purple lights at ManaFest 2026' },
         { src: 'manafest-2026-disco-dj.webp', width: 2560, height: 1707, position: '54% 42%', alt: 'A DJ performing beneath a disco ball and blue light beams at ManaFest 2026' },
         { src: 'manafest-2026-dance-floor.webp', width: 2560, height: 1707, position: '50% 42%', alt: 'Attendees dancing in front of a forest stage beneath string lights at ManaFest 2026' },
-        { src: 'manafest-2026-live-painting.webp', width: 2560, height: 1707, position: '59% 42%', alt: 'An artist painting beside the dance floor under purple lights at ManaFest 2026' }
+        { src: 'manafest-2026-live-painting.webp', width: 2560, height: 1707, position: '59% 42%', alt: 'An artist painting beside the dance floor under purple lights at ManaFest 2026' },
+        { src: 'manafest-2026-forest-overview.webp', width: 2560, height: 1707, position: '52% 42%', alt: 'A forest dance floor beneath sweeping laser beams and string lights at ManaFest 2026' },
+        { src: 'manafest-2026-laser-crowd.webp', width: 2560, height: 1707, position: '60% 42%', alt: 'Festivalgoers gathered around a forest stage under blue laser beams at ManaFest 2026' },
+        { src: 'manafest-2026-pink-stage.webp', width: 2560, height: 1707, position: '52% 42%', alt: 'A crowd dancing in front of a pink-lit DJ stage at ManaFest 2026' },
+        { src: 'manafest-2026-crowd-closeup.webp', width: 2560, height: 1707, position: '56% 42%', alt: 'Attendees in colorful hats on the dance floor beneath purple lights at ManaFest 2026' }
       ] %}
       {% for image in gallery %}
         <img src="/gallery/{{ image.src }}" width="{{ image.width }}" height="{{ image.height }}" alt="{{ image.alt }}"{% if image.position %} style="object-position: {{ image.position }}"{% endif %} decoding="async" {% if loop.first %}loading="eager" fetchpriority="high"{% else %}hidden loading="lazy"{% endif %} data-gallery-slide>

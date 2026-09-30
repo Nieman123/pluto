@@ -132,8 +132,8 @@ test("homepage prioritizes its hero without embedding event media", () => {
   });
 
   assert.doesNotMatch(html, /data:image\//);
-  assert.match(html, /rel="preload" as="image" href="\/gallery\/1\.webp"/);
-  assert.match(html, /src="\/gallery\/1\.webp"[^>]*fetchpriority="high"/);
+  assert.match(html, /rel="preload" as="image" href="\/gallery\/elysium-4\.webp"/);
+  assert.match(html, /src="\/gallery\/elysium-4\.webp"[^>]*fetchpriority="high"/);
   assert.match(
     html,
     /id="home-gallery" role="group" aria-roledescription="carousel"/,

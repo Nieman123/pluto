@@ -1327,18 +1327,23 @@ class _AdminPageState extends State<AdminPage> {
 
   ThemeData _adminPageTheme(BuildContext context) {
     final ThemeData baseTheme = Theme.of(context);
-    final bool isDark = _isDarkTheme(context);
-    final Color filledBackground = _adminFilledButtonBackground(context);
-    final Color filledForeground = _adminFilledButtonForeground(context);
-    final Color outlinedForeground =
-        isDark ? Colors.white : const Color(0xFF121212);
-    final Color outlinedBorder = isDark
-        ? Colors.white24
-        : const Color(0xFF121212).withValues(alpha: 0.28);
-    final Color textForeground =
-        isDark ? const Color(0xFFF3EFF7) : const Color(0xFF121212);
+    // Admin cards and PlutoBackground stay dark in either app theme.
+    const Color filledBackground = Color(0xFFF3EFF7);
+    const Color filledForeground = Color(0xFF6D55B4);
+    const Color outlinedForeground = Colors.white;
+    const Color outlinedBorder = Colors.white60;
+    const Color textForeground = Color(0xFFF3EFF7);
 
     return baseTheme.copyWith(
+      brightness: Brightness.dark,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xFF6D55B4),
+        brightness: Brightness.dark,
+      ),
+      textTheme: baseTheme.textTheme.apply(
+        bodyColor: textForeground,
+        displayColor: textForeground,
+      ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: filledBackground,

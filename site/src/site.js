@@ -52,7 +52,7 @@ function showSlide(nextIndex) {
 function startGallery() {
   window.clearInterval(galleryTimer);
   if (slides.length < 2 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  galleryTimer = window.setInterval(() => showSlide(currentSlide + 1), 5000);
+  galleryTimer = window.setInterval(() => showSlide(currentSlide + 1), 10000);
 }
 
 document.querySelector("[data-gallery-previous]")?.addEventListener("click", () => {
