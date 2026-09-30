@@ -17,7 +17,7 @@ test("ManaFest source is complete without client-side rendering", () => {
   const env = nunjucks.configure(templates, { autoescape: true });
   const html = env.render("manafest.njk", {
     path: "/manafest",
-    manaFest: content,
+    manaFest: { ...content, status: "active" },
     meta: {
       title: "ManaFest 2026 | Pluto Events",
       description: content.description,
@@ -79,7 +79,7 @@ test("day passes link to Posh with shared camping details below both options", (
     readFileSync(join(__dirname, "../lib/content/manafest.json"), "utf8"),
   );
   const env = nunjucks.configure(join(__dirname, "../lib/templates"), { autoescape: true });
-  const html = env.render("manafest.njk", { manaFest: content, meta: {} });
+  const html = env.render("manafest.njk", { manaFest: { ...content, status: "active" }, meta: {} });
   assert.match(html, /day passes are now available/);
   assert.doesNotMatch(html, /Online sales coming soon|Purchases are handled by Posh|Review the final total and fee breakdown/);
   assert.match(html, /href="#tickets">Compare passes/);
@@ -187,4 +187,47 @@ test("link collections expose native list and navigation semantics", () => {
   assert.match(html, /<ul class="link-list">/);
   assert.match(html, /<li>\s*<a class="link-row"/);
   assert.match(html, /href="\/links" aria-current="page">Links<\/a>/);
+});
+
+test("archive keeps all favorites available without active-event actions", () => {
+  const content = JSON.parse(readFileSync(join(__dirname, "../lib/content/manafest.json"), "utf8"));
+  const env = nunjucks.configure(join(__dirname, "../lib/templates"), { autoescape: true });
+  const html = env.render("manafest.njk", { manaFest: content, path: "/manafest", meta: {} });
+  assert.equal(content.status, "archived");
+  assert.match(html, /Thank you for coming to our first music festival/);
+  assert.match(html, /See you in 2027/);
+  assert.match(html, /The highlight reel/);
+  assert.equal((html.match(/data-archive-photo /g) || []).length, 31);
+  assert.equal((html.match(/data-gallery-slide/g) || []).length, 6);
+  assert.ok(html.includes(`href="${content.archive.albumUrl}"`));
+  assert.doesNotMatch(html, /Get tickets|Choose your pass|Sign attendee waiver|Apply as a vendor|EventScheduled|InStock/);
+  const assets = join(__dirname, "../../assets/gallery/manafest-2026");
+  for (const photo of content.archive.photos) {
+    assert.ok(photo.alt && photo.width > 0 && photo.height > 0);
+    assert.ok(Math.max(photo.width, photo.height) <= 1800);
+    for (const name of [photo.src, photo.thumbnail]) {
+      assert.ok(readFileSync(join(assets, name)).byteLength < 500_000, name);
+    }
+  }
+});
+
+test("archive route publishes retrospective metadata and home hides festival tickets", async () => {
+  process.env.PUBLIC_SITE_PREVIEW = "true";
+  const { app } = require("../lib/index.js");
+  const server = app.listen(0, "127.0.0.1");
+  try {
+    await new Promise((resolve) => server.once("listening", resolve));
+    const base = `http://127.0.0.1:${server.address().port}`;
+    const archive = await (await fetch(`${base}/manafest`)).text();
+    assert.match(archive, /ManaFest 2026 Memories/);
+    const jsonLd = JSON.parse(archive.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
+    assert.equal(jsonLd["@type"], "WebPage");
+    assert.equal(jsonLd.about.startDate, "2026-09-18");
+    assert.doesNotMatch(JSON.stringify(jsonLd), /EventScheduled|InStock|posh.vip/);
+    const home = await (await fetch(base)).text();
+    assert.doesNotMatch(home, /posh.vip\/e\/manafest-2026|ManaFest details/);
+    assert.match(home, /Relive ManaFest 2026/);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
 });

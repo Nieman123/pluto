@@ -28,6 +28,10 @@ const googleAnalyticsId = "G-Y6GBW8P032";
 const manaFest = JSON.parse(
   readFileSync(join(runtimeRoot, "content/manafest.json"), "utf8"),
 ) as Record<string, unknown>;
+const manaFestArchive = manaFest.archive as {
+  description: string;
+  highlights: { src: string }[];
+};
 
 const app = express();
 app.use(compression());
@@ -63,10 +67,10 @@ async function loadLinks(): Promise<PublicLink[]> {
 function pageMeta(path: string) {
   if (path === "/manafest") {
     return {
-      title: "ManaFest 2026 | Pluto Events",
-      description: manaFest.description,
+      title: manaFest.status === "archived" ? "ManaFest 2026 Memories | Pluto Events" : "ManaFest 2026 | Pluto Events",
+      description: manaFest.status === "archived" ? manaFestArchive.description : manaFest.description,
       canonical: "https://pluto.events/manafest",
-      image: "https://pluto.events/assets/images/manafest-flyer.webp",
+      image: manaFest.status === "archived" ? `https://pluto.events/gallery/manafest-2026/${manaFestArchive.highlights[0].src}` : "https://pluto.events/assets/images/manafest-flyer.webp",
     };
   }
   if (path === "/links") {
@@ -113,7 +117,7 @@ app.use((request, response, next) => {
 app.use("/manafest-waiver", waiverRouter(commonContext));
 
 app.get("/", async (_request: Request, response: Response) => {
-  const events = await loadEvents();
+  const events = (await loadEvents()).filter((event) => manaFest.status !== "archived" || !event.isManaFest);
   const jsonLd = serializeJsonLd([
     {
       "@context": "https://schema.org",
@@ -138,6 +142,25 @@ app.get("/", async (_request: Request, response: Response) => {
 });
 
 app.get("/manafest", (_request: Request, response: Response) => {
+  if (manaFest.status === "archived") {
+    const jsonLd = serializeJsonLd({
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      name: "ManaFest 2026 Memories",
+      description: manaFestArchive.description,
+      url: "https://pluto.events/manafest",
+      primaryImageOfPage: `https://pluto.events/gallery/manafest-2026/${manaFestArchive.highlights[0].src}`,
+      about: {
+        "@type": "MusicEvent",
+        name: manaFest.name,
+        startDate: manaFest.startDate,
+        endDate: manaFest.endDate,
+        location: { "@type": "Place", name: manaFest.venue },
+      },
+    });
+    response.render("manafest", { ...commonContext("/manafest"), manaFest, jsonLd });
+    return;
+  }
   const jsonLd = serializeJsonLd({
     "@context": "https://schema.org",
     "@type": "MusicEvent",

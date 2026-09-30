@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 import 'current_events_repository.dart';
+import 'festival_visibility.dart';
 import 'user_profile_repository.dart';
 
 class _DashboardColors {
@@ -197,6 +198,9 @@ class SignedInHomePage extends StatelessWidget {
   }
 
   Widget _buildOverview(BuildContext context) {
+    if (!manaFestUiEnabled) {
+      return _buildPointsOverview(context);
+    }
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
         final Widget countdown = _ManaFestCountdownPanel(
@@ -334,7 +338,7 @@ class SignedInHomePage extends StatelessWidget {
                             ),
                             label: const Text('Tickets'),
                           ),
-                        if (event.isManaFest)
+                        if (manaFestUiEnabled && event.isManaFest)
                           OutlinedButton.icon(
                             onPressed: () => context.go('/manafest'),
                             icon: const Icon(Icons.festival_outlined, size: 18),
@@ -376,7 +380,9 @@ class SignedInHomePage extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         const Text(
-          'Other active events, drops, and gatherings beyond ManaFest.',
+          manaFestUiEnabled
+              ? 'Other active events, drops, and gatherings beyond ManaFest.'
+              : 'Upcoming events, drops, and gatherings from Pluto.',
           style: TextStyle(
             color: _DashboardColors.muted,
             fontSize: 14,
@@ -410,8 +416,9 @@ class SignedInHomePage extends StatelessWidget {
               return const _DashboardEmptyState(
                 icon: Icons.nights_stay_outlined,
                 title: 'The next drop is being planned',
-                body:
-                    'ManaFest is the main event for now. New Pluto gatherings will appear here when they go live.',
+                body: manaFestUiEnabled
+                    ? 'ManaFest is the main event for now. New Pluto gatherings will appear here when they go live.'
+                    : 'New Pluto gatherings will appear here when they go live. Stay tuned.',
               );
             }
 
@@ -447,11 +454,13 @@ class SignedInHomePage extends StatelessWidget {
               _buildGreetingHeader(context),
               SizedBox(height: isCompact ? 20 : 26),
               _buildOverview(context),
-              const SizedBox(height: 16),
-              _DashboardPrepBand(
-                onOpenGuide: () => context.go('/manafest'),
-                onScanQr: () => context.go('/scan-qr'),
-              ),
+              if (manaFestUiEnabled) ...<Widget>[
+                const SizedBox(height: 16),
+                _DashboardPrepBand(
+                  onOpenGuide: () => context.go('/manafest'),
+                  onScanQr: () => context.go('/scan-qr'),
+                ),
+              ],
               const SizedBox(height: 28),
               _buildUpcomingEventsSection(context),
             ],

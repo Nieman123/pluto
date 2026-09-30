@@ -51,7 +51,7 @@ function showSlide(nextIndex) {
 
 function startGallery() {
   window.clearInterval(galleryTimer);
-  if (slides.length < 2 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (slides.length < 2 || document.querySelector("[data-gallery-manual]") || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   galleryTimer = window.setInterval(() => showSlide(currentSlide + 1), 10000);
 }
 
@@ -167,3 +167,37 @@ function scheduleAuthEnhancement() {
 }
 
 scheduleAuthEnhancement();
+
+// Native dialog keeps focus inside the viewer; links still work without JS.
+const photoLinks = [...document.querySelectorAll('[data-archive-photo]')];
+const photoDialog = document.querySelector('[data-photo-dialog]');
+const photoImage = document.querySelector('[data-photo-image]');
+const photoStatus = document.querySelector('[data-photo-status]');
+let photoIndex = 0;
+function showPhoto(index) {
+  photoIndex = (index + photoLinks.length) % photoLinks.length;
+  const link = photoLinks[photoIndex];
+  photoImage.src = link.href;
+  photoImage.alt = link.dataset.photoAlt;
+  photoStatus.textContent = `Photo ${photoIndex + 1} of ${photoLinks.length}`;
+}
+photoLinks.forEach((link, index) => link.addEventListener('click', (event) => {
+  if (!photoDialog?.showModal || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+  event.preventDefault();
+  showPhoto(index);
+  photoDialog.showModal();
+}));
+document.querySelector('[data-photo-close]')?.addEventListener('click', () => photoDialog.close());
+document.querySelector('[data-photo-previous]')?.addEventListener('click', () => showPhoto(photoIndex - 1));
+document.querySelector('[data-photo-next]')?.addEventListener('click', () => showPhoto(photoIndex + 1));
+photoDialog?.addEventListener('keydown', (event) => {
+  if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+    event.preventDefault();
+    showPhoto(photoIndex + (event.key === 'ArrowRight' ? 1 : -1));
+  }
+});
+photoDialog?.addEventListener('click', (event) => {
+  if (event.target !== photoDialog) return;
+  const bounds = photoDialog.getBoundingClientRect();
+  if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) photoDialog.close();
+});

@@ -1,4 +1,4 @@
-import { cp, mkdir, rm } from "node:fs/promises";
+import { cp, mkdir, readdir, rm } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -13,6 +13,13 @@ await cp(resolve(root, "build/web"), resolve(dist, "app"), { recursive: true });
 await cp(resolve(root, "site/static"), dist, { recursive: true });
 await cp(resolve(root, "site/dist/site.js"), resolve(dist, "assets/site.js"));
 await cp(resolve(root, "web/gallery"), resolve(dist, "gallery"), { recursive: true });
+const festivalGallery = resolve(root, "assets/gallery/manafest-2026");
+await mkdir(resolve(dist, "gallery/manafest-2026"), { recursive: true });
+for (const name of await readdir(festivalGallery)) {
+  if (name.endsWith(".webp")) {
+    await cp(resolve(festivalGallery, name), resolve(dist, "gallery/manafest-2026", name));
+  }
+}
 await cp(resolve(root, "assets/fonts"), resolve(dist, "assets/fonts"), { recursive: true });
 await cp(resolve(root, "web/firebase-messaging-sw.js"), resolve(dist, "firebase-messaging-sw.js"));
 await cp(resolve(root, "web/favicon.png"), resolve(dist, "favicon.png"));

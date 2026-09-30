@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../festival_visibility.dart';
 import '../background/pluto_background.dart';
 import '../nav_bar/nav_bar.dart';
 
@@ -146,7 +147,7 @@ class _SignedInBottomNavigation extends StatelessWidget {
   static const List<SignedInAppTab> _tabs = <SignedInAppTab>[
     SignedInAppTab.dashboard,
     SignedInAppTab.rewards,
-    SignedInAppTab.manafest,
+    if (manaFestUiEnabled) SignedInAppTab.manafest,
     SignedInAppTab.profile,
   ];
 

@@ -1,0 +1,5 @@
+# Keep camera originals locally; deploy and version the optimized WebP copies.
+*.jpg
+*.JPG
+*.jpeg
+*.JPEG

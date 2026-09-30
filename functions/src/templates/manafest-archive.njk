@@ -1,0 +1,78 @@
+{% extends "base.njk" %}
+{% block content %}
+  <section class="archive-hero" aria-labelledby="manafest-title">
+    <div class="archive-hero-media">
+      {% set hero = manaFest.archive.highlights[0] %}
+      <img src="/gallery/manafest-2026/{{ hero.src }}" width="{{ hero.width }}" height="{{ hero.height }}" alt="{{ hero.alt }}" fetchpriority="high" decoding="async">
+    </div>
+    <div class="archive-hero-shade"></div>
+    <div class="archive-hero-copy">
+      <p class="eyebrow">MANAFEST 2026</p>
+      <h1 id="manafest-title">You made<br>the magic.</h1>
+      <p class="hero-copy">Thank YOU for coming to our first music festival! Two nights in the woods, a whole lot of sound, and new friends we won’t forget.</p>
+      <p class="archive-date">{{ manaFest.dateLabel }} · {{ manaFest.venue }} · {{ manaFest.locality }}, {{ manaFest.region }}</p>
+      <div class="hero-actions">
+        <a class="button button-primary button-large" href="#highlights">Relive the weekend ↓</a>
+        <a class="button button-glass button-large" href="{{ manaFest.archive.albumUrl }}" target="_blank" rel="noopener noreferrer">View full Google Photos album ↗</a>
+      </div>
+    </div>
+    <span class="archive-stamp" aria-hidden="true">THANK YOU<br>FOR BEING HERE ✦</span>
+  </section>
+  <section class="section archive-intro" aria-labelledby="archive-intro-title">
+    <div><p class="eyebrow">FROM ALL OF US AT PLUTO</p><h2 id="archive-intro-title">Our first festival.<br>Because of you.</h2></div>
+    <div>
+      <p>To everyone who danced, played, created, volunteered, set up camp, and brought their energy to ManaFest: thank you. Y'all are what made our first music festival into something special.</p>
+      <p>The lights, the late nights, the moments between sets... take a look back at the weekend we made together.</p>
+    </div>
+  </section>
+  <section class="section archive-highlights" id="highlights" aria-labelledby="highlights-title">
+    <div class="section-heading">
+      <div><p class="eyebrow">BACK IN THE WOODS</p><h2 id="highlights-title">The highlight reel</h2></div>
+      <p>A few moments that take us right back.</p>
+    </div>
+    <div class="archive-reel" id="manafest-highlights" role="group" aria-roledescription="carousel" aria-label="ManaFest 2026 photo highlights" data-gallery data-gallery-manual>
+      {% for photo in manaFest.archive.highlights %}
+        <img src="/gallery/manafest-2026/{{ photo.src }}" width="{{ photo.width }}" height="{{ photo.height }}" alt="{{ photo.alt }}" loading="lazy" decoding="async" {% if not loop.first %}hidden{% endif %} data-gallery-slide>
+      {% endfor %}
+      <div class="gallery-controls" role="group" aria-label="Highlight controls">
+        <button type="button" data-gallery-previous aria-label="Previous highlight" aria-controls="manafest-highlights">←</button>
+        <span data-gallery-status role="status" aria-live="polite" aria-atomic="true">1 / {{ manaFest.archive.highlights | length }}</span>
+        <button type="button" data-gallery-next aria-label="Next highlight" aria-controls="manafest-highlights">→</button>
+      </div>
+    </div>
+  </section>
+  <section class="section archive-gallery" id="photos" aria-labelledby="photos-title">
+    <div class="section-heading">
+      <div><p class="eyebrow">THE PEOPLE. THE PLACE. THE MOMENTS.</p><h2 id="photos-title">Some of our favorite frames</h2></div>
+      <p>A little collection from our first year. Tap a photo to take a closer look.</p>
+    </div>
+    <div class="archive-photo-grid">
+      {% for photo in manaFest.archive.photos %}
+        <a class="archive-photo" href="/gallery/manafest-2026/{{ photo.src }}" data-archive-photo data-photo-alt="{{ photo.alt }}" aria-label="Enlarge photo: {{ photo.alt }}">
+          <img src="/gallery/manafest-2026/{{ photo.thumbnail }}" width="{{ photo.width }}" height="{{ photo.height }}" alt="{{ photo.alt }}" loading="lazy" decoding="async">
+        </a>
+      {% endfor %}
+    </div>
+    <div class="archive-album-link">
+      <p>There’s more where these came from!</p>
+      <a class="button button-primary button-large" href="{{ manaFest.archive.albumUrl }}" target="_blank" rel="noopener noreferrer">View full Google Photos album ↗</a>
+    </div>
+  </section>
+  <dialog class="archive-lightbox" data-photo-dialog aria-label="ManaFest photo viewer">
+    <div class="archive-lightbox-toolbar">
+      <span data-photo-status role="status" aria-live="polite" aria-atomic="true"></span>
+      <button type="button" class="button button-quiet" data-photo-close aria-label="Close photo viewer">Close ✕</button>
+    </div>
+    <img data-photo-image alt="">
+    <div class="archive-lightbox-navigation">
+      <button type="button" class="button button-quiet" data-photo-previous aria-label="Previous photo">← Previous</button>
+      <button type="button" class="button button-quiet" data-photo-next aria-label="Next photo">Next →</button>
+    </div>
+  </dialog>
+  <section class="statement-band archive-next" aria-labelledby="next-year-title">
+    <p class="eyebrow">THIS IS JUST THE BEGINNING</p>
+    <h2 id="next-year-title">See you in 2027.</h2>
+    <p>Stay tuned for next year’s ManaFest. Follow Pluto for the next chapter... we can’t wait to be back in the woods with you!</p>
+    <a class="text-link" href="/links">Stay connected with Pluto →</a>
+  </section>
+{% endblock %}

@@ -196,5 +196,310 @@
       }
     ],
     "parking": "Overnight camping is included for your selected night. Day-pass guests park in the designated day parking lot and carry their gear to the camping area. Parking is included in the ticket price. Camping beside your vehicle is not included."
+  },
+  "status": "archived",
+  "archive": {
+    "description": "Thank you for making our first music festival unforgettable. Relive ManaFest 2026 through our favorite photos, and stay tuned for ManaFest 2027.",
+    "albumUrl": "https://photos.app.goo.gl/YbSKvrMdGp8hCMRN9",
+    "highlights": [
+      {
+        "src": "manafest-2026-forest-dance-floor.webp",
+        "thumbnail": "manafest-2026-forest-dance-floor-thumb.webp",
+        "width": 1800,
+        "height": 1200,
+        "alt": "A view of the forest dance floor beneath blue lasers",
+        "source": "3T9A2967.jpg"
+      },
+      {
+        "src": "manafest-2026-night-dancing.webp",
+        "thumbnail": "manafest-2026-night-dancing-thumb.webp",
+        "width": 1800,
+        "height": 1200,
+        "alt": "Festivalgoers dancing together beneath the illuminated canopy",
+        "source": "3T9A3564.jpg"
+      },
+      {
+        "src": "manafest-2026-flow-performer.webp",
+        "thumbnail": "manafest-2026-flow-performer-thumb.webp",
+        "width": 1200,
+        "height": 1800,
+        "alt": "A flow performer holding a colorful illuminated cube overhead",
+        "source": "3T9A3043.jpg"
+      },
+      {
+        "src": "manafest-2026-disco-dj.webp",
+        "thumbnail": "manafest-2026-disco-dj-thumb.webp",
+        "width": 1800,
+        "height": 1200,
+        "alt": "DJs performing beneath a disco ball and blue light beams",
+        "source": "3T9A4224.jpg"
+      },
+      {
+        "src": "manafest-2026-campout-crew.webp",
+        "thumbnail": "manafest-2026-campout-crew-thumb.webp",
+        "width": 1200,
+        "height": 1800,
+        "alt": "Friends relaxing together at their woodland campsite",
+        "source": "Photo 20 09 2026 10 58 28 0.jpeg"
+      },
+      {
+        "src": "manafest-2026-creek-reflections.webp",
+        "thumbnail": "manafest-2026-creek-reflections-thumb.webp",
+        "width": 1800,
+        "height": 1200,
+        "alt": "Sunlight and fallen trees reflected in the campground creek",
+        "source": "Photo 20 09 2026 14 15 26 18.jpeg"
+      }
+    ],
+    "photos": [
+      {
+        "src": "manafest-2026-daytime-dj.webp",
+        "thumbnail": "manafest-2026-daytime-dj-thumb.webp",
+        "width": 1800,
+        "height": 1200,
+        "alt": "A DJ performing on the woodland stage in daylight",
+        "source": "3T9A1775.jpg"
+      },
+      {
+        "src": "manafest-2026-purple-stage.webp",
+        "thumbnail": "manafest-2026-purple-stage-thumb.webp",
+        "width": 1800,
+        "height": 1200,
+        "alt": "A DJ surrounded by purple lights on the forest stage",
+        "source": "3T9A1869.jpg"
+      },
+      {
+        "src": "manafest-2026-smoke-and-sound.webp",
+        "thumbnail": "manafest-2026-smoke-and-sound-thumb.webp",
+        "width": 1800,
+        "height": 1200,
+        "alt": "A DJ playing behind a cloud of pink and purple smoke",
+        "source": "3T9A2014.jpg"
+      },
+      {
+        "src": "manafest-2026-night-stage.webp",
+        "thumbnail": "manafest-2026-night-stage-thumb.webp",
+        "width": 1800,
+        "height": 1200,
+        "alt": "The forest stage glowing through smoke beneath a disco ball",
+        "source": "3T9A2020.jpg"
+      },
+      {
+        "src": "manafest-2026-disco-lights.webp",
+        "thumbnail": "manafest-2026-disco-lights-thumb.webp",
+        "width": 1800,
+        "height": 1200,
+        "alt": "Blue beams radiating from a disco ball above the stage",
+        "source": "3T9A2062.jpg"
+      },
+      {
+        "src": "manafest-2026-dance-floor.webp",
+        "thumbnail": "manafest-2026-dance-floor-thumb.webp",
+        "width": 1800,
+        "height": 1200,
+        "alt": "Festivalgoers dancing beneath warm string lights",
+        "source": "3T9A2506.jpg"
+      },
+      {
+        "src": "manafest-2026-lasers-in-the-woods.webp",
+        "thumbnail": "manafest-2026-lasers-in-the-woods-thumb.webp",
+        "width": 1800,
+        "height": 1200,
+        "alt": "Laser beams sweeping over the dance floor in the woods",
+        "source": "3T9A2518.jpg"
+      },
+      {
+        "src": "manafest-2026-forest-dance-floor.webp",
+        "thumbnail": "manafest-2026-forest-dance-floor-thumb.webp",
+        "width": 1800,
+        "height": 1200,
+        "alt": "A view of the forest dance floor beneath blue lasers",
+        "source": "3T9A2967.jpg"
+      },
+      {
+        "src": "manafest-2026-pink-lights.webp",
+        "thumbnail": "manafest-2026-pink-lights-thumb.webp",
+        "width": 1800,
+        "height": 1200,
+        "alt": "Friends gathered at the stage under pink and purple lights",
+        "source": "3T9A2989.jpg"
+      },
+      {
+        "src": "manafest-2026-flow-performer.webp",
+        "thumbnail": "manafest-2026-flow-performer-thumb.webp",
+        "width": 1200,
+        "height": 1800,
+        "alt": "A flow performer holding a colorful illuminated cube overhead",
+        "source": "3T9A3043.jpg"
+      },
+      {
+        "src": "manafest-2026-front-row.webp",
+        "thumbnail": "manafest-2026-front-row-thumb.webp",
+        "width": 1800,
+        "height": 1200,
+        "alt": "Dancers watching the stage beneath white laser beams",
+        "source": "3T9A3477.jpg"
+      },
+      {
+        "src": "manafest-2026-canopy-lights.webp",
+        "thumbnail": "manafest-2026-canopy-lights-thumb.webp",
+        "width": 1800,
+        "height": 1200,
+        "alt": "Colorful lasers crossing above the stage canopy",
+        "source": "3T9A3498.jpg"
+      },
+      {
+        "src": "manafest-2026-night-dancing.webp",
+        "thumbnail": "manafest-2026-night-dancing-thumb.webp",
+        "width": 1800,
+        "height": 1200,
+        "alt": "Festivalgoers dancing together beneath the illuminated canopy",
+        "source": "3T9A3564.jpg"
+      },
+      {
+        "src": "manafest-2026-friends-on-the-floor.webp",
+        "thumbnail": "manafest-2026-friends-on-the-floor-thumb.webp",
+        "width": 1800,
+        "height": 1200,
+        "alt": "Friends sharing a moment on the nighttime dance floor",
+        "source": "3T9A3640.jpg"
+      },
+      {
+        "src": "manafest-2026-dj-crew.webp",
+        "thumbnail": "manafest-2026-dj-crew-thumb.webp",
+        "width": 1800,
+        "height": 1200,
+        "alt": "Three people at the DJ booth beneath string lights",
+        "source": "3T9A3721.jpg"
+      },
+      {
+        "src": "manafest-2026-blue-stage.webp",
+        "thumbnail": "manafest-2026-blue-stage-thumb.webp",
+        "width": 1800,
+        "height": 1200,
+        "alt": "A late-night DJ set beneath a blue-lit disco ball",
+        "source": "3T9A4092.jpg"
+      },
+      {
+        "src": "manafest-2026-disco-dj.webp",
+        "thumbnail": "manafest-2026-disco-dj-thumb.webp",
+        "width": 1800,
+        "height": 1200,
+        "alt": "DJs performing beneath a disco ball and blue light beams",
+        "source": "3T9A4224.jpg"
+      },
+      {
+        "src": "manafest-2026-after-dark.webp",
+        "thumbnail": "manafest-2026-after-dark-thumb.webp",
+        "width": 1800,
+        "height": 1350,
+        "alt": "Festivalgoers enjoying the stage beneath sweeping white lights",
+        "source": "IMG_4437.JPG"
+      },
+      {
+        "src": "manafest-2026-festival-friends.webp",
+        "thumbnail": "manafest-2026-festival-friends-thumb.webp",
+        "width": 1800,
+        "height": 1350,
+        "alt": "Two festivalgoers smiling together under string lights",
+        "source": "IMG_4457.JPG"
+      },
+      {
+        "src": "manafest-2026-festival-style.webp",
+        "thumbnail": "manafest-2026-festival-style-thumb.webp",
+        "width": 1350,
+        "height": 1800,
+        "alt": "A festivalgoer wearing colorful clothes and a patterned headscarf",
+        "source": "IMG_4458.JPG"
+      },
+      {
+        "src": "manafest-2026-forest-installation.webp",
+        "thumbnail": "manafest-2026-forest-installation-thumb.webp",
+        "width": 1200,
+        "height": 1800,
+        "alt": "A mirrored triangular art installation among the trees",
+        "source": "Photo 18 09 2026 13 20 29 97.jpeg"
+      },
+      {
+        "src": "manafest-2026-creekside-moment.webp",
+        "thumbnail": "manafest-2026-creekside-moment-thumb.webp",
+        "width": 1200,
+        "height": 1800,
+        "alt": "A festivalgoer standing by the creek in the woods",
+        "source": "Photo 18 09 2026 17 06 12 56.jpeg"
+      },
+      {
+        "src": "manafest-2026-morning-set.webp",
+        "thumbnail": "manafest-2026-morning-set-thumb.webp",
+        "width": 1200,
+        "height": 1800,
+        "alt": "A daytime DJ set at the decorated woodland stage",
+        "source": "Photo 19 09 2026 10 36 01 8.jpeg"
+      },
+      {
+        "src": "manafest-2026-making-art.webp",
+        "thumbnail": "manafest-2026-making-art-thumb.webp",
+        "width": 1200,
+        "height": 1800,
+        "alt": "A festivalgoer creating art at an outdoor table",
+        "source": "Photo 19 09 2026 16 51 40 92.jpeg"
+      },
+      {
+        "src": "manafest-2026-campout-crew.webp",
+        "thumbnail": "manafest-2026-campout-crew-thumb.webp",
+        "width": 1200,
+        "height": 1800,
+        "alt": "Friends relaxing together at their woodland campsite",
+        "source": "Photo 20 09 2026 10 58 28 0.jpeg"
+      },
+      {
+        "src": "manafest-2026-campground-friends.webp",
+        "thumbnail": "manafest-2026-campground-friends-thumb.webp",
+        "width": 1200,
+        "height": 1800,
+        "alt": "Two friends sharing a playful moment at the campground",
+        "source": "Photo 20 09 2026 12 00 40 30.jpeg"
+      },
+      {
+        "src": "manafest-2026-woodland-art.webp",
+        "thumbnail": "manafest-2026-woodland-art-thumb.webp",
+        "width": 1200,
+        "height": 1800,
+        "alt": "A mirrored disco sculpture and decorations among the trees",
+        "source": "Photo 20 09 2026 12 31 00 88.jpeg"
+      },
+      {
+        "src": "manafest-2026-elephant-booth.webp",
+        "thumbnail": "manafest-2026-elephant-booth-thumb.webp",
+        "width": 1200,
+        "height": 1800,
+        "alt": "A festivalgoer posing behind the decorated Elephant Booth",
+        "source": "Photo 20 09 2026 12 33 49 15.jpeg"
+      },
+      {
+        "src": "manafest-2026-woodland-sign.webp",
+        "thumbnail": "manafest-2026-woodland-sign-thumb.webp",
+        "width": 1200,
+        "height": 1800,
+        "alt": "A handmade festival sign hanging in the woods",
+        "source": "Photo 20 09 2026 12 35 08 4.jpeg"
+      },
+      {
+        "src": "manafest-2026-creek-reflections.webp",
+        "thumbnail": "manafest-2026-creek-reflections-thumb.webp",
+        "width": 1800,
+        "height": 1200,
+        "alt": "Sunlight and fallen trees reflected in the campground creek",
+        "source": "Photo 20 09 2026 14 15 26 18.jpeg"
+      },
+      {
+        "src": "manafest-2026-slow-morning.webp",
+        "thumbnail": "manafest-2026-slow-morning-thumb.webp",
+        "width": 1200,
+        "height": 1800,
+        "alt": "A quiet morning moment beside the woodland stage",
+        "source": "Photo 20 09 2026 15 07 49 41.jpeg"
+      }
+    ]
   }
 }
