@@ -118,7 +118,7 @@ The app currently supports both Storage URLs and legacy Firestore data URLs:
 
 ## Prerequisites
 
-- Flutter stable with Dart `>=3.6.0 <4.0.0`
+- Flutter 3.47.5 stable (includes Dart 3.13.4), matching CI and the committed `pubspec.lock`
 - Node.js 22
 - npm
 - Java 21 for Firebase emulator tests
@@ -135,8 +135,13 @@ Install all three dependency sets from the repository root:
 ```bash
 npm ci
 npm ci --prefix functions
-flutter pub get
+flutter pub get --enforce-lockfile
 ```
+
+Use the same Flutter version locally and in CI. After an intentional dependency
+update, run `flutter pub get` without `--enforce-lockfile`, commit `pubspec.lock`,
+and verify `flutter pub get --enforce-lockfile` with the Flutter version pinned in
+`.github/workflows/build.yml`.
 
 For Firebase CLI operations, authenticate with either `firebase login` or Application Default Credentials. CI uses the `FIREBASE_SERVICE_ACCOUNT_PLUTO_9B6CA` GitHub secret.
 
