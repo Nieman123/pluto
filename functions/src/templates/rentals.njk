@@ -1,0 +1,70 @@
+{% extends "base.njk" %}
+{% block content %}
+  <section class="rentals-hero" aria-labelledby="rentals-title">
+    <div class="rentals-hero-copy">
+      <p class="eyebrow">PLUTO RENTALS · SOUND / LIGHT / POWER</p>
+      <h1 id="rentals-title">Bring the<br>production.</h1>
+      <p class="hero-copy">Big sound. Brilliant light. Power to keep it going. Explore the gear behind the gathering and get in touch about your next event.</p>
+      <div class="hero-actions">
+        <a class="button button-primary button-large" href="#rental-inventory">Explore the gear ↓</a>
+        <a class="button button-quiet button-large" href="mailto:{{ rentalContactEmail }}?subject=Event%20rental%20inquiry">Contact For Quote ↗</a>
+      </div>
+    </div>
+    <div class="rentals-hero-art" aria-hidden="true">
+      <img src="/gallery/manafest-2026/manafest-2026-forest-dance-floor.webp" width="1800" height="1200" alt="" decoding="async" fetchpriority="high">
+      <span class="rentals-art-label">BUILT FOR THE GATHERING.</span>
+    </div>
+  </section>
+  <section class="section rental-inventory" id="rental-inventory" aria-labelledby="rental-inventory-title">
+    <div class="section-heading">
+      <div><p class="eyebrow">THE INVENTORY</p><h2 id="rental-inventory-title">Gear for your next event.</h2></div>
+      <p>Email us with your event date, location, and the equipment you’re interested in. We’ll confirm availability and pricing.</p>
+    </div>
+    {% if rentalsUnavailable %}
+      <p class="empty-state" role="status">The rental inventory is temporarily unavailable. <a href="mailto:{{ rentalContactEmail }}?subject=Rental%20inquiry">Contact us about equipment and pricing.</a></p>
+    {% elif not rentalGroups.length %}
+      <p class="empty-state">Rental listings are being updated. <a href="mailto:{{ rentalContactEmail }}?subject=Rental%20inquiry">Contact us about your event.</a></p>
+    {% else %}
+      {% for group in rentalGroups %}
+        <section class="rental-category" aria-labelledby="rental-category-{{ loop.index }}">
+          <div class="rental-category-heading"><h3 id="rental-category-{{ loop.index }}">{{ group.category }}</h3><span>{{ group.items | length }} {% if group.items.length == 1 %}listing{% else %}listings{% endif %}</span></div>
+          <div class="rental-grid">
+            {% for item in group.items %}
+              <article class="rental-card" aria-labelledby="rental-{{ item.id }}-title">
+                <div class="rental-card-media">
+                  {% if item.imageUrl %}
+                    <img src="{{ item.imageUrl }}" width="640" height="480" alt="{{ item.title }}" loading="lazy" decoding="async">
+                  {% else %}
+                    <div class="rental-illustration" aria-hidden="true">
+                      {% if group.category == 'Sound' %}<span class="rental-speaker"><i></i><i></i></span>
+                      {% elif group.category == 'Lighting' %}<span class="rental-light">✳</span>
+                      {% elif group.category == 'Power' %}<span class="rental-power">ϟ</span>
+                      {% else %}<span class="rental-light">✦</span>{% endif %}
+                    </div>
+                  {% endif %}
+                  <span class="rental-quantity">{{ item.quantity }} {% if item.quantity == 1 %}unit{% else %}units{% endif %} in inventory</span>
+                </div>
+                <div class="rental-card-body">
+                  <p class="eyebrow">{{ item.category }}</p>
+                  <h4 id="rental-{{ item.id }}-title">{{ item.title }}</h4>
+                  <p class="rental-description">{{ item.description }}</p>
+                  <p class="rental-price">{{ item.priceLabel }}{% if item.priceUnit %} <span>{{ item.priceUnit }}</span>{% endif %}</p>
+                  <div class="rental-actions">
+                    <a class="button button-primary" href="{{ item.inquiryUrl }}" aria-label="Contact us about renting {{ item.title }}">Ask about this item ↗</a>
+                    {% if item.productUrl %}<a class="text-link" href="{{ item.productUrl }}" target="_blank" rel="noopener noreferrer">Product details ↗</a>{% endif %}
+                  </div>
+                </div>
+              </article>
+            {% endfor %}
+          </div>
+        </section>
+      {% endfor %}
+    {% endif %}
+  </section>
+  <section class="statement-band rentals-contact" aria-labelledby="rental-contact-title">
+    <p class="eyebrow">LET’S PUT IT TOGETHER</p>
+    <h2 id="rental-contact-title">Tell us what you’re planning.</h2>
+    <p>A few pieces or a bigger setup — send us your date, location, and wish list. We’ll help you figure out the gear and confirm what’s available.</p>
+    <a class="text-link" href="mailto:{{ rentalContactEmail }}?subject=Event%20rental%20inquiry">{{ rentalContactEmail }} ↗</a>
+  </section>
+{% endblock %}

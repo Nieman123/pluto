@@ -17,6 +17,7 @@ import 'link_box.dart';
 import 'links_repository.dart';
 import 'manafest_admin_panel.dart';
 import 'public_media_repository.dart';
+import 'rentals_admin_panel.dart';
 import 'src/background/pluto_background.dart';
 import 'src/nav_bar/nav_bar.dart';
 import 'user_profile_repository.dart';
@@ -24,6 +25,7 @@ import 'user_profile_repository.dart';
 enum AdminSection {
   manafest,
   events,
+  rentals,
   rewards,
   links,
 }
@@ -35,6 +37,8 @@ extension AdminSectionX on AdminSection {
         return 'ManaFest';
       case AdminSection.events:
         return 'Events';
+      case AdminSection.rentals:
+        return 'Rentals';
       case AdminSection.rewards:
         return 'Rewards';
       case AdminSection.links:
@@ -48,6 +52,8 @@ extension AdminSectionX on AdminSection {
         return '/admin/manafest';
       case AdminSection.events:
         return '/admin/events';
+      case AdminSection.rentals:
+        return '/admin/rentals';
       case AdminSection.rewards:
         return '/admin/rewards';
       case AdminSection.links:
@@ -61,6 +67,8 @@ extension AdminSectionX on AdminSection {
         return 'Manage festival schedule, guide, updates, hidden lineup, and hidden map data.';
       case AdminSection.events:
         return 'Create and edit current event cards shown across the site.';
+      case AdminSection.rentals:
+        return 'Manage rental equipment, quantities, photos, and pricing.';
       case AdminSection.rewards:
         return 'Manage rewards shop items and event QR code point flows.';
       case AdminSection.links:
@@ -74,6 +82,8 @@ extension AdminSectionX on AdminSection {
         return Icons.festival;
       case AdminSection.events:
         return Icons.event;
+      case AdminSection.rentals:
+        return Icons.speaker;
       case AdminSection.rewards:
         return Icons.redeem;
       case AdminSection.links:
@@ -1616,6 +1626,8 @@ class _AdminPageState extends State<AdminPage> {
         return _buildAdminHome(user);
       case AdminSection.manafest:
         return const ManaFestAdminPanel();
+      case AdminSection.rentals:
+        return const RentalsAdminPanel();
       case AdminSection.events:
         return _buildSectionEditorLayout(
           primaryChildren: <Widget>[_buildEditorCard()],

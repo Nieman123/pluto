@@ -33,6 +33,7 @@
       { "source": "/admin", "destination": "/app/admin", "type": 301 },
       { "source": "/admin/manafest", "destination": "/app/admin/manafest", "type": 301 },
       { "source": "/admin/events", "destination": "/app/admin/events", "type": 301 },
+      { "source": "/admin/rentals", "destination": "/app/admin/rentals", "type": 301 },
       { "source": "/admin/rewards", "destination": "/app/admin/rewards", "type": 301 },
       { "source": "/admin/links", "destination": "/app/admin/links", "type": 301 }
     ],
@@ -72,6 +73,7 @@
       { "source": "/", "function": { "functionId": "publicSite", "region": "us-central1" } },
       { "source": "/manafest", "function": { "functionId": "publicSite", "region": "us-central1" } },
       { "source": "/links", "function": { "functionId": "publicSite", "region": "us-central1" } },
+      { "source": "/rentals", "function": { "functionId": "publicSite", "region": "us-central1" } },
       { "source": "/manafest-waiver", "function": { "functionId": "publicSite", "region": "us-central1" } },
       { "source": "/manafest-waiver/**", "function": { "functionId": "publicSite", "region": "us-central1" } }
     ]

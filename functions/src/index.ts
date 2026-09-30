@@ -7,6 +7,8 @@ import { getFirestore } from "firebase-admin/firestore";
 import { onRequest } from "firebase-functions/v2/https";
 import nunjucks from "nunjucks";
 import { waiverRouter } from "./waiver/routes";
+import { normalizeRental, groupRentals, rentalContactEmail, type PublicRental } from './rentals-data';
+import { seedRentals } from './rentals-seed';
 import {
   docsForLinks,
   fallbackEvents,
@@ -19,7 +21,7 @@ import {
   type PublicLink,
 } from "./public-data";
 
-if (!getApps().length) initializeApp();
+if (!getApps().some((app) => app.name === '[DEFAULT]')) initializeApp();
 
 const db = getFirestore();
 const runtimeRoot = __dirname;
@@ -32,6 +34,15 @@ const manaFestArchive = manaFest.archive as {
   description: string;
   highlights: { src: string }[];
 };
+const initialRentals = JSON.parse(readFileSync(join(runtimeRoot, 'content/initial-inventory.json'), 'utf8')) as Array<Record<string, unknown>>;
+let rentalsInitialized: Promise<unknown> | undefined;
+
+async function ensureRentalsInitialized() {
+  // Import once, using the same transaction marker as the admin editor.
+  rentalsInitialized ??= seedRentals(db, initialRentals);
+  try { await rentalsInitialized; }
+  catch (error) { rentalsInitialized = undefined; throw error; }
+}
 
 const app = express();
 app.use(compression());
@@ -65,6 +76,14 @@ async function loadLinks(): Promise<PublicLink[]> {
 }
 
 function pageMeta(path: string) {
+  if (path === '/rentals') {
+    return {
+      title: 'Equipment Rentals | Pluto Events',
+      description: 'Rent sound, lighting, and power equipment from Pluto Events. Explore our inventory and contact us for a quote.',
+      canonical: 'https://pluto.events/rentals',
+      image: 'https://pluto.events/gallery/manafest-2026/manafest-2026-forest-dance-floor.webp',
+    };
+  }
   if (path === "/manafest") {
     return {
       title: manaFest.status === "archived" ? "ManaFest 2026 Memories | Pluto Events" : "ManaFest 2026 | Pluto Events",
@@ -210,6 +229,33 @@ app.get("/links", async (_request: Request, response: Response) => {
       "@type": "Organization",
       name: "Pluto Events",
       url: "https://pluto.events/",
+    }),
+  });
+});
+
+app.get('/rentals', async (_request: Request, response: Response) => {
+  let rentals: PublicRental[] = [];
+  let rentalsUnavailable = false;
+  try {
+    if (process.env.PUBLIC_SITE_PREVIEW === 'true' && !process.env.FIRESTORE_EMULATOR_HOST) {
+      rentals = initialRentals.map((item) => normalizeRental(item.id as string, item)).filter((item): item is PublicRental => item !== null);
+    } else {
+      await ensureRentalsInitialized();
+      const snapshot = await db.collection('rentalItems').where('isActive', '==', true).get();
+      rentals = snapshot.docs.map((doc) => normalizeRental(doc.id, doc.data())).filter((item): item is PublicRental => item !== null);
+    }
+  } catch (error) {
+    console.error('Unable to load rentalItems', error);
+    rentalsUnavailable = true;
+    response.status(503).set('Cache-Control', 'no-store');
+  }
+  response.render('rentals', {
+    ...commonContext('/rentals'), rentalContactEmail,
+    rentalGroups: groupRentals(rentals), rentalsUnavailable,
+    jsonLd: serializeJsonLd({
+      '@context': 'https://schema.org', '@type': 'CollectionPage',
+      name: 'Pluto Equipment Rentals', url: 'https://pluto.events/rentals',
+      description: pageMeta('/rentals').description,
     }),
   });
 });

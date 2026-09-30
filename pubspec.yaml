@@ -54,3 +54,4 @@ flutter:
     - assets/events/Mana-Fest-2026-Flyer-half.webp
     - assets/events/manafest-2026-lineup-v2.webp
     - site/content/manafest.json
+    - assets/rentals/initial-inventory.json

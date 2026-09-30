@@ -53,8 +53,8 @@ jobs:
       - name: Test public site and Functions
         run: npm test
 
-      - name: Test Storage rules
-        run: npx firebase-tools@latest emulators:exec --project pluto-storage-rules-test --only firestore,storage "npm run test:storage"
+      - name: Test Storage and rentals rules
+        run: npx firebase-tools@latest emulators:exec --project pluto-storage-rules-test --only firestore,storage "npm run test:storage && npm run test:rentals:rules"
 
       - name: Test private waiver saving and access controls
         env:

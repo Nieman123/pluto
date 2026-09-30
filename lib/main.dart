@@ -270,6 +270,17 @@ class _MyAppState extends State<MyApp> {
           );
         },
       ),
+      GoRoute(
+        path: '/admin/rentals',
+        builder: (BuildContext context, GoRouterState state) {
+          return DeferredWidget(
+            loadLibrary: admin_page.loadLibrary,
+            builder: (BuildContext context) => admin_page.AdminPage(
+              section: admin_page.AdminSection.rentals,
+            ),
+          );
+        },
+      ),
     ], debugLogDiagnostics: true);
     _router.routeInformationProvider.addListener(_trackCurrentRoute);
     WidgetsBinding.instance.addPostFrameCallback((_) => _trackCurrentRoute());

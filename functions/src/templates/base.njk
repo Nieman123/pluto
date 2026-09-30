@@ -20,6 +20,7 @@
     <link rel="icon" href="/favicon.png">
     {% if path == '/' %}<link rel="preload" as="image" href="/gallery/elysium-4.webp" fetchpriority="high">{% endif %}
     <style>{% include "site.css.njk" %}</style>
+    {% if path == '/rentals' %}<style>{% include "rentals.css.njk" %}</style>{% endif %}
     {% if jsonLd %}<script type="application/ld+json">{{ jsonLd | safe }}</script>{% endif %}
     {% if googleAnalyticsId %}
       <script>
@@ -48,6 +49,7 @@
       <nav class="desktop-nav" aria-label="Primary navigation">
         <a href="/" {% if path == '/' %}aria-current="page"{% endif %}>Home</a>
         <a href="/manafest" {% if path == '/manafest' %}aria-current="page"{% endif %}>ManaFest</a>
+        <a href="/rentals" {% if path == '/rentals' %}aria-current="page"{% endif %}>Rentals</a>
         <a href="/links" {% if path == '/links' %}aria-current="page"{% endif %}>Links</a>
       </nav>
       <div class="auth-actions">
@@ -68,6 +70,7 @@
       <nav class="mobile-menu" id="mobile-menu" data-mobile-menu hidden aria-label="Mobile navigation">
         <a href="/" {% if path == '/' %}aria-current="page"{% endif %}>Home</a>
         <a href="/manafest" {% if path == '/manafest' %}aria-current="page"{% endif %}>ManaFest</a>
+        <a href="/rentals" {% if path == '/rentals' %}aria-current="page"{% endif %}>Rentals</a>
         <a href="/links" {% if path == '/links' %}aria-current="page"{% endif %}>Links</a>
         <a href="/app/sign-up" data-auth-signed-out>Create Account</a>
         <a href="/app/sign-on" data-auth-signed-out>Sign In</a>
@@ -88,6 +91,7 @@
       </div>
       <nav aria-label="Footer navigation">
         <a href="/manafest" {% if path == '/manafest' %}aria-current="page"{% endif %}>ManaFest</a>
+        <a href="/rentals" {% if path == '/rentals' %}aria-current="page"{% endif %}>Rentals</a>
         <a href="/links" {% if path == '/links' %}aria-current="page"{% endif %}>Links</a>
         <a href="mailto:plutopresentsavl@gmail.com">Contact</a>
       </nav>

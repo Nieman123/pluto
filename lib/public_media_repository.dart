@@ -37,6 +37,14 @@ class PublicMediaRepository {
     );
   }
 
+  Future<PublicMediaUpload> uploadRentalImage({
+    required String rentalId,
+    required String dataUrl,
+  }) {
+    return _uploadDataUrl(
+        directory: 'public/rentals/$rentalId', dataUrl: dataUrl);
+  }
+
   Future<PublicMediaUpload> _uploadDataUrl({
     required String directory,
     required String dataUrl,

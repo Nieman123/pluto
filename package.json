@@ -10,6 +10,7 @@
     "build:public": "npm run build:site && npm run build:functions && node scripts/compose-web.mjs",
     "test": "npm --prefix functions test && node --test test/config.test.mjs",
     "test:storage": "node --test test/storage-rules.test.mjs",
+    "test:rentals:rules": "node --test test/rentals-rules.test.mjs",
     "test:waiver:integration": "npm --prefix functions run test:waiver:integration",
     "test:waiver:rules": "node --test test/waiver-rules.test.mjs",
     "test:waiver:browser": "node scripts/waiver/browser-test.cjs",
@@ -17,6 +18,9 @@
   },
   "dependencies": {
     "firebase": "^12.1.0"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "1.14.5"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

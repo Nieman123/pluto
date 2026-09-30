@@ -11,13 +11,32 @@ const publicSiteEntryPoint = await readFile("site/src/site.js", "utf8");
 const flutterWebShell = await readFile("web/index.html", "utf8");
 const flutterBootstrap = await readFile("web/flutter_bootstrap.js", "utf8");
 
+for (const lockfile of ["package-lock.json", "functions/package-lock.json"]) {
+  test(`${lockfile} excludes vulnerable gRPC versions`, async () => {
+    const lock = JSON.parse(await readFile(lockfile, "utf8"));
+    const grpcPackages = Object.entries(lock.packages).filter(([path]) =>
+      path.endsWith("node_modules/@grpc/grpc-js"),
+    );
+    assert.ok(grpcPackages.length > 0, "Expected the Firebase gRPC dependency");
+    for (const [path, { version }] of grpcPackages) {
+      assert.match(version, /^\d+\.\d+\.\d+$/);
+      const [major, minor, patch] = version.split(".").map(Number);
+      // GHSA-m9gg-hp2v-232j and GHSA-f596-whhp-79r4: fixes in 1.13.6 / 1.14.5.
+      const patched = major > 1 || (major === 1 && (
+        minor > 14 || (minor === 14 && patch >= 5) || (minor === 13 && patch >= 6)
+      ));
+      assert.ok(patched, `${path}@${version} must include both security fixes`);
+    }
+  });
+}
+
 test("Hosting exposes public SSR routes and Flutter deep links", () => {
   const rewrites = firebase.hosting.rewrites;
   assert.deepEqual(rewrites.slice(0, 2), [
     { source: "/app", destination: "/app/index.html" },
     { source: "/app/**", destination: "/app/index.html" },
   ]);
-  for (const route of ["/", "/manafest", "/links", "/manafest-waiver", "/manafest-waiver/**"]) {
+  for (const route of ["/", "/manafest", "/links", "/rentals", "/manafest-waiver", "/manafest-waiver/**"]) {
     const rewrite = rewrites.find((entry) => entry.source === route);
     assert.equal(rewrite.function.functionId, "publicSite");
     assert.equal(rewrite.function.region, "us-central1");
@@ -33,6 +52,7 @@ test("legacy routes redirect beneath /app", () => {
   assert.equal(redirects.get("/shop"), "/app/shop");
   assert.equal(redirects.get("/scan-qr"), "/app/scan-qr");
   assert.equal(redirects.get("/admin/manafest"), "/app/admin/manafest");
+  assert.equal(redirects.get("/admin/rentals"), "/app/admin/rentals");
 });
 
 test("Flutter web manifest is scoped to /app", () => {

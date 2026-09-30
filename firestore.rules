@@ -89,6 +89,40 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    function validRental() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['title', 'description', 'category', 'quantity',
+          'productUrl', 'imageUrl', 'priceMode', 'priceCents', 'priceUnit',
+          'isActive', 'sortOrder', 'createdAt', 'updatedAt']) &&
+          data.keys().hasOnly(['title', 'description', 'category', 'quantity',
+          'productUrl', 'imageUrl', 'imageStoragePath', 'priceMode', 'priceCents',
+          'priceUnit', 'isActive', 'sortOrder', 'createdAt', 'updatedAt']) &&
+          data.title is string && data.title.size() > 0 && data.title.size() <= 160 &&
+          data.description is string && data.description.size() <= 2000 &&
+          data.category is string && data.category.size() > 0 && data.category.size() <= 60 &&
+          data.quantity is int && data.quantity >= 1 && data.quantity <= 10000 &&
+          data.sortOrder is int && data.isActive is bool &&
+          data.productUrl is string && data.productUrl.size() <= 2048 &&
+          (data.productUrl == '' || data.productUrl.matches('https?://.+')) &&
+          data.imageUrl is string && data.imageUrl.size() <= 2048 &&
+          (data.imageUrl == '' || data.imageUrl.matches('https?://.+')) &&
+          (!('imageStoragePath' in data) || data.imageStoragePath is string) &&
+          data.priceUnit is string && data.priceUnit.size() <= 80 &&
+          ((data.priceMode == 'quote' && data.priceCents == null && data.priceUnit == '') ||
+          (data.priceMode == 'price' && data.priceCents is int && data.priceCents >= 0 && data.priceCents <= 99999999)) &&
+          data.createdAt is timestamp && data.updatedAt == request.time;
+    }
+
+    match /rentalItems/{rentalId} {
+      allow read: if isAdmin() || resource.data.isActive == true;
+      allow create, update: if isAdmin() && validRental();
+      allow delete: if isAdmin();
+    }
+
+    match /rentalSettings/{settingsId} {
+      allow read, write: if isAdmin();
+    }
+
     match /rewardItems/{rewardId} {
       allow read: if signedIn();
       allow create, delete: if isAdmin();
