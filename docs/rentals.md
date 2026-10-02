@@ -4,7 +4,7 @@ The public catalog lives at `/rentals`. Manage listings in the Flutter app under
 **Admin → Rentals** (`/app/admin/rentals`). The editor supports descriptions,
 categories, quantities, sorting, product links, photo uploads or URLs, visibility,
 and two pricing modes: **Contact For Quote** or a USD price with an optional unit
-such as “per day”. All inquiries use `plutopresentsavl@gmail.com`.
+such as “per day”. All inquiries use `contact@pluto.events`.
 
 Listings are stored in Firestore's `rentalItems` collection. Prices are integer
 cents; quote listings have `priceCents: null`. Only active listings appear on the

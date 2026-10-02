@@ -46,7 +46,7 @@ test('rentals render without JavaScript with email inquiries, inventory quantiti
   assert.match(html,/4 units in inventory/);
   assert.match(html,/\$50\.00/); assert.match(html,/per setup/);
   assert.match(html,/Contact For Quote/);
-  assert.match(html,/href="mailto:plutopresentsavl@gmail\.com\?subject=Rental%20inquiry%3A%20BASSBOSS%20ZV-28"/);
+  assert.match(html,/href="mailto:contact@pluto\.events\?subject=Rental%20inquiry%3A%20BASSBOSS%20ZV-28"/);
   assert.match(html,/href="\/rentals" aria-current="page"/);
   assert.match(html,/rel="canonical" href="https:\/\/pluto.events\/rentals"/);
   assert.match(html,/https:\/\/bassboss.com\/zv28/);

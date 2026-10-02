@@ -1,6 +1,6 @@
 import type { DocumentData } from 'firebase-admin/firestore';
 
-export const rentalContactEmail = 'plutopresentsavl@gmail.com';
+export const rentalContactEmail = 'contact@pluto.events';
 
 export interface PublicRental {
   id: string;
