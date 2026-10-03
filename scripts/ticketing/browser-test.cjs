@@ -35,6 +35,26 @@ async function semantics(page) {
 (async () => {
   const browser = await chromium.launch();
   try {
+    stage = 'app sign-in';
+    const signInContext = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1280, height: 900 } });
+    const signIn = await signInContext.newPage(); activePage = signIn;
+    await signIn.goto(`${base}/app/sign-on`); await semantics(signIn);
+    await signIn.getByRole('textbox', { name: /Email/ }).fill('staff@ticketing-preview.invalid');
+    await signIn.getByRole('button', { name: 'Continue', exact: true }).click();
+    await signIn.locator('input[type=password]').fill('Local-ticketing-preview-2026!');
+    await signIn.getByRole('button', { name: 'Sign In', exact: true }).click();
+    await signIn.getByRole('button', { name: 'Open Admin', exact: true }).waitFor();
+    await signInContext.close();
+    const googleContext = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1280, height: 900 } });
+    const google = await googleContext.newPage(); activePage = google;
+    await google.goto(`${base}/app/sign-on`); await semantics(google);
+    const popupReady = google.waitForEvent('popup', { timeout: 15000 }).catch(() => null);
+    await google.getByRole('button', { name: 'Continue with Google', exact: true }).click();
+    const popup = await popupReady; assert.ok(popup, 'Google sign-in should open the emulator popup'); await popup.waitForLoadState('domcontentloaded');
+    assert.equal(new URL(popup.url()).origin, 'http://127.0.0.1:9095', 'Google preview sign-in stays in the Auth emulator');
+    await popup.close(); await googleContext.close();
+    if (process.argv.includes('--sign-in-only')) { console.log('App sign-in checks passed: seeded email/password, admin access and local Google popup.'); return; }
+    stage = 'editor';
     const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1440, height: 1000 } });
     const page = await context.newPage(); activePage = page;
     await staff(page);

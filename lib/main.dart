@@ -47,6 +47,7 @@ Future<void> main() async {
             appId: '1:123:web:preview',
             messagingSenderId: '123',
             projectId: emulatorProject,
+            authDomain: '$emulatorProject.firebaseapp.com',
             storageBucket: '$emulatorProject.appspot.com'),
   );
   if (emulatorHost.isNotEmpty) {

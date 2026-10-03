@@ -59,6 +59,8 @@ Use Node 22, the repository's Flutter version and Java 21. Run from the reposito
 
 Under `http://127.0.0.1:4173`: `/events/pluto-ticketing-preview`, `/tickets/admin`, `/tickets/staff`, `/app/tickets`. The local staff sign-in button appears only on loopback with Auth emulator configuration. Seeding creates the fixture staff account and prints its local password; no production account is created.
 
+For `/app/sign-on`, enter `staff@ticketing-preview.invalid`, select Continue, then enter `Local-ticketing-preview-2026!` and select Sign In. The Google button opens a mock provider in the local Auth emulator, not your real Google account. The seeded email account has admin access. Verify this flow with `node scripts/ticketing/browser-test.cjs --sign-in-only`.
+
 The Express preview does not run Firestore-triggered/scheduled Functions. Returning to an order verifies its Stripe Session; the admin retry action drains jobs locally. Deployed workers do this automatically with five-minute maintenance as fallback.
 
 Tests against running emulators:
