@@ -99,11 +99,14 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
     next();
   }, express.json({ limit: '7300kb' }), async (req, res, next) => {
     res.locals.actor = await service.actor((req.get('authorization') || '').replace(/^Bearer /, ''), true);
-    const upload = req.path === '/staff/media', identity = res.locals.actor?.uid || req.ip || 'unknown';
-    await service.rateLimit(identity, upload ? 'upload' : 'api', upload ? 200 : res.locals.actor ? 3000 : 600);
+    const scannerRoutes = ['/staff/scan', '/staff/manifest', '/staff/scan-review', '/scanner/session'];
+    if (req.get('x-pluto-scanner') && scannerRoutes.includes(req.path)) res.locals.scanner = await service.scannerSession(req.get('x-pluto-scanner')!);
+    const upload = req.path === '/staff/media', identity = res.locals.scanner?.uid || res.locals.actor?.uid || req.ip || 'unknown';
+    await service.rateLimit(identity, upload ? 'upload' : 'api', upload ? 200 : res.locals.actor || res.locals.scanner ? 3000 : 600);
     next();
   });
   const actor = (res: Response): DecodedIdToken => res.locals.actor || fail('Sign in to continue.', 401);
+  const admissionIdentity = (req: Request, res: Response) => req.get('x-pluto-scanner') ? { scannerToken: req.get('x-pluto-scanner')! } : actor(res).uid;
   const bodyId = (req: Request, key = 'eventId') => id(req.body?.[key]);
   router.post('/tickets/api/checkout', async (req, res) => { await service.rateLimit(req.ip || 'unknown', 'checkout', 60); res.json(await service.checkout(req.body, res.locals.actor)); });
   router.post('/tickets/api/checkout-attempt', async (req, res) => res.json(await service.checkoutAttempt(req.body.accessKey)));
@@ -119,6 +122,12 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   router.post('/tickets/api/transfer/accept', async (req, res) => res.json(await service.acceptTransfer(req.body.token, res.locals.actor)));
   router.post('/tickets/api/holder', async (req, res) => res.json(await service.holder(req.body.token, res.locals.actor)));
   router.post('/tickets/api/staff/events', async (_req, res) => res.json(await service.list(actor(res).uid)));
+  router.post('/tickets/api/staff/scanner-pins', async (req, res) => res.json(await service.scannerPins(bodyId(req), actor(res).uid)));
+  router.post('/tickets/api/staff/scanner-pins/create', async (req, res) => res.json(await service.createScannerPin(bodyId(req), req.body.label, req.body.expiresAt, actor(res).uid)));
+  router.post('/tickets/api/staff/scanner-pins/revoke', async (req, res) => res.json(await service.revokeScannerPin(bodyId(req), bodyId(req, 'pinId'), actor(res).uid)));
+  router.post('/tickets/api/scanner/login', async (req, res) => res.json(await service.scannerLogin(req.body.pin, req.ip || 'unknown')));
+  router.post('/tickets/api/scanner/session', async (req, res) => res.json(await service.scannerSession(req.get('x-pluto-scanner') || '')));
+  router.post('/tickets/api/scanner/logout', async (req, res) => res.json(await service.scannerLogout(req.get('x-pluto-scanner') || '')));
   router.post('/tickets/api/staff/get', async (req, res) => res.json(await service.get(bodyId(req), actor(res).uid)));
   router.post('/tickets/api/staff/save', async (req, res) => res.json(await service.save(bodyId(req), req.body.draft, req.body.revision, actor(res).uid)));
   router.post('/tickets/api/staff/publish', async (req, res) => res.json(await service.publish(bodyId(req), req.body.action, integer(req.body.revision, 'revision'), actor(res).uid)));
@@ -139,9 +148,9 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   router.post('/tickets/api/staff/retry', async (req, res) => { await service.admin(actor(res).uid); res.json(await service.maintenance()); });
   router.post('/tickets/api/staff/refund', async (req, res) => res.json(await service.refund(bodyId(req, 'orderId'), req.body.ticketIds, req.body.attempt, actor(res).uid)));
   router.post('/tickets/api/staff/refund-external', async (req, res) => res.json(await service.mapExternalRefund(bodyId(req, 'orderId'), req.body.ticketIds, actor(res).uid)));
-  router.post('/tickets/api/staff/scan', async (req, res) => res.json(await service.scan(bodyId(req), req.body.qr, req.body.scanId, actor(res).uid, req.body.offline === true)));
-  router.post('/tickets/api/staff/manifest', async (req, res) => res.json(await service.manifest(bodyId(req), actor(res).uid)));
-  router.post('/tickets/api/staff/scan-review', async (req, res) => res.json(await service.reviewScan(bodyId(req), req.body.scanId, req.body.note, actor(res).uid)));
+  router.post('/tickets/api/staff/scan', async (req, res) => res.json(await service.scan(bodyId(req), req.body.qr, req.body.scanId, admissionIdentity(req, res), req.body.offline === true)));
+  router.post('/tickets/api/staff/manifest', async (req, res) => res.json(await service.manifest(bodyId(req), admissionIdentity(req, res))));
+  router.post('/tickets/api/staff/scan-review', async (req, res) => res.json(await service.reviewScan(bodyId(req), req.body.scanId, req.body.note, admissionIdentity(req, res))));
   router.use((error: any, req: Request, res: Response, next: express.NextFunction) => {
     if (!req.path.startsWith('/tickets') && !req.path.startsWith('/events')) return next(error);
     const status = error instanceof TicketingError ? error.status : error.type === 'entity.too.large' ? 413 : error.type === 'entity.parse.failed' ? 400 : 503;

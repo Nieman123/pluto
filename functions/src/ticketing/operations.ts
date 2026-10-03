@@ -1,10 +1,90 @@
-import { randomUUID } from 'node:crypto';
+import { createHmac, randomInt, randomUUID } from 'node:crypto';
 import { FieldPath } from 'firebase-admin/firestore';
 import { Orders, type Order } from './orders';
-import { fail, hash, id, integer, receipt, secret, ticketId } from './domain';
-import { appTicketsUrl, baseUrl, isLive, resendKey } from './config';
+import { fail, hash, id, integer, receipt, secret, text, ticketId } from './domain';
+import { appTicketsUrl, baseUrl, isLive, keyPair, resendKey } from './config';
+import { scannerAccess } from './scanner-access';
 
 export class Operations extends Orders {
+  scannerPinHash(pin: string) {
+    // A keyed lookup prevents a leaked database from enumerating the short PIN space.
+    const key = keyPair(this.signing()).privateKey.export({ type: 'pkcs8', format: 'der' });
+    return createHmac('sha256', key).update(`pluto-scanner-pin-v1:${pin}`).digest('hex');
+  }
+  async scannerPins(eventId: string, uid: string) {
+    await this.role(uid, eventId);
+    const event = (await this.event(eventId).get()).data(); if (!event) fail('Event not found.', 404);
+    const pins = await this.db.collection('ticketingScannerPins').where('eventId', '==', eventId).get();
+    return { defaultExpiresAt: Date.parse((event.liveDraft || event.draft).endAt) + 6 * 3600000,
+      pins: pins.docs.map(d => { const p = d.data(); return { id: d.id, label: p.label, expiresAt: p.expiresAt, createdAt: p.createdAt,
+        revokedAt: p.revokedAt || null, loginCount: p.loginCount || 0, lastUsedAt: p.lastUsedAt || null }; }).sort((a, b) => b.createdAt - a.createdAt) };
+  }
+  async createScannerPin(eventId: string, rawLabel: unknown, rawExpiry: unknown, uid: string) {
+    await this.role(uid, eventId);
+    const event = (await this.event(eventId).get()).data(); if (!event) fail('Event not found.', 404);
+    if (['cancelled', 'archived'].includes(event.status)) fail('This event is no longer open for scanner access.', 409);
+    const label = text(rawLabel, 'door person or lane name', 100, true), end = Date.parse((event.liveDraft || event.draft).endAt);
+    const expiresAt = rawExpiry == null ? end + 6 * 3600000 : Number(rawExpiry);
+    if (!Number.isSafeInteger(expiresAt) || expiresAt <= Date.now() || expiresAt > end + 24 * 3600000 || expiresAt > Date.now() + 366 * 86400000) fail('Choose a future expiry within 24 hours of the event ending and within the next year.');
+    const pinId = randomUUID(), ref = this.db.collection('ticketingScannerPins').doc(pinId);
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const pin = String(randomInt(100000000)).padStart(8, '0'), lookup = this.db.collection('ticketingScannerPinLookup').doc(this.scannerPinHash(pin));
+      const created = await this.db.runTransaction(async tx => {
+        if ((await tx.get(lookup)).exists) return false;
+        tx.create(lookup, { pinId });
+        tx.create(ref, { eventId, label, expiresAt, createdAt: Date.now(), createdBy: uid, loginCount: 0 });
+        tx.create(this.event(eventId).collection('audit').doc(), { action: 'scanner-pin-created', pinId, label, expiresAt, uid, at: Date.now() });
+        return true;
+      });
+      if (created) return { id: pinId, pin, label, expiresAt, eventId };
+    }
+    return fail('A scanner PIN could not be generated. Please retry.', 503);
+  }
+  async revokeScannerPin(eventId: string, pinId: string, uid: string) {
+    await this.role(uid, eventId);
+    const ref = this.db.collection('ticketingScannerPins').doc(id(pinId));
+    await this.db.runTransaction(async tx => {
+      const pin = (await tx.get(ref)).data(); if (!pin || pin.eventId !== eventId) fail('Scanner PIN not found.', 404);
+      if (pin.revokedAt) return;
+      tx.update(ref, { revokedAt: Date.now(), revokedBy: uid });
+      tx.create(this.event(eventId).collection('audit').doc(), { action: 'scanner-pin-revoked', pinId, uid, at: Date.now() });
+    });
+    return { revoked: true };
+  }
+  async scannerLogin(rawPin: unknown, ip: string) {
+    await this.rateLimit(ip, 'scanner-login-ip', 40);
+    const pin = typeof rawPin === 'string' ? rawPin.replace(/[\s-]/g, '') : '';
+    if (!/^\d{8}$/.test(pin)) fail('Enter a valid 8-digit scanner PIN.', 401);
+    const lookupHash = this.scannerPinHash(pin);
+    await this.rateLimit(lookupHash, 'scanner-login-pin', 20);
+    const token = secret(), sessionRef = this.db.collection('ticketingScannerSessions').doc(hash(token));
+    const result = await this.db.runTransaction(async tx => {
+      const lookup = (await tx.get(this.db.collection('ticketingScannerPinLookup').doc(lookupHash))).data();
+      const pinRef = this.db.collection('ticketingScannerPins').doc(lookup?.pinId || 'missing'), p = (await tx.get(pinRef)).data();
+      if (!p || p.revokedAt || p.expiresAt <= Date.now()) fail('This scanner PIN is invalid, expired or revoked. Ask your event organizer for a new PIN.', 401);
+      const event = (await tx.get(this.event(p.eventId))).data();
+      if (!event || ['cancelled', 'archived'].includes(event.status)) fail('This scanner PIN is invalid, expired or revoked. Ask your event organizer for a new PIN.', 401);
+      const expiresAt = Math.min(p.expiresAt, Date.now() + 24 * 3600000);
+      tx.create(sessionRef, { pinId: pinRef.id, eventId: p.eventId, expiresAt, createdAt: Date.now() });
+      tx.update(pinRef, { loginCount: (p.loginCount || 0) + 1, lastUsedAt: Date.now() });
+      tx.create(this.event(p.eventId).collection('audit').doc(), { action: 'scanner-pin-login', pinId: pinRef.id, sessionId: sessionRef.id, label: p.label, at: Date.now() });
+      return { uid: `scanner_${pinRef.id}`, eventId: p.eventId, eventTitle: (event.liveDraft || event.draft).title, label: p.label, expiresAt };
+    });
+    return { ...result, token };
+  }
+  async scannerSession(token: string) {
+    const access = await scannerAccess(this.db, { scannerToken: token });
+    const event = (await this.event(access.eventId).get()).data();
+    if (!event || ['cancelled', 'archived'].includes(event.status)) fail('This event is no longer open for scanner access.', 403);
+    return { uid: access.uid, eventId: access.eventId, eventTitle: (event.liveDraft || event.draft).title, label: access.scannerLabel, expiresAt: access.expiresAt };
+  }
+  async scannerLogout(token: string) {
+    if (/^[a-f0-9]{64}$/.test(token || '')) {
+      const ref = this.db.collection('ticketingScannerSessions').doc(hash(token));
+      await this.db.runTransaction(async tx => { if ((await tx.get(ref)).exists) tx.update(ref, { revokedAt: Date.now() }); });
+    }
+    return { signedOut: true };
+  }
   async refund(orderId: string, ticketIds: unknown, attempt: unknown, uid: string) {
     const order = (await this.order(orderId).get()).data() as Order | undefined;
     if (!order) fail('Order not found.', 404);

@@ -5,6 +5,7 @@ import { type Firestore } from 'firebase-admin/firestore';
 import { Catalog } from './catalog';
 import { apiVersion, appTicketsUrl, baseUrl, isLive, keyPair, readTicket, signTicket, stripeClient } from './config';
 import { assertCapacity, cart, email, fail, hash, id, integer, receipt, secret, text, ticketId, type EventDraft, type Unit } from './domain';
+import { scannerAccess, type ScannerProof } from './scanner-access';
 
 export interface Order {
   eventId: string; eventTitle: string; eventSlug: string; ownerUid: string; email: string; name: string; accessHash: string; inputHash: string;
@@ -345,11 +346,13 @@ export class Orders extends Catalog {
       transferable: !ticket.admission && Date.now() < this.transferDeadline(ticket, event), qr: this.credential(ticket, access.ticketId),
       venue: { name: (event.liveDraft || event.draft).venueName, address: (event.liveDraft || event.draft).address, directions: (event.liveDraft || event.draft).directions } };
   }
-  async scan(eventId: string, qr: unknown, scanId: unknown, uid: string, offline = false) {
-    await this.role(uid, eventId, ['admission']);
+  async scan(eventId: string, qr: unknown, scanId: unknown, identity: string | ScannerProof, offline = false) {
+    if (typeof identity === 'string') await this.role(identity, eventId, ['admission']);
     const parsed = readTicket(qr, this.signing()), key = id(scanId);
     if (parsed.eventId !== eventId) fail('This ticket belongs to a different event.', 409);
     return this.db.runTransaction(async tx => {
+      // Read the PIN and session in the admission transaction so revocation wins safely.
+      const access = typeof identity === 'string' ? { uid: identity } : await scannerAccess(this.db, identity, eventId, tx), { uid } = access;
       const scanRef = this.event(eventId).collection('scans').doc(key), prior = (await tx.get(scanRef)).data();
       if (prior) { if (prior.ticketId !== parsed.id || prior.uid !== uid) fail('Scan attempt mismatch.', 409); return prior; }
       const ticketRef = this.tickets().doc(id(parsed.id)), ticket = (await tx.get(ticketRef)).data();
@@ -358,26 +361,29 @@ export class Orders extends Catalog {
       if (!ticket || ticket.version !== parsed.version || ticket.status !== 'valid' || event?.status === 'cancelled') result = 'invalid';
       else if (Date.now() < Date.parse(ticket.validFrom) || Date.now() > Date.parse(ticket.validUntil)) result = 'outside-window';
       else if (ticket.admission) result = 'duplicate';
-      const record = { ticketId: parsed.id, uid, result, at: Date.now(), offline, name: ticket?.name || '' };
-      tx.create(scanRef, record); if (result === 'accepted') tx.update(ticketRef, { admission: { at: Date.now(), uid, scanId: key, offline } });
+      const record = { ticketId: parsed.id, ...access, result, at: Date.now(), offline, name: ticket?.name || '' };
+      tx.create(scanRef, record); if (result === 'accepted') tx.update(ticketRef, { admission: { at: Date.now(), ...access, scanId: key, offline } });
       return record;
     });
   }
-  async manifest(eventId: string, uid: string) {
-    await this.role(uid, eventId, ['admission']);
+  async manifest(eventId: string, identity: string | ScannerProof) {
+    if (typeof identity === 'string') await this.role(identity, eventId, ['admission']);
+    else await scannerAccess(this.db, identity, eventId);
     const tickets = await this.tickets().where('eventId', '==', eventId).get();
     const event = (await this.event(eventId).get()).data();
-    return { eventId, generatedAt: Date.now(), verificationKey: keyPair(this.signing()).jwk,
+    const access = typeof identity === 'string' ? { uid: identity, expiresAt: Date.now() + 24 * 3600000 } : await scannerAccess(this.db, identity, eventId);
+    return { eventId, staffUid: access.uid, offlineUntil: Math.min(access.expiresAt, Date.now() + (typeof identity === 'string' ? 24 : 4) * 3600000), generatedAt: Date.now(), verificationKey: keyPair(this.signing()).jwk,
       tickets: tickets.docs.map(t => { const d = t.data(); return { id: t.id, version: d.version, status: event?.status === 'cancelled' ? 'invalid' : d.status, name: d.name, validFrom: d.validFrom, validUntil: d.validUntil, admitted: !!d.admission }; }) };
   }
-  async reviewScan(eventId: string, scanId: unknown, rawNote: unknown, uid: string) {
-    await this.role(uid, eventId, ['admission']);
+  async reviewScan(eventId: string, scanId: unknown, rawNote: unknown, identity: string | ScannerProof) {
+    if (typeof identity === 'string') await this.role(identity, eventId, ['admission']);
     const ref = this.event(eventId).collection('scans').doc(id(scanId)), note = text(rawNote, 'review note', 500, true);
     await this.db.runTransaction(async tx => {
+      const access = typeof identity === 'string' ? { uid: identity } : await scannerAccess(this.db, identity, eventId, tx), { uid } = access;
       const scan = (await tx.get(ref)).data();
       if (!scan || !scan.offline || scan.result === 'accepted') fail('This scan does not need offline conflict review.', 409);
       tx.update(ref, { reviewedBy: uid, reviewedAt: Date.now(), reviewNote: note });
-      tx.create(this.event(eventId).collection('audit').doc(), { action: 'offline-conflict-reviewed', scanId: ref.id, uid, note, at: Date.now() });
+      tx.create(this.event(eventId).collection('audit').doc(), { action: 'offline-conflict-reviewed', scanId: ref.id, ...access, note, at: Date.now() });
     });
     return { reviewed: true };
   }
