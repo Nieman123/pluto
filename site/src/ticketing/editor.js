@@ -25,7 +25,7 @@ function utcDate(local, timezone) {
 function field(path, label, type = 'text', options = {}) {
   let value = get(path) ?? '';
   const inputId = `field-${path.replaceAll('.', '-')}`;
-  if (type === 'date') value = localDate(value, record.draft.timezone);
+  if (type === 'date' && value) value = localDate(value, record.draft.timezone);
   if (type === 'money') value = Number(value) / 100;
   const attr = `id="${inputId}" data-field="${esc(path)}" data-kind="${type}"`;
   let control;
@@ -57,7 +57,7 @@ async function imagePayload(file) {
 function defaultDraft() {
   const startAt = new Date(Date.now() + 7 * 86400000).toISOString(), endAt = new Date(Date.now() + 7 * 86400000 + 8 * 3600000).toISOString(), salesStart = new Date(Date.now() - 60000).toISOString();
   return { registrationMode: 'tickets', title: 'New Pluto event', slug: `new-event-${crypto.randomUUID().slice(0, 8)}`, subtitle: '', descriptionHtml: '<p>Tell your guests what makes this event special.</p>', startAt, endAt, admissionStartsAt: startAt,
-    timezone: 'America/New_York', city: 'Asheville', region: 'NC', venueName: '', address: '', directions: '', venueVisibility: 'holders', hero: null, flyer: null, gallery: [], lineup: [],
+    timezone: 'America/New_York', city: 'Asheville', region: 'NC', venueName: '', address: '', directions: '', venueVisibility: 'holders', venueRevealScheduled: false, venueRevealAt: null, hero: null, flyer: null, gallery: [], lineup: [],
     sections: [{ id: 'faq', type: 'faq', title: 'Good to know', bodyHtml: '<p>Bring your ticket and a valid photo ID.</p>', visible: true }], theme: { preset: 'pluto', accent: '#c4a2ff', font: 'Montserrat' },
     pools: [{ id: 'admission', name: 'General admission', capacity: 200 }], offers: [{ id: 'general', name: 'General admission', description: '', kind: 'admission', unitAmount: 4000, maxPerOrder: 10, salesStart, salesEnd: endAt, validFrom: startAt, validUntil: endAt, active: true, pools: { admission: 1 }, requiresOfferIds: [], taxCode: '', stripeProductId: '', stripeTaxRateIds: [] }], promos: [], tax: { mode: 'sandbox', confirmed: false, performanceLocationId: '' } };
 }
@@ -129,7 +129,7 @@ async function save() {
 }
 function studioFields(d) {
   return `<fieldset><legend>The essentials</legend><div class="form-grid">${field('title', 'Event title', 'text', { required: true })}${field('slug', 'Event URL /events/…', 'text', { required: true })}${field('subtitle', 'Short introduction')}${field('timezone', 'Timezone', 'select', { choices: [['America/New_York', 'Eastern'], ['America/Chicago', 'Central'], ['America/Denver', 'Mountain'], ['America/Los_Angeles', 'Pacific'], ['UTC', 'UTC']] })}${field('startAt', 'Event starts (event timezone)', 'date')}${field('endAt', 'Event ends (event timezone)', 'date')}${field('admissionStartsAt', 'First admission / transfer cutoff', 'date')}</div>${rich('descriptionHtml', 'Event description')}</fieldset>
-  <fieldset><legend>Venue & directions</legend><div class="form-grid">${field('city', 'Public city')}${field('region', 'Public state')}${field('venueVisibility', 'Exact venue visibility', 'select', { choices: [['holders', 'Ticket holders only'], ['public', 'Public']] })}${field('venueName', 'Venue name')}${field('address', 'Street address')}</div>${field('directions', 'Directions, parking and access notes', 'textarea')}</fieldset>
+  <fieldset><legend>Venue & directions</legend><div class="form-grid">${field('city', 'Public city')}${field('region', 'Public state')}${field('venueVisibility', 'Exact venue visibility', 'select', { choices: [['holders', 'Ticket holders only'], ['public', 'Public']] })}${field('venueName', 'Venue name')}${field('address', 'Street address')}</div>${field('directions', 'Directions, parking and access notes', 'textarea')}<div data-private-location ${d.venueVisibility !== 'holders' ? 'hidden' : ''}>${field('venueRevealScheduled', 'Schedule location reveal', 'check')}<p>The public page always shows only the city/state. Without a schedule, confirmed ticket holders can see the exact venue immediately.</p><div data-location-reveal ${!d.venueRevealScheduled ? 'hidden' : ''}>${field('venueRevealAt', 'Reveal exact venue & directions at', 'date', { required: d.venueVisibility === 'holders' && d.venueRevealScheduled === true })}<p>Time shown in ${esc(d.timezone)}. Confirmed holders see the location in their app at this time. Save and publish to apply it.</p></div></div></fieldset>
   <fieldset><legend>Artwork & gallery</legend>${media('hero', 'Hero artwork')}${media('flyer', 'Event flyer')}${d.gallery.map((_, i) => media(`gallery.${i}`, `Gallery photo ${i + 1}`)).join('')}<button type="button" class="button button-quiet" data-add="gallery">Add gallery photo</button></fieldset>
   <fieldset><legend>Page theme</legend><div class="form-grid">${field('theme.preset', 'Theme', 'select', { choices: [['pluto', 'Pluto Default'], ['artwork-dark', 'Artwork Dark'], ['light', 'Light']] })}${field('theme.accent', 'Accent color', 'color')}${field('theme.font', 'Font', 'select', { choices: [['Montserrat', 'Montserrat'], ['SourceCodePro', 'Source Code Pro']] })}</div></fieldset>
   <fieldset><legend>Lineup & set times</legend>${d.lineup.map((a, i) => `<details><summary>${esc(a.name || `Artist ${i + 1}`)}</summary><div class="form-grid">${field(`lineup.${i}.name`, 'Artist name')}${field(`lineup.${i}.genre`, 'Genre')}${field(`lineup.${i}.time`, 'Set time')}</div>${media(`lineup.${i}.image`, 'Artist photo')}<button type="button" data-remove="lineup" data-index="${i}">Remove artist</button></details>`).join('')}<button type="button" class="button button-quiet" data-add="lineup">Add artist</button></fieldset>
@@ -165,10 +165,15 @@ function render() {
       if (kind === 'money') value = Math.round(Number(value) * 100);
       if (kind === 'check') value = input.checked;
       if (kind === 'multi') value = [...input.selectedOptions].map(o => o.value);
-      if (kind === 'date') value = utcDate(value, record.draft.timezone);
+      if (kind === 'date') value = path === 'venueRevealAt' && !value ? null : utcDate(value, record.draft.timezone);
       if (path.endsWith('stripeTaxRateIds')) value = input.value.split(',').map(v => v.trim()).filter(Boolean);
       if (path.includes('.pools.') && Number(value) === 0) { const parts = path.split('.'), key = parts.pop(); delete get(parts.join('.'))[key]; dirty = true; } else set(path, value);
       syncSaveState();
+      if (path === 'venueVisibility' || path === 'venueRevealScheduled') {
+        root.querySelector('[data-private-location]').hidden = d.venueVisibility !== 'holders';
+        root.querySelector('[data-location-reveal]').hidden = !d.venueRevealScheduled;
+        root.querySelector('[data-field="venueRevealAt"]').required = d.venueVisibility === 'holders' && d.venueRevealScheduled === true;
+      }
       if (path === 'timezone' || path === 'registrationMode') render();
     } catch (error) { message(error.message, true); input.focus(); }
   }));

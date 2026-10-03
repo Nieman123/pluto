@@ -6,7 +6,8 @@ const { qr } = require('../../test/fixtures/ticket-qr.json');
 (async () => {
   const browser = await chromium.launch();
   try {
-    for (const platform of ['pending', 'apple', 'google']) {
+    const walletEnabled = process.env.TICKETING_WALLET_UI_ENABLED === 'true';
+    for (const platform of walletEnabled ? ['pending', 'apple', 'google'] : ['hidden']) {
       const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, ignoreHTTPSErrors: true }), oid = 'a'.repeat(64), key = 'b'.repeat(64), calls = [];
       await context.addInitScript(({ oid, key }) => localStorage.setItem(`pluto-order-${oid}`, key), { oid, key });
       await context.route('**/tickets/api/**', route => {
@@ -16,7 +17,7 @@ const { qr } = require('../../test/fixtures/ticket-qr.json');
         if (path.endsWith('/wallet/options')) result = options;
         else if (path.endsWith('/wallet/apple')) result = { url: 'http://127.0.0.1:4173/tickets/wallet/apple/test-download' };
         else if (path.endsWith('/wallet/google')) result = { url: 'https://pay.google.com/gp/v/save/test-token' };
-        else result = { orderId: oid, eventId: 'wallet-test', eventTitle: 'A Night in Orbit', eventSlug: 'orbit', status: 'paid', method: 'cash', total: 10000, name: 'Test Guest', email: 'guest@example.test', tickets: [{ id: 'ticket-123', orderId: oid, name: 'Weekend pass', holderName: 'Test Guest', status: 'valid', amount: 10000, qr }] };
+        else result = { orderId: oid, eventId: 'wallet-test', eventTitle: 'A Night in Orbit', eventSlug: 'orbit', status: 'paid', method: 'cash', total: 10000, name: 'Test Guest', email: 'guest@example.test', tickets: [{ id: 'ticket-123', orderId: oid, name: 'Weekend pass', holderName: 'Test Guest', transferable: true, status: 'valid', amount: 10000, qr }] };
         return route.fulfill({ contentType: 'application/json', body: JSON.stringify(result) });
       });
       for (const url of ['**/tickets/wallet/apple/test-download', 'https://pay.google.com/gp/v/save/test-token']) await context.route(url, route => route.fulfill({ contentType: 'text/html', body: '<p>Wallet provider flow</p>' }));
@@ -28,8 +29,18 @@ const { qr } = require('../../test/fixtures/ticket-qr.json');
       const screenshot = await code.screenshot();
       const { data, info } = await sharp(screenshot).flatten({ background: '#fff' }).greyscale().raw().toBuffer({ resolveWithObject: true });
       assert.equal(new QRCodeReader().decode(new BinaryBitmap(new HybridBinarizer(new RGBLuminanceSource(new Uint8ClampedArray(data), info.width, info.height)))).getText(), qr);
-      if (platform === 'pending') await page.screenshot({ path: 'tmp/ticket-qr-phone.png' });
+      assert.equal(await page.getByText(/YOUR NIGHT AWAITS/).count(), 0);
+      if (platform === 'pending' || platform === 'hidden') await page.screenshot({ path: 'tmp/ticket-qr-phone.png' });
       await page.getByRole('button', { name: 'Close', exact: true }).click();
+      if (!walletEnabled) {
+        assert.equal(await page.getByRole('button', { name: 'Add to Wallet', exact: true }).count(), 0);
+        const enlarge = await page.getByRole('button', { name: 'Enlarge QR', exact: true }).boundingBox(), transfer = await page.getByRole('button', { name: 'Transfer ticket', exact: true }).boundingBox();
+        assert.ok(enlarge.width >= 290 && transfer.width >= 290, 'ticket buttons fill the phone card');
+        assert.ok(Math.abs(enlarge.x - transfer.x) < 2, 'ticket buttons share centered alignment');
+        await page.getByRole('button', { name: 'Transfer ticket', exact: true }).scrollIntoViewIfNeeded();
+        await page.screenshot({ path: 'tmp/ticket-actions-phone.png' });
+        await context.close(); continue;
+      }
       await page.getByRole('button', { name: 'Add to Wallet', exact: true }).click();
       const apple = page.getByRole('button', { name: 'Add to Apple Wallet', exact: true }), google = page.getByRole('button', { name: 'Add to Google Wallet', exact: true });
       assert.equal(await apple.isDisabled(), platform !== 'apple'); assert.equal(await google.isDisabled(), platform !== 'google');
@@ -40,6 +51,6 @@ const { qr } = require('../../test/fixtures/ticket-qr.json');
       }
       await context.close();
     }
-    console.log('Digital wallet browser checks passed: pending setup, Apple/Google navigation and proof, enlarged phone QR decode.');
+    console.log(walletEnabled ? 'Digital wallet browser checks passed: pending setup, Apple/Google navigation and proof, enlarged phone QR decode.' : 'Ticket browser checks passed: PLUTO heading, full-width centered actions, hidden Wallet button and enlarged phone QR decode.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -4,7 +4,7 @@ import { type DecodedIdToken } from 'firebase-admin/auth';
 import { Timestamp, type Firestore, type Transaction } from 'firebase-admin/firestore';
 import { Catalog } from './catalog';
 import { apiVersion, appTicketsUrl, baseUrl, isLive, keyPair, readTicket, signTicket, stripeClient } from './config';
-import { assertCapacity, cart, email, fail, hash, id, integer, receipt, secret, text, ticketId, type EventDraft, type Unit } from './domain';
+import { assertCapacity, cart, email, fail, hash, holderVenue, id, integer, receipt, secret, text, ticketId, type EventDraft, type Unit } from './domain';
 import { scannerAccess, type ScannerProof } from './scanner-access';
 import { guestEntry } from './guest-entry';
 import { readOfflineItem, signOfflineItem, type OfflineSubmission } from './offline-proof';
@@ -73,10 +73,11 @@ export class Orders extends Catalog {
     if (!event || !draft || ['cancelled', 'archived'].includes(event.status) || ticket.status !== 'valid' || ticket.admission || order.status !== 'paid' || order.financialBlocked ||
       (order.method === 'rsvp' && order.rsvpStatus !== 'approved') || !Number.isFinite(Date.parse(ticket.validUntil)) || Date.parse(ticket.validUntil) <= Date.now())
       fail('This ticket is not available for digital wallet admission.', 409, 'ticket-access-revoked');
+    const venue = holderVenue(draft)!;
     return { id: ticketId, version: ticket.version, orderId: ticket.orderId, eventId: ticket.eventId, eventTitle: ticket.eventTitle,
       eventSlug: event.publishedSlug || ticket.eventSlug || draft.slug, name: ticket.name, holderName: ticket.holderName || order.name,
       qr: this.credential(ticket, ticketId), validFrom: ticket.validFrom, validUntil: ticket.validUntil, startAt: draft.startAt, endAt: draft.endAt,
-      timezone: draft.timezone, venueName: draft.venueName, address: draft.address, city: draft.city, region: draft.region, publicVenue: draft.venueVisibility === 'public' };
+      timezone: draft.timezone, venueName: venue.name, address: venue.address, venueAvailable: venue.available, venueRevealAt: venue.revealAt, city: draft.city, region: draft.region, publicVenue: draft.venueVisibility === 'public' };
   }
   async appleDownload(raw: any, actor: DecodedIdToken | null) {
     const ticket = await this.walletTicket(raw, actor), token = secret(), expiresAt = Date.now() + 5 * 60000;
@@ -398,14 +399,14 @@ export class Orders extends Catalog {
     if (refresh && order.sessionId && order.status !== 'paid') { await this.verifySession(orderId); order = (await this.order(orderId).get()).data() as Order; }
     const tickets = (await this.tickets().where('orderId', '==', orderId).get()).docs;
     const event = (await this.event(order.eventId).get()).data();
-    const held = tickets.filter(t => !order.financialBlocked && !t.data().refunded && (!t.data().rsvp || order.rsvpStatus === 'approved') && (t.data().ownerUid === actor?.uid || t.data().holderEmail === order.email));
+    const held = tickets.filter(t => !order.financialBlocked && t.data().status === 'valid' && (!t.data().rsvp || order.rsvpStatus === 'approved') && (t.data().ownerUid === actor?.uid || t.data().holderEmail === order.email));
+    const venue = held.length ? holderVenue(event?.liveDraft || event?.draft) : null;
     return { orderId, eventId: order.eventId, eventTitle: order.eventTitle, eventSlug: order.eventSlug, eventStatus: event?.status, status: order.status, method: order.method, total: order.total,
       rsvpStatus: order.rsvpStatus || '', approvalRequired: order.approvalRequired === true, decisionNote: order.decisionNote || '',
       providerState: order.providerState || 'unknown',
       discount: order.discount, taxAmount: order.taxAmount || 0, refundedAmount: order.refundedAmount || 0, externalRefundAmount: (order as any).externalRefundAmount || 0, reviewReason: order.financialReviewReason || order.reviewReason || '', financialBlocked: !!order.financialBlocked, name: order.name, email: order.email, createdAt: order.createdAt, receiptUrl: order.receiptUrl || '',
       tickets: tickets.map(t => { const d = t.data(), canUse = held.includes(t); return { id: t.id, name: d.name, holderName: d.holderName, status: d.status, validFrom: d.validFrom, validUntil: d.validUntil, admission: d.admission,
-        amount: d.amount, transferable: !d.rsvp && canUse && d.status === 'valid' && !d.admission && event?.status !== 'cancelled' && Date.now() < this.transferDeadline(d, event), qr: canUse && d.status === 'valid' && event?.status !== 'cancelled' ? this.credential(d, t.id) : null }; }),
-      venue: held.length ? { name: (event?.liveDraft || event?.draft)?.venueName || '', address: (event?.liveDraft || event?.draft)?.address || '', directions: (event?.liveDraft || event?.draft)?.directions || '' } : null };
+        amount: d.amount, venue: canUse ? venue : null, transferable: !d.rsvp && canUse && d.status === 'valid' && !d.admission && event?.status !== 'cancelled' && Date.now() < this.transferDeadline(d, event), qr: canUse && d.status === 'valid' && event?.status !== 'cancelled' ? this.credential(d, t.id) : null }; }), venue };
   }
   async claim(actor: DecodedIdToken) {
     if (!actor.email_verified || !actor.email) fail('Verify your account email before claiming orders.', 403);
@@ -425,6 +426,7 @@ export class Orders extends Catalog {
     return { orders: orders.docs.map(d => { const o = d.data(); return { orderId: d.id, eventTitle: o.eventTitle, status: o.status, method: o.method, rsvpStatus: o.rsvpStatus || '', total: o.total, createdAt: o.createdAt }; }).sort((a, b) => b.createdAt - a.createdAt),
       tickets: await Promise.all(tickets.docs.map(async t => { const d = t.data(), event = (await this.event(d.eventId).get()).data(), order = (await this.order(d.orderId).get()).data(); return { id: t.id, orderId: d.orderId, eventTitle: d.eventTitle, name: d.name, holderName: d.holderName, status: d.status,
         admission: d.admission, transferable: !order?.financialBlocked && !d.rsvp && d.status === 'valid' && !d.admission && event?.status !== 'cancelled' && Date.now() < this.transferDeadline(d, event),
+        venue: !order?.financialBlocked && d.status === 'valid' && (!d.rsvp || order?.rsvpStatus === 'approved') ? holderVenue(event?.liveDraft || event?.draft) : null,
         qr: !order?.financialBlocked && d.status === 'valid' && event?.status !== 'cancelled' ? this.credential(d, t.id) : null }; })) };
   }
   async recover(rawEmail: unknown) {
@@ -504,7 +506,7 @@ export class Orders extends Catalog {
     if (event.status === 'cancelled') fail('This event has been cancelled. Contact Pluto about your order.', 409);
     return { id: access.ticketId, orderId: ticket.orderId, name: ticket.name, eventTitle: ticket.eventTitle, holderName: ticket.holderName, status: ticket.status,
       transferable: !ticket.rsvp && !ticket.admission && Date.now() < this.transferDeadline(ticket, event), qr: this.credential(ticket, access.ticketId),
-      venue: { name: (event.liveDraft || event.draft).venueName, address: (event.liveDraft || event.draft).address, directions: (event.liveDraft || event.draft).directions } };
+      venue: holderVenue(event.liveDraft || event.draft) };
   }
   protected async admissionAccess(identity: string | ScannerProof, eventId: string, tx: Transaction, manager = false) {
     if (typeof identity !== 'string') {

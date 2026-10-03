@@ -60,6 +60,7 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
     const privateEvent = (await service.event(event.id).get()).data();
     const offerPools = privateEvent?.liveDraft?.offers || privateEvent?.draft.offers || [];
     const now = Date.now();
+    if (event.venueVisibility === 'holders' && event.venueRevealScheduled && event.venueRevealAt) mapped.locationRevealLabel = `${new Intl.DateTimeFormat('en-US', { timeZone: event.timezone, dateStyle: 'full', timeStyle: 'short' }).format(new Date(event.venueRevealAt))} (${event.timezone})`;
     mapped.offers = event.offers.map((o: any) => {
       const remaining = Math.max(0, Math.min(...Object.entries(offerPools.find((p: any) => p.id === o.id)?.pools || {}).map(([key, count]) => { const p = pools.find(p => p.id === key); return p ? Math.floor((p.capacity - p.sold - p.held) / (count as number)) : 0; }), 1000000));
       const availability = Date.parse(o.salesStart) > now ? 'Coming soon' : Date.parse(o.salesEnd) <= now ? 'Sales closed' : remaining <= 0 ? 'Sold out' : 'Available';

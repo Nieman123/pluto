@@ -6,7 +6,9 @@ Admission tickets live at `/app/tickets`. Emails contain secure confirmation, re
 
 Admin event cards now show flyers and weekly gross revenue. Event dashboards include a daily revenue graph, period selection and exact daily figures, plus a View Public Page link using the published URL. Revenue uses each event's timezone and labels gross sales before refunds/tax/fees. Admission-only staff receive no financial summaries.
 
-Tickets have a Pluto QR frame, a four-module white border, pixel-aligned dark modules and an Enlarge QR control. Apple Wallet pass generation and Google Wallet save flows are implemented behind optional issuer configuration; real account/device acceptance is pending. See [digital wallet setup and activation gates](ticketing-digital-wallets.md). Existing saved passes do not yet get automatic status/metadata push updates; online admission still checks the current ticket credential.
+Tickets have a Pluto QR frame, a four-module white border, pixel-aligned dark modules and a full-width Enlarge QR control. The heading reads PLUTO and transfer actions fill the card width. Apple Wallet pass generation and Google Wallet save flows are implemented behind optional issuer configuration; the purple Add to Wallet action is hidden pending account/device acceptance. See [digital wallet setup and activation gates](ticketing-digital-wallets.md). Existing saved passes do not yet get automatic status/metadata push updates; online admission still checks the current ticket credential.
+
+In Event studio → Venue & directions, Ticket holders only events can enable Schedule location reveal and choose an absolute reveal time in the event's timezone. Save and publish to apply it. New and existing private events reveal immediately unless scheduling is enabled. The public hero and Getting here section explain the privacy policy and scheduled reveal time, while only city/state remains public, including after reveal. The server omits name/address/directions before the reveal from order views, account tickets, transferred-holder views and digital-wallet snapshots. Confirmed current holders see the location when it is time; pending approval RSVPs and revoked holders do not gain access. Open ticket pages refresh at the reveal time, and the normal Refresh control remains available. Duplicating an event shifts its reveal time by the same interval as its start time.
 
 ## Requirement audit
 
@@ -33,7 +35,8 @@ Tickets have a Pluto QR frame, a four-module white border, pixel-aligned dark mo
 
 ## Verification evidence
 
-- `npm test`: 29 Functions tests and 7 configuration checks pass, including registration mode validation and existing ManaFest/rentals/waiver behavior.
+- `npm test`: 36 Functions tests and 8 configuration/reporting checks pass, including location-reveal validation, registration modes and existing ManaFest/rentals/waiver behavior.
+- Scheduled-location checks: `test:ticketing:location-access` and wallet-access tests pass across current ownership, transfers, refunds, approval RSVPs, unpublished edits and published reveal times. `test:ticketing:location-browser` passes Studio timezone persistence, public-page privacy/mobile accessibility and automatic holder refresh. The wallet browser check passes PLUTO heading, full-width actions, hidden Add to Wallet and enlarged phone QR decoding. Targeted Flutter QR/wallet tests and seven QR decoder cases pass.
 - `flutter analyze lib test`: no issues. `flutter test`: 11 pass. Functions, public assets and release Flutter web builds pass.
 - `test:ticketing:integration`: concurrency, immutable attempts, fulfillment/expiry/cancel, transfers/refunds/admission, cash/comps, manual/automatic cash tax, Dashboard mapping, recovery/claims, receipt-only PDF, drafts/roles, late creation recovery, one-use email retries and signed repeated/stale webhooks pass using demo Firestore and a controlled Stripe substitute.
 - `test:ticketing:rules`: three access contexts pass, including private guest entries and bulk-add records; fixtures are removed afterward to avoid polluting previews.

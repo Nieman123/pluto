@@ -14,6 +14,7 @@ export interface WalletTicket {
   id: string; version: number; orderId: string; eventId: string; eventTitle: string; eventSlug: string;
   name: string; holderName: string; qr: string; validFrom: string; validUntil: string;
   startAt: string; endAt: string; timezone: string; venueName: string; address: string; city: string; region: string; publicVenue: boolean;
+  venueAvailable?: boolean; venueRevealAt?: string | null;
 }
 interface AppleCredentials { passTypeIdentifier: string; teamIdentifier: string; signerCert: string; signerKey: string; wwdr: string; signerKeyPassphrase?: string }
 interface GoogleCredentials { issuerId: string; clientEmail: string; privateKey: string }
@@ -61,7 +62,7 @@ export class DigitalWallet {
       eventTicket: { primaryFields: [{ key: 'event', label: 'YOUR NIGHT', value: ticket.eventTitle }],
         secondaryFields: [{ key: 'ticket', label: 'ADMISSION', value: ticket.name }, { key: 'holder', label: 'GUEST', value: ticket.holderName }],
         auxiliaryFields: [{ key: 'date', label: 'EVENT TIME', value: date }, { key: 'city', label: 'CITY', value: `${ticket.city}, ${ticket.region}` }],
-        backFields: [{ key: 'venue', label: 'VENUE', value: [ticket.venueName, ticket.address].filter(Boolean).join('\n') },
+        backFields: [{ key: 'venue', label: 'VENUE', value: walletVenue(ticket) },
           { key: 'app', label: 'YOUR IN-APP TICKET', value: `${baseUrl()}/app/tickets` },
           { key: 'admission', label: 'ADMISSION', value: 'This pass uses your current Pluto ticket credential. Refunds and transfers invalidate the old code. First admission is recorded at the door.' }] } };
     const files: Record<string, Buffer> = { 'pass.json': Buffer.from(JSON.stringify(pass)) };
@@ -96,7 +97,7 @@ export class DigitalWallet {
         ticketType: localized(ticket.name), barcode: { type: 'QR_CODE', value: ticket.qr, alternateText: 'Show at the door' },
         validTimeInterval: { start: { date: ticket.validFrom }, end: { date: ticket.validUntil } },
         passConstraints: { screenshotEligibility: 'INELIGIBLE' },
-        textModulesData: [{ id: 'venue', header: 'VENUE', body: [ticket.venueName, ticket.address].filter(Boolean).join('\n') }],
+        textModulesData: [{ id: 'venue', header: 'VENUE', body: walletVenue(ticket) }],
         linksModuleData: { uris: [{ id: 'app', uri: `${baseUrl()}/app/tickets`, description: 'Your Pluto ticket' }] } };
       await this.upsert('eventTicketClass', classId, eventClass, token, signal, true);
       await this.upsert('eventTicketObject', objectId, object, token, signal);
@@ -119,4 +120,8 @@ export class DigitalWallet {
 function jwt(payload: Record<string, unknown>, key: KeyObject) {
   const data = [Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url'), Buffer.from(JSON.stringify(payload)).toString('base64url')].join('.');
   return `${data}.${sign('RSA-SHA256', Buffer.from(data), key).toString('base64url')}`;
+}
+function walletVenue(ticket: WalletTicket) {
+  if (ticket.venueAvailable === false) return `Exact venue and directions will be revealed in the Pluto app${ticket.venueRevealAt ? ` on ${new Intl.DateTimeFormat('en-US', { timeZone: ticket.timezone, dateStyle: 'medium', timeStyle: 'short' }).format(new Date(ticket.venueRevealAt))} (${ticket.timezone})` : ''}.`;
+  return [ticket.venueName, ticket.address].filter(Boolean).join('\n') || `${ticket.city}, ${ticket.region}`;
 }

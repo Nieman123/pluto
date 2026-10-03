@@ -62,6 +62,7 @@ export interface EventDraft {
   registrationMode: 'tickets' | 'rsvp' | 'rsvp-approval';
   title: string; slug: string; subtitle: string; descriptionHtml: string; startAt: string; endAt: string; admissionStartsAt: string;
   timezone: string; city: string; region: string; venueName: string; address: string; directions: string; venueVisibility: 'public' | 'holders';
+  venueRevealScheduled: boolean; venueRevealAt: string | null;
   hero: Media | null; flyer: Media | null; gallery: Media[];
   lineup: { name: string; genre: string; time: string; image: Media | null }[];
   sections: { id: string; type: string; title: string; bodyHtml: string; visible: boolean }[];
@@ -118,10 +119,13 @@ export function validateDraft(raw: any): EventDraft {
   const registrationMode = raw.registrationMode || 'tickets';
   if (!['tickets', 'rsvp', 'rsvp-approval'].includes(registrationMode)) fail('Choose a valid registration type.');
   if (registrationMode !== 'tickets' && offers.some(o => o.active && (o.unitAmount !== 0 || o.kind !== 'admission' || o.maxPerOrder !== 1))) fail('Active RSVP passes must be free admission passes, one per person. Use Set up free RSVP pass on the dashboard.');
+  const venueRevealScheduled = raw.venueVisibility === 'holders' && raw.venueRevealScheduled === true;
+  const venueRevealAt = venueRevealScheduled ? date(raw.venueRevealAt, 'location reveal time') : null;
+  if (venueRevealAt && venueRevealAt >= endAt) fail('Location reveal must be before the event ends.');
   return { registrationMode, title: text(raw.title, 'title', 200, true), slug, subtitle: text(raw.subtitle || '', 'subtitle', 400), descriptionHtml: html(raw.descriptionHtml || ''),
     startAt, endAt, admissionStartsAt, timezone, city: text(raw.city || '', 'city', 100), region: text(raw.region || '', 'state', 100),
     venueName: text(raw.venueName || '', 'venue', 200), address: text(raw.address || '', 'address', 500), directions: text(raw.directions || '', 'directions', 3000),
-    venueVisibility: raw.venueVisibility === 'holders' ? 'holders' : 'public', hero: media(raw.hero), flyer: media(raw.flyer),
+    venueVisibility: raw.venueVisibility === 'holders' ? 'holders' : 'public', venueRevealScheduled, venueRevealAt, hero: media(raw.hero), flyer: media(raw.flyer),
     gallery: list(raw.gallery || [], 'gallery', 30).map(media).filter((v): v is Media => !!v),
     lineup: list(raw.lineup || [], 'lineup', 100).map(a => ({ name: text(a.name, 'artist', 150, true), genre: text(a.genre || '', 'genre', 100), time: text(a.time || '', 'set time', 150), image: media(a.image) })),
     sections, theme: { preset: ['pluto', 'artwork-dark', 'light'].includes(raw.theme?.preset) ? raw.theme.preset : 'pluto', accent,
@@ -137,6 +141,14 @@ export function publicEvent(eventId: string, draft: EventDraft, status: string, 
     offers: draft.offers.filter(o => o.active).map(({ stripeProductId, stripeTaxRateIds, taxCode, pools, ...offer }) => offer),
     ...(draft.venueVisibility === 'public' ? { venueName, address, directions } : {}),
   };
+}
+// Location timing is enforced here on the server, never by hiding a sent address.
+export function holderVenue(draft: EventDraft | undefined, now = Date.now()) {
+  if (!draft) return null;
+  const scheduled = draft.venueVisibility === 'holders' && draft.venueRevealScheduled === true;
+  const revealAt = scheduled ? draft.venueRevealAt : null;
+  const available = !scheduled || !!revealAt && Number.isFinite(Date.parse(revealAt)) && now >= Date.parse(revealAt);
+  return { available, revealAt, timezone: draft.timezone, name: available ? draft.venueName : '', address: available ? draft.address : '', directions: available ? draft.directions : '' };
 }
 export interface Unit { offerId: string; name: string; kind: string; originalAmount: number; amount: number; discount: number; pools: Record<string, number>; validFrom: string; validUntil: string; taxCode: string; stripeProductId: string; stripeTaxRateIds: string[]; taxAmount?: number; stripeLineItemId?: string; stripeTaxLineItemId?: string }
 export function cart(draft: EventDraft, items: any, code: unknown, now = Date.now()) {

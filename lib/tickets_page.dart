@@ -27,6 +27,9 @@ class _TicketsPageState extends State<TicketsPage> {
   String? _error;
   String? _notice;
   bool _busy = false;
+  static const bool _showAddToWallet =
+      bool.fromEnvironment('TICKETING_WALLET_UI_ENABLED');
+  Timer? _locationRevealTimer;
   Map<String, dynamic> _digitalWallets = <String, dynamic>{};
   String _money(dynamic cents) => NumberFormat.simpleCurrency(name: 'USD')
       .format((cents as num? ?? 0) / 100);
@@ -111,10 +114,12 @@ class _TicketsPageState extends State<TicketsPage> {
       });
   Future<void> _load() async {
     // Provider setup is optional and must not prevent access to in-app tickets.
-    try {
-      _digitalWallets = await _repository.request('wallet/options');
-    } catch (_) {
-      _digitalWallets = <String, dynamic>{};
+    if (_showAddToWallet) {
+      try {
+        _digitalWallets = await _repository.request('wallet/options');
+      } catch (_) {
+        _digitalWallets = <String, dynamic>{};
+      }
     }
     if (_holderToken != null)
       _data = await _repository
@@ -126,7 +131,39 @@ class _TicketsPageState extends State<TicketsPage> {
       });
     else
       _data = await _wallet();
+    _scheduleLocationRefresh();
     if (mounted) setState(() {});
+  }
+
+  void _scheduleLocationRefresh() {
+    _locationRevealTimer?.cancel();
+    final venues = <dynamic>[
+      _data?['venue'],
+      ...((_data?['tickets'] as List?) ?? <dynamic>[])
+          .map((dynamic t) => (t as Map)['venue'])
+    ];
+    final times = venues
+        .whereType<Map>()
+        .where((v) => v['available'] == false)
+        .map((v) => DateTime.tryParse(v['revealAt'] as String? ?? ''))
+        .whereType<DateTime>()
+        .toList()
+      ..sort();
+    if (times.isEmpty) return;
+    final seconds =
+        (times.first.difference(DateTime.now()).inSeconds + 2).clamp(5, 43200);
+    _locationRevealTimer =
+        Timer(Duration(seconds: seconds), _refreshRevealedLocation);
+  }
+
+  void _refreshRevealedLocation() {
+    if (!mounted) return;
+    if (_busy) {
+      _locationRevealTimer =
+          Timer(const Duration(seconds: 5), _refreshRevealedLocation);
+      return;
+    }
+    _refresh();
   }
 
   Future<Map<String, dynamic>> _wallet() => loadTicketWallet(
@@ -439,7 +476,8 @@ class _TicketsPageState extends State<TicketsPage> {
           TicketQr(
               data: ticket['qr'] as String,
               label: 'Admission QR for ${ticket['name']}'),
-          Center(
+          SizedBox(
+              width: double.infinity,
               child: TextButton.icon(
                   onPressed: () => showDialog<void>(
                       context: context,
@@ -471,19 +509,32 @@ class _TicketsPageState extends State<TicketsPage> {
         ] else
           _body(
               'This admission credential is unavailable here. It may have been transferred, refunded or revoked.'),
-        if (ticket['qr'] != null && ticket['admission'] == null) ...<Widget>[
+        if (_showAddToWallet &&
+            ticket['qr'] != null &&
+            ticket['admission'] == null) ...<Widget>[
           const SizedBox(height: 16),
-          OutlinedButton.icon(
-              onPressed: _busy ? null : () => _addToWallet(ticket),
-              icon: const Icon(Icons.account_balance_wallet_outlined, size: 18),
-              label: const Text('Add to Wallet')),
+          SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                  onPressed: _busy ? null : () => _addToWallet(ticket),
+                  icon: const Icon(Icons.account_balance_wallet_outlined,
+                      size: 18),
+                  label: const Text('Add to Wallet'))),
         ],
         if (ticket['transferable'] == true) ...<Widget>[
           const SizedBox(height: 16),
-          OutlinedButton.icon(
-              onPressed: _busy ? null : () => _transfer(ticket),
-              icon: const Icon(Icons.send_outlined, size: 18),
-              label: const Text('Transfer ticket')),
+          SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                  onPressed: _busy ? null : () => _transfer(ticket),
+                  icon: const Icon(Icons.send_outlined, size: 18),
+                  label: const Text('Transfer ticket'))),
+        ],
+        if (_orderId == null &&
+            _holderToken == null &&
+            ticket['venue'] != null) ...<Widget>[
+          const SizedBox(height: 18),
+          _venue(ticket['venue'] as Map?),
         ],
       ]);
 
@@ -507,14 +558,27 @@ class _TicketsPageState extends State<TicketsPage> {
           const Icon(Icons.location_on_outlined, color: _accent),
           const SizedBox(height: 12),
           _title('Getting here'),
-          Text(venue['name'] as String? ?? '',
-              style: const TextStyle(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 8),
-          SelectableText(venue['address'] as String? ?? '',
-              style: const TextStyle(color: _muted, height: 1.6)),
-          if ((venue['directions'] as String? ?? '').isNotEmpty) ...<Widget>[
+          if (venue['available'] == false) ...<Widget>[
+            _body(
+                'The exact venue and directions are being kept private until the location reveal.'),
             const SizedBox(height: 8),
-            _body(venue['directions'] as String)
+            if (DateTime.tryParse(venue['revealAt'] as String? ?? '')
+                case final DateTime revealAt)
+              _body(
+                  'Reveals ${DateFormat.yMMMEd().add_jm().format(revealAt.toLocal())} (your time).'),
+            const SizedBox(height: 8),
+            _body(
+                'This page will refresh when it is time. You can also use Refresh to check.'),
+          ] else ...<Widget>[
+            Text(venue['name'] as String? ?? '',
+                style: const TextStyle(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            SelectableText(venue['address'] as String? ?? '',
+                style: const TextStyle(color: _muted, height: 1.6)),
+            if ((venue['directions'] as String? ?? '').isNotEmpty) ...<Widget>[
+              const SizedBox(height: 8),
+              _body(venue['directions'] as String)
+            ],
           ],
         ]);
 
@@ -865,6 +929,7 @@ class _TicketsPageState extends State<TicketsPage> {
 
   @override
   void dispose() {
+    _locationRevealTimer?.cancel();
     _authSubscription?.cancel();
     _repository.dispose();
     _email.dispose();

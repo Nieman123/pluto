@@ -82,6 +82,7 @@ export class Catalog {
     const shifted = (value: string) => new Date(Date.parse(value) + shift).toISOString();
     const draft = { ...source.draft, title: `${source.draft.title} (copy)`, slug: `${source.draft.slug}-${newId.slice(0, 8)}`,
       startAt: shifted(source.draft.startAt), endAt: shifted(source.draft.endAt), admissionStartsAt: shifted(source.draft.admissionStartsAt),
+      venueRevealAt: source.draft.venueRevealScheduled && source.draft.venueRevealAt ? shifted(source.draft.venueRevealAt) : null,
       offers: source.draft.offers.map((o: any) => ({ ...o, active: false, salesStart: new Date().toISOString(), salesEnd: shifted(o.salesEnd), validFrom: shifted(o.validFrom), validUntil: shifted(o.validUntil), stripeProductId: '', stripeTaxRateIds: [] })),
       promos: source.draft.promos.map((p: any) => ({ ...p, startsAt: new Date().toISOString(), endsAt: shifted(p.endsAt) })), tax: { mode: 'sandbox', confirmed: false, performanceLocationId: '' } };
     const result = await this.save(newId, draft, 0, uid);

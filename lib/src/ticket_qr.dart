@@ -28,7 +28,7 @@ class TicketQr extends StatelessWidget {
                       Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
                     const Padding(
                         padding: EdgeInsets.symmetric(vertical: 11),
-                        child: Text('PLUTO  ·  YOUR NIGHT AWAITS',
+                        child: Text('PLUTO',
                             style: TextStyle(
                                 color: Color(0xFFFFBB78),
                                 fontSize: 10,

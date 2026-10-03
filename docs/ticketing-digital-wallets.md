@@ -1,6 +1,6 @@
 # Digital wallet tickets
 
-Apple Wallet and Google Wallet are implemented but disabled until issuer account setup is complete. In-app admission works independently. The app's Add to Wallet dialog shows available providers and explains when setup is pending.
+Apple Wallet and Google Wallet are implemented but disabled until issuer account setup is complete. In-app admission works independently. The Add to Wallet action is currently hidden by default; it uses the purple filled-button style when enabled. Enable it with a Flutter build using `--dart-define=TICKETING_WALLET_UI_ENABLED=true` after issuer setup/device acceptance. Its dialog then shows available providers and explains when setup is pending. This client flag is separate from the backend secret-binding flag below.
 
 ## Account setup
 
@@ -41,6 +41,7 @@ Enable a Firestore TTL policy on `ticketingWalletDownloads.expiresAt` for expire
 - Both carry the same signed `PLUTO1` credential as the in-app ticket. Online scanning rejects stale versions, refunds, blocked payments and duplicate entry. Order access cannot export a transferred ticket. Pending approval RSVPs receive no wallet admission pass. Expired, admitted, cancelled and archived tickets cannot be exported.
 - Apple downloads use a random scoped five-minute URL, with no-store headers and current ticket/version checks. The app requests passes directly; ticket passes are never emailed as PDFs.
 - Existing saved passes do **not** receive automatic metadata/status push updates yet. A transferred/refunded pass may remain visually present; its old QR fails online validation. Wallet rendering controls the barcode's appearance; Pluto's custom high-contrast QR frame applies inside the app. Offline scanners retain the existing signed-manifest freshness limits and must reconnect to learn revocations.
+- Scheduled private locations are withheld from pass payloads before reveal. A pass saved early directs the holder back to the app for location information; re-adding after reveal refreshes the pass metadata. Public event classes always omit holder-only exact locations.
 - Apple opens the pass URL in the browser/platform handler; Google opens its save flow. Test Safari on iPhone and Chrome on Android with real issuer credentials before enabling public use. No proprietary native Wallet SDK is required for these URL flows.
 
 ## Validation and activation gates

@@ -3,6 +3,42 @@ import 'package:pluto/src/ticket_wallet.dart';
 import 'package:pluto/ticketing_repository.dart';
 
 void main() {
+  test('saved orders preserve gated locations only for usable tickets',
+      () async {
+    final Map<String, dynamic> waitingVenue = <String, dynamic>{
+      'available': false,
+      'revealAt': '2026-10-04T20:00:00.000Z',
+      'name': '',
+      'address': '',
+      'directions': '',
+    };
+    final Map<String, dynamic> ticketVenue = <String, dynamic>{
+      'available': true,
+      'name': 'Current ticket venue',
+    };
+    final Map<String, dynamic> result = await loadTicketWallet(
+        request: (path, body) async => <String, dynamic>{
+              'eventTitle': 'Private event',
+              'venue': waitingVenue,
+              'tickets': <dynamic>[
+                <String, dynamic>{'id': 'current', 'qr': 'current-qr'},
+                <String, dynamic>{
+                  'id': 'specific',
+                  'qr': 'specific-qr',
+                  'venue': ticketVenue,
+                },
+                <String, dynamic>{'id': 'transferred', 'qr': null},
+              ],
+            },
+        signedIn: false,
+        savedKeys: <String>['pluto-order-private'],
+        readAccess: (_) => 'proof',
+        removeAccess: (_) {});
+    final List<dynamic> tickets = result['tickets'] as List<dynamic>;
+    expect(tickets[0]['venue'], waitingVenue);
+    expect(tickets[1]['venue'], ticketVenue);
+    expect(tickets[2]['venue'], isNull);
+  });
   for (final String cause in <String>['refunded', 'retransferred']) {
     test('a $cause saved holder does not hide a valid order', () async {
       final List<String> removed = <String>[];

@@ -58,7 +58,9 @@ Future<Map<String, dynamic>> loadTicketWallet({
           tickets[ticket['id'] as String] = <String, dynamic>{
             ...ticket as Map<String, dynamic>,
             'orderId': orderId,
-            'eventTitle': order['eventTitle']
+            'eventTitle': order['eventTitle'],
+            'venue': ticket['venue'] ??
+                (ticket['qr'] != null ? order['venue'] : null),
           };
         }
       }
