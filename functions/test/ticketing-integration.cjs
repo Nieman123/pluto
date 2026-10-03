@@ -28,6 +28,7 @@ const fake = {
     create: async (params, opts) => { if (idempotency.has(opts.idempotencyKey)) return refunds.get(idempotency.get(opts.idempotencyKey)); const r = { id: `re_${randomUUID()}`, ...params, status: 'succeeded' }; refunds.set(r.id, r); idempotency.set(opts.idempotencyKey, r.id); return r; },
     retrieve: async key => refunds.get(key), list: async params => ({ data: [...refunds.values()].filter(r => r.payment_intent === params.payment_intent) }),
   },
+  disputes: { list: async () => ({ data: [], has_more: false }) },
   taxRates: { retrieve: async () => ({ active: true, inclusive: true, livemode: false, percentage: 10 }) },
   products: { retrieve: async key => ({ id: key, active: true, livemode: false, tax_code: 'txcd_test', tax_details: { performance_location: 'taxloc_test' } }) },
   tax: {
@@ -45,7 +46,7 @@ const newKey = () => randomBytes(32).toString('hex');
 const buyer = { uid: 'ticketing-test-buyer', email: `buyer-${randomUUID()}@example.test`, email_verified: true };
 const request = (eventId, overrides = {}) => ({ eventId, accessKey: newKey(), items: [{ offerId: 'weekend', quantity: 1 }], email: buyer.email, name: 'Test buyer', promoCode: '', ...overrides });
 async function makeEvent(active = false, modify = () => {}) { const eventId = randomUUID(), draft = fixture(active); draft.slug += `-${eventId}`; modify(draft); await service.save(eventId, draft, 0, staff); await service.publish(eventId, 'publish', 1, staff); return eventId; }
-async function pay(result) { const order = (await service.order(result.orderId).get()).data(), session = sessions.get(order.sessionId); session.status = 'complete'; session.payment_status = 'paid'; session.payment_intent = { id: `pi_${result.orderId}`, latest_charge: { receipt_url: 'https://pay.stripe.com/test-receipt', balance_transaction: { fee: 320 } } }; session.total_details = { amount_tax: 0 }; await service.verifySession(result.orderId); }
+async function pay(result) { const order = (await service.order(result.orderId).get()).data(), session = sessions.get(order.sessionId); session.status = 'complete'; session.payment_status = 'paid'; session.payment_intent = { id: `pi_${result.orderId}`, latest_charge: { receipt_url: 'https://pay.stripe.com/test-receipt', balance_transaction: { id: `txn_${result.orderId}`, currency: 'usd', fee: 320 } } }; session.total_details = { amount_tax: 0 }; await service.verifySession(result.orderId); }
 async function main() {
   await db.collection('adminUsers').doc(staff).set({ role: 'admin' });
   const eventId = await makeEvent(false, d => { d.pools[0].capacity = 2; d.pools[1].capacity = 2; });

@@ -157,6 +157,7 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   router.post('/tickets/api/staff/retry', async (req, res) => { await service.admin(actor(res).uid); res.json(await service.maintenance()); });
   router.post('/tickets/api/staff/refund', async (req, res) => res.json(await service.refund(bodyId(req, 'orderId'), req.body.ticketIds, req.body.attempt, actor(res).uid)));
   router.post('/tickets/api/staff/refund-external', async (req, res) => res.json(await service.mapExternalRefund(bodyId(req, 'orderId'), req.body.ticketIds, actor(res).uid)));
+  router.post('/tickets/api/staff/checkout-resolve', async (req, res) => res.json(await service.resolveCheckout(bodyId(req, 'orderId'), req.body.sessionId, req.body.note, actor(res).uid)));
   router.post('/tickets/api/staff/scan', async (req, res) => res.json(await service.scan(bodyId(req), req.body.qr, req.body.scanId, admissionIdentity(req, res), req.body.offline === true)));
   router.post('/tickets/api/staff/manifest', async (req, res) => res.json(await service.manifest(bodyId(req), admissionIdentity(req, res))));
   router.post('/tickets/api/staff/scan-review', async (req, res) => res.json(await service.reviewScan(bodyId(req), req.body.scanId, req.body.note, admissionIdentity(req, res))));
@@ -164,7 +165,7 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
     if (!req.path.startsWith('/tickets') && !req.path.startsWith('/events')) return next(error);
     const status = error instanceof TicketingError ? error.status : error.type === 'entity.too.large' ? 413 : error.type === 'entity.parse.failed' ? 400 : 503;
     if (status === 503) console.error('Ticketing request failed', { kind: error.name || 'unavailable', code: error.code || '' });
-    if (req.path.includes('/api') || req.path.endsWith('/webhook')) res.status(status).json({ error: error instanceof TicketingError ? error.message : 'This request could not be confirmed. Keep this page open and retry.' });
+    if (req.path.includes('/api') || req.path.endsWith('/webhook')) res.status(status).json({ error: error instanceof TicketingError ? error.message : 'This request could not be confirmed. Keep this page open and retry.', ...(error instanceof TicketingError && error.code ? { code: error.code } : {}) });
     else res.status(status).type('html').send(`<h1>${status === 404 ? 'Event not found' : 'Event temporarily unavailable'}</h1><p><a href="/events">Browse events</a></p>`);
   });
   return router;

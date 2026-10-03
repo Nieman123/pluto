@@ -2,6 +2,18 @@
 
 Audited application revision: `a6aa9f6` on `native-ticketing`.
 
+## Remediation checkpoint — October 3, 2026
+
+The findings below describe the original audited revision. Subsequent branch work has fixed A8 (commit `1bb5721`) and implemented A1, A2, A4 and A7 with targeted regressions. A3, A5 and A6 remain outstanding. The readiness decision remains **functional beta / prelaunch** until the remaining fixes and external acceptance gates pass.
+
+- A1: provider ownership is resolved from authoritative objects; relevant unresolved events remain pending, unrelated events are explicitly ignored. Admission is held during refund/dispute reconciliation, including before first issuance, and maintenance revisits paid orders.
+- A2: provider tax setup is validated before reservation. Definite first-request rejection releases stock; uncertain outcomes retain it. Customer cancellation does not create a payment session. Managers can resolve a known rejected/unsent request or an authoritative expired/paid Session, with an audit note; an empty provider search cannot release uncertain stock.
+- A4: wallet entries load independently. Revoked holder credentials are removed; order history and temporary failures retain access with recovery/retry guidance. Chromium covers valid tickets beside refunded/retransferred access and transient failures.
+- A7: unknown fees are stored separately from confirmed zero; repeat verification updates finances without issuing tickets again. Dashboard proceeds are labeled provisional while fees or financial reviews remain unresolved, and unmapped provider refunds are included in refund totals.
+- A8: terminal refund status cannot regress, and completion validates ticket allocations and ledger bounds. Deterministic overlapping-worker and lost-response tests assert exactly-once money and stock updates.
+
+Checkpoint validation: 12 demo-emulator hardening tests; existing ticketing and RSVP integration suites; three private-access rule contexts; 15 Flutter tests; Flutter analysis; wallet Chromium regression; TypeScript and site builds. Payment tests use a controlled provider substitute. Real Stripe/Resend delivery, deployed proxy identity, phone gate rehearsals and bank/live setup remain acceptance gates.
+
 ## Readiness decision
 
 **Functional beta / prelaunch.** The event editor, public pages, ticketing configuration, customer web wallet, RSVP approval, guest list, scanner PINs and core transaction safeguards are implemented and have meaningful automated coverage. Controlled sandbox testing is appropriate. Public paid sales and complete replacement of POSH need the fixes and acceptance gates below.

@@ -3,9 +3,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 
 class TicketingException implements Exception {
-  const TicketingException(this.status, this.message);
+  const TicketingException(this.status, this.message, {this.code = ''});
   final int status;
   final String message;
+  final String code;
   @override
   String toString() => message;
 }
@@ -43,7 +44,8 @@ class TicketingRepository {
           response.statusCode,
           decoded is Map
               ? decoded['error'] ?? 'Ticket request failed. Please retry.'
-              : 'Ticket request failed.');
+              : 'Ticket request failed.',
+          code: decoded is Map ? decoded['code'] as String? ?? '' : '');
     return Map<String, dynamic>.from(decoded as Map);
   }
 

@@ -31,7 +31,7 @@ function harness() {
     } },
     paymentIntents: { retrieve: async pi => { assert.ok(intents.has(pi), `Unknown PaymentIntent ${pi}`); return intents.get(pi); } },
     charges: { retrieve: async ch => { assert.ok(charges.has(ch)); return charges.get(ch); } },
-    disputes: { retrieve: async dp => disputes.get(dp), list: async () => ({ data: [...disputes.values()], has_more: false }) },
+    disputes: { retrieve: async dp => disputes.get(dp), list: async p => ({ data: [...disputes.values()].filter(d => d.payment_intent === p.payment_intent), has_more: false }) },
     refunds: {
       list: async p => ({ data: [...refunds.values()].filter(r => r.payment_intent === p.payment_intent), has_more: false }),
       retrieve: async rid => { assert.ok(refunds.has(rid)); return refunds.get(rid); },
@@ -67,7 +67,7 @@ function harness() {
   async function pay(oid, fee = 320) { await paidSession(oid, fee); await service.verifySession(oid); }
   async function cleanup() {
     for (const oid of orders) {
-      for (const name of ['ticketingTickets', 'ticketingEmailJobs', 'ticketingRefunds', 'ticketingRecovery', 'ticketingAccess']) {
+      for (const name of ['ticketingTickets', 'ticketingEmailJobs', 'ticketingRefunds', 'ticketingRecovery', 'ticketingAccess', 'ticketingWebhookInbox']) {
         for (const doc of (await db.collection(name).where('orderId', '==', oid).get()).docs) await db.recursiveDelete(doc.ref);
       }
       await service.order(oid).delete();

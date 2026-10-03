@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'src/html_open_link.dart';
 import 'src/ticket_access_store.dart';
+import 'src/ticket_wallet.dart';
 import 'ticketing_repository.dart';
 
 class TicketsPage extends StatefulWidget {
@@ -121,64 +122,12 @@ class _TicketsPageState extends State<TicketsPage> {
     if (mounted) setState(() {});
   }
 
-  Future<Map<String, dynamic>> _wallet() async {
-    final Map<String, dynamic> linked =
-        FirebaseAuth.instance.currentUser == null
-            ? <String, dynamic>{'orders': <dynamic>[], 'tickets': <dynamic>[]}
-            : await _repository.request('mine');
-    final Map<String, dynamic> orders = <String, dynamic>{
-      for (final dynamic order in linked['orders'] as List)
-        order['orderId'] as String: order
-    };
-    final Map<String, dynamic> tickets = <String, dynamic>{
-      for (final dynamic ticket in linked['tickets'] as List)
-        ticket['id'] as String: ticket
-    };
-    final List<String> saved = ticketAccessKeys()
-        .where((key) =>
-            key.startsWith('pluto-order-') || key.startsWith('pluto-holder-'))
-        .toList()
-        .reversed
-        .take(30)
-        .toList();
-    for (final String key in saved) {
-      try {
-        if (key.startsWith('pluto-order-')) {
-          final String orderId = key.substring('pluto-order-'.length);
-          final Map<String, dynamic> order = await _repository.request(
-              'order', <String, dynamic>{
-            'orderId': orderId,
-            'accessKey': ticketAccessRead(key)
-          });
-          orders[orderId] = order;
-          for (final dynamic ticket in order['tickets'] as List) {
-            tickets[ticket['id'] as String] = <String, dynamic>{
-              ...ticket as Map<String, dynamic>,
-              'orderId': orderId,
-              'eventTitle': order['eventTitle']
-            };
-          }
-        } else {
-          final String? token = ticketAccessRead(key);
-          final Map<String, dynamic> ticket = await _repository
-              .request('holder', <String, dynamic>{'token': token});
-          tickets[ticket['id'] as String] = <String, dynamic>{
-            ...ticket,
-            'holderToken': token
-          };
-        }
-      } on TicketingException catch (error) {
-        if (<int>[403, 404].contains(error.status))
-          ticketAccessRemove(key);
-        else
-          rethrow;
-      }
-    }
-    return <String, dynamic>{
-      'orders': orders.values.toList(),
-      'tickets': tickets.values.toList()
-    };
-  }
+  Future<Map<String, dynamic>> _wallet() => loadTicketWallet(
+      request: _repository.request,
+      signedIn: FirebaseAuth.instance.currentUser != null,
+      savedKeys: ticketAccessKeys(),
+      readAccess: ticketAccessRead,
+      removeAccess: ticketAccessRemove);
 
   Future<void> _refresh() => _run(_load);
   Future<void> _transfer(Map<String, dynamic> ticket) async {
@@ -701,6 +650,12 @@ class _TicketsPageState extends State<TicketsPage> {
                                         Text(_notice!,
                                             style: const TextStyle(
                                                 color: _accent, height: 1.6))
+                                      ]),
+                                    for (final dynamic warning
+                                        in data?['warnings'] as List? ??
+                                            <dynamic>[])
+                                      _panel(children: <Widget>[
+                                        _body(warning as String)
                                       ]),
                                     if (hasTickets) _accountPrompt(),
                                     if (_transferToken != null)

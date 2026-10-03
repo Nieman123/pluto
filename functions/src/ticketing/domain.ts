@@ -2,9 +2,9 @@ import { createHash, randomBytes } from 'node:crypto';
 import sanitizeHtml from 'sanitize-html';
 
 export class TicketingError extends Error {
-  constructor(public status: number, message: string) { super(message); }
+  constructor(public status: number, message: string, public code = '') { super(message); }
 }
-export function fail(message: string, status = 400): never { throw new TicketingError(status, message); }
+export function fail(message: string, status = 400, code = ''): never { throw new TicketingError(status, message, code); }
 export const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 export const secret = () => randomBytes(32).toString('hex');
 export function text(value: unknown, label: string, max = 500, required = false): string {

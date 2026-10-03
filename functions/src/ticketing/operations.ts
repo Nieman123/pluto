@@ -1,5 +1,6 @@
 import { createHmac, randomInt, randomUUID } from 'node:crypto';
 import { FieldPath } from 'firebase-admin/firestore';
+import type Stripe from 'stripe';
 import { type Order } from './orders';
 import { Rsvps } from './rsvps';
 import { fail, hash, id, integer, receipt, secret, text, ticketId } from './domain';
@@ -181,7 +182,7 @@ export class Operations extends Rsvps {
       tx.update(ref, { status: result, completedAt: Date.now() });
     });
   }
-  async reconcileRefunds(orderId: string) {
+  async reconcileRefunds(orderId: string, checkId?: string) {
     const order = (await this.order(orderId).get()).data() as Order;
     if (!order.paymentIntentId || order.method !== 'stripe') return;
     const refunds = await this.stripe().refunds.list({ payment_intent: order.paymentIntentId, limit: 100 });
@@ -201,6 +202,11 @@ export class Operations extends Rsvps {
       if (refund.status === 'succeeded' && !mapped.has(refund.id)) { unmatched += refund.amount; unmatchedIds.push(refund.id); }
     }
     if (unmatched) {
+      await this.db.runTransaction(async tx => {
+        const ref = this.order(orderId), current = (await tx.get(ref)).data()!;
+        if (checkId && current.financialCheckId !== checkId) return;
+        tx.update(ref, { financialBlocked: true, financialCheckId: checkId || randomUUID() });
+      });
       const tickets = await this.tickets().where('orderId', '==', orderId).get();
       const already = records.docs.filter(d => d.data().status === 'succeeded').reduce((n, d) => n + d.data().amount, 0);
       if (unmatched + already === order.total) {
@@ -226,6 +232,7 @@ export class Operations extends Rsvps {
       } else await this.order(orderId).update({ reviewReason: (order as any).disputeId ? 'Payment dispute requires staff review; a Dashboard partial refund also needs ticket mapping.' : 'A Dashboard partial refund needs ticket mapping.', externalRefundAmount: unmatched, externalStripeRefundIds: unmatchedIds });
     }
   }
+  protected override async paymentVerified(orderId: string, checkId: string) { await this.reconcileRefunds(orderId, checkId); }
   async mapExternalRefund(orderId: string, ticketIds: unknown, uid: string) {
     const order = (await this.order(orderId).get()).data() as Order | undefined;
     if (!order) fail('Order not found.', 404);
@@ -246,30 +253,52 @@ export class Operations extends Rsvps {
       tx.create(this.event(order.eventId).collection('audit').doc(), { action: 'dashboard-refund-mapped', uid, orderId, refundId: ref.id, at: Date.now() });
       return ref.id;
     });
-    await this.finishRefund(refundId, 'succeeded'); return { mapped: true };
+    await this.finishRefund(refundId, 'succeeded'); await this.verifySession(orderId); return { mapped: true };
+  }
+  private async financialOrder(intent: Stripe.PaymentIntent, charge?: Stripe.Charge) {
+    const metadataId = intent.metadata?.pluto_order_id || charge?.metadata?.pluto_order_id;
+    const linked = (await this.db.collection('ticketingOrders').where('paymentIntentId', '==', intent.id).limit(1).get()).docs[0]?.id;
+    const orderId = metadataId || linked;
+    if (!orderId) return ''; // An unrelated payment in the same Stripe account.
+    await this.db.runTransaction(async tx => {
+      const ref = this.order(orderId), order = (await tx.get(ref)).data() as Order | undefined;
+      if (!order) fail('Relevant payment has no order yet; retry reconciliation.', 409);
+      if (order.method !== 'stripe' || intent.livemode !== order.livemode || intent.currency !== order.currency || intent.amount !== order.total ||
+        (linked && linked !== orderId) || (order.paymentIntentId && order.paymentIntentId !== intent.id) ||
+        (intent.metadata?.pluto_event_id && intent.metadata.pluto_event_id !== order.eventId) ||
+        (charge && (charge.livemode !== order.livemode || charge.currency !== order.currency || charge.amount !== order.total)) ||
+        (charge?.metadata?.pluto_order_id && charge.metadata.pluto_order_id !== orderId)) fail('Provider ownership does not match the reserved order.', 409);
+      tx.update(ref, { paymentIntentId: intent.id, financialBlocked: true, financialCheckId: randomUUID() });
+    });
+    return orderId;
   }
   async processWebhook(inboxId: string) {
     const ref = this.db.collection('ticketingWebhookInbox').doc(id(inboxId)), entry = (await ref.get()).data();
-    if (!entry || entry.status === 'done') return;
+    if (!entry || ['done', 'ignored'].includes(entry.status)) return;
     try {
       if (entry.livemode !== isLive()) fail('Webhook environment mismatch.', 409);
-      let orderId = entry.orderId;
+      let orderId = '';
       if (entry.type.startsWith('checkout.session.')) {
-        if (!orderId) { const session = await this.stripe().checkout.sessions.retrieve(entry.objectId); orderId = session.metadata?.pluto_order_id; }
+        const session = await this.stripe().checkout.sessions.retrieve(entry.objectId); orderId = session.metadata?.pluto_order_id || '';
         if (orderId) await this.verifySession(orderId, entry.objectId);
       } else if (entry.type.startsWith('payment_intent.')) {
-        if (!orderId) { const intent = await this.stripe().paymentIntents.retrieve(entry.objectId); orderId = intent.metadata?.pluto_order_id; }
-        if (orderId) await this.verifySession(orderId);
+        const intent = await this.stripe().paymentIntents.retrieve(entry.objectId);
+        orderId = await this.financialOrder(intent);
+        if (orderId && !await this.verifySession(orderId)) fail('Payment checkout linkage is not available yet.', 409);
       } else if (entry.type.startsWith('refund.') || entry.type === 'charge.refunded' || entry.type.startsWith('charge.dispute.')) {
-        let pi = entry.paymentIntentId;
-        if (!pi && entry.chargeId) { const charge = await this.stripe().charges.retrieve(entry.chargeId); pi = typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id; }
-        if (!orderId && pi) orderId = (await this.db.collection('ticketingOrders').where('paymentIntentId', '==', pi).limit(1).get()).docs[0]?.id;
-        if (orderId) {
-          if (entry.type.startsWith('charge.dispute.')) await this.order(orderId).update({ reviewReason: 'Payment dispute requires staff review.', disputeId: entry.objectId });
-          else await this.reconcileRefunds(orderId);
+        const object = entry.type.startsWith('refund.') ? await this.stripe().refunds.retrieve(entry.objectId) : entry.type.startsWith('charge.dispute.') ? await this.stripe().disputes.retrieve(entry.objectId) : await this.stripe().charges.retrieve(entry.objectId);
+        const chargeId = entry.type === 'charge.refunded' ? object.id : 'charge' in object ? typeof object.charge === 'string' ? object.charge : object.charge?.id : '';
+        const charge = chargeId ? await this.stripe().charges.retrieve(chargeId) : undefined;
+        const payment = object.payment_intent || charge?.payment_intent;
+        const pi = typeof payment === 'string' ? payment : payment?.id;
+        if (!pi) {
+          if (object.metadata?.pluto_order_id || charge?.metadata?.pluto_order_id) fail('Relevant financial event has no verifiable payment reference.', 409);
+        } else {
+          orderId = await this.financialOrder(await this.stripe().paymentIntents.retrieve(pi), charge);
+          if (orderId && !await this.verifySession(orderId)) fail('Payment checkout linkage is not available yet.', 409);
         }
       }
-      await ref.update({ status: 'done', completedAt: Date.now(), orderId: orderId || '' });
+      await ref.update({ status: orderId ? 'done' : 'ignored', ...(orderId ? {} : { ignoredReason: 'No authoritative Pluto payment ownership.' }), completedAt: Date.now(), orderId });
     } catch (error: any) { await ref.update({ status: 'pending', attempts: (entry.attempts || 0) + 1, lastError: error instanceof Error ? error.name : 'unavailable', retryAt: Date.now() + Math.min(3600000, 1000 * 2 ** Math.min(entry.attempts || 0, 12)) }); throw error; }
   }
   async emailJob(jobId: string) {
@@ -324,6 +353,10 @@ export class Operations extends Rsvps {
         summary.orders++;
       } catch { summary.errors++; }
     }
+    const paid = await this.pendingBatch('ticketingOrders', ['paid'], 100);
+    for (const doc of paid.docs) if (doc.data().method === 'stripe' && doc.data().total > 0) {
+      try { await this.verifySession(doc.id); summary.orders++; } catch { summary.errors++; }
+    }
     const refunds = await this.pendingBatch('ticketingRefunds', ['pending', 'processing'], 100);
     for (const doc of refunds.docs) { try { if (doc.data().external) await this.finishRefund(doc.id, 'succeeded'); else await this.processRefund(doc.id); summary.refunds++; } catch { summary.errors++; } }
     const inbox = await this.pendingBatch('ticketingWebhookInbox', ['pending'], 100);
@@ -333,7 +366,7 @@ export class Operations extends Rsvps {
     return summary;
   }
   async pendingBatch(collection: string, statuses: string[], size: number) {
-    const cursor = this.db.collection('ticketingWorkerCursors').doc(collection), state = (await cursor.get()).data();
+    const cursor = this.db.collection('ticketingWorkerCursors').doc(`${collection}_${[...statuses].sort().join('_')}`), state = (await cursor.get()).data();
     const query = this.db.collection(collection).where('status', statuses.length === 1 ? '==' : 'in', statuses.length === 1 ? statuses[0] : statuses).orderBy(FieldPath.documentId()).limit(size);
     let batch = await (state?.after ? query.startAfter(state.after) : query).get();
     if (batch.empty && state?.after) batch = await query.get();

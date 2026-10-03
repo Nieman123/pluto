@@ -12,7 +12,9 @@ export interface Order {
   eventId: string; eventTitle: string; eventSlug: string; ownerUid: string; email: string; name: string; accessHash: string; inputHash: string;
   status: string; method: string; units: Unit[]; consumption: Record<string, number>; promoCode: string; total: number; discount: number;
   tax: EventDraft['tax']; currency: string; livemode: boolean; createdAt: number; expiresAt: number; promoterId: string;
-  sessionId?: string; clientSecret?: string; paymentIntentId?: string; receiptUrl?: string; stripeFee?: number; taxAmount?: number;
+  sessionId?: string; clientSecret?: string; paymentIntentId?: string; receiptUrl?: string; stripeFee?: number | null; taxAmount?: number;
+  stripeFeeStatus?: 'pending' | 'confirmed'; financialBlocked?: boolean; financialCheckId?: string; financialReviewReason?: string;
+  providerState?: string; provisioningLeaseUntil?: number; provisioningAttemptId?: string;
   refundedAmount?: number; refundedTaxAmount?: number; reviewReason?: string;
   transferCutoff?: string;
   rsvpStatus?: 'pending' | 'approved' | 'declined' | 'withdrawn';
@@ -50,11 +52,20 @@ export class Orders extends Catalog {
     keyPair(this.signing()); if (method === 'stripe') this.stripe();
     if (method !== 'stripe') await this.role(staffUid, eventId, ['cash']);
     const now = Date.now();
+    let preflightRevision: number | undefined;
+    if (!(await ref.get()).exists) {
+      const event = (await this.event(eventId).get()).data();
+      if (!event || event.status !== 'published') fail('Ticket sales are not open for this event.', 409);
+      const draft = (event.liveDraft || event.draft) as EventDraft, priced = cart(draft, raw.items, raw.promoCode, now);
+      if (priced.total > 0 && method !== 'comp') await this.checkTaxConfiguration({ tax: draft.tax, units: priced.units, livemode: isLive() });
+      preflightRevision = event.publishedRevision;
+    }
     await this.db.runTransaction(async tx => {
       const existing = (await tx.get(ref)).data() as Order | undefined;
       if (existing) { if (existing.inputHash !== requestHash) fail('This checkout attempt has different details. Use the original cart or start a new attempt.', 409); return; }
       const event = (await tx.get(this.event(eventId))).data();
       if (!event || event.status !== 'published') fail('Ticket sales are not open for this event.', 409);
+      if (preflightRevision !== undefined && event.publishedRevision !== preflightRevision) fail('Ticket settings changed during checkout. Retry to use the current settings.', 409);
       const draft = (event.liveDraft || event.draft) as EventDraft;
       if (draft.registrationMode && draft.registrationMode !== 'tickets') fail('Use the RSVP form for this event. RSVP approval cannot be bypassed with a ticket checkout.', 409);
       if (now >= Date.parse(draft.endAt)) fail('This event has ended.', 409);
@@ -82,7 +93,7 @@ export class Orders extends Catalog {
       if (promoRef) tx.update(promoRef, { held: promotion!.held + 1 });
       tx.create(ref, { eventId, eventTitle: draft.title, eventSlug: draft.slug, ...contact, accessHash: hash(accessKey), inputHash: requestHash,
         ...priced, tax: draft.tax, taxCustomerAddress, currency: 'usd', livemode: isLive(), status: 'provisioning', method, createdAt: now, expiresAt: now + 35 * 60000,
-        promoterId, staffUid, transferCutoff: draft.admissionStartsAt, cashReceived: method === 'cash' ? raw.cashReceived : 0, compReason: method === 'comp' ? raw.reason : '', refundedAmount: 0, revision: event.publishedRevision, apiVersion });
+        promoterId, staffUid, transferCutoff: draft.admissionStartsAt, cashReceived: method === 'cash' ? raw.cashReceived : 0, compReason: method === 'comp' ? raw.reason : '', refundedAmount: 0, revision: event.publishedRevision, apiVersion, providerState: method === 'stripe' ? 'not-sent' : 'not-required' });
     });
     let order = (await ref.get()).data() as Order;
     if (order.status === 'provisioning') {
@@ -95,6 +106,10 @@ export class Orders extends Catalog {
       clientSecret: order.status === 'open' ? order.clientSecret : undefined, publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '', livemode: order.livemode };
   }
   async provision(orderId: string, order: Order) {
+    if (order.providerState === 'rejected' || (order.providerState === 'not-sent' && Date.now() - order.createdAt > 4 * 60000)) {
+      await this.release(orderId, ['not-sent', 'rejected']);
+      return fail('No payment session was created. The reservation was released; start a new checkout.', 409);
+    }
     if (Date.now() - order.createdAt > 23 * 3600000) { await this.order(orderId).update({ reviewReason: 'Unresolved creation exceeded the safe idempotency window.' }); return fail('Checkout needs staff review. Start no further payment attempts for this order.', 409); }
     const parameters: Stripe.Checkout.SessionCreateParams = {
       mode: 'payment', ui_mode: 'embedded_page', customer_email: order.email, client_reference_id: orderId,
@@ -111,10 +126,6 @@ export class Orders extends Catalog {
       // Delayed methods need a separately designed inventory policy; never silently enable them.
       excluded_payment_method_types: ['us_bank_account', 'sepa_debit', 'bacs_debit', 'acss_debit', 'au_becs_debit', 'boleto', 'konbini', 'oxxo'],
     };
-    if (order.tax.mode === 'manual') for (const rateId of new Set(order.units.flatMap(u => u.stripeTaxRateIds))) {
-      const rate = await this.stripe().taxRates.retrieve(rateId); if (!rate.inclusive || !rate.active || rate.livemode !== order.livemode) fail('The event needs active inclusive tax rates in this environment.', 503);
-    }
-    if (order.tax.mode === 'automatic') await this.checkAutomaticTax(order);
     // A worker can recover a timed-out creation after the original expiry parameter is too old to reuse.
     let recovered: Stripe.Checkout.Session | undefined;
     if (Date.now() - order.createdAt > 4 * 60000) {
@@ -125,16 +136,46 @@ export class Orders extends Catalog {
         return fail('Checkout needs staff review. Keep the original order reference.', 409);
       }
     }
-    const session = recovered || await this.stripe().checkout.sessions.create(parameters, { idempotencyKey: `pluto-checkout-${orderId}` });
-    if (session.livemode !== order.livemode || session.currency !== 'usd' || session.amount_total !== order.total) fail('Checkout totals or environment do not match the reserved order.', 503);
+    let session = recovered;
+    if (!session) {
+      try { await this.checkTaxConfiguration(order); }
+      catch (error) { if (order.providerState === 'not-sent') await this.release(orderId, ['not-sent']); throw error; }
+      const attemptId = randomUUID();
+      const previouslySent = await this.db.runTransaction(async tx => {
+        const current = (await tx.get(this.order(orderId))).data() as Order;
+        if (current.status !== 'provisioning' || (current.provisioningLeaseUntil || 0) > Date.now()) fail('Checkout is already being confirmed. Retry the original attempt shortly.', 409);
+        const prior = current.providerState !== 'not-sent';
+        tx.update(this.order(orderId), { providerState: 'sending', provisioningAttemptId: attemptId, provisioningLeaseUntil: Date.now() + 120000 }); return prior;
+      });
+      try { session = await this.stripe().checkout.sessions.create(parameters, { idempotencyKey: `pluto-checkout-${orderId}` }); }
+      catch (error: any) {
+        const definite = !previouslySent && ['StripeInvalidRequestError', 'StripeAuthenticationError', 'StripePermissionError'].includes(error.type) && [400, 401, 403, 404].includes(error.statusCode);
+        const updated = await this.db.runTransaction(async tx => {
+          const current = (await tx.get(this.order(orderId))).data() as Order;
+          if (current.status !== 'provisioning' || current.provisioningAttemptId !== attemptId) return false;
+          tx.update(this.order(orderId), { providerState: definite ? 'rejected' : 'uncertain', provisioningLeaseUntil: 0,
+            reviewReason: definite ? 'Stripe rejected Session creation. No payment session was created.' : 'Payment creation outcome is uncertain. Reserved inventory is retained until provider confirmation.' }); return true;
+        });
+        if (definite && updated) { await this.release(orderId, ['rejected']); return fail('Payments are unavailable. No payment session was created and your reservation was released. Start a new attempt after setup is corrected.', 503); }
+        throw error;
+      }
+    }
+    if (session.metadata?.pluto_order_id !== orderId || session.client_reference_id !== orderId || session.livemode !== order.livemode || session.currency !== 'usd' || session.amount_total !== order.total) fail('Checkout totals or environment do not match the reserved order.', 503);
     await this.db.runTransaction(async tx => {
       const ref = this.order(orderId), latest = (await tx.get(ref)).data() as Order;
-      if (latest.status === 'provisioning') tx.update(ref, { status: 'open', sessionId: session.id, clientSecret: session.client_secret, expiresAt: session.expires_at * 1000 });
+      if (latest.status === 'provisioning') tx.update(ref, { status: 'open', providerState: 'created', provisioningLeaseUntil: 0, sessionId: session!.id, clientSecret: session!.client_secret, expiresAt: session!.expires_at * 1000 });
       else if (latest.sessionId && latest.sessionId !== session.id) fail('Checkout attempt mismatch.', 409);
     });
     return session;
   }
-  async checkAutomaticTax(order: Order) {
+  async checkTaxConfiguration(order: Pick<Order, 'tax' | 'units' | 'livemode'>) {
+    if (order.tax.mode === 'manual') for (const rateId of new Set(order.units.flatMap(u => u.stripeTaxRateIds))) {
+      const rate = await this.stripe().taxRates.retrieve(rateId);
+      if (!rate.inclusive || !rate.active || rate.livemode !== order.livemode) fail('The event needs active inclusive tax rates in this environment.', 503);
+    }
+    if (order.tax.mode === 'automatic') await this.checkAutomaticTax(order);
+  }
+  async checkAutomaticTax(order: Pick<Order, 'tax' | 'units' | 'livemode'>) {
     const settings = await this.stripe().tax.settings.retrieve();
     const registrations = await this.stripe().tax.registrations.list({ status: 'active', limit: 100 });
     if (settings.status !== 'active' || !registrations.data.length) fail('Stripe Tax requires active settings and registrations.', 503);
@@ -190,7 +231,30 @@ export class Orders extends Catalog {
       const intent = typeof session.payment_intent === 'object' ? session.payment_intent : null;
       const charge = intent && typeof intent.latest_charge === 'object' ? intent.latest_charge : null;
       const balance = charge && typeof charge.balance_transaction === 'object' ? charge.balance_transaction : null;
-      await this.fulfill(orderId, { paymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : intent?.id || '', receiptUrl: charge?.receipt_url || '', stripeFee: balance?.fee || 0, taxAmount: session.total_details?.amount_tax || 0 }, verifiedUnits);
+      const paymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : intent?.id || '';
+      if (!paymentIntentId) fail('Paid checkout has no verifiable payment reference.', 409);
+      if (order.paymentIntentId && order.paymentIntentId !== paymentIntentId) fail('Checkout payment reference differs from the linked financial event; staff review is required.', 409);
+      const checkId = randomUUID();
+      // Fail closed while the provider's financial state is checked, including before first issuance.
+      // A newer verifier owns the fence; a delayed worker cannot clear its hold.
+      await this.order(orderId).update({ financialCheckId: checkId, financialBlocked: true });
+      const refunds = await this.stripe().refunds.list({ payment_intent: paymentIntentId, limit: 100 });
+      const disputes = await this.stripe().disputes.list({ payment_intent: paymentIntentId, limit: 100 });
+      const feeKnown = !!balance && Number.isSafeInteger(balance.fee) && balance.fee >= 0 && balance.currency === 'usd';
+      await this.fulfill(orderId, { paymentIntentId, receiptUrl: charge?.receipt_url || '',
+        ...(feeKnown ? { stripeFee: balance.fee, stripeFeeStatus: 'confirmed', stripeBalanceTransactionId: balance.id, stripeFeeConfirmedAt: Date.now() } : {}),
+        taxAmount: session.total_details?.amount_tax || 0 }, verifiedUnits);
+      await this.paymentVerified(orderId, checkId);
+      await this.db.runTransaction(async tx => {
+        const ref = this.order(orderId), current = (await tx.get(ref)).data()!;
+        if (current.financialCheckId !== checkId) return;
+        const mapped = await tx.get(this.db.collection('ticketingRefunds').where('orderId', '==', orderId));
+        const settled = new Set(mapped.docs.filter(d => d.data().status === 'succeeded').flatMap(d => [...d.data().externalStripeRefundIds || [], ...(d.data().stripeRefundId ? [d.data().stripeRefundId] : [])]));
+        const dispute = disputes.data.find(d => !['won', 'warning_closed'].includes(d.status));
+        const unresolved = refunds.data.some(r => !['failed', 'canceled'].includes(r.status || '') && (r.status !== 'succeeded' || !settled.has(r.id)));
+        const reason = dispute ? 'Payment dispute requires staff review.' : refunds.has_more || disputes.has_more ? 'Payment history exceeds the automatic review limit.' : unresolved ? 'A provider refund is pending or needs ticket mapping.' : '';
+        tx.update(ref, { financialBlocked: !!reason, financialReviewReason: reason, financialReconciledAt: Date.now(), disputeId: dispute?.id || '', disputeStatus: dispute?.status || '' });
+      });
     } else if (session.status === 'expired') await this.release(orderId);
     else if (session.status === 'complete') {
       const intent = typeof session.payment_intent === 'object' ? session.payment_intent : null;
@@ -199,10 +263,11 @@ export class Orders extends Catalog {
     }
     return session;
   }
+  protected async paymentVerified(_orderId: string, _checkId: string) { /* Operations reconciles refund allocations before admission is unlocked. */ }
   async fulfill(orderId: string, payment: Record<string, unknown>, verifiedUnits?: Unit[]) {
     await this.db.runTransaction(async tx => {
       const ref = this.order(orderId), order = (await tx.get(ref)).data() as Order;
-      if (order.status === 'paid') return;
+      if (order.status === 'paid') { tx.update(ref, { ...(order.stripeFeeStatus !== 'confirmed' ? { stripeFee: null, stripeFeeStatus: 'pending' } : {}), ...payment, paymentVerifiedAt: Date.now() }); return; }
       if (order.method === 'rsvp') fail('RSVP admission requires the RSVP approval flow.', 409);
       if (order.status === 'expired') { tx.update(ref, { reviewReason: 'Payment received after stock was released. Staff review required.', ...payment }); return; }
       const pools = await Promise.all(Object.keys(order.consumption).map(key => tx.get(this.event(order.eventId).collection('pools').doc(key))));
@@ -212,27 +277,33 @@ export class Orders extends Catalog {
       if (promoRef) tx.update(promoRef, { held: promo!.held - 1, used: promo!.used + 1 });
       (verifiedUnits || order.units).forEach((unit, index) => tx.create(this.tickets().doc(ticketId(orderId, index)), { ...unit, orderId, eventId: order.eventId, eventTitle: order.eventTitle,
         ownerUid: order.ownerUid, holderEmail: order.email, holderName: order.name, transferCutoff: order.transferCutoff || unit.validFrom, version: 1, status: 'valid', admission: null, refunded: false, index }));
-      tx.update(ref, { status: 'paid', paidAt: Date.now(), ...payment, ...(verifiedUnits ? { units: verifiedUnits } : {}), clientSecret: null });
+      tx.update(ref, { status: 'paid', paidAt: Date.now(), stripeFee: null, stripeFeeStatus: 'pending', ...payment, ...(verifiedUnits ? { units: verifiedUnits } : {}), clientSecret: null });
       tx.set(this.db.collection('ticketingEmailJobs').doc(`receipt_${orderId}`), { type: 'receipt', orderId, to: order.email, status: 'pending', createdAt: Date.now(), attempts: 0 });
     });
   }
-  async release(orderId: string) {
+  async release(orderId: string, onlyProviderStates?: string[], audit?: { uid: string; note: string }) {
     await this.db.runTransaction(async tx => {
       const ref = this.order(orderId), order = (await tx.get(ref)).data() as Order;
       if (!['open', 'provisioning', 'processing'].includes(order.status)) return;
+      if (onlyProviderStates && (!onlyProviderStates.includes(order.providerState || '') || order.sessionId || order.paymentIntentId)) fail('Provider creation may already have started. Keep the reservation for reconciliation.', 409);
       const pools = await Promise.all(Object.keys(order.consumption).map(key => tx.get(this.event(order.eventId).collection('pools').doc(key))));
       const promoRef = order.promoCode ? this.event(order.eventId).collection('promos').doc(order.promoCode) : null;
       const promo = promoRef ? (await tx.get(promoRef)).data() : null;
       for (const pool of pools) { const data = pool.data()!; tx.update(pool.ref, { held: Math.max(0, data.held - order.consumption[pool.id]) }); }
       if (promoRef) tx.update(promoRef, { held: Math.max(0, promo!.held - 1) });
       tx.update(ref, { status: 'expired', clientSecret: null, expiredAt: Date.now() });
+      if (audit) tx.create(this.event(order.eventId).collection('audit').doc(), { action: 'checkout-resolved-without-provider-request', orderId, ...audit, at: Date.now() });
     });
   }
   async cancel(orderId: string, key: unknown, actor: DecodedIdToken | null) {
     const order = await this.authorize(orderId, key, actor);
     if (order.status === 'paid') return { status: 'paid' };
     if (order.method === 'stripe' && order.total > 0) {
-      const sid = order.sessionId || (await this.provision(orderId, order)).id;
+      if (!order.sessionId && ['not-sent', 'rejected'].includes(order.providerState || '')) {
+        await this.release(orderId, ['not-sent', 'rejected']); return { status: 'expired' };
+      }
+      const sid = order.sessionId || (await this.findCheckout(orderId, order))?.id;
+      if (!sid) fail('Payment creation has not been resolved. Reserved inventory is retained for staff review; cancellation will not create another payment attempt.', 409);
       try { await this.stripe().checkout.sessions.expire(sid); } catch { /* Retrieve authoritative status below. */ }
       await this.verifySession(orderId, sid);
     } else await this.release(orderId);
@@ -241,6 +312,35 @@ export class Orders extends Catalog {
     if (latest.status !== 'expired') fail('Payment is still being confirmed. Keep the original attempt open.', 409);
     return { status: 'expired' };
   }
+  async findCheckout(orderId: string, order: Order) {
+    const matches: Stripe.Checkout.Session[] = [];
+    const listed = this.stripe().checkout.sessions.list({ created: { gte: Math.floor(order.createdAt / 1000) - 5, lte: Math.ceil((order.createdAt + 10 * 60000) / 1000) }, limit: 100 });
+    await listed.autoPagingEach(session => { if (session.client_reference_id === orderId && session.metadata?.pluto_order_id === orderId) matches.push(session); });
+    if (matches.length > 1) fail('Multiple provider sessions need staff review. No reservation was released.', 409);
+    return matches[0];
+  }
+  async resolveCheckout(orderId: string, rawSessionId: unknown, rawNote: unknown, uid: string) {
+    const order = (await this.order(orderId).get()).data() as Order | undefined;
+    if (!order) fail('Order not found.', 404);
+    await this.role(uid, order.eventId, ['manager']);
+    const note = text(rawNote, 'resolution note', 500, true);
+    if (order.method !== 'stripe' || order.total <= 0) fail('This order has no Stripe checkout to resolve.', 409);
+    if (!order.sessionId && ['not-sent', 'rejected'].includes(order.providerState || '')) {
+      await this.release(orderId, ['not-sent', 'rejected'], { uid, note });
+    } else {
+      const sid = rawSessionId ? id(rawSessionId) : order.sessionId || (await this.findCheckout(orderId, order))?.id;
+      if (!sid) fail('No authoritative Session was found. An uncertain payment cannot be released on a timeout or an empty search. Locate the Session in Stripe or keep the reservation under review.', 409);
+      const session = await this.verifySession(orderId, sid);
+      if (session?.status === 'open' && session.payment_status !== 'paid') {
+        try { await this.stripe().checkout.sessions.expire(sid); } catch { /* Verify whether payment won the race. */ }
+        await this.verifySession(orderId, sid);
+      }
+      await this.event(order.eventId).collection('audit').add({ action: 'checkout-provider-resolved', orderId, sessionId: sid, uid, note, at: Date.now() });
+    }
+    const latest = (await this.order(orderId).get()).data()!;
+    if (!['paid', 'expired'].includes(latest.status)) fail('Provider state remains unsettled. No reservation was released.', 409);
+    return { orderId, status: latest.status };
+  }
   credential(ticket: any, ticketKey: string) { return signTicket({ id: ticketKey, eventId: ticket.eventId, version: ticket.version, validFrom: ticket.validFrom, validUntil: ticket.validUntil }, this.signing()); }
   transferDeadline(ticket: any, event: any) { return Math.min(Date.parse(ticket.transferCutoff || ticket.validFrom), Date.parse((event.liveDraft || event.draft).admissionStartsAt)); }
   async view(orderId: string, accessKey: unknown, actor: DecodedIdToken | null, refresh = false) {
@@ -248,10 +348,11 @@ export class Orders extends Catalog {
     if (refresh && order.sessionId && order.status !== 'paid') { await this.verifySession(orderId); order = (await this.order(orderId).get()).data() as Order; }
     const tickets = (await this.tickets().where('orderId', '==', orderId).get()).docs;
     const event = (await this.event(order.eventId).get()).data();
-    const held = tickets.filter(t => !t.data().refunded && (!t.data().rsvp || order.rsvpStatus === 'approved') && (t.data().ownerUid === actor?.uid || t.data().holderEmail === order.email));
+    const held = tickets.filter(t => !order.financialBlocked && !t.data().refunded && (!t.data().rsvp || order.rsvpStatus === 'approved') && (t.data().ownerUid === actor?.uid || t.data().holderEmail === order.email));
     return { orderId, eventId: order.eventId, eventTitle: order.eventTitle, eventSlug: order.eventSlug, eventStatus: event?.status, status: order.status, method: order.method, total: order.total,
       rsvpStatus: order.rsvpStatus || '', approvalRequired: order.approvalRequired === true, decisionNote: order.decisionNote || '',
-      discount: order.discount, taxAmount: order.taxAmount || 0, refundedAmount: order.refundedAmount || 0, externalRefundAmount: (order as any).externalRefundAmount || 0, reviewReason: order.reviewReason || '', name: order.name, email: order.email, createdAt: order.createdAt, receiptUrl: order.receiptUrl || '',
+      providerState: order.providerState || 'unknown',
+      discount: order.discount, taxAmount: order.taxAmount || 0, refundedAmount: order.refundedAmount || 0, externalRefundAmount: (order as any).externalRefundAmount || 0, reviewReason: order.financialReviewReason || order.reviewReason || '', financialBlocked: !!order.financialBlocked, name: order.name, email: order.email, createdAt: order.createdAt, receiptUrl: order.receiptUrl || '',
       tickets: tickets.map(t => { const d = t.data(), canUse = held.includes(t); return { id: t.id, name: d.name, holderName: d.holderName, status: d.status, validFrom: d.validFrom, validUntil: d.validUntil, admission: d.admission,
         amount: d.amount, transferable: !d.rsvp && canUse && d.status === 'valid' && !d.admission && event?.status !== 'cancelled' && Date.now() < this.transferDeadline(d, event), qr: canUse && d.status === 'valid' && event?.status !== 'cancelled' ? this.credential(d, t.id) : null }; }),
       venue: held.length ? { name: (event?.liveDraft || event?.draft)?.venueName || '', address: (event?.liveDraft || event?.draft)?.address || '', directions: (event?.liveDraft || event?.draft)?.directions || '' } : null };
@@ -272,9 +373,9 @@ export class Orders extends Catalog {
     const orders = await this.db.collection('ticketingOrders').where('ownerUid', '==', actor.uid).get();
     const tickets = await this.tickets().where('ownerUid', '==', actor.uid).get();
     return { orders: orders.docs.map(d => { const o = d.data(); return { orderId: d.id, eventTitle: o.eventTitle, status: o.status, method: o.method, rsvpStatus: o.rsvpStatus || '', total: o.total, createdAt: o.createdAt }; }).sort((a, b) => b.createdAt - a.createdAt),
-      tickets: await Promise.all(tickets.docs.map(async t => { const d = t.data(), event = (await this.event(d.eventId).get()).data(); return { id: t.id, orderId: d.orderId, eventTitle: d.eventTitle, name: d.name, holderName: d.holderName, status: d.status,
-        admission: d.admission, transferable: !d.rsvp && d.status === 'valid' && !d.admission && event?.status !== 'cancelled' && Date.now() < this.transferDeadline(d, event),
-        qr: d.status === 'valid' && event?.status !== 'cancelled' ? this.credential(d, t.id) : null }; })) };
+      tickets: await Promise.all(tickets.docs.map(async t => { const d = t.data(), event = (await this.event(d.eventId).get()).data(), order = (await this.order(d.orderId).get()).data(); return { id: t.id, orderId: d.orderId, eventTitle: d.eventTitle, name: d.name, holderName: d.holderName, status: d.status,
+        admission: d.admission, transferable: !order?.financialBlocked && !d.rsvp && d.status === 'valid' && !d.admission && event?.status !== 'cancelled' && Date.now() < this.transferDeadline(d, event),
+        qr: !order?.financialBlocked && d.status === 'valid' && event?.status !== 'cancelled' ? this.credential(d, t.id) : null }; })) };
   }
   async recover(rawEmail: unknown) {
     const target = email(rawEmail), docs = await this.db.collection('ticketingOrders').where('email', '==', target).get();
@@ -316,6 +417,7 @@ export class Orders extends Catalog {
     const event = (await this.event(order.eventId).get()).data()!;
     await this.db.runTransaction(async tx => {
       const ticket = (await tx.get(ticketRef)).data();
+      if ((await tx.get(this.order(orderId))).data()?.financialBlocked) fail('Payment needs staff review before transferring.', 409);
       if (!ticket || ticket.rsvp || ticket.orderId !== orderId || !(holderAccess && ticket.version === heldTicket.version || ticket.ownerUid === actor?.uid || ticket.holderEmail === order.email) || ticket.status !== 'valid' || ticket.admission || event.status === 'cancelled' || Date.now() >= this.transferDeadline(ticket, event)) fail('This ticket cannot be transferred.', 409);
       tx.create(this.db.collection('ticketingTransfers').doc(hash(token)), { ticketId: ticketKey, orderId, email: targetEmail, ticketVersion: ticket.version, expiresAt: this.transferDeadline(ticket, event), accepted: false });
       tx.set(this.db.collection('ticketingEmailJobs').doc(`transfer_${hash(token)}`), { type: 'transfer', to: targetEmail, token, orderId, status: 'pending', attempts: 0, createdAt: Date.now() });
@@ -329,6 +431,7 @@ export class Orders extends Catalog {
       const transfer = (await tx.get(ref)).data();
       if (!transfer || transfer.accepted || transfer.expiresAt <= Date.now()) fail('This transfer is expired or already accepted.', 409);
       const ticketRef = this.tickets().doc(transfer.ticketId), ticket = (await tx.get(ticketRef)).data();
+      if ((await tx.get(this.order(transfer.orderId))).data()?.financialBlocked) fail('Payment needs staff review before transferring.', 409);
       if (!ticket || ticket.rsvp || ticket.version !== transfer.ticketVersion || ticket.status !== 'valid' || ticket.admission) fail('This ticket is no longer transferable.', 409);
       const event = (await tx.get(this.event(ticket.eventId))).data()!;
       if (event.status === 'cancelled' || Date.now() >= this.transferDeadline(ticket, event)) fail('The event transfer window is closed.', 409);
@@ -342,9 +445,10 @@ export class Orders extends Catalog {
   }
   async holder(rawToken: unknown, actor: DecodedIdToken | null) {
     const token = receipt(rawToken), access = (await this.db.collection('ticketingHolderAccess').doc(hash(token)).get()).data();
-    if (!access) fail('Ticket access not found.', 404);
+    if (!access) fail('Ticket access not found.', 404, 'ticket-access-revoked');
     const ticket = (await this.tickets().doc(access.ticketId).get()).data();
-    if (!ticket || ticket.version !== access.version || ticket.status !== 'valid') fail('This ticket credential is no longer valid.', 409);
+    if (!ticket || ticket.version !== access.version || ticket.status !== 'valid') fail('This ticket credential is no longer valid.', 409, 'ticket-access-revoked');
+    if ((await this.order(ticket.orderId).get()).data()?.financialBlocked) fail('Payment needs staff review before admission.', 409);
     if (actor?.email_verified && actor.email?.toLowerCase() === ticket.holderEmail && !ticket.ownerUid) await this.tickets().doc(access.ticketId).update({ ownerUid: actor.uid });
     const event = (await this.event(ticket.eventId).get()).data()!;
     if (event.status === 'cancelled') fail('This event has been cancelled. Contact Pluto about your order.', 409);
@@ -363,8 +467,9 @@ export class Orders extends Catalog {
       if (prior) { if (prior.ticketId !== parsed.id || prior.uid !== uid) fail('Scan attempt mismatch.', 409); return prior; }
       const ticketRef = this.tickets().doc(id(parsed.id)), ticket = (await tx.get(ticketRef)).data();
       const event = (await tx.get(this.event(eventId))).data();
+      const order = ticket ? (await tx.get(this.order(ticket.orderId))).data() : null;
       let result = 'accepted';
-      if (!ticket || ticket.version !== parsed.version || ticket.status !== 'valid' || event?.status === 'cancelled') result = 'invalid';
+      if (!ticket || order?.financialBlocked || ticket.version !== parsed.version || ticket.status !== 'valid' || event?.status === 'cancelled') result = 'invalid';
       else if (Date.now() < Date.parse(ticket.validFrom) || Date.now() > Date.parse(ticket.validUntil)) result = 'outside-window';
       else if (ticket.admission) result = 'duplicate';
       const record = { ticketId: parsed.id, ...access, result, at: Date.now(), offline, name: ticket?.name || '' };
@@ -379,9 +484,11 @@ export class Orders extends Catalog {
     const event = (await this.event(eventId).get()).data();
     const guests = await this.event(eventId).collection('guests').get(), draft = event?.liveDraft || event?.draft;
     const access = typeof identity === 'string' ? { uid: identity, expiresAt: Date.now() + 24 * 3600000 } : await scannerAccess(this.db, identity, eventId);
+    const orders = await this.db.collection('ticketingOrders').where('eventId', '==', eventId).get();
+    const blocked = new Set(orders.docs.filter(d => d.data().financialBlocked).map(d => d.id));
     return { eventId, staffUid: access.uid, offlineUntil: Math.min(access.expiresAt, Date.now() + (typeof identity === 'string' ? 24 : 4) * 3600000), generatedAt: Date.now(), verificationKey: keyPair(this.signing()).jwk,
       guests: guests.docs.filter(d => !d.data().deletedAt && !['cancelled', 'archived'].includes(event?.status)).map(d => guestEntry(d.id, d.data())), guestValidFrom: draft?.admissionStartsAt || '', guestValidUntil: draft ? new Date(Date.parse(draft.endAt) + 6 * 3600000).toISOString() : '',
-      tickets: tickets.docs.map(t => { const d = t.data(); return { id: t.id, version: d.version, status: event?.status === 'cancelled' ? 'invalid' : d.status, name: d.name, validFrom: d.validFrom, validUntil: d.validUntil, admitted: !!d.admission }; }) };
+      tickets: tickets.docs.map(t => { const d = t.data(); return { id: t.id, version: d.version, status: event?.status === 'cancelled' || blocked.has(d.orderId) ? 'invalid' : d.status, name: d.name, validFrom: d.validFrom, validUntil: d.validUntil, admitted: !!d.admission }; }) };
   }
   async reviewScan(eventId: string, scanId: unknown, rawNote: unknown, identity: string | ScannerProof) {
     if (typeof identity === 'string') await this.role(identity, eventId, ['admission']);
