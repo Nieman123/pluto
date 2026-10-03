@@ -1,7 +1,7 @@
 export let user = null;
 export let scannerSession = null;
 export function setScannerSession(value) { scannerSession = value; }
-const scannerPaths = new Set(['staff/scan', 'staff/manifest', 'staff/scan-review', 'scanner/session', 'scanner/logout']);
+const scannerPaths = new Set(['staff/scan', 'staff/manifest', 'staff/scan-review', 'staff/guestlist', 'staff/guestlist/arrive', 'scanner/session', 'scanner/logout']);
 export const money = cents => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format((cents || 0) / 100);
 export const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const accessKey = () => [...crypto.getRandomValues(new Uint8Array(32))].map(n => n.toString(16).padStart(2, '0')).join('');

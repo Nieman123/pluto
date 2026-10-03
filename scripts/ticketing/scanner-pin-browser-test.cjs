@@ -46,7 +46,20 @@ async function scan(target, qr, expected) {
     const accessKey = randomBytes(32).toString('hex');
     const order = await api(admin, 'staff/cash', { eventId, accessKey, items: [{ offerId: 'weekend', quantity: 3 }], name: 'PIN test guest', email: 'pin-door@preview.invalid', comp: true, reason: 'Scanner PIN browser test' });
     const tickets = (await api(admin, 'order', { orderId: order.orderId, accessKey })).tickets;
-    await admin.goto(`${base}/tickets/admin?event=${eventId}`); await admin.locator('#event-scanner-pins').click();
+    await admin.goto(`${base}/tickets/admin?event=${eventId}`);
+    stage = 'guest list editing';
+    await admin.locator('#event-guestlist [name=names]').fill('Guest Alex\nGuest Blair\nRemoved Offline Guest');
+    await admin.locator('#event-guestlist [name=note]').fill('Friends of the artists');
+    await admin.locator('#event-guestlist').getByRole('button', { name: 'Add guests', exact: true }).click();
+    await admin.locator('#event-guestlist .guest-list-count').filter({ hasText: '3 guests' }).waitFor();
+    await admin.getByRole('button', { name: 'Edit guest: Guest Alex', exact: true }).click();
+    await admin.locator('#guest-edit-form [name=name]').fill('Guest Alex Updated'); await admin.locator('#guest-edit-form [name=note]').fill('Artist guest');
+    await admin.getByRole('button', { name: 'Save guest', exact: true }).click(); await admin.locator('#event-guestlist').getByText('Guest Alex Updated', { exact: true }).waitFor();
+    await surface(admin, 'guestlist-admin-desktop'); await admin.setViewportSize({ width: 390, height: 844 }); await surface(admin, 'guestlist-admin-mobile'); await admin.setViewportSize({ width: 1280, height: 900 });
+    await admin.reload(); await admin.locator('#event-guestlist').getByText('Guest Alex Updated', { exact: true }).waitFor();
+    const guestRecords = (await db.collection('ticketingEvents').doc(eventId).collection('guests').get()).docs;
+    const guestId = name => guestRecords.find(d => d.data().name === name).id;
+    await admin.locator('#event-scanner-pins').click();
     await admin.locator('#scanner-pin-create [name=label]').fill('Sam · Main door');
     await admin.getByRole('button', { name: 'Generate scanner PIN' }).click(); await admin.locator('#new-scanner-pin').waitFor();
     const pin = (await admin.locator('#new-scanner-pin').inputValue()).replaceAll(' ', ''); assert.match(pin, /^\d{8}$/);
@@ -63,7 +76,7 @@ async function scan(target, qr, expected) {
     // Door access must work even if Firebase account sign-in cannot load.
     await doorContext.route('https://www.gstatic.com/firebasejs/**', route => route.abort());
     const door = await doorContext.newPage(); page = door;
-    door.on('request', request => { if (request.url().endsWith('/staff/scan')) assert.equal(request.headers().authorization, undefined, 'PIN scanning never requires a Firebase account'); });
+    door.on('request', request => { if (['/staff/scan', '/staff/guestlist', '/staff/guestlist/arrive'].some(path => request.url().endsWith(path))) assert.equal(request.headers().authorization, undefined, 'PIN admission never requires a Firebase account'); });
     await door.goto(`${base}/tickets/staff`); await surface(door, 'scanner-pin-login-desktop');
     await door.setViewportSize({ width: 390, height: 844 }); await surface(door, 'scanner-pin-login-mobile');
     await door.locator('#scanner-pin').fill('invalid'); await door.locator('#scanner-login-form').evaluate(f => { f.noValidate = true; });
@@ -72,6 +85,16 @@ async function scan(target, qr, expected) {
     await door.locator('#scanner-session:not([hidden])').waitFor();
     assert.equal(await door.locator('#staff-event').inputValue(), eventId); assert.ok(await door.locator('#staff-event').isDisabled());
     assert.equal(await door.locator('#ticketing-auth').isVisible(), false); await surface(door, 'scanner-pin-scanning-mobile');
+    const doorGuests = door.locator('#door-guestlist');
+    await doorGuests.getByRole('searchbox', { name: 'Search guests' }).fill('Alex');
+    assert.equal(await doorGuests.locator('.guest-row').count(), 1);
+    await doorGuests.getByRole('button', { name: 'Mark arrived: Guest Alex Updated', exact: true }).click();
+    await doorGuests.locator('.guest-list-count').filter({ hasText: '1 arrived' }).waitFor();
+    assert.ok((await db.collection('ticketingEvents').doc(eventId).collection('guests').doc(guestId('Guest Alex Updated')).get()).data().arrival);
+    await doorGuests.getByRole('searchbox', { name: 'Search guests' }).fill('');
+    assert.ok(await doorGuests.getByRole('button', { name: 'Arrived: Guest Alex Updated', exact: true }).isDisabled());
+    await admin.locator('#ticketing-dialog-close').click(); await admin.locator('#event-guestlist').getByRole('button', { name: 'Refresh guest list' }).click();
+    await admin.locator('#event-guestlist .guest-list-count').filter({ hasText: '1 arrived' }).waitFor(); await admin.locator('#event-scanner-pins').click();
     assert.ok(!(await door.evaluate(() => localStorage.getItem('pluto-scanner-session'))).includes(pin), 'only high-entropy session proof is persisted');
     await scan(door, tickets[0].qr, 'ACCEPTED'); await scan(door, tickets[0].qr, 'DUPLICATE');
     await door.reload(); await door.locator('#scanner-session:not([hidden])').waitFor();
@@ -81,8 +104,18 @@ async function scan(target, qr, expected) {
     await door.evaluate(async () => { await navigator.serviceWorker.ready; }); await door.reload(); await door.locator('#scanner-session:not([hidden])').waitFor();
     await doorContext.setOffline(true); await door.reload(); await door.locator('#staff-controls:not([hidden])').waitFor();
     await scan(door, tickets[1].qr, 'Offline: queued');
+    await doorGuests.getByRole('button', { name: 'Mark arrived: Guest Blair', exact: true }).click();
+    await doorGuests.locator('.guest-row').filter({ hasText: 'Guest Blair' }).filter({ hasText: 'Awaiting sync' }).waitFor();
+    await api(admin, 'staff/guestlist/remove', { eventId, guestId: guestId('Removed Offline Guest'), version: 1 });
+    await doorGuests.getByRole('button', { name: 'Mark arrived: Removed Offline Guest', exact: true }).click();
+    await doorGuests.locator('.guest-row').filter({ hasText: 'Removed Offline Guest' }).filter({ hasText: 'Awaiting sync' }).waitFor();
     await door.reload(); await door.locator('#staff-controls:not([hidden])').waitFor(); await scan(door, tickets[1].qr, 'DUPLICATE');
-    await doorContext.setOffline(false); await door.locator('#admission-replay').click(); await door.locator('#ticketing-message').filter({ hasText: 'Synced 1 admissions' }).waitFor();
+    assert.ok(await doorGuests.getByRole('button', { name: 'Arrived: Guest Blair', exact: true }).isDisabled(), 'offline guest arrival survives reload');
+    await doorContext.setOffline(false); await door.locator('#admission-replay').click(); await door.locator('#ticketing-message').filter({ hasText: 'Synced 2 admissions' }).waitFor();
+    await door.locator('#admission-conflicts').filter({ hasText: 'Guest: Removed Offline Guest' }).waitFor();
+    await door.locator('[data-conflict-note]').fill('Removed guest checked against organizer list.'); await door.locator('[data-review-conflict]').click(); await door.locator('#admission-conflicts').filter({ hasText: 'Reviewed' }).waitFor();
+    assert.ok((await db.collection('ticketingEvents').doc(eventId).collection('guests').doc(guestId('Guest Blair')).get()).data().arrival.offline);
+    await doorGuests.locator('.guest-list-count').filter({ hasText: '2 guests · 2 arrived' }).waitFor();
     const admitted = (await db.collection('ticketingTickets').doc(tickets[1].id).get()).data().admission;
     assert.ok(admitted.offline && admitted.scannerLabel === 'Sam · Main door');
     stage = 'PIN sign-out and revocation';
@@ -110,7 +143,7 @@ async function scan(target, qr, expected) {
     await doorContext.setOffline(true); await door.reload(); await door.locator('#scanner-login:not([hidden])').waitFor();
     assert.equal(await door.locator('#staff-controls').isVisible(), false, 'expired offline leases cannot open the scanner');
     await doorContext.setOffline(false);
-    console.log('Scanner PIN browser checks passed: admin generate/copy/revoke, shown once, account-free login without Firebase, event lock, online scan/duplicate/reload, offline scan/reload/replay/lease expiry, server sign-out, revocation without offline fallback, desktop/mobile accessibility.');
+    console.log('Scanner PIN and guest-list browser checks passed: admin PIN/guest editing and bulk add, guest search/arrival/reload, account-free event-scoped admission, offline ticket/guest reload/replay/removed-guest review, lease expiry, revocation and desktop/mobile accessibility.');
     await adminContext.close(); await doorContext.close();
   } catch (error) {
     console.error('Scanner browser phase:', stage);

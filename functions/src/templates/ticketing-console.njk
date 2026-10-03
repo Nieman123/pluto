@@ -21,7 +21,7 @@
 {% else %}
 <div class="ticket-toolbar"><button id="admission-sync" class="button button-primary">Prepare offline admission</button><button id="admission-replay" class="button button-quiet">Sync queued scans</button><button id="admission-camera" class="button button-quiet">Start camera</button></div>
 <p id="admission-cache-status" role="status"></p><video id="admission-video" playsinline muted hidden></video>
-<form id="admission-form"><label>Ticket QR content <textarea name="qr" required placeholder="Scan a ticket or paste its QR content"></textarea></label><button class="button button-primary">Check ticket</button></form><div id="admission-results" aria-live="polite"></div>
+<form id="admission-form"><label>Ticket QR content <textarea name="qr" required placeholder="Scan a ticket or paste its QR content"></textarea></label><button class="button button-primary">Check ticket</button></form><div id="admission-results" aria-live="polite"></div><section id="door-guestlist" aria-label="Event guest list" hidden></section>
 {% endif %}</div>
 {% endif %}
 <dialog id="ticketing-dialog" aria-label="Pluto ticket tools"><button id="ticketing-dialog-close" class="button button-quiet" type="button">Close</button><div id="ticketing-dialog-content"></div></dialog>
