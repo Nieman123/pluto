@@ -8,9 +8,11 @@ import { baseUrl, isLive, webhookKey } from './config';
 import { orderPdf } from './pdf';
 import { clientIdentity } from './client-identity';
 import { email } from './domain';
+import { Rewards } from '../rewards';
 
 export function ticketingRouter(context: (path: string) => Record<string, unknown>, service = new Operations()) {
   const router = express.Router();
+  const rewards = new Rewards(service.db);
   router.use((req, res, next) => {
     res.set({ 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY',
       'Content-Security-Policy': "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'" });
@@ -113,6 +115,8 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   const actor = (res: Response): DecodedIdToken => res.locals.actor || fail('Sign in to continue.', 401);
   const admissionIdentity = (req: Request, res: Response) => req.get('x-pluto-scanner') ? { scannerToken: req.get('x-pluto-scanner')! } : actor(res).uid;
   const bodyId = (req: Request, key = 'eventId') => id(req.body?.[key]);
+  router.post('/tickets/api/rewards/redeem', async (req, res) => { const user = actor(res); await service.rateLimit(user.uid, 'reward-redeem', 60); res.json(await rewards.redeem(req.body, user)); });
+  router.post('/tickets/api/rewards/claim', async (req, res) => { const user = actor(res); await service.rateLimit(user.uid, 'reward-claim', 60); res.json(await rewards.claim(req.body, user)); });
   const purchaseLimit = async (req: Request, res: Response, lane: string) => {
     const eventId = bodyId(req), contact = email(req.body.email);
     await service.rateLimit(req.ip || 'unknown', `${lane}-network-burst`, 512, 60000, 8);

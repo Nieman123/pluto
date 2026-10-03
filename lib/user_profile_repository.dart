@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'rewards_repository.dart';
 
 class UserProfile {
   UserProfile({
@@ -285,11 +286,12 @@ class EventQrClaimRecord {
 }
 
 class UserProfileRepository {
-  UserProfileRepository({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+  UserProfileRepository(
+      {FirebaseFirestore? firestore, RewardsRepository? rewards})
+      : _firestore = firestore ?? FirebaseFirestore.instance,
+        _rewards = rewards ?? RewardsRepository();
 
-  static const int _eventQrClaimCooldownSeconds = 30;
-  static const int _eventQrDailyClaimLimit = 10;
+  final RewardsRepository _rewards;
 
   final FirebaseFirestore _firestore;
 
@@ -453,351 +455,24 @@ class UserProfileRepository {
     );
   }
 
-  Future<void> redeemReward({
+  Future<Map<String, dynamic>> redeemReward({
     required String uid,
     required RewardItem rewardItem,
   }) async {
-    final DocumentReference<Map<String, dynamic>> profileRef =
-        _profiles.doc(uid);
-    final DocumentReference<Map<String, dynamic>> rewardRef =
-        _rewardItems.doc(rewardItem.id);
-    final CollectionReference<Map<String, dynamic>> transactionCollection =
-        profileRef.collection('pointsTransactions');
-    final CollectionReference<Map<String, dynamic>> redemptionCollection =
-        profileRef.collection('redemptionRequests');
-
-    await _firestore.runTransaction((Transaction transaction) async {
-      final DocumentSnapshot<Map<String, dynamic>> profileSnapshot =
-          await transaction.get(profileRef);
-      if (!profileSnapshot.exists) {
-        throw FirebaseException(
-          plugin: 'cloud_firestore',
-          code: 'profile-missing',
-          message: 'User profile was not found.',
-        );
-      }
-
-      final DocumentSnapshot<Map<String, dynamic>> rewardSnapshot =
-          await transaction.get(rewardRef);
-      if (!rewardSnapshot.exists) {
-        throw FirebaseException(
-          plugin: 'cloud_firestore',
-          code: 'reward-missing',
-          message: 'Reward item no longer exists.',
-        );
-      }
-
-      final Map<String, dynamic> rewardData =
-          rewardSnapshot.data() ?? <String, dynamic>{};
-      final String rewardName =
-          (rewardData['name'] as String? ?? rewardItem.name).trim();
-      final bool isActive = rewardData['isActive'] as bool? ?? true;
-      final int pointsCost = _parseInt(rewardData['pointsCost']);
-      final int? inventory = _parseNullableInt(rewardData['inventory']);
-
-      if (!isActive || pointsCost <= 0) {
-        throw FirebaseException(
-          plugin: 'cloud_firestore',
-          code: 'reward-unavailable',
-          message: 'This reward is not available right now.',
-        );
-      }
-
-      if (inventory != null && inventory <= 0) {
-        throw FirebaseException(
-          plugin: 'cloud_firestore',
-          code: 'out-of-stock',
-          message: 'This reward is out of stock.',
-        );
-      }
-
-      final Map<String, dynamic> profileData =
-          profileSnapshot.data() ?? <String, dynamic>{};
-      final int currentPoints = _parseInt(profileData['pointsBalance']);
-      if (currentPoints < pointsCost) {
-        throw FirebaseException(
-          plugin: 'cloud_firestore',
-          code: 'insufficient-points',
-          message: 'Not enough Pluto Points for this reward.',
-        );
-      }
-
-      transaction.set(
-        profileRef,
-        <String, dynamic>{
-          'pointsBalance': currentPoints - pointsCost,
-          'updatedAt': FieldValue.serverTimestamp(),
-          'lastRedemptionAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
-
-      if (inventory != null) {
-        transaction.set(
-          rewardRef,
-          <String, dynamic>{
-            'inventory': inventory - 1,
-            'updatedAt': FieldValue.serverTimestamp(),
-          },
-          SetOptions(merge: true),
-        );
-      }
-
-      transaction.set(
-        transactionCollection.doc(),
-        <String, dynamic>{
-          'type': 'redeem',
-          'reason': 'Redeemed $rewardName',
-          'pointsDelta': -pointsCost,
-          'rewardItemId': rewardRef.id,
-          'createdAt': FieldValue.serverTimestamp(),
-        },
-      );
-
-      transaction.set(
-        redemptionCollection.doc(),
-        <String, dynamic>{
-          'rewardItemId': rewardRef.id,
-          'rewardName': rewardName,
-          'pointsCost': pointsCost,
-          'status': 'requested',
-          'createdAt': FieldValue.serverTimestamp(),
-        },
-      );
-    });
+    return _rewards.redeem(uid, rewardItem.id);
   }
 
   Future<EventQrClaimResult> claimEventQrCode({
     required User user,
     required String scannedCode,
   }) async {
-    final String normalizedCode = scannedCode.trim().toUpperCase();
-    if (normalizedCode.isEmpty) {
-      throw FirebaseException(
-        plugin: 'cloud_firestore',
-        code: 'invalid-code',
-        message: 'QR code value is empty.',
-      );
-    }
-
-    await ensureProfileForUser(user);
-
-    final QuerySnapshot<Map<String, dynamic>> matchingCodes =
-        await _eventQrCodes
-            .where('code', isEqualTo: normalizedCode)
-            .limit(1)
-            .get();
-    if (matchingCodes.docs.isEmpty) {
-      throw FirebaseException(
-        plugin: 'cloud_firestore',
-        code: 'qr-not-found',
-        message: 'This QR code was not found.',
-      );
-    }
-
-    final DocumentReference<Map<String, dynamic>> qrRef =
-        matchingCodes.docs.first.reference;
-    final DocumentReference<Map<String, dynamic>> profileRef =
-        _profiles.doc(user.uid);
-    final DocumentReference<Map<String, dynamic>> rateLimitRef =
-        profileRef.collection('claimRateLimits').doc('eventQr');
-    final CollectionReference<Map<String, dynamic>> transactionCollection =
-        profileRef.collection('pointsTransactions');
-    final DateTime nowUtc = DateTime.now().toUtc();
-    final String claimDayKey = _utcDayKey(nowUtc);
-
-    return _firestore.runTransaction(
-      (Transaction transaction) async {
-        final DocumentSnapshot<Map<String, dynamic>> qrSnapshot =
-            await transaction.get(qrRef);
-        if (!qrSnapshot.exists) {
-          throw FirebaseException(
-            plugin: 'cloud_firestore',
-            code: 'qr-not-found',
-            message: 'This QR code was not found.',
-          );
-        }
-
-        final Map<String, dynamic> qrData =
-            qrSnapshot.data() ?? <String, dynamic>{};
-        final String eventName =
-            (qrData['eventName'] as String? ?? 'Event Check-In').trim();
-        final bool isActive = qrData['isActive'] as bool? ?? true;
-        final int pointsAwarded = _parseInt(qrData['pointsAwarded']);
-        final DateTime? expiresAt = _parseTimestamp(qrData['expiresAt']);
-
-        if (!isActive) {
-          throw FirebaseException(
-            plugin: 'cloud_firestore',
-            code: 'qr-inactive',
-            message: 'This event QR code is not active.',
-          );
-        }
-
-        if (pointsAwarded <= 0) {
-          throw FirebaseException(
-            plugin: 'cloud_firestore',
-            code: 'invalid-points',
-            message:
-                'This event QR code has invalid Pluto Points configuration.',
-          );
-        }
-
-        if (expiresAt != null && DateTime.now().isAfter(expiresAt)) {
-          throw FirebaseException(
-            plugin: 'cloud_firestore',
-            code: 'qr-expired',
-            message: 'This event QR code has expired.',
-          );
-        }
-
-        final DocumentReference<Map<String, dynamic>> claimRef =
-            qrRef.collection('claims').doc(user.uid);
-        final DocumentSnapshot<Map<String, dynamic>> claimSnapshot =
-            await transaction.get(claimRef);
-        if (claimSnapshot.exists) {
-          throw FirebaseException(
-            plugin: 'cloud_firestore',
-            code: 'already-claimed',
-            message: 'You already claimed Pluto Points for this event.',
-          );
-        }
-
-        final DocumentSnapshot<Map<String, dynamic>> profileSnapshot =
-            await transaction.get(profileRef);
-        final DocumentSnapshot<Map<String, dynamic>> rateLimitSnapshot =
-            await transaction.get(rateLimitRef);
-        final Map<String, dynamic> profileData =
-            profileSnapshot.data() ?? <String, dynamic>{};
-        final Map<String, dynamic> rateLimitData =
-            rateLimitSnapshot.data() ?? <String, dynamic>{};
-
-        final String storedDayKey =
-            (rateLimitData['dayKey'] as String? ?? '').trim();
-        final int claimsToday = storedDayKey == claimDayKey
-            ? _parseInt(rateLimitData['claimsToday'])
-            : 0;
-        if (claimsToday >= _eventQrDailyClaimLimit) {
-          throw FirebaseException(
-            plugin: 'cloud_firestore',
-            code: 'daily-claim-limit',
-            message:
-                'You reached the daily event QR claim limit. Please try again tomorrow.',
-          );
-        }
-
-        final DateTime? lastClaimAt =
-            _parseTimestamp(rateLimitData['lastClaimAt']);
-        if (lastClaimAt != null) {
-          final int secondsSinceLastClaim =
-              nowUtc.difference(lastClaimAt.toUtc()).inSeconds;
-          if (secondsSinceLastClaim < _eventQrClaimCooldownSeconds) {
-            final int waitSeconds =
-                _eventQrClaimCooldownSeconds - secondsSinceLastClaim;
-            throw FirebaseException(
-              plugin: 'cloud_firestore',
-              code: 'claim-cooldown',
-              message:
-                  'Please wait $waitSeconds seconds before claiming another event QR code.',
-            );
-          }
-        }
-
-        final int currentBalance = _parseInt(profileData['pointsBalance']);
-        final int currentLifetimePoints =
-            _parseInt(profileData['lifetimePoints']);
-        final int currentEventsAttended =
-            _parseInt(profileData['eventsAttended']);
-        final int newBalance = currentBalance + pointsAwarded;
-        final int newLifetimePoints = currentLifetimePoints + pointsAwarded;
-        final int newEventsAttended = currentEventsAttended + 1;
-
-        final String fallbackName = _fallbackDisplayNameForUser(user);
-        final String normalizedEmail = (user.email ?? '').trim();
-        final Map<String, dynamic> profilePayload = <String, dynamic>{
-          'pointsBalance': newBalance,
-          'lifetimePoints': newLifetimePoints,
-          'eventsAttended': newEventsAttended,
-          'updatedAt': FieldValue.serverTimestamp(),
-          'lastAttendanceAt': FieldValue.serverTimestamp(),
-        };
-
-        if (!profileSnapshot.exists) {
-          profilePayload.addAll(<String, dynamic>{
-            'displayName': fallbackName,
-            'homeCity': '',
-            'favoriteGenre': '',
-            'bio': '',
-            'profileImageDataUrl': '',
-            'createdAt': FieldValue.serverTimestamp(),
-          });
-        }
-
-        transaction.set(
-          profileRef,
-          profilePayload,
-          SetOptions(merge: true),
-        );
-
-        transaction.set(
-          claimRef,
-          <String, dynamic>{
-            'uid': user.uid,
-            'eventQrCodeId': qrRef.id,
-            'eventName': eventName,
-            'pointsAwarded': pointsAwarded,
-            'code': normalizedCode,
-            'claimedByDisplayName': fallbackName,
-            'claimedByEmail': normalizedEmail,
-            'createdAt': FieldValue.serverTimestamp(),
-          },
-          SetOptions(merge: true),
-        );
-
-        final Map<String, dynamic> rateLimitPayload = <String, dynamic>{
-          'dayKey': claimDayKey,
-          'claimsToday': claimsToday + 1,
-          'lastClaimAt': FieldValue.serverTimestamp(),
-          'cooldownSeconds': _eventQrClaimCooldownSeconds,
-          'dailyClaimLimit': _eventQrDailyClaimLimit,
-          'updatedAt': FieldValue.serverTimestamp(),
-        };
-        if (!rateLimitSnapshot.exists) {
-          rateLimitPayload['createdAt'] = FieldValue.serverTimestamp();
-        }
-        transaction.set(
-          rateLimitRef,
-          rateLimitPayload,
-          SetOptions(merge: true),
-        );
-
-        transaction.set(
-          qrRef,
-          <String, dynamic>{
-            'totalClaims': _parseInt(qrData['totalClaims']) + 1,
-            'updatedAt': FieldValue.serverTimestamp(),
-          },
-          SetOptions(merge: true),
-        );
-
-        transaction.set(
-          transactionCollection.doc(),
-          <String, dynamic>{
-            'type': 'attendance',
-            'reason': 'Event check-in: $eventName',
-            'pointsDelta': pointsAwarded,
-            'referenceId': qrRef.id,
-            'createdAt': FieldValue.serverTimestamp(),
-          },
-        );
-
-        return EventQrClaimResult(
-          eventQrCodeId: qrRef.id,
-          eventName: eventName,
-          pointsAwarded: pointsAwarded,
-          newPointsBalance: newBalance,
-        );
-      },
+    final Map<String, dynamic> result =
+        await _rewards.claim(user.uid, scannedCode);
+    return EventQrClaimResult(
+      eventQrCodeId: result['eventQrCodeId'] as String,
+      eventName: result['eventName'] as String,
+      pointsAwarded: result['pointsAwarded'] as int,
+      newPointsBalance: result['newPointsBalance'] as int,
     );
   }
 
@@ -877,16 +552,4 @@ DateTime? _parseTimestamp(dynamic value) {
     return value.toDate();
   }
   return null;
-}
-
-String _utcDayKey(DateTime value) {
-  final DateTime utc = value.toUtc();
-  return '${utc.year}-${_twoDigits(utc.month)}-${_twoDigits(utc.day)}';
-}
-
-String _twoDigits(int value) {
-  if (value >= 10) {
-    return '$value';
-  }
-  return '0$value';
 }

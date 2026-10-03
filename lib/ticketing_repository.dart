@@ -19,7 +19,7 @@ class TicketingRepository {
       Future<String?> Function()? tokenProvider})
       : _client = client ?? http.Client(),
         _baseUri = baseUri ??
-            Uri.parse(Uri.base.hasAuthority
+            Uri.parse(<String>['http', 'https'].contains(Uri.base.scheme)
                 ? Uri.base.origin
                 : 'https://pluto.events'),
         _tokenProvider = tokenProvider ??

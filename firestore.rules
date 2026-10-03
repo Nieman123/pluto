@@ -30,53 +30,15 @@ service cloud.firestore {
           true;
     }
 
-    function knownProfileKeys() {
+    function personalProfileKeys() {
       return [
         'displayName',
         'homeCity',
         'favoriteGenre',
         'bio',
         'profileImageDataUrl',
-        'pointsBalance',
-        'lifetimePoints',
-        'eventsAttended',
-        'createdAt',
-        'updatedAt',
-        'lastAttendanceAt',
-        'lastRedemptionAt'
+        'updatedAt'
       ];
-    }
-
-    function isUserRewardInventoryDecrement() {
-      let profilePath =
-          /databases/$(database)/documents/userProfiles/$(request.auth.uid);
-      return signedIn() &&
-          resource.data.inventory is int &&
-          request.resource.data.inventory is int &&
-          request.resource.data.pointsCost == resource.data.pointsCost &&
-          request.resource.data.inventory == resource.data.inventory - 1 &&
-          request.resource.data.diff(resource.data)
-              .changedKeys()
-              .hasOnly(['inventory', 'updatedAt']) &&
-          exists(profilePath) &&
-          existsAfter(profilePath) &&
-          get(profilePath).data.pointsBalance is int &&
-          getAfter(profilePath).data.pointsBalance is int &&
-          (get(profilePath).data.pointsBalance -
-              getAfter(profilePath).data.pointsBalance) ==
-              resource.data.pointsCost;
-    }
-
-    function isUserEventQrClaimIncrement(eventQrId) {
-      return signedIn() &&
-          request.resource.data.totalClaims is int &&
-          resource.data.totalClaims is int &&
-          request.resource.data.totalClaims == resource.data.totalClaims + 1 &&
-          request.resource.data.diff(resource.data)
-              .changedKeys()
-              .hasOnly(['totalClaims', 'updatedAt']) &&
-          existsAfter(
-              /databases/$(database)/documents/eventQrCodes/$(eventQrId)/claims/$(request.auth.uid));
     }
 
     match /adminUsers/{adminUid} {
@@ -126,29 +88,19 @@ service cloud.firestore {
     match /rewardItems/{rewardId} {
       allow read: if signedIn();
       allow create, delete: if isAdmin();
-      allow update: if isAdmin() || isUserRewardInventoryDecrement();
+      allow update: if isAdmin();
     }
 
     match /eventQrCodes/{eventQrId} {
-      allow read: if signedIn();
-      allow create, delete: if isAdmin();
-      allow update: if isAdmin() || isUserEventQrClaimIncrement(eventQrId);
+      // Attendees present a scanned code to the authenticated server instead of listing all codes.
+      allow read, delete: if isAdmin();
+      allow create: if isAdmin() && request.resource.data.totalClaims == 0;
+      allow update: if isAdmin() &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['totalClaims']);
 
       match /claims/{claimUid} {
         allow read: if isSelf(claimUid) || isAdmin();
-        allow create: if isSelf(claimUid) &&
-            !exists(
-                /databases/$(database)/documents/eventQrCodes/$(eventQrId)/claims/$(claimUid)) &&
-            exists(/databases/$(database)/documents/eventQrCodes/$(eventQrId)) &&
-            get(/databases/$(database)/documents/eventQrCodes/$(eventQrId)).data
-                .isActive ==
-                true &&
-            request.resource.data.uid == claimUid &&
-            request.resource.data.eventQrCodeId == eventQrId &&
-            request.resource.data.pointsAwarded ==
-                get(/databases/$(database)/documents/eventQrCodes/$(eventQrId))
-                    .data.pointsAwarded;
-        allow update, delete: if false;
+        allow write: if false;
       }
     }
 
@@ -215,31 +167,43 @@ service cloud.firestore {
     match /userProfiles/{profileUid} {
       allow read: if isSelf(profileUid) || isAdmin();
       allow create: if isSelf(profileUid) &&
-          request.resource.data.keys().hasOnly(knownProfileKeys());
-      allow update: if (isSelf(profileUid) &&
+          request.resource.data.keys().hasOnly(personalProfileKeys().concat([
+            'pointsBalance', 'lifetimePoints', 'eventsAttended', 'createdAt'])) &&
+          request.resource.data.pointsBalance == 0 &&
+          request.resource.data.lifetimePoints == 0 &&
+          request.resource.data.eventsAttended == 0 &&
+          request.resource.data.createdAt == request.time &&
+          request.resource.data.updatedAt == request.time;
+      allow update: if isSelf(profileUid) &&
               request.resource.data.diff(resource.data)
                   .affectedKeys()
-                  .hasOnly(knownProfileKeys())) ||
-          isAdmin();
+                  .hasOnly(personalProfileKeys()) &&
+              request.resource.data.updatedAt == request.time;
       allow delete: if false;
 
       match /pointsTransactions/{transactionId} {
         allow read: if isSelf(profileUid) || isAdmin();
-        allow create: if isSelf(profileUid) || isAdmin();
-        allow update, delete: if false;
+        allow write: if false;
       }
 
       match /redemptionRequests/{requestId} {
         allow read: if isSelf(profileUid) || isAdmin();
-        allow create: if isSelf(profileUid) || isAdmin();
-        allow update, delete: if isAdmin();
+        allow create, delete: if false;
+        allow update: if isAdmin() &&
+            request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['status', 'note', 'updatedAt', 'fulfilledAt']) &&
+            request.resource.data.status in ['requested', 'fulfilled', 'cancelled'] &&
+            request.resource.data.updatedAt == request.time;
       }
 
       // Per-user anti-abuse rate-limiting state for event QR claims.
       match /claimRateLimits/{limitId} {
         allow read: if isSelf(profileUid) || isAdmin();
-        allow create, update: if isSelf(profileUid) || isAdmin();
-        allow delete: if false;
+        allow write: if false;
+      }
+      match /rewardAttempts/{attemptId} {
+        allow read: if isSelf(profileUid) || isAdmin();
+        allow write: if false;
       }
     }
 
