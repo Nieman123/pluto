@@ -8,6 +8,7 @@ import { assertCapacity, cart, email, fail, hash, id, integer, receipt, secret, 
 import { scannerAccess, type ScannerProof } from './scanner-access';
 import { guestEntry } from './guest-entry';
 import { readOfflineItem, signOfflineItem, type OfflineSubmission } from './offline-proof';
+import type { WalletTicket } from './digital-wallet';
 
 export interface Order {
   eventId: string; eventTitle: string; eventSlug: string; ownerUid: string; email: string; name: string; accessHash: string; inputHash: string;
@@ -43,6 +44,54 @@ export class Orders extends Catalog {
       if (access?.orderId === orderId && access.expiresAt > Date.now()) return order;
     }
     return fail('Use your secure order link or sign in with the purchasing account.', 403);
+  }
+  async walletTicket(raw: any, actor: DecodedIdToken | null): Promise<WalletTicket> {
+    const ticketId = id(raw.ticketId);
+    return this.db.runTransaction(async tx => {
+      const ticket = (await tx.get(this.tickets().doc(ticketId))).data(); if (!ticket) fail('Ticket not found.', 404);
+      const order = (await tx.get(this.order(ticket.orderId))).data(); if (!order) fail('Order not found.', 404);
+      let authorized = !!actor && ticket.ownerUid === actor.uid;
+      if (raw.holderToken) {
+        const access = (await tx.get(this.db.collection('ticketingHolderAccess').doc(hash(receipt(raw.holderToken))))).data();
+        authorized ||= access?.ticketId === ticketId && access?.version === ticket.version;
+      }
+      // An order receipt never grants access to a ticket transferred to someone else.
+      if (ticket.holderEmail === order.email) {
+        authorized ||= !!actor && order.ownerUid === actor.uid;
+        if (typeof raw.accessKey === 'string' && /^[a-f0-9]{64}$/.test(raw.accessKey)) {
+          const proofHash = hash(raw.accessKey);
+          if (proofHash === order.accessHash) authorized = true;
+          else { const access = (await tx.get(this.db.collection('ticketingAccess').doc(proofHash))).data(); authorized ||= access?.orderId === ticket.orderId && access?.expiresAt > Date.now(); }
+        }
+      }
+      if (!authorized) fail('Use your secure ticket link or sign in as the current ticket holder.', 403);
+      return this.walletSnapshot(tx, ticketId, ticket, order);
+    });
+  }
+  private async walletSnapshot(tx: Transaction, ticketId: string, ticket: any, order: any): Promise<WalletTicket> {
+    const event = (await tx.get(this.event(ticket.eventId))).data(), draft = event?.liveDraft || event?.draft;
+    if (!event || !draft || ['cancelled', 'archived'].includes(event.status) || ticket.status !== 'valid' || ticket.admission || order.status !== 'paid' || order.financialBlocked ||
+      (order.method === 'rsvp' && order.rsvpStatus !== 'approved') || !Number.isFinite(Date.parse(ticket.validUntil)) || Date.parse(ticket.validUntil) <= Date.now())
+      fail('This ticket is not available for digital wallet admission.', 409, 'ticket-access-revoked');
+    return { id: ticketId, version: ticket.version, orderId: ticket.orderId, eventId: ticket.eventId, eventTitle: ticket.eventTitle,
+      eventSlug: event.publishedSlug || ticket.eventSlug || draft.slug, name: ticket.name, holderName: ticket.holderName || order.name,
+      qr: this.credential(ticket, ticketId), validFrom: ticket.validFrom, validUntil: ticket.validUntil, startAt: draft.startAt, endAt: draft.endAt,
+      timezone: draft.timezone, venueName: draft.venueName, address: draft.address, city: draft.city, region: draft.region, publicVenue: draft.venueVisibility === 'public' };
+  }
+  async appleDownload(raw: any, actor: DecodedIdToken | null) {
+    const ticket = await this.walletTicket(raw, actor), token = secret(), expiresAt = Date.now() + 5 * 60000;
+    await this.db.collection('ticketingWalletDownloads').doc(hash(token)).create({ ticketId: ticket.id, version: ticket.version, expiresAt: Timestamp.fromMillis(expiresAt) });
+    return { url: `${baseUrl()}/tickets/wallet/apple/${token}`, expiresAt };
+  }
+  async walletDownload(token: unknown) {
+    return this.db.runTransaction(async tx => {
+      const grant = (await tx.get(this.db.collection('ticketingWalletDownloads').doc(hash(receipt(token))))).data();
+      if (!grant || grant.expiresAt.toMillis() <= Date.now()) fail('This wallet download link has expired. Open your ticket to try again.', 410);
+      const ticket = (await tx.get(this.tickets().doc(grant.ticketId))).data();
+      if (!ticket || ticket.version !== grant.version) fail('This ticket credential is no longer valid.', 409, 'ticket-access-revoked');
+      const order = (await tx.get(this.order(ticket.orderId))).data(); if (!order) fail('Order not found.', 404);
+      return this.walletSnapshot(tx, grant.ticketId, ticket, order);
+    });
   }
   async checkout(raw: any, actor: DecodedIdToken | null, method = 'stripe', staffUid = '') {
     const eventId = id(raw.eventId), accessKey = receipt(raw.accessKey), orderId = hash(accessKey), ref = this.order(orderId);

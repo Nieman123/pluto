@@ -1,0 +1,13 @@
+import { readFile, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+const input = process.argv[2];
+if (!input || !input.endsWith('.secret.json')) throw new Error('Provide an ignored *.secret.json credential file. See docs/ticketing-digital-wallets.md.');
+const config = JSON.parse(await readFile(resolve(input), 'utf8'));
+if (!config.apple && !config.google) throw new Error('Configure at least one wallet provider.');
+const destination = resolve(import.meta.dirname, '../../functions/.secret.local');
+const previous = await readFile(destination, 'utf8').catch(error => { if (error.code === 'ENOENT') return ''; throw error; });
+const encoded = Buffer.from(JSON.stringify(config), 'utf8').toString('base64');
+const rows = previous.split(/\r?\n/).filter(row => !row.startsWith('TICKETING_WALLET_CREDENTIALS='));
+while (!rows.at(-1) && rows.length) rows.pop();
+await writeFile(destination, [...rows, `TICKETING_WALLET_CREDENTIALS=${encoded}`, ''].join('\n'), { mode: 0o600 });
+console.log('Saved wallet credentials to ignored functions/.secret.local. Set TICKETING_WALLETS_ENABLED=true when ready and restart the preview.');

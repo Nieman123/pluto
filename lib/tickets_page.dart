@@ -3,9 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import 'src/html_open_link.dart';
 import 'src/ticket_access_store.dart';
+import 'src/ticket_qr.dart';
 import 'src/ticket_wallet.dart';
 import 'ticketing_repository.dart';
 
@@ -27,6 +27,7 @@ class _TicketsPageState extends State<TicketsPage> {
   String? _error;
   String? _notice;
   bool _busy = false;
+  Map<String, dynamic> _digitalWallets = <String, dynamic>{};
   String _money(dynamic cents) => NumberFormat.simpleCurrency(name: 'USD')
       .format((cents as num? ?? 0) / 100);
   String _orderLabel(Map<dynamic, dynamic> order) {
@@ -109,6 +110,12 @@ class _TicketsPageState extends State<TicketsPage> {
         await _load();
       });
   Future<void> _load() async {
+    // Provider setup is optional and must not prevent access to in-app tickets.
+    try {
+      _digitalWallets = await _repository.request('wallet/options');
+    } catch (_) {
+      _digitalWallets = <String, dynamic>{};
+    }
     if (_holderToken != null)
       _data = await _repository
           .request('holder', <String, dynamic>{'token': _holderToken});
@@ -130,6 +137,57 @@ class _TicketsPageState extends State<TicketsPage> {
       removeAccess: ticketAccessRemove);
 
   Future<void> _refresh() => _run(_load);
+  Future<void> _addToWallet(Map<String, dynamic> ticket) async {
+    final platform = await showDialog<String>(
+        context: context,
+        builder: (context) => Theme(
+            data: _walletTheme,
+            child: AlertDialog(
+              title: const Text('Add to Wallet'),
+              content:
+                  Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+                const Text(
+                    'Keep your admission pass handy on your phone. Your ticket also stays here in the app.'),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                    onPressed: _digitalWallets['apple'] == true
+                        ? () => Navigator.pop(context, 'apple')
+                        : null,
+                    icon: const Icon(Icons.phone_iphone),
+                    label: const Text('Add to Apple Wallet')),
+                OutlinedButton.icon(
+                    onPressed: _digitalWallets['google'] == true
+                        ? () => Navigator.pop(context, 'google')
+                        : null,
+                    icon: const Icon(Icons.account_balance_wallet_outlined),
+                    label: const Text('Add to Google Wallet')),
+                if (_digitalWallets['apple'] != true &&
+                    _digitalWallets['google'] != true)
+                  const Padding(
+                      padding: EdgeInsets.only(top: 12),
+                      child: Text(
+                          'Digital wallet passes are coming soon. Show your in-app QR at the door.')),
+              ]),
+              actions: <Widget>[
+                TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Close'))
+              ],
+            )));
+    if (platform == null || !mounted) return;
+    await _run(() async {
+      final result =
+          await _repository.request('wallet/$platform', <String, dynamic>{
+        'ticketId': ticket['id'],
+        'accessKey':
+            ticketAccessRead('pluto-order-${_orderId ?? ticket['orderId']}'),
+        'holderToken': _holderToken ?? ticket['holderToken'],
+      });
+      // Navigation in the current browser avoids popup blocking after the API call.
+      await htmlNavigateTo(result['url'] as String);
+    });
+  }
+
   Future<void> _transfer(Map<String, dynamic> ticket) async {
     final TextEditingController recipient = TextEditingController();
     final String? target = await showDialog<String>(
@@ -378,21 +436,33 @@ class _TicketsPageState extends State<TicketsPage> {
         const Padding(
             padding: EdgeInsets.symmetric(vertical: 20), child: Divider()),
         if (ticket['qr'] != null) ...<Widget>[
-          LayoutBuilder(
-              builder: (context, constraints) => Center(
-                      child: Container(
-                    decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(14)),
-                    padding: const EdgeInsets.all(16),
-                    child: QrImageView(
-                        data: ticket['qr'] as String,
-                        size: (constraints.maxWidth - 32)
-                            .clamp(0, 248)
-                            .toDouble(),
-                        backgroundColor: Colors.white,
-                        semanticsLabel: 'Admission QR for ${ticket['name']}'),
-                  ))),
+          TicketQr(
+              data: ticket['qr'] as String,
+              label: 'Admission QR for ${ticket['name']}'),
+          Center(
+              child: TextButton.icon(
+                  onPressed: () => showDialog<void>(
+                      context: context,
+                      builder: (context) => Theme(
+                          data: _walletTheme,
+                          child: Dialog(
+                            insetPadding: const EdgeInsets.all(12),
+                            child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: <Widget>[
+                                      TicketQr(
+                                          data: ticket['qr'] as String,
+                                          label: 'Enlarged admission QR'),
+                                      TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context),
+                                          child: const Text('Close')),
+                                    ])),
+                          ))),
+                  icon: const Icon(Icons.zoom_in, size: 18),
+                  label: const Text('Enlarge QR'))),
           const SizedBox(height: 16),
           const Center(
               child: Text('Show this code at the door',
@@ -401,6 +471,13 @@ class _TicketsPageState extends State<TicketsPage> {
         ] else
           _body(
               'This admission credential is unavailable here. It may have been transferred, refunded or revoked.'),
+        if (ticket['qr'] != null && ticket['admission'] == null) ...<Widget>[
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+              onPressed: _busy ? null : () => _addToWallet(ticket),
+              icon: const Icon(Icons.account_balance_wallet_outlined, size: 18),
+              label: const Text('Add to Wallet')),
+        ],
         if (ticket['transferable'] == true) ...<Widget>[
           const SizedBox(height: 16),
           OutlinedButton.icon(

@@ -9,10 +9,12 @@ import { orderPdf } from './pdf';
 import { clientIdentity } from './client-identity';
 import { email } from './domain';
 import { Rewards } from '../rewards';
+import { DigitalWallet } from './digital-wallet';
 
 export function ticketingRouter(context: (path: string) => Record<string, unknown>, service = new Operations()) {
   const router = express.Router();
   const rewards = new Rewards(service.db);
+  const digitalWallet = new DigitalWallet();
   router.use((req, res, next) => {
     res.set({ 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY',
       'Content-Security-Policy': "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'" });
@@ -115,6 +117,26 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   const actor = (res: Response): DecodedIdToken => res.locals.actor || fail('Sign in to continue.', 401);
   const admissionIdentity = (req: Request, res: Response) => req.get('x-pluto-scanner') ? { scannerToken: req.get('x-pluto-scanner')! } : actor(res).uid;
   const bodyId = (req: Request, key = 'eventId') => id(req.body?.[key]);
+  router.post('/tickets/api/wallet/options', (_req, res) => res.json(digitalWallet.options()));
+  router.post('/tickets/api/wallet/apple', async (req, res) => {
+    if (!digitalWallet.options().apple) fail('Apple Wallet passes are not available yet.', 503, 'wallet-unavailable');
+    await service.rateLimit(res.locals.rateIdentity, 'wallet-export', 30);
+    res.json(await service.appleDownload(req.body, res.locals.actor));
+  });
+  router.post('/tickets/api/wallet/google', async (req, res) => {
+    await service.rateLimit(res.locals.rateIdentity, 'wallet-export', 30);
+    const ticket = await service.walletTicket(req.body, res.locals.actor), url = await digitalWallet.google(ticket);
+    const current = await service.walletTicket(req.body, res.locals.actor);
+    if (current.version !== ticket.version) fail('Your ticket changed. Refresh and try again.', 409);
+    res.json({ url });
+  });
+  router.get('/tickets/wallet/apple/:token', async (req, res) => {
+    await service.rateLimit(req.ip || 'unknown', 'wallet-download-network', 600, 60000, 8);
+    const ticket = await service.walletDownload(req.params.token), pass = await digitalWallet.apple(ticket);
+    const current = await service.walletDownload(req.params.token);
+    if (current.version !== ticket.version) fail('Your ticket changed. Open the app to try again.', 409);
+    res.type('application/vnd.apple.pkpass').set('Content-Disposition', 'attachment; filename="Pluto-ticket.pkpass"').send(pass);
+  });
   router.post('/tickets/api/rewards/redeem', async (req, res) => { const user = actor(res); await service.rateLimit(user.uid, 'reward-redeem', 60); res.json(await rewards.redeem(req.body, user)); });
   router.post('/tickets/api/rewards/claim', async (req, res) => { const user = actor(res); await service.rateLimit(user.uid, 'reward-claim', 60); res.json(await rewards.claim(req.body, user)); });
   const purchaseLimit = async (req: Request, res: Response, lane: string) => {

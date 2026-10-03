@@ -16,6 +16,7 @@ await cp(
   resolve(functionsRoot, "lib/content/manafest.json"),
 );
 await cp(resolve(repoRoot, 'assets/rentals/initial-inventory.json'), resolve(functionsRoot, 'lib/content/initial-inventory.json'));
+await cp(resolve(repoRoot, 'assets/experience/pluto-logo-small.png'), resolve(functionsRoot, 'lib/content/wallet-logo.png'));
 await cp(resolve(repoRoot, 'site/static/assets/rentals.css'), resolve(functionsRoot, 'lib/templates/rentals.css.njk'));
 await cp(
   resolve(repoRoot, "site/static/assets/site.css"),

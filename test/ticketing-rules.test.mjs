@@ -4,7 +4,7 @@ import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebas
 import { doc, getDoc, getDocs, setDoc, deleteDoc, collection } from 'firebase/firestore';
 import { ref, getBytes, uploadBytes, deleteObject } from 'firebase/storage';
 let env;
-const privateCollections = ['ticketingEvents', 'ticketingOrders', 'ticketingTickets', 'ticketingTransfers', 'ticketingHolderAccess', 'ticketingRecovery', 'ticketingAccess', 'ticketingRefunds', 'ticketingStaff', 'ticketingEmailJobs', 'ticketingWebhookInbox', 'ticketingScannerPins', 'ticketingScannerPinLookup', 'ticketingScannerSessions', 'ticketingOfflineLeases', 'ticketingRateLimits'];
+const privateCollections = ['ticketingEvents', 'ticketingOrders', 'ticketingTickets', 'ticketingTransfers', 'ticketingHolderAccess', 'ticketingRecovery', 'ticketingAccess', 'ticketingRefunds', 'ticketingStaff', 'ticketingEmailJobs', 'ticketingWebhookInbox', 'ticketingScannerPins', 'ticketingScannerPinLookup', 'ticketingScannerSessions', 'ticketingOfflineLeases', 'ticketingRateLimits', 'ticketingWalletDownloads'];
 before(async () => {
   if (!process.env.FIRESTORE_EMULATOR_HOST || !process.env.FIREBASE_STORAGE_EMULATOR_HOST) throw new Error('Local emulators required');
   env = await initializeTestEnvironment({ projectId: 'demo-pluto-ticketing', firestore: { host: '127.0.0.1', port: Number(process.env.FIRESTORE_EMULATOR_HOST.split(':').pop()), rules: await readFile('firestore.rules', 'utf8') }, storage: { host: '127.0.0.1', port: Number(process.env.FIREBASE_STORAGE_EMULATOR_HOST.split(':').pop()), rules: await readFile('storage.rules', 'utf8') } });

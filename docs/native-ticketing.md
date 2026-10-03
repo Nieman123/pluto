@@ -4,6 +4,10 @@ Branch: `native-ticketing`. Implemented for Pluto's website and Flutter web app 
 
 Admission tickets live at `/app/tickets`. Emails contain secure confirmation, recovery and transfer links back to the app, with no ticket PDF or QR attachment. The receipt PDF API produces financial receipts only. Accepted transfers revoke the old credential, and online duplicate scans are rejected. A current QR can still be screenshotted, so admission relies on the server's first accepted scan and the offline procedure.
 
+Admin event cards now show flyers and weekly gross revenue. Event dashboards include a daily revenue graph, period selection and exact daily figures, plus a View Public Page link using the published URL. Revenue uses each event's timezone and labels gross sales before refunds/tax/fees. Admission-only staff receive no financial summaries.
+
+Tickets have a Pluto QR frame, a four-module white border, pixel-aligned dark modules and an Enlarge QR control. Apple Wallet pass generation and Google Wallet save flows are implemented behind optional issuer configuration; real account/device acceptance is pending. See [digital wallet setup and activation gates](ticketing-digital-wallets.md). Existing saved passes do not yet get automatic status/metadata push updates; online admission still checks the current ticket credential.
+
 ## Requirement audit
 
 | Area | Implemented behavior | Validation / limits |
