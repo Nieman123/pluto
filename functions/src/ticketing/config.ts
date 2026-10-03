@@ -2,6 +2,7 @@ import Stripe from 'stripe';
 import { defineSecret } from 'firebase-functions/params';
 import { createPrivateKey, createPublicKey, sign, verify } from 'node:crypto';
 import { fail } from './domain';
+import { deploymentConfig } from '../deployment-config';
 
 export const stripeKey = defineSecret('STRIPE_RESTRICTED_KEY');
 export const webhookKey = defineSecret('STRIPE_WEBHOOK_SECRET');
@@ -9,9 +10,9 @@ export const signingKey = defineSecret('TICKETING_SIGNING_KEY');
 export const resendKey = defineSecret('RESEND_API_KEY');
 export const ticketingSecrets = [stripeKey, webhookKey, signingKey, resendKey];
 export const apiVersion = '2026-09-30.endive' as const;
-export const baseUrl = () => (process.env.TICKETING_BASE_URL || 'https://pluto.events').replace(/\/$/, '');
+export const baseUrl = () => deploymentConfig().baseUrl;
 export const appTicketsUrl = () => `${baseUrl()}/app/tickets`;
-export const isLive = () => process.env.TICKETING_MODE === 'live';
+export const isLive = () => { deploymentConfig(); return process.env.TICKETING_MODE === 'live'; };
 export function stripeClient() {
   const key = stripeKey.value();
   if (!/^(rk|sk)_(test|live)_/.test(key || '')) fail('Payments are not configured yet.', 503);

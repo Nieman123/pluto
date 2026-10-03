@@ -1,21 +1,14 @@
 importScripts('https://www.gstatic.com/firebasejs/8.4.1/firebase-app.js');
 importScripts('https://www.gstatic.com/firebasejs/8.4.1/firebase-messaging.js');
 
-const firebaseConfig = {
-    apiKey: "AIzaSyBLv7MumBOjUHpmAUiu9nLfhWvwmAYKorE",
-    authDomain: "pluto-9b6ca.firebaseapp.com",
-    projectId: "pluto-9b6ca",
-    storageBucket: "pluto-9b6ca.appspot.com",
-    messagingSenderId: "763906028056",
-    appId: "1:763906028056:web:c1261eba96f8b0c792896d",
-    measurementId: "G-Y6GBW8P032"
-  };
-   firebase.initializeApp(firebaseConfig);
+// compose-web generates the same public configuration used by SSR and Flutter.
+importScripts('/assets/firebase-public-config.js');
+if (!self.PLUTO_FIREBASE_CONFIG) throw new Error('Missing Firebase web configuration.');
+if (self.PLUTO_ENVIRONMENT !== 'emulator') {
+   firebase.initializeApp(self.PLUTO_FIREBASE_CONFIG);
    const messaging = firebase.messaging();
  
    messaging.onBackgroundMessage(function(payload) {
-     console.log('Received background message ', payload);
- 
      const notificationTitle = payload.notification.title;
      const notificationOptions = {
        body: payload.notification.body,
@@ -24,3 +17,4 @@ const firebaseConfig = {
      self.registration.showNotification(notificationTitle,
        notificationOptions);
    });
+}

@@ -55,6 +55,9 @@ Future<void> main() async {
     await FirebaseAuth.instance.useAuthEmulator(emulatorHost, 9095);
     FirebaseFirestore.instance.useFirestoreEmulator(emulatorHost, 8185);
     await FirebaseStorage.instance.useStorageEmulator(emulatorHost, 9295);
+  }
+  if (emulatorHost.isNotEmpty ||
+      const String.fromEnvironment('PLUTO_ENVIRONMENT') == 'staging') {
     await FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(false);
   }
   runApp(const MyApp());

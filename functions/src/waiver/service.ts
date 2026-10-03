@@ -5,11 +5,12 @@ import { getStorage } from 'firebase-admin/storage';
 import { consents, consentVersion, documentHash, electronicDisclosure, hash, sourcePdf, sourcePdfHash, version, waiverText } from './document';
 import { createSignedPdf, type SigningRecord } from './pdf';
 import { normalizeSearch, WaiverError, type Submission } from './validation';
+import { storageBucket } from '../deployment-config';
 
 const collection = 'manafestWaivers';
 export class WaiverService {
   private db = getFirestore();
-  private bucket = getStorage().bucket(process.env.WAIVER_STORAGE_BUCKET || 'pluto-9b6ca.appspot.com');
+  private bucket = getStorage().bucket(storageBucket('waiver'));
 
   async rateLimit(identity: string, lane: string, limit: number) {
     const hour = Math.floor(Date.now() / 3600000);

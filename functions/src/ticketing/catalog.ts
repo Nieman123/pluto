@@ -5,6 +5,7 @@ import sharp from 'sharp';
 import { randomUUID } from 'node:crypto';
 import { allMedia, fail, hash, id, integer, publicEvent, text, validateDraft, type EventDraft } from './domain';
 import { baseUrl, isLive } from './config';
+import { storageBucket } from '../deployment-config';
 import { revenueSummary } from './revenue';
 
 export class Catalog {
@@ -46,7 +47,7 @@ export class Catalog {
     if (!assetId) fail('Event flyer not found.', 404);
     const media = (await this.event(eventId).collection('media').doc(id(assetId)).get()).data();
     if (!media) fail('Event flyer not found.', 404);
-    return (await getStorage().bucket(process.env.TICKETING_STORAGE_BUCKET || 'pluto-9b6ca.appspot.com').file(media.path).download())[0];
+    return (await getStorage().bucket(storageBucket('ticketing')).file(media.path).download())[0];
   }
   async get(eventId: string, uid: string) { await this.role(uid, eventId); const s = await this.event(eventId).get(); if (!s.exists) fail('Event not found.', 404); return { id: s.id, ...s.data() }; }
   async save(eventId: string, raw: any, expectedRevision: unknown, uid: string) {
@@ -86,7 +87,7 @@ export class Catalog {
       offers: source.draft.offers.map((o: any) => ({ ...o, active: false, salesStart: new Date().toISOString(), salesEnd: shifted(o.salesEnd), validFrom: shifted(o.validFrom), validUntil: shifted(o.validUntil), stripeProductId: '', stripeTaxRateIds: [] })),
       promos: source.draft.promos.map((p: any) => ({ ...p, startsAt: new Date().toISOString(), endsAt: shifted(p.endsAt) })), tax: { mode: 'sandbox', confirmed: false, performanceLocationId: '' } };
     const result = await this.save(newId, draft, 0, uid);
-    const bucket = getStorage().bucket(process.env.TICKETING_STORAGE_BUCKET || 'pluto-9b6ca.appspot.com');
+    const bucket = getStorage().bucket(storageBucket('ticketing'));
     for (const m of allMedia(source.draft)) {
       const media = (await this.event(eventId).collection('media').doc(m.assetId).get()).data(); if (!media) continue;
       const path = `private/ticketing/${newId}/${m.assetId}.webp`; await bucket.file(media.path).copy(bucket.file(path));
@@ -152,7 +153,7 @@ export class Catalog {
     try { output = await sharp(bytes, { limitInputPixels: 25000000 }).rotate().resize(1800, 1800, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 85 }).toBuffer(); }
     catch { return fail('Upload a valid JPEG, PNG or WebP image.'); }
     const assetId = hash(output.toString('base64')), path = `private/ticketing/${eventId}/${assetId}.webp`;
-    await getStorage().bucket(process.env.TICKETING_STORAGE_BUCKET || 'pluto-9b6ca.appspot.com').file(path).save(output, { resumable: false, contentType: 'image/webp', metadata: { cacheControl: 'private, no-store' } });
+    await getStorage().bucket(storageBucket('ticketing')).file(path).save(output, { resumable: false, contentType: 'image/webp', metadata: { cacheControl: 'private, no-store' } });
     await this.event(eventId).collection('media').doc(assetId).set({ path, size: output.length, uploadedBy: uid, at: Date.now() });
     return { assetId, alt: '', caption: '', focalX: 50, focalY: 50 };
   }
@@ -160,7 +161,7 @@ export class Catalog {
     if (uid) await this.role(uid, eventId);
     else { const projection = (await this.db.collection('publishedEvents').doc(id(eventId)).get()).data(); if (!projection || !allMedia(projection as EventDraft).some(m => m.assetId === assetId)) fail('Image not found.', 404); }
     const record = (await this.event(eventId).collection('media').doc(id(assetId)).get()).data(); if (!record) fail('Image not found.', 404);
-    return (await getStorage().bucket(process.env.TICKETING_STORAGE_BUCKET || 'pluto-9b6ca.appspot.com').file(record.path).download())[0];
+    return (await getStorage().bucket(storageBucket('ticketing')).file(record.path).download())[0];
   }
   async setStaff(eventId: string, staffUid: string, roles: unknown, uid: string, promoterId = '') {
     await this.admin(uid); id(staffUid); id(eventId);

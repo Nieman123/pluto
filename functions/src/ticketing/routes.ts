@@ -10,6 +10,7 @@ import { clientIdentity } from './client-identity';
 import { email } from './domain';
 import { Rewards } from '../rewards';
 import { DigitalWallet } from './digital-wallet';
+import { allowedSiteOrigins } from '../deployment-config';
 
 export function ticketingRouter(context: (path: string) => Record<string, unknown>, service = new Operations()) {
   const router = express.Router();
@@ -96,8 +97,7 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   });
   router.use('/tickets/api', (req, _res, next) => {
     if (req.method !== 'POST') return next(new TicketingError(405, 'Use POST for ticketing requests.'));
-    const allowed = new Set([baseUrl(), 'https://www.pluto.events', 'https://pluto-9b6ca.web.app', 'https://pluto-9b6ca.firebaseapp.com']);
-    if (process.env.FIRESTORE_EMULATOR_HOST) { allowed.add('http://127.0.0.1:4173'); allowed.add('http://localhost:4173'); }
+    const allowed = allowedSiteOrigins();
     const origin = req.get('origin');
     // Native Flutter clients have no browser Origin/Fetch-Metadata headers.
     // Every private operation still requires its bearer token or scoped proof.

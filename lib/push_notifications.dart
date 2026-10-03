@@ -3,8 +3,12 @@ import 'package:flutter/foundation.dart';
 
 const String _webVapidKey =
     'BBwgiNd7-lSc0iqFjrIprkGQDgiV8Z67WprIVKqc3-hVFpanH9xOAnrHQKZ45h4JaMIp9nljQONhdqzBvpuJINE';
+const bool _previewNotificationsDisabled =
+    String.fromEnvironment('PLUTO_ENVIRONMENT') == 'staging' ||
+        String.fromEnvironment('FIREBASE_EMULATOR_HOST') != '';
 
 Future<Map<String, bool>> initializePushNotifications() async {
+  if (_previewNotificationsDisabled) return _statusMap(supported: false);
   final FirebaseMessaging messaging = FirebaseMessaging.instance;
   final bool supported = await messaging.isSupported();
   if (!supported) {
@@ -18,6 +22,7 @@ Future<Map<String, bool>> initializePushNotifications() async {
 }
 
 Future<Map<String, bool>> requestPushNotificationPermission() async {
+  if (_previewNotificationsDisabled) return _statusMap(supported: false);
   final FirebaseMessaging messaging = FirebaseMessaging.instance;
   final bool supported = await messaging.isSupported();
   if (!supported) {
