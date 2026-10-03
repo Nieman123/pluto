@@ -11,7 +11,7 @@ Admission tickets live at `/app/tickets`. Emails contain secure confirmation, re
 | Event editor | Hero/flyer/gallery/lineup uploads; alt text, captions, focal points; sanitized rich descriptions; dates/timezone, location/directions; FAQ/schedule/camping/parking/accessibility/custom sections with ordering/visibility; Pluto/Artwork Dark/Light themes, approved fonts and accent | Browser checks cover uploads, private preview, publication, duplication and responsive pages. Review artwork for private information before publishing. |
 | Publication | Draft save/revision conflicts, preview, publish/unpublish/archive/cancel, content history restore, duplicate with inactive offers and fresh inventory | Browser and emulator cover draft isolation, conflicts, duplicate assets and archive preserving published content. Restore preserves financial configuration/ledgers. |
 | Landing pages | SSR `/events/:slug`, discovery, canonical/social metadata, JSON-LD, sitemap, slug redirects, sale states and mobile purchase action | Desktop/mobile event pages pass automated WCAG A/AA checks. Existing POSH/ManaFest pages preserved. |
-| Tickets/inventory/promos | Multiple tiers/day/weekend/camping/vehicle offers, dependencies, shared pools, sales/admission windows, purchaser limits; one promo per order with windows/scope/global caps and fixed/percentage discounts | Firestore concurrency checks cover last-ticket and promo limits; exact cents computed server-side. |
+| Tickets/inventory/promos | Independently purchasable tiers/day/weekend/camping/vehicle offers, shared pools, sales/admission windows, purchaser limits; one promo per order with windows/scope/global caps and fixed/percentage discounts | Firestore concurrency checks cover last-ticket and promo limits; exact cents computed server-side. Legacy prerequisite fields are ignored. |
 | Checkout | Full embedded Stripe Checkout, guest/account buyers, USD inclusive prices, immutable saved attempts, trusted app return, delayed methods excluded, no invoice creation | Real sandbox Session creation and form rendering verified. Completed real card/wallet payment and real refund remain unverified. |
 | Payment reliability | Transactional reservations, idempotent provider calls, authoritative fulfillment, signed raw-body webhook inbox, repeated/stale delivery, expiry reconciliation and durable maintenance | Controlled Stripe substitute exercises transactions/money movement; actual SDK verifies HMAC. Uncertain creation outcomes retain holds for review. |
 | Customer app | Tickets tab, account orders, verified email claims, neutral recovery, one-use links, accepted holder links and saved browser guest wallet | App order/transfer/reload exercised in Chromium. Native installed-app guest storage is currently process-local; persistent secure storage/app links need platform work before offering that guest flow. |
@@ -27,13 +27,19 @@ Admission tickets live at `/app/tickets`. Emails contain secure confirmation, re
 ## Verification evidence
 
 - `npm test`: 28 Functions tests and 7 configuration checks pass, including existing ManaFest/rentals/waiver behavior.
-- `flutter analyze lib test`: no issues. `flutter test`: 9 pass. Functions, public assets and release Flutter web builds pass.
+- `flutter analyze lib test`: no issues. `flutter test`: 11 pass. Functions, public assets and release Flutter web builds pass.
 - `test:ticketing:integration`: concurrency, immutable attempts, fulfillment/expiry/cancel, transfers/refunds/admission, cash/comps, manual/automatic cash tax, Dashboard mapping, recovery/claims, receipt-only PDF, drafts/roles, late creation recovery, one-use email retries and signed repeated/stale webhooks pass using demo Firestore and a controlled Stripe substitute.
 - `test:ticketing:rules`: three access contexts pass; fixtures are removed afterward to avoid polluting previews.
-- `test:ticketing:browser`: uploads/private preview/publish/duplicate/mobile accessibility, Flutter QR/transfer/reload, saved guest wallet, offline reload/duplicate/replay and revoked-ticket conflict review.
+- `test:ticketing:browser`: large flyer upload/invalid-image retry, hero/gallery/private preview/publish/duplicate, explicit ticket-type save/reopen/reload, standalone vehicle pass, dashboard/studio navigation, desktop/mobile accessibility, Flutter QR/transfer/reload, saved guest wallet and account completion, offline reload/duplicate/replay and revoked-ticket conflict review.
 - Real sandbox API keys, embedded Checkout Session creation and form rendering verified. Automated payment stopped at Stripe's AI-agent acknowledgement; no successful real PaymentIntent/card charge is claimed.
 
 ## Local preview
+
+Admin flow: `/tickets/admin` → choose an event → orders/performance dashboard → **Event studio**. New events open directly in the studio. **Save ticket types** persists the entire current draft and displays saved/unsaved feedback; **Publish** applies it to the public page and ticket sale options. Dashboard/All events save pending changes before navigation. There is also a sticky Save draft control.
+
+Artwork uploads accept JPEG/PNG/WebP sources up to 20 MB, resize them in the browser and send the resulting image within the backend's 5 MB limit. Errors appear beside the upload control and allow retry. Draft artwork stays private until publication.
+
+Guest tickets offer account creation/sign-in with a return to the wallet. Signup prefills the purchase contact using temporary browser storage, with no email or ticket credential in the auth URL. Email verification is required before purchases can be claimed. The wallet stays usable during setup and links to events and the app dashboard. Local web Auth is connected before FlutterFire restores saved sessions; this bootstrap matches the installed SDK's Auth dependencies and its reload test must be kept when upgrading FlutterFire. Live builds skip this bootstrap.
 
 Use Node 22, the repository's Flutter version and Java 21. Run from the repository root; keep emulators, webhook listener and preview in separate terminals.
 

@@ -110,7 +110,18 @@ class AuthAwareSignedInAppShell extends StatelessWidget {
       builder: (BuildContext context, AsyncSnapshot<User?> snapshot) {
         final User? user = snapshot.data;
         if (user == null) {
-          return currentPath == '/tickets' ? Scaffold(body: child) : child;
+          if (currentPath != '/tickets') return child;
+          return Scaffold(
+            appBar: const NavBar(isDarkModeBtnVisible: true),
+            body: Stack(children: <Widget>[
+              const PlutoBackground(),
+              Center(
+                  child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1200),
+                child: child,
+              )),
+            ]),
+          );
         }
 
         final SignedInAppTab selectedTab =

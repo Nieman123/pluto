@@ -18,6 +18,7 @@ import 'push_notifications.dart' deferred as push_notifications;
 import 'schedule.dart' deferred as schedule;
 import 'sign_on_page.dart' deferred as sign_on_page;
 import 'sign_up_page.dart' deferred as sign_up_page;
+import 'src/configure_firebase_emulators.dart';
 import 'src/configure_web.dart';
 import 'src/deferred_widget.dart';
 import 'src/signed_in/signed_in_app_shell.dart';
@@ -39,17 +40,17 @@ Future<void> main() async {
     throw StateError(
         'Local previews require a loopback host and a demo Firebase project.');
   }
-  await Firebase.initializeApp(
-    options: emulatorHost.isEmpty
-        ? DefaultFirebaseOptions.currentPlatform
-        : const FirebaseOptions(
-            apiKey: 'demo-preview-key',
-            appId: '1:123:web:preview',
-            messagingSenderId: '123',
-            projectId: emulatorProject,
-            authDomain: '$emulatorProject.firebaseapp.com',
-            storageBucket: '$emulatorProject.appspot.com'),
-  );
+  final FirebaseOptions options = emulatorHost.isEmpty
+      ? DefaultFirebaseOptions.currentPlatform
+      : const FirebaseOptions(
+          apiKey: 'demo-preview-key',
+          appId: '1:123:web:preview',
+          messagingSenderId: '123',
+          projectId: emulatorProject,
+          authDomain: '$emulatorProject.firebaseapp.com',
+          storageBucket: '$emulatorProject.appspot.com');
+  await configureFirebaseEmulators(emulatorHost, options.asMap);
+  await Firebase.initializeApp(options: options);
   if (emulatorHost.isNotEmpty) {
     await FirebaseAuth.instance.useAuthEmulator(emulatorHost, 9095);
     FirebaseFirestore.instance.useFirestoreEmulator(emulatorHost, 8185);
@@ -79,7 +80,8 @@ class _MyAppState extends State<MyApp> {
 
   bool get _shouldShowNotificationPrompt {
     return !_isCheckingNotificationSupport &&
-        _router.routeInformationProvider.value.uri.path != '/tickets' &&
+        !<String>['/tickets', '/sign-up', '/sign-on']
+            .contains(_router.routeInformationProvider.value.uri.path) &&
         _notificationsSupported &&
         !_hasNotificationPermission &&
         !_notificationPromptDismissed;
@@ -100,6 +102,7 @@ class _MyAppState extends State<MyApp> {
         Animation<double> secondaryAnimation,
         Widget child,
       ) {
+        if (MediaQuery.disableAnimationsOf(context)) return child;
         final CurvedAnimation curvedAnimation = CurvedAnimation(
           parent: animation,
           curve: Curves.easeOutCubic,
@@ -233,7 +236,8 @@ class _MyAppState extends State<MyApp> {
         builder: (BuildContext context, GoRouterState state) {
           return DeferredWidget(
             loadLibrary: sign_on_page.loadLibrary,
-            builder: (BuildContext context) => sign_on_page.SignOnPage(),
+            builder: (BuildContext context) => sign_on_page.SignOnPage(
+                returnTo: state.uri.queryParameters['returnTo']),
           );
         },
       ),
@@ -242,7 +246,8 @@ class _MyAppState extends State<MyApp> {
         builder: (BuildContext context, GoRouterState state) {
           return DeferredWidget(
             loadLibrary: sign_up_page.loadLibrary,
-            builder: (BuildContext context) => sign_up_page.SignUpPage(),
+            builder: (BuildContext context) => sign_up_page.SignUpPage(
+                returnTo: state.uri.queryParameters['returnTo']),
           );
         },
       ),

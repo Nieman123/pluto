@@ -5,10 +5,13 @@ import 'package:go_router/go_router.dart';
 
 import 'src/background/pluto_background.dart';
 import 'src/nav_bar/nav_bar.dart';
+import 'src/ticket_access_store.dart';
+import 'src/ticket_account_flow.dart';
 import 'user_profile_repository.dart';
 
 class SignUpPage extends StatefulWidget {
-  const SignUpPage({Key? key}) : super(key: key);
+  const SignUpPage({Key? key, this.returnTo}) : super(key: key);
+  final String? returnTo;
 
   @override
   State<SignUpPage> createState() => _SignUpPageState();
@@ -34,6 +37,22 @@ class _SignUpPageState extends State<SignUpPage> {
   bool _hidePassword = true;
   bool _hideConfirmPassword = true;
   String _statusMessage = '';
+
+  @override
+  void initState() {
+    super.initState();
+    if (ticketAccountReturn(widget.returnTo) != null) {
+      _emailController.text = ticketAccessRead('pluto-account-email') ?? '';
+      _displayNameController.text =
+          ticketAccessRead('pluto-account-name') ?? '';
+    }
+  }
+
+  void _finishAccount() {
+    ticketAccessRemove('pluto-account-email');
+    ticketAccessRemove('pluto-account-name');
+    context.go(ticketAccountReturn(widget.returnTo) ?? '/');
+  }
 
   @override
   void dispose() {
@@ -146,7 +165,7 @@ class _SignUpPageState extends State<SignUpPage> {
       if (!mounted) {
         return;
       }
-      context.go('/');
+      _finishAccount();
     } on FirebaseAuthException catch (error) {
       if (!mounted) {
         return;
@@ -204,7 +223,7 @@ class _SignUpPageState extends State<SignUpPage> {
       if (!mounted) {
         return;
       }
-      context.go('/');
+      _finishAccount();
     } on FirebaseAuthException catch (error) {
       if (!mounted) {
         return;
@@ -411,9 +430,11 @@ class _SignUpPageState extends State<SignUpPage> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          const Text(
-            'Start earning tonight',
-            style: TextStyle(
+          Text(
+            ticketAccountReturn(widget.returnTo) != null
+                ? 'Keep your tickets close'
+                : 'Start earning tonight',
+            style: const TextStyle(
               color: _textColor,
               fontSize: 24,
               fontWeight: FontWeight.w900,
@@ -421,9 +442,11 @@ class _SignUpPageState extends State<SignUpPage> {
             ),
           ),
           const SizedBox(height: 7),
-          const Text(
-            'Create your account with the email you will use at events.',
-            style: TextStyle(
+          Text(
+            ticketAccountReturn(widget.returnTo) != null
+                ? 'Use your purchase email. After creating your account, verify it in the ticket wallet to link your orders across devices.'
+                : 'Create your account with the email you will use at events.',
+            style: const TextStyle(
               color: _mutedTextColor,
               fontSize: 14,
               height: 1.45,
@@ -639,7 +662,15 @@ class _SignUpPageState extends State<SignUpPage> {
                 ),
               ),
               TextButton(
-                onPressed: _isBusy ? null : () => context.go('/sign-on'),
+                onPressed: _isBusy
+                    ? null
+                    : () => context.go(Uri(
+                          path: '/sign-on',
+                          queryParameters: <String, String>{
+                            if (ticketAccountReturn(widget.returnTo) != null)
+                              'returnTo': ticketAccountReturn(widget.returnTo)!,
+                          },
+                        ).toString()),
                 style: TextButton.styleFrom(
                   foregroundColor: _accentColor,
                 ),
