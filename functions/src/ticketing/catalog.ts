@@ -5,6 +5,7 @@ import sharp from 'sharp';
 import { randomUUID } from 'node:crypto';
 import { allMedia, fail, hash, id, integer, publicEvent, text, validateDraft, type EventDraft } from './domain';
 import { baseUrl, isLive } from './config';
+import { revenueSummary } from './revenue';
 
 export class Catalog {
   constructor(public db: Firestore = getFirestore()) {}
@@ -28,12 +29,24 @@ export class Catalog {
       tx.set(ref, { count: count + 1, expiresAt: Timestamp.fromMillis((bucket + 2) * windowMs) });
     });
   }
-  async list(uid: string) {
+  async list(uid: string, includeRevenue = false) {
     const admin = (await this.db.collection('adminUsers').doc(uid).get()).exists;
     const scopes = admin ? [] : (await this.db.collection('ticketingStaff').where('uid', '==', uid).get()).docs.map(d => d.data());
     const snapshot = admin ? await this.db.collection('ticketingEvents').get() : null;
     const events = snapshot ? snapshot.docs : (await Promise.all(scopes.map(s => this.event(s.eventId).get()))).filter(d => d.exists);
-    return { admin, events: events.map(d => { const e = d.data()!; return { id: d.id, title: e.draft.title, slug: e.draft.slug, startAt: e.draft.startAt, city: e.draft.city, region: e.draft.region, registrationMode: (e.liveDraft || e.draft).registrationMode || 'tickets', status: e.status, revision: e.revision, roles: admin ? ['manager', 'cash', 'refund', 'admission'] : scopes.find(s => s.eventId === d.id)?.roles || [] }; }) };
+    return { admin, events: await Promise.all(events.map(async d => { const e = d.data()!, roles = admin ? ['manager', 'cash', 'refund', 'admission'] : scopes.find(s => s.eventId === d.id)?.roles || [];
+      const financial = includeRevenue && roles.some((r: string) => ['manager', 'cash', 'refund'].includes(r));
+      const orders = financial ? (await this.db.collection('ticketingOrders').where('eventId', '==', d.id).get()).docs.map(o => o.data()) : [];
+      return { id: d.id, title: e.draft.title, slug: e.draft.slug, publishedSlug: e.status !== 'draft' ? e.publishedSlug || '' : '', startAt: e.draft.startAt, city: e.draft.city, region: e.draft.region, timezone: e.draft.timezone, flyer: !!e.draft.flyer?.assetId,
+        ...(financial ? { revenue: revenueSummary(orders, e.draft.timezone) } : {}), registrationMode: (e.liveDraft || e.draft).registrationMode || 'tickets', status: e.status, revision: e.revision, roles }; })) };
+  }
+  async cardFlyer(eventId: string, uid: string) {
+    await this.role(uid, eventId, ['manager', 'cash', 'refund', 'admission', 'promoter']);
+    const event = (await this.event(eventId).get()).data(), assetId = event?.draft.flyer?.assetId;
+    if (!assetId) fail('Event flyer not found.', 404);
+    const media = (await this.event(eventId).collection('media').doc(id(assetId)).get()).data();
+    if (!media) fail('Event flyer not found.', 404);
+    return (await getStorage().bucket(process.env.TICKETING_STORAGE_BUCKET || 'pluto-9b6ca.appspot.com').file(media.path).download())[0];
   }
   async get(eventId: string, uid: string) { await this.role(uid, eventId); const s = await this.event(eventId).get(); if (!s.exists) fail('Event not found.', 404); return { id: s.id, ...s.data() }; }
   async save(eventId: string, raw: any, expectedRevision: unknown, uid: string) {

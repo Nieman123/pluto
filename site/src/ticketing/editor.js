@@ -3,6 +3,7 @@ import { scannerPins } from './scanner-pins.js';
 import { adminGuestList } from './guestlist.js';
 import { adminRsvps } from './rsvps.js';
 import { financialSummary } from './financial-summary.js';
+import { revenueChart } from './revenue-chart.js';
 
 let record, events = [], dirty = false, pendingUploads = 0, studio = false, globalAdmin = false, saving;
 const get = (path, object = record?.draft) => path.split('.').reduce((o, key) => o?.[key], object);
@@ -61,7 +62,7 @@ function defaultDraft() {
     pools: [{ id: 'admission', name: 'General admission', capacity: 200 }], offers: [{ id: 'general', name: 'General admission', description: '', kind: 'admission', unitAmount: 4000, maxPerOrder: 10, salesStart, salesEnd: endAt, validFrom: startAt, validUntil: endAt, active: true, pools: { admission: 1 }, requiresOfferIds: [], taxCode: '', stripeProductId: '', stripeTaxRateIds: [] }], promos: [], tax: { mode: 'sandbox', confirmed: false, performanceLocationId: '' } };
 }
 export async function loadEvents() {
-  const result = await api('staff/events'); events = result.events; globalAdmin = result.admin;
+  const result = await api('staff/events', { revenue: true }); events = result.events; globalAdmin = result.admin;
   const selector = document.querySelector('#staff-event'), current = selector.value;
   selector.innerHTML = '<option value="">Select an event</option>' + events.map(e => `<option value="${esc(e.id)}">${esc(e.title)} · ${esc(e.status)}</option>`).join('');
   if (events.some(e => e.id === current)) selector.value = current;
@@ -70,7 +71,14 @@ export async function loadEvents() {
   const roleButton = document.querySelector('#event-roles'); if (roleButton) roleButton.hidden = !result.admin;
   const cards = document.querySelector('#event-list');
   if (cards) {
-    cards.innerHTML = events.length ? events.map(e => `<button class="admin-event-card" data-open-event="${esc(e.id)}"><span class="status-pill status-${esc(e.status)}">${esc(e.status)}</span><span class="event-card-date">${esc(new Date(e.startAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }))}</span><strong>${esc(e.title)}</strong><span>${esc(e.city || 'Location to be announced')}${e.region ? `, ${esc(e.region)}` : ''}</span><span class="card-action">View dashboard <span aria-hidden="true">↗</span></span></button>`).join('') : '<div class="empty-state"><h3>Your next event starts here.</h3><p>Create an event, add the artwork and ticket types, then publish when you’re ready.</p></div>';
+    cards.innerHTML = events.length ? events.map(e => `<button class="admin-event-card ${e.flyer ? 'has-flyer' : ''}" data-open-event="${esc(e.id)}">${e.flyer ? `<img class="admin-card-flyer" data-card-flyer="${esc(e.id)}" alt="Flyer for ${esc(e.title)}">` : ''}<span class="status-pill status-${esc(e.status)}">${esc(e.status)}</span><span class="event-card-date">${esc(new Date(e.startAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: e.timezone }))}</span><strong>${esc(e.title)}</strong><span>${esc(e.city || 'Location to be announced')}${e.region ? `, ${esc(e.region)}` : ''}</span>${e.revenue ? `<span class="card-revenue"><span>This week <b>${money(e.revenue.thisWeek)}</b></span><span>Total gross <b>${money(e.revenue.gross)}</b></span></span>` : ''}<span class="card-action">View dashboard <span aria-hidden="true">↗</span></span></button>`).join('') : '<div class="empty-state"><h3>Your next event starts here.</h3><p>Create an event, add the artwork and ticket types, then publish when you’re ready.</p></div>';
+    cards.querySelectorAll('[data-card-flyer]').forEach(async image => {
+      try { const blob = await api('staff/card-flyer', { eventId: image.dataset.cardFlyer }, true), url = URL.createObjectURL(blob); image.onload = image.onerror = () => URL.revokeObjectURL(url); image.src = url; }
+      catch { image.remove(); }
+    });
+    const weekly = document.querySelector('#weekly-revenue'), financial = events.filter(e => e.revenue);
+    weekly.hidden = !financial.length;
+    weekly.innerHTML = `<div class="ticket-stat-grid weekly-stat-grid">${[['This week', 'thisWeek'], ['Last week', 'lastWeek'], ['Total gross revenue', 'gross']].map(([label, key]) => `<div class="ticket-stat"><span>${label}</span><strong>${money(financial.reduce((n, e) => n + e.revenue[key], 0))}</strong></div>`).join('')}</div><p class="revenue-note">Paid gross sales · Monday–Sunday in each event’s timezone · before refunds, tax and fees</p>`;
     cards.querySelectorAll('[data-open-event]').forEach(button => button.onclick = () => action(button, () => selectEvent(button.dataset.openEvent)));
     const requested = new URLSearchParams(location.search).get('event');
     if (!record && requested && events.some(e => e.id === requested) && document.querySelector('#event-workspace')?.hidden) await selectEvent(requested, new URLSearchParams(location.search).get('view') === 'studio');
@@ -85,8 +93,12 @@ async function selectEvent(eventId, edit = false) {
   const scope = events.find(e => e.id === eventId);
   studio = edit; document.querySelector('#staff-event').value = eventId;
   document.querySelector('#events-index').hidden = true; document.querySelector('#event-workspace').hidden = false;
+  document.querySelector('#events-back').hidden = false;
   document.querySelector('#workspace-title').textContent = scope?.title || 'Your event'; document.querySelector('#workspace-status').textContent = scope?.status || 'draft';
   document.querySelector('#event-studio').hidden = edit || !scope?.roles.includes('manager');
+  const publicPage = document.querySelector('#event-public-page');
+  publicPage.hidden = edit || !scope?.publishedSlug;
+  publicPage.href = scope?.publishedSlug ? `/events/${encodeURIComponent(scope.publishedSlug)}` : '#';
   document.querySelector('#event-roles').hidden = !globalAdmin || edit;
   document.querySelector('#event-scanner-pins').hidden = !scope?.roles.includes('manager');
   document.querySelector('#event-promoter-stats').hidden = edit || !scope?.roles.includes('promoter');
@@ -246,6 +258,8 @@ async function dashboard() {
       content.querySelector('form').onsubmit = event => { event.preventDefault(); action(event.submitter, async () => { selected ??= new FormData(event.target).getAll('ticket'); if (!selected.length) throw new Error('Select at least one ticket.'); await api('staff/refund', { orderId: order.orderId, ticketIds: selected, attempt }); document.querySelector('#ticketing-dialog').close(); await dashboard(); message('Refund approved. Pending payment-provider refunds remain blocked from admission.'); }); };
     }));
   }
+  const graph = document.createElement('section'); graph.className = 'revenue-panel'; graph.setAttribute('aria-label', 'Revenue tracking'); root.querySelector('.ticket-stat-grid').before(graph);
+  revenueChart(graph, data.orders, record?.draft.timezone || events.find(e => e.id === eventId)?.timezone || 'America/New_York');
   rows(); root.querySelector('#order-filter').oninput = event => rows(event.target.value);
   if (record) render();
   if (record) {
@@ -294,7 +308,7 @@ export function initEditor() {
   document.querySelector('#staff-event')?.addEventListener('change', event => action(null, async () => { if (dirty) { event.target.value = record.id; message('Save your draft before switching events.', true); return; } await selectEvent(event.target.value); }));
   bind('#event-studio', () => selectEvent(document.querySelector('#staff-event').value, true));
   bind('#event-orders', async () => { if (dirty) await save(); await selectEvent(document.querySelector('#staff-event').value); });
-  bind('#events-back', async () => { if (dirty) await save(); record = null; document.querySelector('#staff-event').value = ''; document.querySelector('#event-workspace').hidden = true; document.querySelector('#events-index').hidden = false; history.replaceState(null, '', '/tickets/admin'); await loadEvents(); });
+  bind('#events-back', async () => { if (dirty) await save(); record = null; document.querySelector('#staff-event').value = ''; document.querySelector('#event-workspace').hidden = true; document.querySelector('#events-index').hidden = false; document.querySelector('#events-back').hidden = true; history.replaceState(null, '', '/tickets/admin'); await loadEvents(); });
   bind('#event-cash', cash); bind('#event-roles', roles);
   bind('#event-scanner-pins', scannerPins);
   bind('#event-promoter-stats', async () => { const data = await api('staff/promoter-stats', { eventId: document.querySelector('#staff-event').value }); document.querySelector('#event-dashboard').innerHTML = `<h2>Your promoter performance</h2><p>${esc(data.promoterId)}</p><div class="ticket-stat-grid">${[['Attributed orders', data.orders], ['Ticket units', data.tickets], ['Gross', money(data.gross)], ['Refunds', money(data.refunds)]].map(([label, value]) => `<div class="ticket-stat"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('')}</div>`; });

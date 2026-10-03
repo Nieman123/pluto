@@ -140,7 +140,8 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   router.post('/tickets/api/transfer', async (req, res) => res.json(await service.transfer(bodyId(req, 'orderId'), req.body.accessKey, res.locals.actor, bodyId(req, 'ticketId'), req.body.email, req.body.holderToken)));
   router.post('/tickets/api/transfer/accept', async (req, res) => res.json(await service.acceptTransfer(req.body.token, res.locals.actor)));
   router.post('/tickets/api/holder', async (req, res) => res.json(await service.holder(req.body.token, res.locals.actor)));
-  router.post('/tickets/api/staff/events', async (_req, res) => res.json(await service.list(actor(res).uid)));
+  router.post('/tickets/api/staff/events', async (req, res) => res.json(await service.list(actor(res).uid, req.body.revenue === true)));
+  router.post('/tickets/api/staff/card-flyer', async (req, res) => res.type('webp').send(await service.cardFlyer(bodyId(req), actor(res).uid)));
   router.post('/tickets/api/staff/guestlist', async (req, res) => res.json(await service.guestList(bodyId(req), admissionIdentity(req, res))));
   router.post('/tickets/api/staff/guestlist/add', async (req, res) => res.json(await service.addGuests(bodyId(req), req.body.names, req.body.note, req.body.attempt, actor(res).uid)));
   router.post('/tickets/api/staff/guestlist/save', async (req, res) => res.json(await service.saveGuest(bodyId(req), bodyId(req, 'guestId'), req.body.name, req.body.note, req.body.version, actor(res).uid)));
