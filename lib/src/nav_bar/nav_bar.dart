@@ -29,6 +29,11 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
     icon: Icons.dashboard,
     route: '/',
   );
+  static const _NavMenuAction _ticketsMenuAction = _NavMenuAction.route(
+    label: 'Tickets',
+    icon: Icons.confirmation_number_outlined,
+    route: '/tickets',
+  );
   static const List<_NavMenuAction> _homeSectionMenuActions = <_NavMenuAction>[
     _NavMenuAction.homeSection(
       label: 'Events',
@@ -103,6 +108,7 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
     return <_NavMenuAction>[
       _dashboardMenuAction,
       ...compactHomeActions(showSectionSubItems: showHomeSectionSubItems),
+      _ticketsMenuAction,
       const _NavMenuAction.route(
         label: 'Rewards Shop',
         icon: Icons.card_giftcard,
@@ -137,6 +143,7 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
   }) {
     return <_NavMenuAction>[
       ...compactHomeActions(showSectionSubItems: showHomeSectionSubItems),
+      _ticketsMenuAction,
       const _NavMenuAction.route(
         label: 'Create Account',
         icon: Icons.person_add_alt_1,
