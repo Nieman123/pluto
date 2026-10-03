@@ -141,7 +141,7 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   router.post('/tickets/api/staff/guestlist/add', async (req, res) => res.json(await service.addGuests(bodyId(req), req.body.names, req.body.note, req.body.attempt, actor(res).uid)));
   router.post('/tickets/api/staff/guestlist/save', async (req, res) => res.json(await service.saveGuest(bodyId(req), bodyId(req, 'guestId'), req.body.name, req.body.note, req.body.version, actor(res).uid)));
   router.post('/tickets/api/staff/guestlist/remove', async (req, res) => res.json(await service.saveGuest(bodyId(req), bodyId(req, 'guestId'), '', '', req.body.version, actor(res).uid, true)));
-  router.post('/tickets/api/staff/guestlist/arrive', async (req, res) => res.json(await service.arriveGuest(bodyId(req), bodyId(req, 'guestId'), req.body.scanId, admissionIdentity(req, res), req.body.offline === true)));
+  router.post('/tickets/api/staff/guestlist/arrive', async (req, res) => res.json(await service.arriveGuest(bodyId(req), bodyId(req, 'guestId'), req.body.scanId, admissionIdentity(req, res), req.body.offline === true, req.body)));
   router.post('/tickets/api/staff/scanner-pins', async (req, res) => res.json(await service.scannerPins(bodyId(req), actor(res).uid)));
   router.post('/tickets/api/staff/scanner-pins/create', async (req, res) => res.json(await service.createScannerPin(bodyId(req), req.body.label, req.body.expiresAt, actor(res).uid)));
   router.post('/tickets/api/staff/scanner-pins/revoke', async (req, res) => res.json(await service.revokeScannerPin(bodyId(req), bodyId(req, 'pinId'), actor(res).uid)));
@@ -169,7 +169,10 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   router.post('/tickets/api/staff/refund', async (req, res) => res.json(await service.refund(bodyId(req, 'orderId'), req.body.ticketIds, req.body.attempt, actor(res).uid)));
   router.post('/tickets/api/staff/refund-external', async (req, res) => res.json(await service.mapExternalRefund(bodyId(req, 'orderId'), req.body.ticketIds, actor(res).uid)));
   router.post('/tickets/api/staff/checkout-resolve', async (req, res) => res.json(await service.resolveCheckout(bodyId(req, 'orderId'), req.body.sessionId, req.body.note, actor(res).uid)));
-  router.post('/tickets/api/staff/scan', async (req, res) => res.json(await service.scan(bodyId(req), req.body.qr, req.body.scanId, admissionIdentity(req, res), req.body.offline === true)));
+  router.post('/tickets/api/staff/scan', async (req, res) => res.json(await service.scan(bodyId(req), req.body.qr, req.body.scanId, admissionIdentity(req, res), req.body.offline === true, req.body)));
+  router.post('/tickets/api/staff/offline-submit', async (req, res) => res.json(await service.submitOfflineReview(bodyId(req), req.body, actor(res).uid)));
+  router.post('/tickets/api/staff/offline-conflicts', async (req, res) => res.json(await service.offlineConflicts(bodyId(req), actor(res).uid)));
+  router.post('/tickets/api/staff/offline-resolve', async (req, res) => res.json(await service.resolveOfflineScan(bodyId(req), req.body.scanId, req.body.decision, req.body.note, actor(res).uid)));
   router.post('/tickets/api/staff/manifest', async (req, res) => res.json(await service.manifest(bodyId(req), admissionIdentity(req, res))));
   router.post('/tickets/api/staff/scan-review', async (req, res) => res.json(await service.reviewScan(bodyId(req), req.body.scanId, req.body.note, admissionIdentity(req, res))));
   router.use((error: any, req: Request, res: Response, next: express.NextFunction) => {

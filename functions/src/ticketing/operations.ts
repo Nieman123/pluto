@@ -8,6 +8,10 @@ import { appTicketsUrl, baseUrl, isLive, keyPair, resendKey } from './config';
 import { scannerAccess } from './scanner-access';
 
 export class Operations extends Rsvps {
+  async submitOfflineReview(eventId: string, raw: any, uid: string) {
+    await this.role(uid, eventId, ['manager']);
+    return raw.kind === 'guest' ? this.arriveGuest(eventId, id(raw.guestId), raw.scanId, uid, true, raw, true) : this.scan(eventId, raw.qr, raw.scanId, uid, true, raw, true);
+  }
   scannerPinHash(pin: string) {
     // A keyed lookup prevents a leaked database from enumerating the short PIN space.
     const key = keyPair(this.signing()).privateKey.export({ type: 'pkcs8', format: 'der' });

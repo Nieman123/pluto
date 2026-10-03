@@ -115,7 +115,8 @@ async function main() {
   await assert.rejects(() => service.addGuests(pinEvent, ['Forged'], '', newKey(), scannerLogin.uid), /does not have access/);
   let guests = (await service.guestList(pinEvent, proof)).guests; assert.equal(guests.length, 3, 'bulk add retries cannot duplicate guests');
   assert.deepEqual((await service.event(pinEvent).collection('pools').doc('friday').get()).data(), guestPoolBefore, 'guest list leaves ticket stock intact');
-  assert.equal((await service.manifest(pinEvent, proof)).guests.length, 3, 'offline manifest contains authorized guest list');
+  const guestManifest = await service.manifest(pinEvent, proof);
+  assert.equal(guestManifest.guests.length, 3, 'offline manifest contains authorized guest list');
   await assert.rejects(() => service.guestList(eventId, proof), /assigned event/);
   const guest = guests[0]; await service.saveGuest(pinEvent, guest.id, 'Alex Updated', 'Door note', guest.version, staff);
   await assert.rejects(() => service.saveGuest(pinEvent, guest.id, 'Stale edit', '', guest.version, staff), /edited by someone else/);
@@ -128,8 +129,9 @@ async function main() {
   const removedAttempt = randomUUID(); assert.equal((await service.arriveGuest(pinEvent, removedGuest.id, removedAttempt, proof, true)).result, 'invalid');
   await service.reviewScan(pinEvent, removedAttempt, 'Guest removed from list after offline preparation.', proof);
   const offlineGuest = guests[2], guestScanId = randomUUID();
-  assert.equal((await service.arriveGuest(pinEvent, offlineGuest.id, guestScanId, proof, true)).result, 'accepted');
-  assert.equal((await service.arriveGuest(pinEvent, offlineGuest.id, guestScanId, proof, true)).result, 'accepted', 'replayed guest check-in is idempotent');
+  const guestEvidence = { leaseToken: guestManifest.leaseToken, itemProof: guestManifest.guests.find(g => g.id === offlineGuest.id).itemProof, guestVersion: offlineGuest.version, deviceTime: Date.now() };
+  assert.equal((await service.arriveGuest(pinEvent, offlineGuest.id, guestScanId, proof, true, guestEvidence)).result, 'accepted');
+  assert.equal((await service.arriveGuest(pinEvent, offlineGuest.id, guestScanId, proof, true, guestEvidence)).result, 'accepted', 'replayed guest check-in is idempotent');
   await assert.rejects(() => service.arriveGuest(pinEvent, guest.id, guestScanId, proof), /attempt mismatch/);
   const pinOrder = await service.checkout(request(pinEvent, { reason: 'PIN scanner acceptance', items: [{ offerId: 'weekend', quantity: 3 }] }), null, 'comp', staff);
   const pinView = await service.view(pinOrder.orderId, undefined, { uid: '' }), [pinTicket, revokedTicket, expiredTicket] = pinView.tickets;

@@ -13,7 +13,7 @@
     "test:rentals:rules": "node --test test/rentals-rules.test.mjs",
     "test:waiver:integration": "npm --prefix functions run test:waiver:integration",
     "test:ticketing:integration": "node functions/test/ticketing-integration.cjs",
-    "test:ticketing:hardening": "node --test functions/test/ticketing-hardening.cjs",
+    "test:ticketing:hardening": "node --test functions/test/ticketing-hardening.cjs functions/test/offline-hardening.cjs",
     "test:ticketing:rsvp": "node functions/test/rsvp-integration.cjs",
     "test:ticketing:rules": "node --test test/ticketing-rules.test.mjs",
     "test:ticketing:browser": "node scripts/ticketing/browser-test.cjs",

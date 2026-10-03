@@ -1,12 +1,13 @@
 import Stripe from 'stripe';
 import { randomUUID } from 'node:crypto';
 import { type DecodedIdToken } from 'firebase-admin/auth';
-import { type Firestore } from 'firebase-admin/firestore';
+import { Timestamp, type Firestore, type Transaction } from 'firebase-admin/firestore';
 import { Catalog } from './catalog';
 import { apiVersion, appTicketsUrl, baseUrl, isLive, keyPair, readTicket, signTicket, stripeClient } from './config';
 import { assertCapacity, cart, email, fail, hash, id, integer, receipt, secret, text, ticketId, type EventDraft, type Unit } from './domain';
 import { scannerAccess, type ScannerProof } from './scanner-access';
 import { guestEntry } from './guest-entry';
+import { readOfflineItem, signOfflineItem, type OfflineSubmission } from './offline-proof';
 
 export interface Order {
   eventId: string; eventTitle: string; eventSlug: string; ownerUid: string; email: string; name: string; accessHash: string; inputHash: string;
@@ -456,24 +457,48 @@ export class Orders extends Catalog {
       transferable: !ticket.rsvp && !ticket.admission && Date.now() < this.transferDeadline(ticket, event), qr: this.credential(ticket, access.ticketId),
       venue: { name: (event.liveDraft || event.draft).venueName, address: (event.liveDraft || event.draft).address, directions: (event.liveDraft || event.draft).directions } };
   }
-  async scan(eventId: string, qr: unknown, scanId: unknown, identity: string | ScannerProof, offline = false) {
-    if (typeof identity === 'string') await this.role(identity, eventId, ['admission']);
+  protected async admissionAccess(identity: string | ScannerProof, eventId: string, tx: Transaction, manager = false) {
+    if (typeof identity !== 'string') {
+      if (manager) fail('Manager access is required for offline resolution.', 403);
+      return scannerAccess(this.db, identity, eventId, tx);
+    }
+    const admin = await tx.get(this.db.collection('adminUsers').doc(identity));
+    const scope = await tx.get(this.db.collection('ticketingStaff').doc(`${id(eventId)}_${identity}`));
+    if (!admin.exists && !(scope.data()?.roles || []).some((role: string) => manager ? role === 'manager' : ['manager', 'admission'].includes(role))) fail('This account does not have access to this event.', 403);
+    return { uid: identity };
+  }
+  protected async offlineEvidence(tx: Transaction, eventId: string, uid: string, raw: OfflineSubmission | undefined, kind: 'ticket' | 'guest', itemId: string, version: number, managerReview = false) {
+    if (!raw?.leaseToken || !raw.itemProof) return { at: Date.now(), rejection: 'offline-unverified', verified: false, leaseHash: '', version, originUid: uid };
+    const leaseHash = hash(receipt(raw.leaseToken)), item = readOfflineItem(raw.itemProof, this.signing());
+    if (item.leaseHash !== leaseHash || item.eventId !== eventId || item.kind !== kind || item.id !== itemId || item.version !== version) fail('Offline item does not match its prepared manifest.', 409);
+    const lease = (await tx.get(this.db.collection('ticketingOfflineLeases').doc(leaseHash))).data();
+    if (!lease || lease.eventId !== eventId || (!managerReview && lease.uid !== uid)) fail('Offline preparation belongs to a different scanner or event.', 403);
+    const at = integer(raw.deviceTime, 'recorded admission time', 0, Number.MAX_SAFE_INTEGER);
+    if (at < lease.generatedAt || at > lease.offlineUntil || at > Date.now() + 120000 || at < Date.parse(item.validFrom) || at > Date.parse(item.validUntil)) fail('Recorded admission is outside the authenticated preparation or admission window.', 409);
+    return { at, rejection: managerReview ? 'offline-manager-review' : Date.now() > lease.replayUntil ? 'offline-replay-expired' : '', verified: true, leaseHash, version, originUid: lease.uid as string };
+  }
+  async scan(eventId: string, qr: unknown, scanId: unknown, identity: string | ScannerProof, offline = false, details?: OfflineSubmission, managerReview = false) {
+    if (typeof identity === 'string') await this.role(identity, eventId, [managerReview ? 'manager' : 'admission']);
     const parsed = readTicket(qr, this.signing()), key = id(scanId);
     if (parsed.eventId !== eventId) fail('This ticket belongs to a different event.', 409);
     return this.db.runTransaction(async tx => {
       // Read the PIN and session in the admission transaction so revocation wins safely.
-      const access = typeof identity === 'string' ? { uid: identity } : await scannerAccess(this.db, identity, eventId, tx), { uid } = access;
+      const access = await this.admissionAccess(identity, eventId, tx, managerReview), { uid } = access;
+      const evidence = offline ? await this.offlineEvidence(tx, eventId, uid, details, 'ticket', parsed.id, parsed.version, managerReview) : null;
       const scanRef = this.event(eventId).collection('scans').doc(key), prior = (await tx.get(scanRef)).data();
-      if (prior) { if (prior.ticketId !== parsed.id || prior.uid !== uid) fail('Scan attempt mismatch.', 409); return prior; }
+      if (prior) { if (prior.ticketId !== parsed.id || prior.uid !== (evidence?.originUid || uid) || (offline && prior.offlineLeaseHash !== evidence?.leaseHash)) fail('Scan attempt mismatch.', 409); return prior; }
       const ticketRef = this.tickets().doc(id(parsed.id)), ticket = (await tx.get(ticketRef)).data();
       const event = (await tx.get(this.event(eventId))).data();
       const order = ticket ? (await tx.get(this.order(ticket.orderId))).data() : null;
+      const at = evidence?.at || Date.now();
       let result = 'accepted';
-      if (!ticket || order?.financialBlocked || ticket.version !== parsed.version || ticket.status !== 'valid' || event?.status === 'cancelled') result = 'invalid';
-      else if (Date.now() < Date.parse(ticket.validFrom) || Date.now() > Date.parse(ticket.validUntil)) result = 'outside-window';
+      if (!ticket || order?.financialBlocked || ticket.version !== parsed.version || ticket.status !== 'valid' || ['cancelled', 'archived'].includes(event?.status)) result = 'invalid';
+      else if (at < Date.parse(ticket.validFrom) || at > Date.parse(ticket.validUntil)) result = 'outside-window';
       else if (ticket.admission) result = 'duplicate';
-      const record = { ticketId: parsed.id, ...access, result, at: Date.now(), offline, name: ticket?.name || '' };
-      tx.create(scanRef, record); if (result === 'accepted') tx.update(ticketRef, { admission: { at: Date.now(), ...access, scanId: key, offline } });
+      else if (evidence?.rejection) result = evidence.rejection;
+      const record = { ticketId: parsed.id, ...access, uid: evidence?.originUid || uid, result, at, syncedAt: Date.now(), offline, name: ticket?.name || '',
+        ...(evidence ? { offlineLeaseHash: evidence.leaseHash, offlineVersion: evidence.version, offlineProofVerified: evidence.verified, submittedBy: uid } : {}) };
+      tx.create(scanRef, record); if (result === 'accepted') tx.update(ticketRef, { admission: { at, ...access, scanId: key, offline } });
       return record;
     });
   }
@@ -486,9 +511,21 @@ export class Orders extends Catalog {
     const access = typeof identity === 'string' ? { uid: identity, expiresAt: Date.now() + 24 * 3600000 } : await scannerAccess(this.db, identity, eventId);
     const orders = await this.db.collection('ticketingOrders').where('eventId', '==', eventId).get();
     const blocked = new Set(orders.docs.filter(d => d.data().financialBlocked).map(d => d.id));
-    return { eventId, staffUid: access.uid, offlineUntil: Math.min(access.expiresAt, Date.now() + (typeof identity === 'string' ? 24 : 4) * 3600000), generatedAt: Date.now(), verificationKey: keyPair(this.signing()).jwk,
-      guests: guests.docs.filter(d => !d.data().deletedAt && !['cancelled', 'archived'].includes(event?.status)).map(d => guestEntry(d.id, d.data())), guestValidFrom: draft?.admissionStartsAt || '', guestValidUntil: draft ? new Date(Date.parse(draft.endAt) + 6 * 3600000).toISOString() : '',
-      tickets: tickets.docs.map(t => { const d = t.data(); return { id: t.id, version: d.version, status: event?.status === 'cancelled' || blocked.has(d.orderId) ? 'invalid' : d.status, name: d.name, validFrom: d.validFrom, validUntil: d.validUntil, admitted: !!d.admission }; }) };
+    const leaseToken = secret(), leaseHash = hash(leaseToken), generatedAt = Date.now();
+    let offlineUntil = Math.min(access.expiresAt, generatedAt + (typeof identity === 'string' ? 24 : 4) * 3600000);
+    await this.db.runTransaction(async tx => {
+      const current = await this.admissionAccess(identity, eventId, tx);
+      const currentEvent = (await tx.get(this.event(eventId))).data();
+      if (current.uid !== access.uid || !currentEvent || ['cancelled', 'archived'].includes(currentEvent.status)) fail('Event is not open for offline preparation.', 409);
+      if ('expiresAt' in current) offlineUntil = Math.min(offlineUntil, current.expiresAt);
+      if (offlineUntil <= generatedAt) fail('Scanner preparation has expired.', 409);
+      tx.create(this.db.collection('ticketingOfflineLeases').doc(leaseHash), { eventId, uid: current.uid, generatedAt, offlineUntil, replayUntil: offlineUntil + 48 * 3600000, expiresAt: Timestamp.fromMillis(offlineUntil + 7 * 86400000) });
+    });
+    const guestValidFrom = draft?.admissionStartsAt || '', guestValidUntil = draft ? new Date(Date.parse(draft.endAt) + 6 * 3600000).toISOString() : '';
+    return { eventId, staffUid: access.uid, offlineUntil, generatedAt, leaseToken, verificationKey: keyPair(this.signing()).jwk,
+      guests: guests.docs.filter(d => !d.data().deletedAt && !['cancelled', 'archived'].includes(event?.status)).map(d => ({ ...guestEntry(d.id, d.data()), itemProof: signOfflineItem({ leaseHash, eventId, id: d.id, kind: 'guest', version: d.data().version, validFrom: guestValidFrom, validUntil: guestValidUntil }, this.signing()) })), guestValidFrom, guestValidUntil,
+      tickets: tickets.docs.map(t => { const d = t.data(), status = ['cancelled', 'archived'].includes(event?.status) || blocked.has(d.orderId) ? 'invalid' : d.status; return { id: t.id, version: d.version, status, name: d.name, validFrom: d.validFrom, validUntil: d.validUntil, admitted: !!d.admission,
+        itemProof: status === 'valid' ? signOfflineItem({ leaseHash, eventId, id: t.id, kind: 'ticket', version: d.version, validFrom: d.validFrom, validUntil: d.validUntil }, this.signing()) : '' }; }) };
   }
   async reviewScan(eventId: string, scanId: unknown, rawNote: unknown, identity: string | ScannerProof) {
     if (typeof identity === 'string') await this.role(identity, eventId, ['admission']);
@@ -501,6 +538,41 @@ export class Orders extends Catalog {
       tx.create(this.event(eventId).collection('audit').doc(), { action: 'offline-conflict-reviewed', scanId: ref.id, ...access, note, at: Date.now() });
     });
     return { reviewed: true };
+  }
+  async offlineConflicts(eventId: string, uid: string) {
+    await this.role(uid, eventId, ['manager']);
+    const scans = await this.event(eventId).collection('scans').where('offline', '==', true).get();
+    return { scans: scans.docs.filter(d => d.data().result !== 'accepted' && !d.data().resolution).map(d => ({ scanId: d.id, ...d.data() })).sort((a: any, b: any) => b.syncedAt - a.syncedAt) };
+  }
+  async resolveOfflineScan(eventId: string, scanId: unknown, rawDecision: unknown, rawNote: unknown, uid: string) {
+    await this.role(uid, eventId, ['manager']);
+    const key = id(scanId), note = text(rawNote, 'resolution note', 500, true), decision = text(rawDecision, 'resolution', 20, true);
+    if (!['confirm', 'reject'].includes(decision)) fail('Choose whether to confirm or reject this recorded admission.');
+    return this.db.runTransaction(async tx => {
+      await this.admissionAccess(uid, eventId, tx, true);
+      const ref = this.event(eventId).collection('scans').doc(key), scan = (await tx.get(ref)).data();
+      if (!scan?.offline) fail('Offline scan not found.', 404);
+      if (scan.resolution) { if (scan.resolution.decision !== decision) fail('This offline conflict has already been resolved.', 409); return { resolved: true, result: scan.result }; }
+      if (scan.result === 'accepted') fail('This admission is already recorded.', 409);
+      const event = (await tx.get(this.event(eventId))).data(), draft = event?.liveDraft || event?.draft;
+      if (decision === 'confirm') {
+        if (!scan.offlineProofVerified || !draft || ['cancelled', 'archived'].includes(event?.status)) fail('This preparation cannot authorize an admission. Keep the conflict for review or reject it.', 409);
+        const admission = { at: scan.at, uid: scan.uid, scanId: key, offline: true, resolvedBy: uid, resolvedAt: Date.now() };
+        if (scan.kind === 'guest') {
+          const guestRef = this.event(eventId).collection('guests').doc(id(scan.guestId)), guest = (await tx.get(guestRef)).data();
+          if (!guest || guest.deletedAt || guest.version !== scan.offlineVersion || guest.arrival || scan.at < Date.parse(draft.admissionStartsAt) || scan.at > Date.parse(draft.endAt) + 6 * 3600000) fail('Guest arrival cannot be safely confirmed against the current ledger.', 409);
+          tx.update(guestRef, { arrival: admission });
+        } else {
+          const ticketRef = this.tickets().doc(id(scan.ticketId)), ticket = (await tx.get(ticketRef)).data();
+          const order = ticket ? (await tx.get(this.order(ticket.orderId))).data() : null;
+          if (!ticket || order?.financialBlocked || ticket.status !== 'valid' || ticket.version !== scan.offlineVersion || ticket.admission || scan.at < Date.parse(ticket.validFrom) || scan.at > Date.parse(ticket.validUntil)) fail('Ticket admission cannot be safely confirmed against the current ledger.', 409);
+          tx.update(ticketRef, { admission });
+        }
+      }
+      tx.update(ref, { originalResult: scan.result, ...(decision === 'confirm' ? { result: 'accepted' } : {}), resolution: { decision, note, uid, at: Date.now() } });
+      tx.create(this.event(eventId).collection('audit').doc(), { action: 'offline-admission-resolved', scanId: key, decision, uid, note, at: Date.now() });
+      return { resolved: true, result: decision === 'confirm' ? 'accepted' : scan.result };
+    });
   }
   async staffOrders(eventId: string, uid: string) {
     await this.role(uid, eventId, ['manager', 'refund', 'cash']);

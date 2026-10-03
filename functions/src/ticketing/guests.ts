@@ -3,6 +3,7 @@ import { Orders } from './orders';
 import { fail, hash, id, integer, receipt, text } from './domain';
 import { guestEntry } from './guest-entry';
 import { scannerAccess, type ScannerProof } from './scanner-access';
+import type { OfflineSubmission } from './offline-proof';
 
 export class Guests extends Orders {
   async guestList(eventId: string, identity: string | ScannerProof) {
@@ -41,21 +42,26 @@ export class Guests extends Orders {
     });
     return { saved: true };
   }
-  async arriveGuest(eventId: string, guestId: string, scanId: unknown, identity: string | ScannerProof, offline = false) {
-    if (typeof identity === 'string') await this.role(identity, eventId, ['manager', 'admission']);
+  async arriveGuest(eventId: string, guestId: string, scanId: unknown, identity: string | ScannerProof, offline = false, details?: OfflineSubmission & { guestVersion?: unknown }, managerReview = false) {
+    if (typeof identity === 'string') await this.role(identity, eventId, managerReview ? ['manager'] : ['manager', 'admission']);
     const eventRef = this.event(eventId), guestRef = eventRef.collection('guests').doc(id(guestId)), scanRef = eventRef.collection('scans').doc(id(scanId));
     return this.db.runTransaction(async tx => {
-      const access = typeof identity === 'string' ? { uid: identity } : await scannerAccess(this.db, identity, eventId, tx);
+      const access = await this.admissionAccess(identity, eventId, tx, managerReview);
       const prior = (await tx.get(scanRef)).data(), guest = (await tx.get(guestRef)).data(), event = (await tx.get(eventRef)).data();
-      if (prior) { if (prior.guestId !== guestId || prior.uid !== access.uid) fail('Guest check-in attempt mismatch.', 409); return prior; }
+      const version = offline ? integer(details?.guestVersion ?? guest?.version ?? 1, 'prepared guest version', 1) : guest?.version || 1;
+      const evidence = offline ? await this.offlineEvidence(tx, eventId, access.uid, details, 'guest', guestId, version, managerReview) : null;
+      if (prior) { if (prior.guestId !== guestId || prior.uid !== (evidence?.originUid || access.uid) || (offline && prior.offlineLeaseHash !== evidence?.leaseHash)) fail('Guest check-in attempt mismatch.', 409); return prior; }
       const draft = event?.liveDraft || event?.draft;
+      const at = evidence?.at || Date.now();
       let result = 'accepted';
-      if (!guest || guest.deletedAt || !draft || ['cancelled', 'archived'].includes(event?.status)) result = 'invalid';
-      else if (Date.now() < Date.parse(draft.admissionStartsAt) || Date.now() > Date.parse(draft.endAt) + 6 * 3600000) result = 'outside-window';
+      if (!guest || guest.deletedAt || (offline && guest.version !== version) || !draft || ['cancelled', 'archived'].includes(event?.status)) result = 'invalid';
+      else if (at < Date.parse(draft.admissionStartsAt) || at > Date.parse(draft.endAt) + 6 * 3600000) result = 'outside-window';
       else if (guest.arrival) result = 'duplicate';
-      const record = { kind: 'guest', guestId, ticketId: `guest_${guestId}`, name: guest?.name || '', ...access, at: Date.now(), offline, result };
+      else if (evidence?.rejection) result = evidence.rejection;
+      const record = { kind: 'guest', guestId, ticketId: `guest_${guestId}`, name: guest?.name || '', ...access, uid: evidence?.originUid || access.uid, at, syncedAt: Date.now(), offline, result,
+        ...(evidence ? { offlineLeaseHash: evidence.leaseHash, offlineVersion: evidence.version, offlineProofVerified: evidence.verified, submittedBy: access.uid } : {}) };
       tx.create(scanRef, record);
-      if (result === 'accepted') tx.update(guestRef, { arrival: { ...access, scanId: scanRef.id, at: Date.now(), offline } });
+      if (result === 'accepted') tx.update(guestRef, { arrival: { ...access, scanId: scanRef.id, at, offline } });
       return record;
     });
   }

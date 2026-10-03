@@ -126,10 +126,14 @@ async function scan(target, qr, expected) {
     await door.locator('#scanner-pin').fill(pin); await door.getByRole('button', { name: 'Start scanning', exact: true }).click(); await door.locator('#scanner-session:not([hidden])').waitFor();
     await admin.getByRole('button', { name: 'Revoke PIN for Sam · Main door' }).click(); await admin.locator('#scanner-pin-list').filter({ hasText: 'Revoked' }).waitFor();
     await door.waitForTimeout(1900);
-    await door.locator('[name=qr]').fill(tickets[2].qr); await door.locator('#admission-form button').click();
+    // A concurrent guest-list refresh can lock the scanner as soon as revocation is observed.
+    if (await door.locator('[name=qr]').isVisible()) {
+      await door.locator('[name=qr]').fill(tickets[2].qr); await door.locator('#admission-form button').click();
+    }
     await door.locator('#scanner-login:not([hidden])').waitFor(); await door.locator('#ticketing-message').filter({ hasText: 'revoked' }).waitFor();
     assert.equal((await db.collection('ticketingTickets').doc(tickets[2].id).get()).data().admission, null, 'a revoked PIN cannot downgrade to offline scanning');
     assert.equal(await door.evaluate(() => localStorage.getItem('pluto-scanner-session')), null);
+    assert.equal(await door.locator('#staff-controls').isVisible(), false);
     stage = 'offline lease expiration';
     const leasePin = await api(admin, 'staff/scanner-pins/create', { eventId, label: 'Lease test' });
     await door.locator('#scanner-pin').fill(leasePin.pin); await door.getByRole('button', { name: 'Start scanning', exact: true }).click(); await door.locator('#scanner-session:not([hidden])').waitFor();
@@ -137,7 +141,7 @@ async function scan(target, qr, expected) {
     await door.evaluate(eventId => new Promise((resolve, reject) => {
       const request = indexedDB.open('pluto-admission', 1);
       request.onsuccess = () => { const db = request.result, tx = db.transaction('state', 'readwrite'), store = tx.objectStore('state'), manifest = store.get(`manifest-${eventId}`);
-        manifest.onsuccess = () => store.put({ ...manifest.result, offlineUntil: Date.now() - 1 }, `manifest-${eventId}`);
+        manifest.onsuccess = () => store.put({ ...manifest.result, offlineUntil: manifest.result.generatedAt - 1 }, `manifest-${eventId}`);
         tx.oncomplete = () => { db.close(); resolve(); }; tx.onerror = () => reject(tx.error); };
     }), eventId);
     await doorContext.setOffline(true); await door.reload(); await door.locator('#scanner-login:not([hidden])').waitFor();
