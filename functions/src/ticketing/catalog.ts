@@ -32,7 +32,7 @@ export class Catalog {
     const scopes = admin ? [] : (await this.db.collection('ticketingStaff').where('uid', '==', uid).get()).docs.map(d => d.data());
     const snapshot = admin ? await this.db.collection('ticketingEvents').get() : null;
     const events = snapshot ? snapshot.docs : (await Promise.all(scopes.map(s => this.event(s.eventId).get()))).filter(d => d.exists);
-    return { admin, events: events.map(d => { const e = d.data()!; return { id: d.id, title: e.draft.title, slug: e.draft.slug, status: e.status, revision: e.revision, roles: admin ? ['manager', 'cash', 'refund', 'admission'] : scopes.find(s => s.eventId === d.id)?.roles || [] }; }) };
+    return { admin, events: events.map(d => { const e = d.data()!; return { id: d.id, title: e.draft.title, slug: e.draft.slug, startAt: e.draft.startAt, city: e.draft.city, region: e.draft.region, status: e.status, revision: e.revision, roles: admin ? ['manager', 'cash', 'refund', 'admission'] : scopes.find(s => s.eventId === d.id)?.roles || [] }; }) };
   }
   async get(eventId: string, uid: string) { await this.role(uid, eventId); const s = await this.event(eventId).get(); if (!s.exists) fail('Event not found.', 404); return { id: s.id, ...s.data() }; }
   async save(eventId: string, raw: any, expectedRevision: unknown, uid: string) {

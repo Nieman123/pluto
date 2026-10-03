@@ -2,24 +2,25 @@
 {% block content %}
 <link rel="stylesheet" href="/assets/ticketing.css">
 <section class="section ticketing-console" data-ticketing-console="{{ mode }}">
-<p class="eyebrow">PLUTO EVENTS {% if sandbox %} · SANDBOX{% endif %}</p><h1>{% if mode == 'admin' %}Event studio{% elif mode == 'staff' %}At the door{% else %}Your tickets{% endif %}</h1>
-<div class="ticket-toolbar"><a class="button button-quiet" href="/events">Explore events</a><a class="button button-quiet" href="/tickets">My tickets</a>{% if mode != 'customer' %}<a class="button button-quiet" href="/tickets/admin">Event studio</a><a class="button button-quiet" href="/tickets/staff">Admission</a>{% endif %}</div>
+<p class="eyebrow">PLUTO EVENTS {% if sandbox %} · SANDBOX{% endif %}</p><h1>{% if mode == 'admin' %}Your events.{% elif mode == 'staff' %}At the door.{% else %}Your tickets.{% endif %}</h1>
+<div class="ticket-toolbar"><a class="button button-quiet" href="/events">Explore events</a><a class="button button-quiet" href="/tickets">My tickets</a>{% if mode != 'customer' %}<a class="button button-quiet" href="/tickets/admin">Event management</a><a class="button button-quiet" href="/tickets/staff">Admission</a>{% endif %}</div>
 <p id="ticketing-message" role="status" aria-live="polite">{% if mode != 'customer' %}Sign in with your Pluto staff account to continue.{% else %}Open your secure email link, or sign in to see your orders.{% endif %}</p>
 <div id="ticketing-auth" data-auth-signed-out><a class="button button-primary" href="/app/sign-on">Sign in</a></div>
 {% if mode == 'customer' %}
 <form id="ticket-recovery-form"><h2>Find your tickets</h2><label>Email address <input type="email" name="email" autocomplete="email" required></label><button class="button button-primary">Email me a secure link</button></form>
 <button id="ticket-claim" class="button button-quiet" hidden>Claim orders with my verified email</button><div id="customer-orders"></div>
 {% else %}
-<div id="staff-controls" hidden><label>Event <select id="staff-event"><option value="">Select an event</option></select></label>
+<div id="staff-controls" hidden><label {% if mode == 'admin' %}class="event-switcher" hidden{% endif %}>Event <select id="staff-event"><option value="">Select an event</option></select></label>
 {% if mode == 'admin' %}
-<div class="ticket-toolbar"><button id="event-new" class="button button-primary">Create event</button><button id="event-orders" class="button button-quiet">Orders & dashboard</button><button id="event-cash" class="button button-quiet">Cash sale / comp</button><button id="event-roles" class="button button-quiet">Staff & promoters</button><button id="event-promoter-stats" class="button button-quiet" hidden>My promoter statistics</button></div><div id="event-editor"></div><div id="event-dashboard"></div>
+<div id="events-index"><div class="workspace-heading"><div><h2>Make the next gathering happen.</h2><p>Choose an event to see orders, sales and inventory.</p></div><button id="event-new" class="button button-primary">+ Create event</button></div><div id="event-list" class="admin-event-grid"></div></div>
+<div id="event-workspace" hidden><div class="workspace-heading"><div><button id="events-back" class="text-link" type="button">← All events</button><h2 id="workspace-title"></h2><span id="workspace-status" class="status-pill"></span></div><div class="ticket-toolbar"><button id="event-studio" class="button button-primary">Event studio ↗</button><button id="event-orders" class="button button-quiet">← Event dashboard</button><button id="event-cash" class="button button-quiet">Cash sale / comp</button><button id="event-roles" class="button button-quiet">Staff & promoters</button><button id="event-promoter-stats" class="button button-quiet" hidden>My promoter statistics</button></div></div><div id="event-editor" hidden></div><div id="event-dashboard"></div></div>
 {% else %}
 <div class="ticket-toolbar"><button id="admission-sync" class="button button-primary">Prepare offline admission</button><button id="admission-replay" class="button button-quiet">Sync queued scans</button><button id="admission-camera" class="button button-quiet">Start camera</button></div>
 <p id="admission-cache-status" role="status"></p><video id="admission-video" playsinline muted hidden></video>
 <form id="admission-form"><label>Ticket QR content <textarea name="qr" required placeholder="Scan a ticket or paste its QR content"></textarea></label><button class="button button-primary">Check ticket</button></form><div id="admission-results" aria-live="polite"></div>
 {% endif %}</div>
 {% endif %}
-<dialog id="ticketing-dialog"><button id="ticketing-dialog-close" class="button button-quiet" type="button">Close</button><div id="ticketing-dialog-content"></div></dialog>
+<dialog id="ticketing-dialog" aria-label="Pluto ticket tools"><button id="ticketing-dialog-close" class="button button-quiet" type="button">Close</button><div id="ticketing-dialog-content"></div></dialog>
 </section>
 <script src="/assets/ticketing.js" defer></script>
 {% endblock %}

@@ -36,7 +36,9 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   router.get(['/tickets/admin', '/tickets/staff'], page);
   router.get('/tickets/admission-sw.js', (_req, res) => res.type('application/javascript').set('Service-Worker-Allowed', '/tickets/').send(readFileSync(join(__dirname, 'admission-sw.js'), 'utf8')));
   router.get('/events', async (_req, res) => {
-    const events = (await service.db.collection('publishedEvents').get()).docs.map(d => d.data());
+    const events = (await service.db.collection('publishedEvents').get()).docs.map(d => d.data()).sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt)).map(e => ({ ...e,
+      dateLabel: new Intl.DateTimeFormat('en-US', { timeZone: e.timezone, month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(e.startAt)),
+      saleLabel: e.status === 'cancelled' ? 'Cancelled' : e.status === 'archived' || Date.parse(e.endAt) < Date.now() ? 'Past event' : 'Explore & get tickets' }));
     res.render('native-events', { ...context('/events'), meta: { title: 'Upcoming events | Pluto Events', description: 'Dance music, community and late nights with Pluto Events.', canonical: `${baseUrl()}/events` }, events });
   });
   router.get('/sitemap.xml', async (_req, res) => {
