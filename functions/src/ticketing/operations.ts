@@ -141,7 +141,16 @@ export class Operations extends Rsvps {
     const result = refund.stripeRefundId ? await this.stripe().refunds.retrieve(refund.stripeRefundId) : await this.stripe().refunds.create({ payment_intent: order.paymentIntentId, amount: refund.amount,
       metadata: { pluto_refund_id: refundId, pluto_order_id: refund.orderId } }, { idempotencyKey: `pluto-refund-${refundId}` });
     if (result.amount !== refund.amount || result.payment_intent !== order.paymentIntentId) fail('Refund does not match the approved request.', 409);
-    await ref.update({ stripeRefundId: result.id, status: 'processing' });
+    // Provider idempotency does not serialize our workers. Never overwrite a
+    // terminal local state after a slower copy of the same request returns.
+    const unsettled = await this.db.runTransaction(async tx => {
+      const current = (await tx.get(ref)).data();
+      if (!current || ['succeeded', 'failed'].includes(current.status)) return false;
+      if (current.stripeRefundId && current.stripeRefundId !== result.id) fail('Refund provider reference changed; staff review is required.', 409);
+      tx.update(ref, { stripeRefundId: result.id, status: 'processing' });
+      return true;
+    });
+    if (!unsettled) return;
     if (result.status === 'succeeded') await this.finishRefund(refundId, 'succeeded');
     else if (result.status === 'failed' || result.status === 'canceled') await this.finishRefund(refundId, 'failed');
   }
@@ -152,6 +161,8 @@ export class Operations extends Rsvps {
       const orderRef = this.order(refund.orderId), order = (await tx.get(orderRef)).data() as Order;
       const event = (await tx.get(this.event(order.eventId))).data()!;
       const tickets = await Promise.all(refund.ticketIds.map((key: string) => tx.get(this.tickets().doc(key))));
+      if (tickets.some(t => !t.exists || t.data()!.orderId !== refund.orderId || t.data()!.refundId !== refundId || t.data()!.status !== 'refund-pending')) fail('Refund ticket allocations need staff review.', 409);
+      if (result === 'succeeded' && (order.refundedAmount || 0) + refund.amount > order.total) fail('Refund ledger exceeds the original order; staff review is required.', 409);
       const consumption: Record<string, number> = {};
       for (const ticket of tickets) {
         const t = ticket.data()!;
