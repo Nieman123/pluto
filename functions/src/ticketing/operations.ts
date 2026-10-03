@@ -1,12 +1,12 @@
 import { createHmac, randomInt, randomUUID } from 'node:crypto';
 import { FieldPath } from 'firebase-admin/firestore';
 import { type Order } from './orders';
-import { Guests } from './guests';
+import { Rsvps } from './rsvps';
 import { fail, hash, id, integer, receipt, secret, text, ticketId } from './domain';
 import { appTicketsUrl, baseUrl, isLive, keyPair, resendKey } from './config';
 import { scannerAccess } from './scanner-access';
 
-export class Operations extends Guests {
+export class Operations extends Rsvps {
   scannerPinHash(pin: string) {
     // A keyed lookup prevents a leaked database from enumerating the short PIN space.
     const key = keyPair(this.signing()).privateKey.export({ type: 'pkcs8', format: 'der' });
@@ -90,6 +90,7 @@ export class Operations extends Guests {
     const order = (await this.order(orderId).get()).data() as Order | undefined;
     if (!order) fail('Order not found.', 404);
     await this.role(uid, order.eventId, ['refund']);
+    if (order.method === 'rsvp') fail('RSVPs have no payment to refund. Withdraw the RSVP instead.', 409);
     if (order.method === 'stripe') await this.reconcileRefunds(orderId);
     if (!Array.isArray(ticketIds) || !ticketIds.length || ticketIds.length > 20 || new Set(ticketIds).size !== ticketIds.length) fail('Select the tickets to refund.');
     const ids = ticketIds.map(id), refundId = hash(receipt(attempt)), ref = this.db.collection('ticketingRefunds').doc(refundId), inputHash = hash(JSON.stringify({ orderId, ids: [...ids].sort() }));
@@ -280,7 +281,11 @@ export class Operations extends Guests {
         const token = job.token || secret(), recoveryRef = this.db.collection('ticketingRecovery').doc(hash(token));
         if (!job.token) await ref.update({ token });
         await this.db.runTransaction(async tx => { if (!(await tx.get(recoveryRef)).exists) tx.create(recoveryRef, { orderId: job.orderId, expiresAt: Date.now() + 30 * 86400000, used: false }); });
-        message = `Thanks for joining us. Your order total is $${(order.total / 100).toFixed(2)}.\nOpen the Pluto app to view your receipt, tickets and venue details: ${appTicketsUrl()}#recovery=${token}\nThis link can be opened once within 30 days. You can request another link from My tickets. Admission tickets are kept in the app; no ticket PDF is attached.`;
+        if (order.method === 'rsvp') {
+          subject = `${order.eventTitle} RSVP ${job.type === 'rsvp-pending' ? 'received' : job.type === 'rsvp-declined' ? 'declined' : 'confirmed'}`;
+          message = job.type === 'rsvp-pending' ? 'Your RSVP request was received. Organizer approval is required before you can attend or receive an admission QR. Check the current status in the Pluto app.' : job.type === 'rsvp-declined' ? `Your RSVP was declined. This does not grant admission.${job.note ? `\nOrganizer note: ${job.note}` : ''}` : 'Your RSVP is confirmed. Open your admission QR in the Pluto app. This pass is for the named attendee and cannot be transferred.';
+          message += `\nView your RSVP: ${appTicketsUrl()}#recovery=${token}\nThis link can be opened once within 30 days. QR codes stay in the app; no ticket PDF is attached.`;
+        } else message = `Thanks for joining us. Your order total is $${(order.total / 100).toFixed(2)}.\nOpen the Pluto app to view your receipt, tickets and venue details: ${appTicketsUrl()}#recovery=${token}\nThis link can be opened once within 30 days. You can request another link from My tickets. Admission tickets are kept in the app; no ticket PDF is attached.`;
       }
       const key = resendKey.value(); if (!key) fail('Email delivery is not configured yet.', 503);
       if (!job.firstDeliveryAt) await ref.update({ firstDeliveryAt: Date.now() });

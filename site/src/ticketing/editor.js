@@ -1,6 +1,7 @@
 import { accessKey, action, api, bind, dialog, download, esc, message, money, user } from './api.js';
 import { scannerPins } from './scanner-pins.js';
 import { adminGuestList } from './guestlist.js';
+import { adminRsvps } from './rsvps.js';
 
 let record, events = [], dirty = false, pendingUploads = 0, studio = false, globalAdmin = false, saving;
 const get = (path, object = record?.draft) => path.split('.').reduce((o, key) => o?.[key], object);
@@ -53,7 +54,7 @@ async function imagePayload(file) {
 }
 function defaultDraft() {
   const startAt = new Date(Date.now() + 7 * 86400000).toISOString(), endAt = new Date(Date.now() + 7 * 86400000 + 8 * 3600000).toISOString(), salesStart = new Date(Date.now() - 60000).toISOString();
-  return { title: 'New Pluto event', slug: `new-event-${crypto.randomUUID().slice(0, 8)}`, subtitle: '', descriptionHtml: '<p>Tell your guests what makes this event special.</p>', startAt, endAt, admissionStartsAt: startAt,
+  return { registrationMode: 'tickets', title: 'New Pluto event', slug: `new-event-${crypto.randomUUID().slice(0, 8)}`, subtitle: '', descriptionHtml: '<p>Tell your guests what makes this event special.</p>', startAt, endAt, admissionStartsAt: startAt,
     timezone: 'America/New_York', city: 'Asheville', region: 'NC', venueName: '', address: '', directions: '', venueVisibility: 'holders', hero: null, flyer: null, gallery: [], lineup: [],
     sections: [{ id: 'faq', type: 'faq', title: 'Good to know', bodyHtml: '<p>Bring your ticket and a valid photo ID.</p>', visible: true }], theme: { preset: 'pluto', accent: '#c4a2ff', font: 'Montserrat' },
     pools: [{ id: 'admission', name: 'General admission', capacity: 200 }], offers: [{ id: 'general', name: 'General admission', description: '', kind: 'admission', unitAmount: 4000, maxPerOrder: 10, salesStart, salesEnd: endAt, validFrom: startAt, validUntil: endAt, active: true, pools: { admission: 1 }, requiresOfferIds: [], taxCode: '', stripeProductId: '', stripeTaxRateIds: [] }], promos: [], tax: { mode: 'sandbox', confirmed: false, performanceLocationId: '' } };
@@ -94,6 +95,7 @@ async function selectEvent(eventId, edit = false) {
   if (!edit) document.querySelector('#event-editor').replaceChildren();
   history.replaceState(null, '', `/tickets/admin?event=${encodeURIComponent(eventId)}${edit ? '&view=studio' : ''}`);
   if (scope?.roles.includes('manager')) record = await api('staff/get', { eventId }); else record = null;
+  if (scope?.registrationMode && scope.registrationMode !== 'tickets') document.querySelector('#event-cash').hidden = true;
   dirty = false;
   if (edit && record) render();
   else if (scope?.roles.some(r => ['manager', 'cash', 'refund'].includes(r))) await dashboard();
@@ -133,6 +135,16 @@ function render() {
   const studioHeader = `<nav class="studio-navigation" aria-label="Event editor sections"><a href="#event-details">Details</a><a href="#event-venue">Venue</a><a href="#event-artwork">Artwork</a><a href="#event-theme">Theme</a><a href="#event-lineup">Lineup</a><a href="#event-sections">Page sections</a></nav><form id="event-editor-form"><h2>${esc(d.title)}</h2><p>Revision ${record.revision} · ${esc(record.status || 'draft')}</p><div class="ticket-toolbar"><button type="submit" class="button button-primary">Save draft</button><button type="button" class="button button-quiet" data-event-action="preview">Preview</button><button type="button" class="button button-primary" data-event-action="publish">Publish</button><button type="button" class="button button-quiet" data-event-action="unpublish">Unpublish</button><button type="button" class="button button-quiet" data-event-action="archive">Archive</button><button type="button" class="button button-quiet" data-event-action="cancel">Mark cancelled</button><button type="button" class="button button-quiet" data-event-action="duplicate">Duplicate</button><button type="button" class="button button-quiet" data-event-action="history">Version history</button><a class="button button-quiet" href="/events/${esc(d.slug)}" target="_blank" rel="noopener">Public page</a></div>`;
   const ticketingHeader = `<h2>Ticketing setup</h2><p>Manage capacity, passes, promotions and event taxes. Save settings to your draft, then publish to apply them to ticket sales.</p><nav class="studio-navigation" aria-label="Ticketing settings sections"><a href="#event-capacity">Capacity pools</a><a href="#event-tickets">Ticket types & passes</a><a href="#event-promotions">Promotions</a><a href="#event-tax">Event tax setup</a></nav><form id="event-ticket-settings-form"><div class="ticket-toolbar"><button type="submit" class="button button-primary">Save ticketing settings</button><button type="button" class="button button-quiet" data-event-action="publish">Publish ticketing changes</button><span data-save-state role="status"></span></div>`;
   root.innerHTML = `${studio ? studioHeader : ticketingHeader}${studio ? studioFields(d) : ticketingFields(d)}<div class="studio-save-bar"><span data-save-state role="status"></span><button type="submit" class="button button-primary">${studio ? 'Save draft' : 'Save ticketing settings'}</button></div></form>`;
+  if (!studio) {
+    root.querySelector('form').insertAdjacentHTML('afterbegin', `<div class="registration-settings">${field('registrationMode', 'Event registration', 'select', { choices: [['tickets', 'Ticketed event'], ['rsvp', 'Open RSVP · No approval needed'], ['rsvp-approval', 'RSVP · Organizer approval required']] })}<p>RSVPs are free, one pass per named person. ${d.registrationMode === 'rsvp-approval' ? 'Attendees receive no QR until you approve their request. Pending requests hold no capacity.' : d.registrationMode === 'rsvp' ? 'Attendees receive their in-app QR immediately, within available capacity.' : 'Use tickets for paid or free ticket sales.'}</p>${d.registrationMode && d.registrationMode !== 'tickets' ? '<button class="button button-quiet" type="button" id="setup-rsvp-pass">Set up free RSVP pass</button><p>This deactivates existing ticket options and adds one free RSVP pass using the first admission option’s capacity pools. Existing orders stay valid. You can edit the pass below before saving and publishing. Promotions do not apply to RSVPs.</p>' : ''}</div>`);
+    root.querySelector('#setup-rsvp-pass')?.addEventListener('click', () => {
+      const source = d.offers.find(o => o.kind === 'admission') || defaultDraft().offers[0];
+      const pools = d.offers.some(o => o.kind === 'admission') ? { ...source.pools } : d.pools.length ? { [d.pools[0].id]: 1 } : {};
+      d.offers.forEach(o => { o.active = false; });
+      d.offers.push({ ...source, id: `rsvp-${crypto.randomUUID().slice(0, 8)}`, name: 'RSVP admission', description: 'One pass per named attendee.', kind: 'admission', unitAmount: 0, maxPerOrder: 1, active: true, salesStart: new Date().toISOString(), salesEnd: d.endAt, validFrom: d.admissionStartsAt, validUntil: d.endAt, pools, stripeProductId: '', stripeTaxRateIds: [], taxCode: '' });
+      dirty = true; render(); message('Free RSVP pass added to the draft. Save and publish to open RSVPs.');
+    });
+  }
   root.querySelectorAll('[data-field]').forEach(input => input.addEventListener('change', () => {
     try {
       let value = input.value, kind = input.dataset.kind, path = input.dataset.field;
@@ -144,7 +156,7 @@ function render() {
       if (path.endsWith('stripeTaxRateIds')) value = input.value.split(',').map(v => v.trim()).filter(Boolean);
       if (path.includes('.pools.') && Number(value) === 0) { const parts = path.split('.'), key = parts.pop(); delete get(parts.join('.'))[key]; dirty = true; } else set(path, value);
       syncSaveState();
-      if (path === 'timezone') render();
+      if (path === 'timezone' || path === 'registrationMode') render();
     } catch (error) { message(error.message, true); input.focus(); }
   }));
   root.querySelectorAll('[data-rich]').forEach(content => {
@@ -158,7 +170,7 @@ function render() {
     const key = button.dataset.add, generated = crypto.randomUUID().slice(0, 8);
     const values = { gallery: { assetId: '', alt: '', caption: '', focalX: 50, focalY: 50 }, lineup: { name: 'New artist', genre: '', time: '', image: null },
       sections: { id: generated, type: 'custom', title: 'New section', bodyHtml: '<p>Add event information.</p>', visible: true }, pools: { id: `pool-${generated}`, name: 'New pool', capacity: 100 },
-      offers: { ...defaultDraft().offers[0], id: `ticket-${generated}`, name: 'New ticket', validFrom: d.admissionStartsAt, validUntil: d.endAt, salesEnd: d.endAt, pools: d.pools.length ? { [d.pools[0].id]: 1 } : {} },
+      offers: { ...defaultDraft().offers[0], ...(d.registrationMode && d.registrationMode !== 'tickets' ? { unitAmount: 0, maxPerOrder: 1, name: 'RSVP admission' } : { name: 'New ticket' }), id: `ticket-${generated}`, validFrom: d.admissionStartsAt, validUntil: d.endAt, salesEnd: d.endAt, pools: d.pools.length ? { [d.pools[0].id]: 1 } : {} },
       promos: { code: `PROMO-${generated.toUpperCase()}`, type: 'percent', value: 10, limit: 100, startsAt: new Date().toISOString(), endsAt: d.endAt, offerIds: [] } };
     d[key].push(values[key]); dirty = true; render(); if (key === 'offers') { const details = document.querySelector('#event-tickets').querySelectorAll(':scope > details'); details[details.length - 1].open = true; details[details.length - 1].scrollIntoView({ block: 'center', behavior: 'smooth' }); }
   });
@@ -212,10 +224,11 @@ async function dashboard() {
   const root = document.querySelector('#event-dashboard');
   root.innerHTML = `<h2>Orders & event performance</h2><div class="ticket-stat-grid">${[['Paid orders', paid.length], ['Tickets issued', paid.reduce((n, o) => n + o.units.length, 0)], ['Gross sales', money(gross)], ['Discounts', money(sum('discount'))], ['Inclusive tax', money(tax)], ['Refunds', money(refunds)], ['Stripe fees', money(fees)], ['Proceeds before operating costs', money(gross - refunds - fees - tax)], ['Cash sales', money(paid.filter(o => o.method === 'cash').reduce((n, o) => n + o.total, 0))], ['Comps', paid.filter(o => o.method === 'comp').length]].map(([label, value]) => `<div class="ticket-stat"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('')}</div>
   <h3>Inventory</h3>${data.pools.map(p => `<p>${esc(p.name)}: ${p.sold} sold · ${p.held} reserved · ${p.capacity - p.sold - p.held} available</p>`).join('')}
-  ${record ? '<nav class="studio-navigation" aria-label="Event dashboard sections"><a href="#event-guestlist">Guest list</a><a href="#event-ticket-settings">Ticketing setup</a></nav><section id="event-guestlist" aria-label="Event guest list"></section>' : ''}<div class="ticket-toolbar"><input id="order-filter" aria-label="Search orders" placeholder="Search buyer, email or order"><button class="button button-quiet" id="order-export">Export CSV</button><button class="button button-quiet" id="order-reconcile">Retry pending jobs</button></div><div class="table-scroll" tabindex="0" role="region" aria-label="Event orders"><table class="ticket-table"><thead><tr><th>Buyer</th><th>Status</th><th>Method</th><th>Total</th><th>Promoter</th><th>Review</th><th>Actions</th></tr></thead><tbody id="order-rows"></tbody></table></div>${record ? '<section id="event-ticket-settings" aria-label="Event ticketing setup"></section>' : ''}`;
+  ${record ? '<nav class="studio-navigation" aria-label="Event dashboard sections"><a href="#event-rsvps">RSVPs</a><a href="#event-guestlist">Guest list</a><a href="#event-ticket-settings">Ticketing setup</a></nav><section id="event-rsvps" aria-label="Event RSVPs"></section><section id="event-guestlist" aria-label="Event guest list"></section>' : ''}<div class="ticket-toolbar"><input id="order-filter" aria-label="Search orders" placeholder="Search buyer, email or order"><button class="button button-quiet" id="order-export">Export CSV</button><button class="button button-quiet" id="order-reconcile">Retry pending jobs</button></div><div class="table-scroll" tabindex="0" role="region" aria-label="Event orders"><table class="ticket-table"><thead><tr><th>Buyer</th><th>Status</th><th>Method</th><th>Total</th><th>Promoter</th><th>Review</th><th>Actions</th></tr></thead><tbody id="order-rows"></tbody></table></div>${record ? '<section id="event-ticket-settings" aria-label="Event ticketing setup"></section>' : ''}`;
   function rows(query = '') { root.querySelector('#order-rows').innerHTML = data.orders.filter(o => `${o.name} ${o.email} ${o.orderId}`.toLowerCase().includes(query.toLowerCase())).map(o => `<tr><td>${esc(o.name)}<br>${esc(o.email)}</td><td>${esc(o.status)}</td><td>${esc(o.method)}</td><td>${money(o.total)}</td><td>${esc(o.promoterId)}</td><td>${esc(o.reviewReason || '')}</td><td><button class="button button-quiet" data-open-order="${esc(o.orderId)}">Details</button></td></tr>`).join('');
     root.querySelectorAll('[data-open-order]').forEach(button => button.onclick = () => action(button, async () => {
       const order = await api('staff/order', { orderId: button.dataset.openOrder });
+      if (order.method === 'rsvp') { dialog(`<h2>${esc(order.eventTitle)} RSVP</h2><p>${esc(order.name)} · ${esc(order.email)}</p><p>${esc(order.rsvpStatus === 'pending' ? 'Awaiting approval' : order.rsvpStatus)}</p>${order.decisionNote ? `<p>${esc(order.decisionNote)}</p>` : ''}<p>Manage approval or withdrawal in the dashboard’s RSVPs section. RSVP passes have no payment to refund.</p>`); return; }
       const content = dialog(`<h2>${esc(order.eventTitle)}</h2><p>${esc(order.name)} · ${esc(order.email)} · ${money(order.total)} · ${esc(order.status)}</p><form id="refund-form">${order.tickets.map(t => `<label><input type="checkbox" name="ticket" value="${esc(t.id)}" ${t.status !== 'valid' ? 'disabled' : ''}> ${esc(t.name)} · ${money(t.amount)} · ${esc(t.status)} ${t.admission ? '· already admitted (capacity will not reopen)' : ''}</label>`).join('')}${order.externalRefundAmount ? `<p>An existing Stripe Dashboard refund of ${money(order.externalRefundAmount)} needs ticket mapping.</p><button type="button" class="button button-quiet" id="map-dashboard-refund">Map existing refund to selected tickets</button>` : ''}<button class="button button-primary" ${order.externalRefundAmount ? 'disabled' : ''} ${order.status !== 'paid' ? 'disabled' : ''}>Approve selected ticket refunds</button></form><p>Refunds return to the original payment method. Cash refunds must be returned at the till.</p>`);
       content.querySelector('#map-dashboard-refund')?.addEventListener('click', event => action(event.currentTarget, async () => {
         const ticketIds = new FormData(content.querySelector('form')).getAll('ticket');
@@ -227,6 +240,12 @@ async function dashboard() {
   }
   rows(); root.querySelector('#order-filter').oninput = event => rows(event.target.value);
   if (record) render();
+  if (record) {
+    const showRsvps = record.draft.registrationMode && record.draft.registrationMode !== 'tickets' || data.orders.some(o => o.method === 'rsvp');
+    root.querySelector('#event-rsvps').hidden = !showRsvps;
+    root.querySelector('a[href="#event-rsvps"]').hidden = !showRsvps;
+    adminRsvps(root.querySelector('#event-rsvps'), eventId, data.orders, dashboard);
+  }
   bind('#order-export', async () => download(await api('staff/export', { eventId }, true), 'Pluto-orders.csv'));
   bind('#order-reconcile', async () => { const result = await api('staff/retry', { eventId }); message(`Retry finished: ${result.orders || 0} orders checked.`); await dashboard(); });
   if (record) await adminGuestList(root.querySelector('#event-guestlist'), eventId);

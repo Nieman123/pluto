@@ -14,6 +14,17 @@ test('rich content drops executable markup and unsafe links', () => {
   const safe = html('<p>Good <strong>music</strong></p><script>alert(1)</script><img src=x onerror=alert(1)><a href="javascript:alert(1)">Bad</a><iframe src="evil"></iframe>');
   assert.match(safe, /<strong>music/); assert.doesNotMatch(safe, /script|onerror|iframe|javascript/);
 });
+
+test('legacy events stay ticketed and RSVP modes only allow free named admission passes', () => {
+  assert.equal(validateDraft(fixture()).registrationMode, 'tickets');
+  const draft = fixture(); draft.registrationMode = 'rsvp-approval';
+  assert.throws(() => validateDraft(draft), /Active RSVP passes/);
+  draft.offers = [{ ...draft.offers[0], unitAmount: 0, maxPerOrder: 1 }];
+  assert.equal(validateDraft(draft).registrationMode, 'rsvp-approval');
+  draft.registrationMode = 'rsvp'; assert.equal(validateDraft(draft).registrationMode, 'rsvp');
+  draft.offers[0].kind = 'vehicle'; assert.throws(() => validateDraft(draft), /Active RSVP passes/);
+  draft.registrationMode = 'forged'; assert.throws(() => validateDraft(draft), /valid registration type/);
+});
 test('day and weekend tickets share pools while vehicle passes can be purchased separately', () => {
   const d = validateDraft(fixture()); const result = cart(d, [{ offerId: 'weekend', quantity: 2 }, { offerId: 'vehicle', quantity: 1 }], '', Date.now());
   assert.deepEqual(result.consumption, { friday: 2, saturday: 2, vehicles: 1 }); assert.equal(result.total, 21000);

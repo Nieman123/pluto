@@ -15,6 +15,8 @@ export interface Order {
   sessionId?: string; clientSecret?: string; paymentIntentId?: string; receiptUrl?: string; stripeFee?: number; taxAmount?: number;
   refundedAmount?: number; refundedTaxAmount?: number; reviewReason?: string;
   transferCutoff?: string;
+  rsvpStatus?: 'pending' | 'approved' | 'declined' | 'withdrawn';
+  approvalRequired?: boolean; decisionNote?: string;
   taxTransactionId?: string; taxCustomerAddress?: { country: string; state: string; postal_code: string; line1: string; city: string } | null;
 }
 type Dependencies = { stripe?: Stripe; signingKey?: string };
@@ -54,6 +56,7 @@ export class Orders extends Catalog {
       const event = (await tx.get(this.event(eventId))).data();
       if (!event || event.status !== 'published') fail('Ticket sales are not open for this event.', 409);
       const draft = (event.liveDraft || event.draft) as EventDraft;
+      if (draft.registrationMode && draft.registrationMode !== 'tickets') fail('Use the RSVP form for this event. RSVP approval cannot be bypassed with a ticket checkout.', 409);
       if (now >= Date.parse(draft.endAt)) fail('This event has ended.', 409);
       if (isLive() && (!draft.tax.confirmed || draft.tax.mode === 'sandbox')) fail('Live sales need confirmed event taxes.', 503);
       const priced = cart(draft, raw.items, raw.promoCode, now);
@@ -200,6 +203,7 @@ export class Orders extends Catalog {
     await this.db.runTransaction(async tx => {
       const ref = this.order(orderId), order = (await tx.get(ref)).data() as Order;
       if (order.status === 'paid') return;
+      if (order.method === 'rsvp') fail('RSVP admission requires the RSVP approval flow.', 409);
       if (order.status === 'expired') { tx.update(ref, { reviewReason: 'Payment received after stock was released. Staff review required.', ...payment }); return; }
       const pools = await Promise.all(Object.keys(order.consumption).map(key => tx.get(this.event(order.eventId).collection('pools').doc(key))));
       const promoRef = order.promoCode ? this.event(order.eventId).collection('promos').doc(order.promoCode) : null;
@@ -244,11 +248,12 @@ export class Orders extends Catalog {
     if (refresh && order.sessionId && order.status !== 'paid') { await this.verifySession(orderId); order = (await this.order(orderId).get()).data() as Order; }
     const tickets = (await this.tickets().where('orderId', '==', orderId).get()).docs;
     const event = (await this.event(order.eventId).get()).data();
-    const held = tickets.filter(t => !t.data().refunded && (t.data().ownerUid === actor?.uid || t.data().holderEmail === order.email));
+    const held = tickets.filter(t => !t.data().refunded && (!t.data().rsvp || order.rsvpStatus === 'approved') && (t.data().ownerUid === actor?.uid || t.data().holderEmail === order.email));
     return { orderId, eventId: order.eventId, eventTitle: order.eventTitle, eventSlug: order.eventSlug, eventStatus: event?.status, status: order.status, method: order.method, total: order.total,
+      rsvpStatus: order.rsvpStatus || '', approvalRequired: order.approvalRequired === true, decisionNote: order.decisionNote || '',
       discount: order.discount, taxAmount: order.taxAmount || 0, refundedAmount: order.refundedAmount || 0, externalRefundAmount: (order as any).externalRefundAmount || 0, reviewReason: order.reviewReason || '', name: order.name, email: order.email, createdAt: order.createdAt, receiptUrl: order.receiptUrl || '',
       tickets: tickets.map(t => { const d = t.data(), canUse = held.includes(t); return { id: t.id, name: d.name, holderName: d.holderName, status: d.status, validFrom: d.validFrom, validUntil: d.validUntil, admission: d.admission,
-        amount: d.amount, transferable: canUse && d.status === 'valid' && !d.admission && event?.status !== 'cancelled' && Date.now() < this.transferDeadline(d, event), qr: canUse && d.status === 'valid' && event?.status !== 'cancelled' ? this.credential(d, t.id) : null }; }),
+        amount: d.amount, transferable: !d.rsvp && canUse && d.status === 'valid' && !d.admission && event?.status !== 'cancelled' && Date.now() < this.transferDeadline(d, event), qr: canUse && d.status === 'valid' && event?.status !== 'cancelled' ? this.credential(d, t.id) : null }; }),
       venue: held.length ? { name: (event?.liveDraft || event?.draft)?.venueName || '', address: (event?.liveDraft || event?.draft)?.address || '', directions: (event?.liveDraft || event?.draft)?.directions || '' } : null };
   }
   async claim(actor: DecodedIdToken) {
@@ -266,9 +271,9 @@ export class Orders extends Catalog {
   async mine(actor: DecodedIdToken) {
     const orders = await this.db.collection('ticketingOrders').where('ownerUid', '==', actor.uid).get();
     const tickets = await this.tickets().where('ownerUid', '==', actor.uid).get();
-    return { orders: orders.docs.map(d => { const o = d.data(); return { orderId: d.id, eventTitle: o.eventTitle, status: o.status, total: o.total, createdAt: o.createdAt }; }).sort((a, b) => b.createdAt - a.createdAt),
+    return { orders: orders.docs.map(d => { const o = d.data(); return { orderId: d.id, eventTitle: o.eventTitle, status: o.status, method: o.method, rsvpStatus: o.rsvpStatus || '', total: o.total, createdAt: o.createdAt }; }).sort((a, b) => b.createdAt - a.createdAt),
       tickets: await Promise.all(tickets.docs.map(async t => { const d = t.data(), event = (await this.event(d.eventId).get()).data(); return { id: t.id, orderId: d.orderId, eventTitle: d.eventTitle, name: d.name, holderName: d.holderName, status: d.status,
-        admission: d.admission, transferable: d.status === 'valid' && !d.admission && event?.status !== 'cancelled' && Date.now() < this.transferDeadline(d, event),
+        admission: d.admission, transferable: !d.rsvp && d.status === 'valid' && !d.admission && event?.status !== 'cancelled' && Date.now() < this.transferDeadline(d, event),
         qr: d.status === 'valid' && event?.status !== 'cancelled' ? this.credential(d, t.id) : null }; })) };
   }
   async recover(rawEmail: unknown) {
@@ -311,7 +316,7 @@ export class Orders extends Catalog {
     const event = (await this.event(order.eventId).get()).data()!;
     await this.db.runTransaction(async tx => {
       const ticket = (await tx.get(ticketRef)).data();
-      if (!ticket || ticket.orderId !== orderId || !(holderAccess && ticket.version === heldTicket.version || ticket.ownerUid === actor?.uid || ticket.holderEmail === order.email) || ticket.status !== 'valid' || ticket.admission || event.status === 'cancelled' || Date.now() >= this.transferDeadline(ticket, event)) fail('This ticket cannot be transferred.', 409);
+      if (!ticket || ticket.rsvp || ticket.orderId !== orderId || !(holderAccess && ticket.version === heldTicket.version || ticket.ownerUid === actor?.uid || ticket.holderEmail === order.email) || ticket.status !== 'valid' || ticket.admission || event.status === 'cancelled' || Date.now() >= this.transferDeadline(ticket, event)) fail('This ticket cannot be transferred.', 409);
       tx.create(this.db.collection('ticketingTransfers').doc(hash(token)), { ticketId: ticketKey, orderId, email: targetEmail, ticketVersion: ticket.version, expiresAt: this.transferDeadline(ticket, event), accepted: false });
       tx.set(this.db.collection('ticketingEmailJobs').doc(`transfer_${hash(token)}`), { type: 'transfer', to: targetEmail, token, orderId, status: 'pending', attempts: 0, createdAt: Date.now() });
     });
@@ -324,7 +329,7 @@ export class Orders extends Catalog {
       const transfer = (await tx.get(ref)).data();
       if (!transfer || transfer.accepted || transfer.expiresAt <= Date.now()) fail('This transfer is expired or already accepted.', 409);
       const ticketRef = this.tickets().doc(transfer.ticketId), ticket = (await tx.get(ticketRef)).data();
-      if (!ticket || ticket.version !== transfer.ticketVersion || ticket.status !== 'valid' || ticket.admission) fail('This ticket is no longer transferable.', 409);
+      if (!ticket || ticket.rsvp || ticket.version !== transfer.ticketVersion || ticket.status !== 'valid' || ticket.admission) fail('This ticket is no longer transferable.', 409);
       const event = (await tx.get(this.event(ticket.eventId))).data()!;
       if (event.status === 'cancelled' || Date.now() >= this.transferDeadline(ticket, event)) fail('The event transfer window is closed.', 409);
       ticketKey = transfer.ticketId;
@@ -344,7 +349,7 @@ export class Orders extends Catalog {
     const event = (await this.event(ticket.eventId).get()).data()!;
     if (event.status === 'cancelled') fail('This event has been cancelled. Contact Pluto about your order.', 409);
     return { id: access.ticketId, orderId: ticket.orderId, name: ticket.name, eventTitle: ticket.eventTitle, holderName: ticket.holderName, status: ticket.status,
-      transferable: !ticket.admission && Date.now() < this.transferDeadline(ticket, event), qr: this.credential(ticket, access.ticketId),
+      transferable: !ticket.rsvp && !ticket.admission && Date.now() < this.transferDeadline(ticket, event), qr: this.credential(ticket, access.ticketId),
       venue: { name: (event.liveDraft || event.draft).venueName, address: (event.liveDraft || event.draft).address, directions: (event.liveDraft || event.draft).directions } };
   }
   async scan(eventId: string, qr: unknown, scanId: unknown, identity: string | ScannerProof, offline = false) {

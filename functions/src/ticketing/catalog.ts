@@ -32,7 +32,7 @@ export class Catalog {
     const scopes = admin ? [] : (await this.db.collection('ticketingStaff').where('uid', '==', uid).get()).docs.map(d => d.data());
     const snapshot = admin ? await this.db.collection('ticketingEvents').get() : null;
     const events = snapshot ? snapshot.docs : (await Promise.all(scopes.map(s => this.event(s.eventId).get()))).filter(d => d.exists);
-    return { admin, events: events.map(d => { const e = d.data()!; return { id: d.id, title: e.draft.title, slug: e.draft.slug, startAt: e.draft.startAt, city: e.draft.city, region: e.draft.region, status: e.status, revision: e.revision, roles: admin ? ['manager', 'cash', 'refund', 'admission'] : scopes.find(s => s.eventId === d.id)?.roles || [] }; }) };
+    return { admin, events: events.map(d => { const e = d.data()!; return { id: d.id, title: e.draft.title, slug: e.draft.slug, startAt: e.draft.startAt, city: e.draft.city, region: e.draft.region, registrationMode: (e.liveDraft || e.draft).registrationMode || 'tickets', status: e.status, revision: e.revision, roles: admin ? ['manager', 'cash', 'refund', 'admission'] : scopes.find(s => s.eventId === d.id)?.roles || [] }; }) };
   }
   async get(eventId: string, uid: string) { await this.role(uid, eventId); const s = await this.event(eventId).get(); if (!s.exists) fail('Event not found.', 404); return { id: s.id, ...s.data() }; }
   async save(eventId: string, raw: any, expectedRevision: unknown, uid: string) {
@@ -59,7 +59,7 @@ export class Catalog {
     const prior = (await this.event(eventId).collection('revisions').doc(String(integer(revision, 'revision', 1))).get()).data();
     const current = (await this.event(eventId).get()).data();
     if (!prior || !current) fail('Revision not found.', 404);
-    return this.save(eventId, { ...prior.draft, offers: current.draft.offers, pools: current.draft.pools, promos: current.draft.promos, tax: current.draft.tax }, expected, uid);
+    return this.save(eventId, { ...prior.draft, registrationMode: current.draft.registrationMode || 'tickets', offers: current.draft.offers, pools: current.draft.pools, promos: current.draft.promos, tax: current.draft.tax }, expected, uid);
   }
   async duplicate(eventId: string, uid: string) {
     await this.role(uid, eventId); await this.admin(uid);
@@ -87,9 +87,11 @@ export class Catalog {
     if (action === 'publish') {
       if (!draft.city || !draft.region || !draft.descriptionHtml || !draft.offers.length) fail('Add location, description and tickets before publishing.');
       if (draft.offers.some(o => Date.parse(o.validFrom) < Date.parse(draft.admissionStartsAt))) fail('The first admission time must be no later than any ticket admission window.');
-      if (isLive() && (!draft.tax.confirmed || draft.tax.mode === 'sandbox')) fail('Confirm the event tax configuration before live sales.');
-      if (draft.tax.mode === 'automatic' && (!draft.tax.confirmed || !draft.tax.performanceLocationId || draft.offers.some(o => !o.taxCode || !o.stripeProductId))) fail('Automatic tax needs confirmed venue, registration and product configuration.');
-      if (draft.tax.mode === 'manual' && (!draft.tax.confirmed || draft.offers.some(o => !o.stripeTaxRateIds.length))) fail('Manual tax needs confirmed inclusive rates for every offer.');
+      if (draft.registrationMode === 'tickets') {
+        if (isLive() && (!draft.tax.confirmed || draft.tax.mode === 'sandbox')) fail('Confirm the event tax configuration before live sales.');
+        if (draft.tax.mode === 'automatic' && (!draft.tax.confirmed || !draft.tax.performanceLocationId || draft.offers.some(o => !o.taxCode || !o.stripeProductId))) fail('Automatic tax needs confirmed venue, registration and product configuration.');
+        if (draft.tax.mode === 'manual' && (!draft.tax.confirmed || draft.offers.some(o => !o.stripeTaxRateIds.length))) fail('Manual tax needs confirmed inclusive rates for every offer.');
+      }
       for (const m of allMedia(draft)) if (!(await ref.collection('media').doc(m.assetId).get()).exists) fail('An image is missing. Upload it again.');
       if (draft.venueVisibility === 'holders') {
         const visible = JSON.stringify(publicEvent(eventId, draft, 'published', expected));

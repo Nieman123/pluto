@@ -59,6 +59,7 @@ export interface Offer {
 }
 export interface Promotion { code: string; type: 'percent' | 'fixed'; value: number; limit: number; startsAt: string; endsAt: string; offerIds: string[] }
 export interface EventDraft {
+  registrationMode: 'tickets' | 'rsvp' | 'rsvp-approval';
   title: string; slug: string; subtitle: string; descriptionHtml: string; startAt: string; endAt: string; admissionStartsAt: string;
   timezone: string; city: string; region: string; venueName: string; address: string; directions: string; venueVisibility: 'public' | 'holders';
   hero: Media | null; flyer: Media | null; gallery: Media[];
@@ -114,7 +115,10 @@ export function validateDraft(raw: any): EventDraft {
   if (!/^#[a-fA-F0-9]{6}$/.test(accent)) fail('Use a six-digit hex accent color.');
   const taxMode = raw.tax?.mode || 'sandbox';
   if (!['sandbox', 'manual', 'automatic'].includes(taxMode)) fail('Invalid tax mode.');
-  return { title: text(raw.title, 'title', 200, true), slug, subtitle: text(raw.subtitle || '', 'subtitle', 400), descriptionHtml: html(raw.descriptionHtml || ''),
+  const registrationMode = raw.registrationMode || 'tickets';
+  if (!['tickets', 'rsvp', 'rsvp-approval'].includes(registrationMode)) fail('Choose a valid registration type.');
+  if (registrationMode !== 'tickets' && offers.some(o => o.active && (o.unitAmount !== 0 || o.kind !== 'admission' || o.maxPerOrder !== 1))) fail('Active RSVP passes must be free admission passes, one per person. Use Set up free RSVP pass on the dashboard.');
+  return { registrationMode, title: text(raw.title, 'title', 200, true), slug, subtitle: text(raw.subtitle || '', 'subtitle', 400), descriptionHtml: html(raw.descriptionHtml || ''),
     startAt, endAt, admissionStartsAt, timezone, city: text(raw.city || '', 'city', 100), region: text(raw.region || '', 'state', 100),
     venueName: text(raw.venueName || '', 'venue', 200), address: text(raw.address || '', 'address', 500), directions: text(raw.directions || '', 'directions', 3000),
     venueVisibility: raw.venueVisibility === 'holders' ? 'holders' : 'public', hero: media(raw.hero), flyer: media(raw.flyer),

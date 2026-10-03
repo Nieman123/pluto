@@ -28,6 +28,18 @@ class _TicketsPageState extends State<TicketsPage> {
   bool _busy = false;
   String _money(dynamic cents) => NumberFormat.simpleCurrency(name: 'USD')
       .format((cents as num? ?? 0) / 100);
+  String _orderLabel(Map<dynamic, dynamic> order) {
+    if (order['method'] != 'rsvp') {
+      return '${order['status']} · ${_money(order['total'])}';
+    }
+    return 'RSVP · ${switch (order['rsvpStatus']) {
+      'pending' => 'Awaiting approval',
+      'approved' => 'Approved',
+      'declined' => 'Declined',
+      'withdrawn' => 'Withdrawn',
+      _ => 'Status unavailable',
+    }}';
+  }
 
   @override
   void initState() {
@@ -334,8 +346,9 @@ class _TicketsPageState extends State<TicketsPage> {
         const Icon(Icons.auto_awesome_outlined, color: _accent, size: 28),
         const SizedBox(height: 14),
         _title('Finish your Pluto account'),
-        _body(
-            'Keep your tickets together across devices, earn Pluto Points and get ready for the next event. Your ticket is ready to use below.'),
+        _body(_data?['method'] == 'rsvp'
+            ? 'Keep your tickets and RSVPs together across devices. Your RSVP status and any available pass are shown below.'
+            : 'Keep your tickets together across devices, earn Pluto Points and get ready for the next event. Your ticket is ready to use below.'),
         const SizedBox(height: 18),
         Wrap(spacing: 12, runSpacing: 10, children: <Widget>[
           FilledButton.icon(
@@ -351,8 +364,9 @@ class _TicketsPageState extends State<TicketsPage> {
     if (user.emailVerified) return const SizedBox.shrink();
     return _panel(border: _accent.withValues(alpha: .45), children: <Widget>[
       _title('One more step: verify your email'),
-      _body(
-          'Verify ${user.email ?? 'your email'} to link purchases to your account. Your tickets in this browser remain available while you finish.'),
+      _body(_data?['method'] == 'rsvp'
+          ? 'Verify ${user.email ?? 'your email'} to link this RSVP to your account. Your request status remains available in this browser while you finish.'
+          : 'Verify ${user.email ?? 'your email'} to link purchases to your account. Your tickets in this browser remain available while you finish.'),
       const SizedBox(height: 16),
       Wrap(spacing: 12, runSpacing: 10, children: <Widget>[
         FilledButton(
@@ -487,11 +501,25 @@ class _TicketsPageState extends State<TicketsPage> {
 
   Widget _orderSummary(Map<String, dynamic> data) => _panel(children: <Widget>[
         _title(data['eventTitle'] as String? ?? 'Your order'),
-        _body(
-            '${data['status']} · Total ${_money(data['total'])} · Refunds ${_money(data['refundedAmount'])}'),
-        if (data['eventStatus'] == 'cancelled')
+        _body(data['method'] == 'rsvp'
+            ? _orderLabel(data)
+            : '${data['status']} · Total ${_money(data['total'])} · Refunds ${_money(data['refundedAmount'])}'),
+        if (data['rsvpStatus'] == 'pending')
           _body(
-              'This event has been cancelled. Contact Pluto about your order and refund approval.'),
+              'Your RSVP is awaiting organizer approval. This request does not grant admission. Your QR and private venue details will appear here after approval. Refresh to check your status.'),
+        if (data['rsvpStatus'] == 'declined')
+          _body('Your RSVP was declined. No admission QR has been issued.'),
+        if (data['rsvpStatus'] == 'withdrawn')
+          _body('Your RSVP was withdrawn. Any previous QR is no longer valid.'),
+        if (data['rsvpStatus'] == 'approved')
+          _body(
+              'Your RSVP is confirmed. This pass is for the named attendee and cannot be transferred. Bring a photo ID.'),
+        if ((data['decisionNote'] as String? ?? '').isNotEmpty)
+          _body('Organizer note: ${data['decisionNote']}'),
+        if (data['eventStatus'] == 'cancelled')
+          _body(data['method'] == 'rsvp'
+              ? 'This event has been cancelled. Your RSVP no longer grants admission.'
+              : 'This event has been cancelled. Contact Pluto about your order and refund approval.'),
         if ((data['discount'] as num? ?? 0) > 0)
           _body('Discounts: ${_money(data['discount'])}'),
         if ((data['taxAmount'] as num? ?? 0) > 0)
@@ -501,19 +529,54 @@ class _TicketsPageState extends State<TicketsPage> {
               'An additional ${_money(data['externalRefundAmount'])} refund is awaiting ticket review.'),
         const SizedBox(height: 10),
         Wrap(spacing: 12, runSpacing: 8, children: <Widget>[
-          TextButton(
-              onPressed: _busy
-                  ? null
-                  : () => _run(() async {
-                        await _repository.request('resend', <String, dynamic>{
-                          'orderId': _orderId,
-                          'accessKey': ticketAccessRead('pluto-order-$_orderId')
-                        });
-                        if (mounted)
-                          setState(() => _notice =
-                              'Confirmation email queued. Your tickets stay in the app.');
-                      }),
-              child: const Text('Resend confirmation')),
+          if (data['status'] == 'paid')
+            TextButton(
+                onPressed: _busy
+                    ? null
+                    : () => _run(() async {
+                          await _repository.request('resend', <String, dynamic>{
+                            'orderId': _orderId,
+                            'accessKey':
+                                ticketAccessRead('pluto-order-$_orderId')
+                          });
+                          if (mounted)
+                            setState(() => _notice =
+                                'Confirmation email queued. Your tickets stay in the app.');
+                        }),
+                child: const Text('Resend confirmation')),
+          if (data['method'] == 'rsvp' &&
+              <String>['pending', 'approved'].contains(data['rsvpStatus']))
+            TextButton(
+                onPressed: _busy
+                    ? null
+                    : () => _run(() async {
+                          final bool? withdraw = await showDialog<bool>(
+                            context: context,
+                            builder: (BuildContext context) => AlertDialog(
+                              title: const Text('Withdraw RSVP?'),
+                              content: const Text(
+                                  'This removes your admission access and frees any unused capacity. Your existing RSVP remains in your history.'),
+                              actions: <Widget>[
+                                TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, false),
+                                    child: const Text('Keep RSVP')),
+                                TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, true),
+                                    child: const Text('Withdraw RSVP')),
+                              ],
+                            ),
+                          );
+                          if (withdraw != true) return;
+                          await _repository.request('cancel', <String, dynamic>{
+                            'orderId': _orderId,
+                            'accessKey':
+                                ticketAccessRead('pluto-order-$_orderId'),
+                          });
+                          await _load();
+                        }),
+                child: const Text('Withdraw RSVP')),
           if ((data['receiptUrl'] as String? ?? '').isNotEmpty)
             TextButton(
                 onPressed: () => htmlOpenLink(data['receiptUrl'] as String),
@@ -558,7 +621,8 @@ class _TicketsPageState extends State<TicketsPage> {
         _orderId == null && _holderToken == null && _transferToken == null;
     final bool hasTickets = tickets.isNotEmpty ||
         _holderToken != null ||
-        (_orderId != null && data?['status'] == 'paid');
+        (_orderId != null &&
+            (data?['status'] == 'paid' || data?['method'] == 'rsvp'));
     return Theme(
         data: _walletTheme,
         child: Builder(
@@ -598,7 +662,7 @@ class _TicketsPageState extends State<TicketsPage> {
                                     ]),
                                     const SizedBox(height: 10),
                                     _body(
-                                        'Your admission tickets stay here in the Pluto app.'),
+                                        'Your admission tickets and RSVPs stay here in the Pluto app.'),
                                     const SizedBox(height: 18),
                                     Wrap(
                                         spacing: 12,
@@ -702,7 +766,7 @@ class _TicketsPageState extends State<TicketsPage> {
                                                 title: Text(
                                                     o['eventTitle'] as String),
                                                 subtitle: Text(
-                                                    '${o['status']} · ${_money(o['total'])}',
+                                                    _orderLabel(o as Map),
                                                     style: const TextStyle(
                                                         color: _muted)),
                                                 trailing: const Icon(

@@ -13,6 +13,7 @@ before(async () => {
     await setDoc(doc(c.firestore(), 'publishedEvents', 'test-event'), { title: 'Public event', city: 'Asheville' });
     await setDoc(doc(c.firestore(), 'ticketingEvents/test-event/guests/private-guest'), { name: 'Private guest' });
     await setDoc(doc(c.firestore(), 'ticketingEvents/test-event/guestBatches/private-batch'), { private: true });
+    await setDoc(doc(c.firestore(), 'ticketingEvents/test-event/rsvpContacts/private-contact'), { orderId: 'private' });
     for (const name of privateCollections) await setDoc(doc(c.firestore(), name, 'private'), { private: true });
     await uploadBytes(ref(c.storage(), 'private/ticketing/test-event/artwork.webp'), new Uint8Array([1, 2]), { contentType: 'image/webp' });
   });
@@ -24,6 +25,7 @@ after(async () => {
     await deleteDoc(doc(c.firestore(), 'publishedEvents', 'test-event'));
     await deleteDoc(doc(c.firestore(), 'ticketingEvents/test-event/guests/private-guest'));
     await deleteDoc(doc(c.firestore(), 'ticketingEvents/test-event/guestBatches/private-batch'));
+    await deleteDoc(doc(c.firestore(), 'ticketingEvents/test-event/rsvpContacts/private-contact'));
     for (const name of privateCollections) await deleteDoc(doc(c.firestore(), name, 'private'));
     await deleteObject(ref(c.storage(), 'private/ticketing/test-event/artwork.webp'));
   });
@@ -33,7 +35,7 @@ for (const role of ['anonymous', 'buyer', 'ticketing-rules-admin']) test(`${role
   const c = role === 'anonymous' ? env.unauthenticatedContext() : env.authenticatedContext(role);
   await assertSucceeds(getDoc(doc(c.firestore(), 'publishedEvents', 'test-event')));
   await assertFails(setDoc(doc(c.firestore(), 'publishedEvents', 'test-event'), { title: 'Forged event' }));
-  for (const path of ['ticketingEvents/test-event/guests/private-guest', 'ticketingEvents/test-event/guestBatches/private-batch']) {
+  for (const path of ['ticketingEvents/test-event/guests/private-guest', 'ticketingEvents/test-event/guestBatches/private-batch', 'ticketingEvents/test-event/rsvpContacts/private-contact']) {
     await assertFails(getDoc(doc(c.firestore(), path))); await assertFails(setDoc(doc(c.firestore(), path), { name: 'Forged guest' }));
   }
   await assertFails(getDocs(collection(c.firestore(), 'ticketingEvents/test-event/guests')));

@@ -3,21 +3,22 @@ import { accessKey, action, api, bind, message, money } from './api.js';
 export function initCheckout() {
   const form = document.querySelector('#native-checkout-form'); if (!form) return;
   const config = JSON.parse(document.querySelector('#native-checkout-config').textContent), storageKey = `pluto-checkout-${config.eventId}`;
+  const rsvp = config.registrationMode && config.registrationMode !== 'tickets';
   let checkout, result, frozen, countdown;
   function lockCart() {
     form.querySelectorAll('input,select').forEach(input => { input.disabled = !!frozen; });
     if (frozen) {
-      for (const [name, value] of Object.entries({ buyerName: frozen.name, email: frozen.email, promoCode: frozen.promoCode })) form.elements[name].value = value || '';
+      for (const [name, value] of Object.entries({ buyerName: frozen.name, email: frozen.email, promoCode: frozen.promoCode })) if (form.elements[name]) form.elements[name].value = value || '';
       for (const item of frozen.items) { const select = form.elements[item.offerId]; if (select) select.value = String(item.quantity); }
     }
-    form.querySelector('[type=submit]').textContent = frozen ? 'Resume reserved checkout' : 'Continue to payment';
+    form.querySelector('[type=submit]').textContent = rsvp ? frozen ? 'Resume RSVP request' : config.registrationMode === 'rsvp-approval' ? 'Request RSVP' : 'Confirm RSVP' : frozen ? 'Resume reserved checkout' : 'Continue to payment';
   }
   const promoter = new URLSearchParams(location.search).get('ref');
   if (promoter && /^[a-zA-Z0-9_-]{1,80}$/.test(promoter)) localStorage.setItem(`pluto-promoter-${config.eventId}`, JSON.stringify({ promoterId: promoter, promoterClickedAt: Date.now() }));
-  form.addEventListener('input', () => { const total = [...form.querySelectorAll('[data-ticket-quantity]')].reduce((n, select) => n + Number(select.value) * Number(select.dataset.price), 0); document.querySelector('#ticket-total').textContent = `${money(total)} before any promotion`; });
+  form.addEventListener('input', () => { const total = [...form.querySelectorAll('[data-ticket-quantity]')].reduce((n, select) => n + Number(select.value) * Number(select.dataset.price), 0); document.querySelector('#ticket-total').textContent = rsvp ? 'Free RSVP · One pass per named person' : `${money(total)} before any promotion`; });
   async function mount(request) {
     frozen = request; localStorage.setItem(storageKey, JSON.stringify(frozen));
-    try { result = await api('checkout', frozen); }
+    try { result = await api(rsvp ? 'rsvp' : 'checkout', frozen); }
     catch (error) {
       if ([400, 409].includes(error.status)) {
         const attempt = await api('checkout-attempt', { accessKey: frozen.accessKey }).catch(() => null);
@@ -26,7 +27,7 @@ export function initCheckout() {
       throw error;
     }
     localStorage.setItem(`pluto-order-${result.orderId}`, frozen.accessKey);
-    if (result.status === 'paid') { localStorage.removeItem(storageKey); location.href = `/app/tickets?order=${result.orderId}`; return; }
+    if (rsvp || result.status === 'paid') { localStorage.removeItem(storageKey); location.href = `/app/tickets?order=${result.orderId}`; return; }
     if (['expired', 'cancelled'].includes(result.status)) { localStorage.removeItem(storageKey); frozen = null; lockCart(); throw new Error('The previous reservation has closed. Choose your tickets again.'); }
     document.querySelector('#checkout-cancel').hidden = false;
     if (!result.clientSecret || !result.publishableKey) throw new Error('Payment setup is incomplete. Your cart is saved; retry once checkout is configured.');
@@ -44,10 +45,10 @@ export function initCheckout() {
       if (!frozen) {
         const data = new FormData(form), attribution = JSON.parse(localStorage.getItem(`pluto-promoter-${config.eventId}`) || '{}');
         const items = [...form.querySelectorAll('[data-ticket-quantity]')].filter(s => Number(s.value) > 0).map(s => ({ offerId: s.name, quantity: Number(s.value) }));
-        if (!items.length) throw new Error('Choose at least one ticket.');
+        if (rsvp ? items.length !== 1 || items[0].quantity !== 1 : !items.length) throw new Error(rsvp ? 'Choose one RSVP admission pass. Each person needs their own RSVP.' : 'Choose at least one ticket.');
         frozen = { eventId: config.eventId, accessKey: accessKey(), items, promoCode: data.get('promoCode'), name: data.get('buyerName'), email: data.get('email'), ...attribution };
       }
-      lockCart(); message('Preparing your reserved checkout…'); await mount(frozen);
+      lockCart(); message(rsvp ? 'Submitting your RSVP…' : 'Preparing your reserved checkout…'); await mount(frozen);
     });
   });
   bind('#checkout-cancel', async () => {

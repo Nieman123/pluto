@@ -38,7 +38,7 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   router.get('/events', async (_req, res) => {
     const events = (await service.db.collection('publishedEvents').get()).docs.map(d => d.data()).sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt)).map(e => ({ ...e,
       dateLabel: new Intl.DateTimeFormat('en-US', { timeZone: e.timezone, month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(e.startAt)),
-      saleLabel: e.status === 'cancelled' ? 'Cancelled' : e.status === 'archived' || Date.parse(e.endAt) < Date.now() ? 'Past event' : 'Explore & get tickets' }));
+      saleLabel: e.status === 'cancelled' ? 'Cancelled' : e.status === 'archived' || Date.parse(e.endAt) < Date.now() ? 'Past event' : e.registrationMode === 'rsvp-approval' ? 'Request RSVP' : e.registrationMode === 'rsvp' ? 'RSVP now' : 'Explore & get tickets' }));
     res.render('native-events', { ...context('/events'), meta: { title: 'Upcoming events | Pluto Events', description: 'Dance music, community and late nights with Pluto Events.', canonical: `${baseUrl()}/events` }, events });
   });
   router.get('/sitemap.xml', async (_req, res) => {
@@ -48,7 +48,8 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   });
   async function renderEvent(event: any, req: Request, res: Response, preview = false) {
     const media = (m: any) => m ? { ...m, url: `/events/${event.slug}/media/${m.assetId}` } : null;
-    const mapped = { ...event, hero: media(event.hero), flyer: media(event.flyer), gallery: event.gallery.map(media), lineup: event.lineup.map((a: any) => ({ ...a, image: media(a.image) })) };
+    const rsvp = event.registrationMode && event.registrationMode !== 'tickets';
+    const mapped = { ...event, rsvp, hero: media(event.hero), flyer: media(event.flyer), gallery: event.gallery.map(media), lineup: event.lineup.map((a: any) => ({ ...a, image: media(a.image) })) };
     const pools = (await service.event(event.id).collection('pools').get()).docs.map(d => d.data());
     const privateEvent = (await service.event(event.id).get()).data();
     const offerPools = privateEvent?.liveDraft?.offers || privateEvent?.draft.offers || [];
@@ -59,7 +60,7 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
       return { ...o, remaining, availability, available: availability === 'Available', quantityLimit: Math.min(o.maxPerOrder, remaining), priceLabel: (o.unitAmount / 100).toFixed(2) };
     });
     const dateLabel = new Intl.DateTimeFormat('en-US', { timeZone: event.timezone, dateStyle: 'full', timeStyle: 'short' });
-    const state = event.status === 'cancelled' ? 'Cancelled' : event.status === 'archived' || Date.parse(event.endAt) <= now ? 'Past event' : mapped.offers.some((o: any) => o.available) ? 'Tickets available' : mapped.offers.some((o: any) => o.availability === 'Coming soon') ? 'Coming soon' : mapped.offers.some((o: any) => o.availability === 'Sold out') ? 'Sold out' : 'Sales closed';
+    const state = event.status === 'cancelled' ? 'Cancelled' : event.status === 'archived' || Date.parse(event.endAt) <= now ? 'Past event' : mapped.offers.some((o: any) => o.available) ? rsvp ? 'RSVPs open' : 'Tickets available' : mapped.offers.some((o: any) => o.availability === 'Coming soon') ? 'Coming soon' : mapped.offers.some((o: any) => o.availability === 'Sold out') ? 'Sold out' : rsvp ? 'RSVPs closed' : 'Sales closed';
     const rgb = event.theme.accent.slice(1).match(/../g).map((c: string) => parseInt(c, 16) / 255).map((c: number) => c <= .04045 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4);
     const luminance = .2126 * rgb[0] + .7152 * rgb[1] + .0722 * rgb[2];
     const accentText = (luminance + .05) / .05 >= 1.05 / (luminance + .05) ? '#000000' : '#ffffff';
@@ -69,7 +70,7 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
       image: event.hero ? `${baseUrl()}/events/${event.slug}/media/${event.hero.assetId}` : undefined,
       offers: mapped.offers.map((o: any) => ({ '@type': 'Offer', name: o.name, price: (o.unitAmount / 100).toFixed(2), priceCurrency: 'USD', url: `${baseUrl()}/events/${event.slug}#tickets`, availability: o.available ? 'https://schema.org/InStock' : o.availability === 'Coming soon' ? 'https://schema.org/PreSale' : 'https://schema.org/SoldOut' })) });
     const view = { ...context(`/events/${event.slug}`), googleAnalyticsId: '', meta: { title: `${event.title} | Pluto Events`, description: event.subtitle, canonical: `${baseUrl()}/events/${event.slug}`, image: event.hero ? `${baseUrl()}/events/${event.slug}/media/${event.hero.assetId}` : `${baseUrl()}/assets/images/pluto-preview.jpg` },
-      event: mapped, accentText, state, preview, sandbox: !isLive(), dateLabel: `${dateLabel.format(new Date(event.startAt))} – ${dateLabel.format(new Date(event.endAt))}`, jsonLd, checkoutJson: serializeJson({ eventId: event.id, offers: mapped.offers, preview, status: event.status, endAt: event.endAt }) };
+      event: mapped, accentText, state, preview, sandbox: !isLive(), dateLabel: `${dateLabel.format(new Date(event.startAt))} – ${dateLabel.format(new Date(event.endAt))}`, jsonLd, checkoutJson: serializeJson({ eventId: event.id, registrationMode: event.registrationMode || 'tickets', offers: mapped.offers, preview, status: event.status, endAt: event.endAt }) };
     if (preview) {
       // Authenticated previews carry sanitized embedded images, never public draft URLs.
       for (const m of [mapped.hero, mapped.flyer, ...mapped.gallery, ...mapped.lineup.map((a: any) => a.image)].filter(Boolean)) m.url = `data:image/webp;base64,${(await service.media(event.id, m.assetId, res.locals.actor.uid)).toString('base64')}`;
@@ -109,6 +110,9 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   const admissionIdentity = (req: Request, res: Response) => req.get('x-pluto-scanner') ? { scannerToken: req.get('x-pluto-scanner')! } : actor(res).uid;
   const bodyId = (req: Request, key = 'eventId') => id(req.body?.[key]);
   router.post('/tickets/api/checkout', async (req, res) => { await service.rateLimit(req.ip || 'unknown', 'checkout', 60); res.json(await service.checkout(req.body, res.locals.actor)); });
+  router.post('/tickets/api/rsvp', async (req, res) => { await service.rateLimit(req.ip || 'unknown', 'rsvp', 30); res.json(await service.rsvp(req.body, res.locals.actor)); });
+  router.post('/tickets/api/staff/rsvp/review', async (req, res) => res.json(await service.reviewRsvp(bodyId(req), bodyId(req, 'orderId'), req.body.decision, req.body.note, actor(res).uid)));
+  router.post('/tickets/api/staff/rsvp/withdraw', async (req, res) => res.json(await service.withdrawRsvp(bodyId(req), bodyId(req, 'orderId'), actor(res).uid)));
   router.post('/tickets/api/checkout-attempt', async (req, res) => res.json(await service.checkoutAttempt(req.body.accessKey)));
   router.post('/tickets/api/cancel', async (req, res) => res.json(await service.cancel(bodyId(req, 'orderId'), req.body.accessKey, res.locals.actor)));
   router.post('/tickets/api/order', async (req, res) => res.json(await service.view(bodyId(req, 'orderId'), req.body.accessKey, res.locals.actor, true)));
