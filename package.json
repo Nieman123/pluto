@@ -15,6 +15,7 @@
     "test:ticketing:integration": "node functions/test/ticketing-integration.cjs",
     "test:ticketing:rules": "node --test test/ticketing-rules.test.mjs",
     "test:ticketing:browser": "node scripts/ticketing/browser-test.cjs",
+    "test:ticketing:scanner-browser": "node scripts/ticketing/scanner-pin-browser-test.cjs",
     "test:ticketing:payment": "node scripts/ticketing/sandbox-payment-test.cjs",
     "preview:ticketing": "node scripts/ticketing/preview.mjs",
     "ticketing:key": "node scripts/ticketing/generate-signing-key.mjs",

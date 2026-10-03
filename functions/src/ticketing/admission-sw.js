@@ -1,4 +1,4 @@
-const CACHE = 'pluto-admission-v2';
+const CACHE = 'pluto-admission-v3';
 const ASSETS = ['/tickets/staff', '/assets/site.js', '/assets/ticketing.js', '/assets/ticketing.css', '/assets/images/pluto-logo.webp', '/assets/fonts/Montserrat-Medium.ttf', '/assets/fonts/SourceCodePro-SemiBold.ttf'];
 self.addEventListener('install', event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS))));
 self.addEventListener('activate', event => event.waitUntil(Promise.all([self.clients.claim(), caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('pluto-admission-') && key !== CACHE).map(key => caches.delete(key))))])));

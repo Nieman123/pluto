@@ -1,4 +1,5 @@
 import { accessKey, action, api, bind, dialog, download, esc, message, money, user } from './api.js';
+import { scannerPins } from './scanner-pins.js';
 
 let record, events = [], dirty = false, pendingUploads = 0, studio = false, globalAdmin = false, saving;
 const get = (path, object = record?.draft) => path.split('.').reduce((o, key) => o?.[key], object);
@@ -82,6 +83,7 @@ async function selectEvent(eventId, edit = false) {
   document.querySelector('#workspace-title').textContent = scope?.title || 'Your event'; document.querySelector('#workspace-status').textContent = scope?.status || 'draft';
   document.querySelector('#event-studio').hidden = edit || !scope?.roles.includes('manager');
   document.querySelector('#event-roles').hidden = !globalAdmin || edit;
+  document.querySelector('#event-scanner-pins').hidden = !scope?.roles.includes('manager');
   document.querySelector('#event-promoter-stats').hidden = edit || !scope?.roles.includes('promoter');
   document.querySelector('#event-orders').hidden = !edit;
   document.querySelector('#event-cash').hidden = edit || !scope?.roles.includes('cash');
@@ -243,6 +245,7 @@ export function initEditor() {
   bind('#event-orders', async () => { if (dirty) await save(); await selectEvent(document.querySelector('#staff-event').value); });
   bind('#events-back', async () => { if (dirty) await save(); record = null; document.querySelector('#staff-event').value = ''; document.querySelector('#event-workspace').hidden = true; document.querySelector('#events-index').hidden = false; history.replaceState(null, '', '/tickets/admin'); await loadEvents(); });
   bind('#event-cash', cash); bind('#event-roles', roles);
+  bind('#event-scanner-pins', scannerPins);
   bind('#event-promoter-stats', async () => { const data = await api('staff/promoter-stats', { eventId: document.querySelector('#staff-event').value }); document.querySelector('#event-dashboard').innerHTML = `<h2>Your promoter performance</h2><p>${esc(data.promoterId)}</p><div class="ticket-stat-grid">${[['Attributed orders', data.orders], ['Ticket units', data.tickets], ['Gross', money(data.gross)], ['Refunds', money(data.refunds)]].map(([label, value]) => `<div class="ticket-stat"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('')}</div>`; });
   window.addEventListener('beforeunload', event => { if (dirty) { event.preventDefault(); event.returnValue = ''; } });
 }
