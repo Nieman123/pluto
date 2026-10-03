@@ -1,11 +1,12 @@
 import { createHmac, randomInt, randomUUID } from 'node:crypto';
 import { FieldPath } from 'firebase-admin/firestore';
-import { Orders, type Order } from './orders';
+import { type Order } from './orders';
+import { Guests } from './guests';
 import { fail, hash, id, integer, receipt, secret, text, ticketId } from './domain';
 import { appTicketsUrl, baseUrl, isLive, keyPair, resendKey } from './config';
 import { scannerAccess } from './scanner-access';
 
-export class Operations extends Orders {
+export class Operations extends Guests {
   scannerPinHash(pin: string) {
     // A keyed lookup prevents a leaked database from enumerating the short PIN space.
     const key = keyPair(this.signing()).privateKey.export({ type: 'pkcs8', format: 'der' });

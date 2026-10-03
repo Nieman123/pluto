@@ -99,7 +99,7 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
     next();
   }, express.json({ limit: '7300kb' }), async (req, res, next) => {
     res.locals.actor = await service.actor((req.get('authorization') || '').replace(/^Bearer /, ''), true);
-    const scannerRoutes = ['/staff/scan', '/staff/manifest', '/staff/scan-review', '/scanner/session'];
+    const scannerRoutes = ['/staff/scan', '/staff/manifest', '/staff/scan-review', '/staff/guestlist', '/staff/guestlist/arrive', '/scanner/session'];
     if (req.get('x-pluto-scanner') && scannerRoutes.includes(req.path)) res.locals.scanner = await service.scannerSession(req.get('x-pluto-scanner')!);
     const upload = req.path === '/staff/media', identity = res.locals.scanner?.uid || res.locals.actor?.uid || req.ip || 'unknown';
     await service.rateLimit(identity, upload ? 'upload' : 'api', upload ? 200 : res.locals.actor || res.locals.scanner ? 3000 : 600);
@@ -122,6 +122,11 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   router.post('/tickets/api/transfer/accept', async (req, res) => res.json(await service.acceptTransfer(req.body.token, res.locals.actor)));
   router.post('/tickets/api/holder', async (req, res) => res.json(await service.holder(req.body.token, res.locals.actor)));
   router.post('/tickets/api/staff/events', async (_req, res) => res.json(await service.list(actor(res).uid)));
+  router.post('/tickets/api/staff/guestlist', async (req, res) => res.json(await service.guestList(bodyId(req), admissionIdentity(req, res))));
+  router.post('/tickets/api/staff/guestlist/add', async (req, res) => res.json(await service.addGuests(bodyId(req), req.body.names, req.body.note, req.body.attempt, actor(res).uid)));
+  router.post('/tickets/api/staff/guestlist/save', async (req, res) => res.json(await service.saveGuest(bodyId(req), bodyId(req, 'guestId'), req.body.name, req.body.note, req.body.version, actor(res).uid)));
+  router.post('/tickets/api/staff/guestlist/remove', async (req, res) => res.json(await service.saveGuest(bodyId(req), bodyId(req, 'guestId'), '', '', req.body.version, actor(res).uid, true)));
+  router.post('/tickets/api/staff/guestlist/arrive', async (req, res) => res.json(await service.arriveGuest(bodyId(req), bodyId(req, 'guestId'), req.body.scanId, admissionIdentity(req, res), req.body.offline === true)));
   router.post('/tickets/api/staff/scanner-pins', async (req, res) => res.json(await service.scannerPins(bodyId(req), actor(res).uid)));
   router.post('/tickets/api/staff/scanner-pins/create', async (req, res) => res.json(await service.createScannerPin(bodyId(req), req.body.label, req.body.expiresAt, actor(res).uid)));
   router.post('/tickets/api/staff/scanner-pins/revoke', async (req, res) => res.json(await service.revokeScannerPin(bodyId(req), bodyId(req, 'pinId'), actor(res).uid)));

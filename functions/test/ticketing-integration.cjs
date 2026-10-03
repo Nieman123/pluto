@@ -106,6 +106,30 @@ async function main() {
   await assert.rejects(() => service.staffOrders(pinEvent, scannerLogin.uid), /does not have access/);
   const manifest = await service.manifest(pinEvent, proof);
   assert.equal(manifest.staffUid, scannerLogin.uid); assert.ok(manifest.offlineUntil <= Date.now() + 4 * 3600000);
+  const guestAttempt = newKey();
+  const guestPoolBefore = (await service.event(pinEvent).collection('pools').doc('friday').get()).data();
+  await service.addGuests(pinEvent, ['Alex Rivera', 'Sam Taylor', 'Offline Guest'], 'Artist list', guestAttempt, 'pin-event-manager');
+  await service.addGuests(pinEvent, ['Alex Rivera', 'Sam Taylor', 'Offline Guest'], 'Artist list', guestAttempt, staff);
+  await assert.rejects(() => service.addGuests(pinEvent, ['Different names'], '', guestAttempt, staff), /different names/);
+  await assert.rejects(() => service.addGuests(pinEvent, ['Forged'], '', newKey(), scannerLogin.uid), /does not have access/);
+  let guests = (await service.guestList(pinEvent, proof)).guests; assert.equal(guests.length, 3, 'bulk add retries cannot duplicate guests');
+  assert.deepEqual((await service.event(pinEvent).collection('pools').doc('friday').get()).data(), guestPoolBefore, 'guest list leaves ticket stock intact');
+  assert.equal((await service.manifest(pinEvent, proof)).guests.length, 3, 'offline manifest contains authorized guest list');
+  await assert.rejects(() => service.guestList(eventId, proof), /assigned event/);
+  const guest = guests[0]; await service.saveGuest(pinEvent, guest.id, 'Alex Updated', 'Door note', guest.version, staff);
+  await assert.rejects(() => service.saveGuest(pinEvent, guest.id, 'Stale edit', '', guest.version, staff), /edited by someone else/);
+  const guestScans = await Promise.all([service.arriveGuest(pinEvent, guest.id, randomUUID(), proof), service.arriveGuest(pinEvent, guest.id, randomUUID(), proof)]);
+  assert.deepEqual(guestScans.map(s => s.result).sort(), ['accepted', 'duplicate'], 'two door devices cannot accept the same guest twice');
+  const guestArrival = (await service.guestList(pinEvent, proof)).guests.find(g => g.id === guest.id); assert.ok(guestArrival.arrived);
+  await service.saveGuest(pinEvent, guest.id, 'Alex Updated again', '', guestArrival.version, staff);
+  assert.ok((await service.guestList(pinEvent, proof)).guests.find(g => g.id === guest.id).arrived, 'name edits retain arrival');
+  const removedGuest = guests[1]; await service.saveGuest(pinEvent, removedGuest.id, '', '', removedGuest.version, staff, true);
+  const removedAttempt = randomUUID(); assert.equal((await service.arriveGuest(pinEvent, removedGuest.id, removedAttempt, proof, true)).result, 'invalid');
+  await service.reviewScan(pinEvent, removedAttempt, 'Guest removed from list after offline preparation.', proof);
+  const offlineGuest = guests[2], guestScanId = randomUUID();
+  assert.equal((await service.arriveGuest(pinEvent, offlineGuest.id, guestScanId, proof, true)).result, 'accepted');
+  assert.equal((await service.arriveGuest(pinEvent, offlineGuest.id, guestScanId, proof, true)).result, 'accepted', 'replayed guest check-in is idempotent');
+  await assert.rejects(() => service.arriveGuest(pinEvent, guest.id, guestScanId, proof), /attempt mismatch/);
   const pinOrder = await service.checkout(request(pinEvent, { reason: 'PIN scanner acceptance', items: [{ offerId: 'weekend', quantity: 3 }] }), null, 'comp', staff);
   const pinView = await service.view(pinOrder.orderId, undefined, { uid: '' }), [pinTicket, revokedTicket, expiredTicket] = pinView.tickets;
   const pinScanId = randomUUID();
@@ -120,6 +144,8 @@ async function main() {
   assert.equal(secondLogin.uid, scannerLogin.uid, 'same PIN can resume its queued scans after session sign-out');
   await assert.rejects(() => service.revokeScannerPin(eventId, scannerPin.id, staff), /not found/);
   await service.revokeScannerPin(pinEvent, scannerPin.id, 'pin-event-manager');
+  await assert.rejects(() => service.guestList(pinEvent, { scannerToken: secondLogin.token }), /revoked/);
+  await assert.rejects(() => service.arriveGuest(pinEvent, guest.id, randomUUID(), { scannerToken: secondLogin.token }), /revoked/);
   await assert.rejects(() => service.scan(pinEvent, revokedTicket.qr, randomUUID(), { scannerToken: secondLogin.token }), /revoked/);
   assert.equal((await service.tickets().doc(revokedTicket.id).get()).data().admission, null);
   await assert.rejects(() => service.scannerLogin(scannerPin.pin, `pin-test-${randomUUID()}`), /invalid, expired or revoked/);
@@ -191,11 +217,13 @@ async function main() {
   const post = (path, body = {}, token = '') => fetch(`${endpoint}/tickets/api/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { 'X-Pluto-Scanner': token } : {}) }, body: JSON.stringify(body) });
   const loginResponse = await post('scanner/login', { pin: routePin.pin }); assert.equal(loginResponse.status, 200);
   const routeLogin = await loginResponse.json();
-  for (const path of ['staff/events', 'staff/get', 'staff/orders', 'staff/scanner-pins', 'staff/scanner-pins/create', 'staff/roles', 'staff/cash', 'staff/refund', 'mine']) {
-    assert.equal((await post(path, { eventId: pinEvent, orderId: pinOrder.orderId, uid: 'pretend-staff', label: 'Unauthorized', roles: ['manager'] }, routeLogin.token)).status, 401, `scanner has no access to ${path}`);
+  for (const path of ['staff/events', 'staff/get', 'staff/orders', 'staff/scanner-pins', 'staff/scanner-pins/create', 'staff/roles', 'staff/cash', 'staff/refund', 'mine', 'staff/guestlist/add', 'staff/guestlist/save', 'staff/guestlist/remove']) {
+    assert.equal((await post(path, { eventId: pinEvent, orderId: pinOrder.orderId, guestId: guest.id, uid: 'pretend-staff', label: 'Unauthorized', roles: ['manager'] }, routeLogin.token)).status, 401, `scanner has no access to ${path}`);
   }
   assert.equal((await post('staff/manifest', { eventId: eventId }, routeLogin.token)).status, 403);
   assert.equal((await post('staff/manifest', { eventId: pinEvent }, routeLogin.token)).status, 200);
+  assert.equal((await post('staff/guestlist', { eventId: pinEvent }, routeLogin.token)).status, 200);
+  assert.equal((await post('staff/guestlist', { eventId }, routeLogin.token)).status, 403);
   assert.equal((await (await post('staff/scan', { eventId: pinEvent, qr: revokedTicket.qr, scanId: randomUUID() }, routeLogin.token)).json()).result, 'accepted');
   await service.revokeScannerPin(pinEvent, routePin.id, staff);
   assert.equal((await post('staff/manifest', { eventId: pinEvent }, routeLogin.token)).status, 403);

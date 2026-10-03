@@ -6,6 +6,7 @@ import { Catalog } from './catalog';
 import { apiVersion, appTicketsUrl, baseUrl, isLive, keyPair, readTicket, signTicket, stripeClient } from './config';
 import { assertCapacity, cart, email, fail, hash, id, integer, receipt, secret, text, ticketId, type EventDraft, type Unit } from './domain';
 import { scannerAccess, type ScannerProof } from './scanner-access';
+import { guestEntry } from './guest-entry';
 
 export interface Order {
   eventId: string; eventTitle: string; eventSlug: string; ownerUid: string; email: string; name: string; accessHash: string; inputHash: string;
@@ -371,8 +372,10 @@ export class Orders extends Catalog {
     else await scannerAccess(this.db, identity, eventId);
     const tickets = await this.tickets().where('eventId', '==', eventId).get();
     const event = (await this.event(eventId).get()).data();
+    const guests = await this.event(eventId).collection('guests').get(), draft = event?.liveDraft || event?.draft;
     const access = typeof identity === 'string' ? { uid: identity, expiresAt: Date.now() + 24 * 3600000 } : await scannerAccess(this.db, identity, eventId);
     return { eventId, staffUid: access.uid, offlineUntil: Math.min(access.expiresAt, Date.now() + (typeof identity === 'string' ? 24 : 4) * 3600000), generatedAt: Date.now(), verificationKey: keyPair(this.signing()).jwk,
+      guests: guests.docs.filter(d => !d.data().deletedAt && !['cancelled', 'archived'].includes(event?.status)).map(d => guestEntry(d.id, d.data())), guestValidFrom: draft?.admissionStartsAt || '', guestValidUntil: draft ? new Date(Date.parse(draft.endAt) + 6 * 3600000).toISOString() : '',
       tickets: tickets.docs.map(t => { const d = t.data(); return { id: t.id, version: d.version, status: event?.status === 'cancelled' ? 'invalid' : d.status, name: d.name, validFrom: d.validFrom, validUntil: d.validUntil, admitted: !!d.admission }; }) };
   }
   async reviewScan(eventId: string, scanId: unknown, rawNote: unknown, identity: string | ScannerProof) {
