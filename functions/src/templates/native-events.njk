@@ -1,0 +1,9 @@
+{% extends 'base.njk' %}
+{% block content %}
+<section class="section"><p class="eyebrow">PLUTO PRESENTS</p><h1>Find your next night.</h1><p>Dance music, community, and a place to belong.</p>
+<div class="event-grid">{% for event in events %}<article class="event-card">
+{% if event.hero %}<img src="/events/{{ event.slug }}/media/{{ event.hero.assetId }}" alt="{{ event.hero.alt }}" loading="lazy">{% elif event.flyer %}<img src="/events/{{ event.slug }}/media/{{ event.flyer.assetId }}" alt="{{ event.flyer.alt }}" loading="lazy">{% endif %}
+<h2><a href="/events/{{ event.slug }}">{{ event.title }}</a></h2><p>{{ event.subtitle }}</p><p>{{ event.city }}, {{ event.region }}</p><a class="button button-primary" href="/events/{{ event.slug }}">Explore event</a>
+</article>{% else %}<p>New events are on the way. Follow Pluto to hear about the next one.</p>{% endfor %}</div>
+</section>
+{% endblock %}

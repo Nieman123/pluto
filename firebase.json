@@ -74,6 +74,11 @@
       { "source": "/manafest", "function": { "functionId": "publicSite", "region": "us-central1" } },
       { "source": "/links", "function": { "functionId": "publicSite", "region": "us-central1" } },
       { "source": "/rentals", "function": { "functionId": "publicSite", "region": "us-central1" } },
+      { "source": "/events", "function": { "functionId": "publicSite", "region": "us-central1" } },
+      { "source": "/events/**", "function": { "functionId": "publicSite", "region": "us-central1" } },
+      { "source": "/tickets", "function": { "functionId": "publicSite", "region": "us-central1" } },
+      { "source": "/tickets/**", "function": { "functionId": "publicSite", "region": "us-central1" } },
+      { "source": "/sitemap.xml", "function": { "functionId": "publicSite", "region": "us-central1" } },
       { "source": "/manafest-waiver", "function": { "functionId": "publicSite", "region": "us-central1" } },
       { "source": "/manafest-waiver/**", "function": { "functionId": "publicSite", "region": "us-central1" } }
     ]

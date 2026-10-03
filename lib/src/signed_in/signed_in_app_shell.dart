@@ -7,6 +7,12 @@ import '../background/pluto_background.dart';
 import '../nav_bar/nav_bar.dart';
 
 enum SignedInAppTab {
+  tickets(
+    label: 'Tickets',
+    route: '/tickets',
+    icon: Icons.confirmation_number_outlined,
+    selectedIcon: Icons.confirmation_number,
+  ),
   dashboard(
     label: 'Dashboard',
     route: '/',
@@ -104,7 +110,7 @@ class AuthAwareSignedInAppShell extends StatelessWidget {
       builder: (BuildContext context, AsyncSnapshot<User?> snapshot) {
         final User? user = snapshot.data;
         if (user == null) {
-          return child;
+          return currentPath == '/tickets' ? Scaffold(body: child) : child;
         }
 
         final SignedInAppTab selectedTab =
@@ -134,6 +140,7 @@ extension SignedInAppTabX on SignedInAppTab {
       case SignedInAppTab.dashboard:
       case SignedInAppTab.rewards:
       case SignedInAppTab.profile:
+      case SignedInAppTab.tickets:
         return 1200;
     }
   }
@@ -147,6 +154,7 @@ class _SignedInBottomNavigation extends StatelessWidget {
   static const List<SignedInAppTab> _tabs = <SignedInAppTab>[
     SignedInAppTab.dashboard,
     SignedInAppTab.rewards,
+    SignedInAppTab.tickets,
     if (manaFestUiEnabled) SignedInAppTab.manafest,
     SignedInAppTab.profile,
   ];

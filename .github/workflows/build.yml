@@ -65,6 +65,12 @@ jobs:
       - name: Analyze Flutter project
         run: flutter analyze .
 
+      - name: Test native ticketing transactions and private access
+        env:
+          GCLOUD_PROJECT: demo-pluto-ticketing
+          TICKETING_STORAGE_BUCKET: demo-pluto-ticketing.appspot.com
+        run: npx firebase-tools@15.32.1 emulators:exec --project demo-pluto-ticketing --config firebase.ticketing-test.json --only auth,firestore,storage "npm run test:ticketing:integration && npm run test:ticketing:rules"
+
       - name: Test Flutter project
         run: flutter test
 
@@ -88,4 +94,4 @@ jobs:
         run: npx firebase-tools@latest functions:artifacts:setpolicy --location us-central1 --days 7 --project pluto-9b6ca --force
 
       - name: Deploy site, Function, and rules
-        run: npx firebase-tools@latest deploy --only firestore:rules,storage,functions:publicSite,hosting --project pluto-9b6ca --non-interactive
+        run: npx firebase-tools@latest deploy --only firestore:rules,storage,functions:publicSite,functions:ticketingWebhookWorker,functions:ticketingEmailWorker,functions:ticketingMaintenance,hosting --project pluto-9b6ca --non-interactive

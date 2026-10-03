@@ -21,6 +21,12 @@ _site/
 *-debug.log
 firepit-log.txt
 dotenv
+.env
+.env.*
+!.env.example
+.secret.local
+**/.secret.local
+*.secret.json
 .DS_Store
 ._*
 .dartServer

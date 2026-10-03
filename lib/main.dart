@@ -1,6 +1,8 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -21,14 +23,38 @@ import 'src/deferred_widget.dart';
 import 'src/signed_in/signed_in_app_shell.dart';
 import 'src/theme/config.dart';
 import 'src/theme/custom_theme.dart';
+import 'tickets_page.dart' deferred as tickets_page;
 
 Future<void> main() async {
   //setUrlStrategy(PathUrlStrategy());
   WidgetsFlutterBinding.ensureInitialized();
   configureApp();
+  const String emulatorHost = String.fromEnvironment('FIREBASE_EMULATOR_HOST');
+  const String emulatorProject = String.fromEnvironment(
+      'FIREBASE_EMULATOR_PROJECT',
+      defaultValue: 'demo-pluto-ticketing');
+  if (emulatorHost.isNotEmpty &&
+      (!<String>['localhost', '127.0.0.1'].contains(emulatorHost) ||
+          !emulatorProject.startsWith('demo-'))) {
+    throw StateError(
+        'Local previews require a loopback host and a demo Firebase project.');
+  }
   await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
+    options: emulatorHost.isEmpty
+        ? DefaultFirebaseOptions.currentPlatform
+        : const FirebaseOptions(
+            apiKey: 'demo-preview-key',
+            appId: '1:123:web:preview',
+            messagingSenderId: '123',
+            projectId: emulatorProject,
+            storageBucket: '$emulatorProject.appspot.com'),
   );
+  if (emulatorHost.isNotEmpty) {
+    await FirebaseAuth.instance.useAuthEmulator(emulatorHost, 9095);
+    FirebaseFirestore.instance.useFirestoreEmulator(emulatorHost, 8185);
+    await FirebaseStorage.instance.useStorageEmulator(emulatorHost, 9295);
+    await FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(false);
+  }
   runApp(const MyApp());
 }
 
@@ -52,6 +78,7 @@ class _MyAppState extends State<MyApp> {
 
   bool get _shouldShowNotificationPrompt {
     return !_isCheckingNotificationSupport &&
+        _router.routeInformationProvider.value.uri.path != '/tickets' &&
         _notificationsSupported &&
         !_hasNotificationPermission &&
         !_notificationPromptDismissed;
@@ -117,6 +144,17 @@ class _MyAppState extends State<MyApp> {
           );
         },
         routes: <RouteBase>[
+          GoRoute(
+            path: '/tickets',
+            pageBuilder: (BuildContext context, GoRouterState state) =>
+                _buildTabPage(
+              state: state,
+              child: DeferredWidget(
+                  loadLibrary: tickets_page.loadLibrary,
+                  builder: (BuildContext context) =>
+                      tickets_page.TicketsPage(uri: state.uri)),
+            ),
+          ),
           GoRoute(
             path: '/',
             redirect: (BuildContext context, GoRouterState state) {
@@ -281,13 +319,14 @@ class _MyAppState extends State<MyApp> {
           );
         },
       ),
-    ], debugLogDiagnostics: true);
+    ]);
     _router.routeInformationProvider.addListener(_trackCurrentRoute);
     WidgetsBinding.instance.addPostFrameCallback((_) => _trackCurrentRoute());
   }
 
   void _trackCurrentRoute() {
     final String path = _router.routeInformationProvider.value.uri.path;
+    if (path == '/tickets') return;
     final String analyticsPath = path == '/' ? '/app/' : '/app$path';
     if (_lastTrackedAnalyticsPath == analyticsPath) {
       return;

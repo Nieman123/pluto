@@ -24,3 +24,4 @@ await cp(
 
 await cp(resolve(functionsRoot, "src/waiver/legal"), resolve(functionsRoot, "lib/waiver/legal"), { recursive: true });
 await cp(resolve(repoRoot, "assets/fonts/Montserrat-Medium.ttf"), resolve(functionsRoot, "lib/waiver/legal/Montserrat-Medium.ttf"));
+await cp(resolve(functionsRoot, 'src/ticketing/admission-sw.js'), resolve(functionsRoot, 'lib/ticketing/admission-sw.js'));

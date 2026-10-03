@@ -19,6 +19,7 @@ import 'manafest_admin_panel.dart';
 import 'public_media_repository.dart';
 import 'rentals_admin_panel.dart';
 import 'src/background/pluto_background.dart';
+import 'src/html_open_link.dart';
 import 'src/nav_bar/nav_bar.dart';
 import 'user_profile_repository.dart';
 
@@ -1630,7 +1631,18 @@ class _AdminPageState extends State<AdminPage> {
         return const RentalsAdminPanel();
       case AdminSection.events:
         return _buildSectionEditorLayout(
-          primaryChildren: <Widget>[_buildEditorCard()],
+          primaryChildren: <Widget>[
+            Card(child: Padding(padding: const EdgeInsets.all(20), child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text('Native ticketing & event studio', style: Theme.of(context).textTheme.titleLarge),
+                const Text('Build event landing pages, manage ticket sales, and view event performance.'),
+                FilledButton.icon(onPressed: () => htmlNavigateTo('/tickets/admin'), icon: const Icon(Icons.confirmation_number), label: const Text('Open event studio')),
+                TextButton(onPressed: () => htmlNavigateTo('/tickets/staff'), child: const Text('Open ticket admission')),
+              ],
+            ))),
+            _buildEditorCard(),
+          ],
           secondaryChildren: <Widget>[_buildEventsCard()],
         );
       case AdminSection.rewards:

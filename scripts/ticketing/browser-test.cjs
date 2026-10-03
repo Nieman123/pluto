@@ -1,0 +1,146 @@
+const assert = require('node:assert/strict');
+const { randomUUID, randomBytes } = require('node:crypto');
+const { resolve } = require('node:path');
+const { createRequire } = require('node:module');
+const { chromium } = require('playwright');
+const { default: AxeBuilder } = require('@axe-core/playwright');
+const backend = createRequire(resolve(__dirname, '../../functions/package.json'));
+process.env.GCLOUD_PROJECT = 'demo-pluto-ticketing';
+process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8185';
+process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9095';
+process.env.FIREBASE_STORAGE_EMULATOR_HOST = '127.0.0.1:9295';
+process.env.TICKETING_STORAGE_BUCKET = 'demo-pluto-ticketing.appspot.com';
+backend('firebase-admin/app').initializeApp({ projectId: 'demo-pluto-ticketing' });
+const db = backend('firebase-admin/firestore').getFirestore();
+const base = 'http://127.0.0.1:4173';
+const key = () => randomBytes(32).toString('hex');
+let activePage;
+let stage = 'editor';
+async function api(page, path, data = {}) {
+  return page.evaluate(async ({ path, data }) => {
+    const { getAuth } = await import('https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js');
+    const token = await getAuth().currentUser?.getIdToken();
+    const response = await fetch(`/tickets/api/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(data) });
+    const result = await response.json(); if (!response.ok) throw new Error(result.error); return result;
+  }, { path, data });
+}
+async function staff(page, route = '/tickets/admin') {
+  await page.goto(`${base}${route}`);
+  await page.getByRole('button', { name: 'Local preview staff sign-in' }).click();
+  await page.locator('#staff-controls:not([hidden])').waitFor();
+}
+async function semantics(page) {
+  await page.locator('flt-semantics-placeholder').evaluate(e => e.click(), { timeout: 15000 }).catch(() => {});
+}
+(async () => {
+  const browser = await chromium.launch();
+  try {
+    const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1440, height: 1000 } });
+    const page = await context.newPage(); activePage = page;
+    await staff(page);
+    await page.locator('#event-new').click(); await page.locator('#event-editor-form').waitFor();
+    const eventId = await page.locator('#staff-event').inputValue(), slug = `browser-${randomUUID()}`;
+    await page.locator('[data-field=title]').fill('A Night in Orbit');
+    await page.locator('[data-field=title]').dispatchEvent('change');
+    await page.locator('[data-field=slug]').fill(slug); await page.locator('[data-field=slug]').dispatchEvent('change');
+    await page.locator('[data-field=address]').fill('789 Secret Browser Venue'); await page.locator('[data-field=address]').dispatchEvent('change');
+    await page.locator('[data-upload=hero]').setInputFiles(resolve(__dirname, '../../web/gallery/manafest-2026-pink-stage.webp'));
+    await page.locator('[data-field="hero.alt"]').waitFor();
+    await page.locator('[data-field="hero.alt"]').fill('A colorful festival stage'); await page.locator('[data-field="hero.alt"]').dispatchEvent('change');
+    await page.locator('[data-add=gallery]').click();
+    await page.locator('[data-upload="gallery.0"]').setInputFiles(resolve(__dirname, '../../web/gallery/manafest-2026-friends.webp'));
+    await page.locator('#event-editor img[data-media-thumb]:not([data-media-thumb=""])').nth(1).waitFor();
+    await page.locator('[data-field="gallery.0.alt"]').fill('Friends at the festival'); await page.locator('[data-field="gallery.0.alt"]').dispatchEvent('change');
+    await page.locator('[data-field="theme.preset"]').selectOption('light');
+    await page.locator('[data-field="theme.accent"]').fill('#161020'); await page.locator('[data-field="theme.accent"]').dispatchEvent('change');
+    await page.getByRole('button', { name: 'Save draft', exact: true }).first().click();
+    if (!await page.locator('#event-editor-form').evaluate(f => f.reportValidity())) throw new Error('Editor form validation: ' + await page.locator('#event-editor-form :invalid').evaluateAll(e => e.map(i => `${i.dataset.field}: ${i.validationMessage}`).join('; ')));
+    await page.locator('#ticketing-message').filter({ hasText: 'Draft saved' }).waitFor().catch(async () => { throw new Error('Editor save status: ' + await page.locator('#ticketing-message').innerText()); });
+    let record = (await db.collection('ticketingEvents').doc(eventId).get()).data();
+    assert.ok(record.draft.hero.assetId && record.draft.gallery[0].assetId);
+    assert.equal((await page.request.get(`${base}/events/${slug}/media/${record.draft.hero.assetId}`)).status(), 404);
+    await page.getByRole('button', { name: 'Preview', exact: true }).click();
+    await page.locator('#ticketing-dialog iframe').waitFor();
+    const preview = page.frameLocator('#ticketing-dialog iframe');
+    assert.equal(await preview.locator('h1').innerText(), 'A Night in Orbit');
+    assert.ok((await preview.locator('.native-hero-art').getAttribute('src')).startsWith('data:image/webp'));
+    assert.ok(!(await preview.locator('body').innerText()).includes('789 Secret Browser Venue'));
+    assert.ok(!(await page.locator('#ticketing-dialog iframe').getAttribute('sandbox')).includes('allow-scripts'));
+    await page.locator('#ticketing-dialog-close').click();
+    await page.getByRole('button', { name: 'Publish', exact: true }).click();
+    await page.locator('#ticketing-message').filter({ hasText: 'Event published' }).waitFor();
+    const publicPage = await context.newPage();
+    for (const mobile of [false, true]) {
+      await publicPage.setViewportSize(mobile ? { width: 390, height: 844 } : { width: 1440, height: 1000 });
+      await publicPage.goto(`${base}/events/${slug}`);
+      assert.ok(!(await publicPage.content()).includes('789 Secret Browser Venue'));
+      assert.ok(await publicPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+      const result = await new AxeBuilder({ page: publicPage }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+      assert.deepEqual(result.violations.map(v => ({ id: v.id, targets: v.nodes.map(n => n.target) })), []);
+      await publicPage.screenshot({ path: `tmp/ticketing-event-${mobile ? 'mobile' : 'desktop'}.png`, fullPage: true });
+    }
+    await page.getByRole('button', { name: 'Duplicate', exact: true }).click();
+    await page.locator('#event-editor h2').filter({ hasText: '(copy)' }).waitFor();
+    const duplicateId = await page.locator('#staff-event').inputValue();
+    const copy = (await db.collection('ticketingEvents').doc(duplicateId).get()).data();
+    assert.equal(copy.status, 'draft'); assert.ok(copy.draft.offers.every(o => !o.active));
+    assert.equal((await db.collection('ticketingEvents').doc(duplicateId).collection('pools').get()).docs.reduce((n, d) => n + d.data().sold + d.data().held, 0), 0);
+    assert.equal((await api(page, 'staff/preview', { eventId: duplicateId })).html.includes('data:image/webp'), true);
+    const accessKey = key();
+    const comp = await api(page, 'staff/cash', { eventId, accessKey, items: [{ offerId: 'general', quantity: 1 }], name: 'Browser Guest', email: 'browser@preview.invalid', comp: true, reason: 'Browser acceptance test', cashReceived: 0 });
+    const view = await api(page, 'order', { orderId: comp.orderId, accessKey });
+    assert.equal(view.total, 0); assert.ok(view.tickets[0].qr);
+    await page.evaluate(({ orderId, accessKey }) => localStorage.setItem(`pluto-order-${orderId}`, accessKey), { orderId: comp.orderId, accessKey });
+    stage = 'app order'; const app = await context.newPage(); activePage = app; await app.goto(`${base}/app/tickets?order=${comp.orderId}`);
+    await semantics(app); await app.getByText('A Night in Orbit', { exact: true }).first().waitFor({ timeout: 30000 });
+    await app.getByLabel(/Status: valid/).waitFor();
+    assert.equal(await app.getByText(/Download.*ticket|Print ticket/).count(), 0);
+    await app.screenshot({ path: 'tmp/ticketing-app-order.png' });
+    await api(page, 'transfer', { orderId: comp.orderId, accessKey, ticketId: view.tickets[0].id, email: 'recipient@preview.invalid' });
+    const transfer = (await db.collection('ticketingEmailJobs').where('orderId', '==', comp.orderId).get()).docs.find(d => d.data().type === 'transfer').data();
+    stage = 'app transfer'; await app.goto(`${base}/app/tickets#transfer=${transfer.token}`); await semantics(app);
+    await app.getByRole('button', { name: 'Accept ticket' }).click();
+    await app.getByLabel(/recipient@preview.invalid/).waitFor();
+    const after = await api(page, 'order', { orderId: comp.orderId, accessKey }); assert.equal(after.tickets[0].qr, null);
+    stage = 'app holder reload'; await app.reload(); await semantics(app); await app.getByLabel(/Status: valid/).waitFor();
+    stage = 'guest wallet';
+    const guestContext = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 320, height: 700 } });
+    const guestApp = await guestContext.newPage(); activePage = guestApp;
+    await guestApp.goto(base);
+    await guestApp.evaluate(token => localStorage.setItem(`pluto-holder-${token}`, token), transfer.token);
+    await guestApp.goto(`${base}/app/tickets`); await semantics(guestApp);
+    await guestApp.getByLabel(/recipient@preview.invalid/).waitFor();
+    await guestApp.reload(); await semantics(guestApp); await guestApp.getByLabel(/Status: valid/).waitFor();
+    await guestApp.screenshot({ path: 'tmp/ticketing-guest-wallet-mobile.png' });
+    await guestContext.close();
+    const activeKey = key(), active = await api(page, 'staff/cash', { eventId: 'ticketing-preview-event', accessKey: activeKey, items: [{ offerId: 'weekend', quantity: 1 }], name: 'Door Guest', email: 'door@preview.invalid', comp: true, reason: 'Offline admission test', cashReceived: 0 });
+    const admissionTicket = (await api(page, 'order', { orderId: active.orderId, accessKey: activeKey })).tickets[0];
+    stage = 'offline admission'; const door = await context.newPage(); activePage = door; await staff(door, '/tickets/staff'); await door.locator('#staff-event').selectOption('ticketing-preview-event');
+    await door.locator('#admission-sync').click(); await door.locator('#ticketing-message').filter({ hasText: 'prepared for offline use' }).waitFor();
+    await door.evaluate(async () => { await navigator.serviceWorker.ready; }); await door.reload();
+    await door.locator('#staff-event').selectOption('ticketing-preview-event'); await door.locator('#admission-cache-status').filter({ hasText: 'Manifest age' }).waitFor();
+    await context.setOffline(true); await door.reload(); await door.locator('#staff-controls:not([hidden])').waitFor();
+    assert.equal(await door.locator('#staff-event').inputValue(), 'ticketing-preview-event');
+    await door.locator('[name=qr]').fill(admissionTicket.qr); await door.locator('#admission-form button').click();
+    await door.locator('#admission-results').filter({ hasText: 'Offline: queued' }).waitFor();
+    await door.reload(); await door.locator('#staff-controls:not([hidden])').waitFor();
+    await door.locator('[name=qr]').fill(admissionTicket.qr); await door.locator('#admission-form button').click();
+    await door.locator('#admission-results').filter({ hasText: 'DUPLICATE' }).waitFor();
+    await context.setOffline(false); await staff(door, '/tickets/staff');
+    await door.locator('#admission-replay').click(); await door.locator('#ticketing-message').filter({ hasText: 'Synced 1 admissions' }).waitFor();
+    assert.ok((await db.collection('ticketingTickets').doc(admissionTicket.id).get()).data().admission.offline);
+    const conflictKey = key(), conflictOrder = await api(page, 'staff/cash', { eventId: 'ticketing-preview-event', accessKey: conflictKey, items: [{ offerId: 'weekend', quantity: 1 }], name: 'Conflict Guest', email: 'conflict@preview.invalid', comp: true, reason: 'Revoked offline credential test', cashReceived: 0 });
+    const conflictTicket = (await api(page, 'order', { orderId: conflictOrder.orderId, accessKey: conflictKey })).tickets[0];
+    await door.locator('#admission-sync').click(); await door.locator('#ticketing-message').filter({ hasText: 'prepared for offline use' }).waitFor();
+    await api(page, 'staff/refund', { orderId: conflictOrder.orderId, ticketIds: [conflictTicket.id], attempt: key() });
+    await context.setOffline(true); await door.locator('[name=qr]').fill(conflictTicket.qr); await door.locator('#admission-form button').click();
+    await door.locator('#admission-results').filter({ hasText: 'Offline: queued' }).waitFor();
+    await context.setOffline(false); await door.locator('#admission-replay').click();
+    await door.locator('#admission-conflicts').filter({ hasText: 'Needs review' }).waitFor();
+    await door.locator('[data-conflict-note]').fill('Verified refunded credential; no additional admission authorized.');
+    await door.locator('[data-review-conflict]').click(); await door.locator('#admission-conflicts').filter({ hasText: 'Reviewed' }).waitFor();
+    await context.close();
+    console.log('Browser checks passed: artwork/gallery, private preview, publishing, duplication, mobile accessibility, app QR/transfer/reload, offline reload/duplicate/replay, revoked credential conflict review.');
+  } catch (error) { console.error('Browser phase:', stage); if (activePage) { await activePage.screenshot({ path: 'tmp/ticketing-browser-failure.png' }).catch(() => {}); console.error((await activePage.locator('body').innerText()).slice(0,1500)); } throw error; }
+  finally { await browser.close(); }
+})().then(() => process.exit(0), error => { console.error(error.message); process.exit(1); });

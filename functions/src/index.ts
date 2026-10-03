@@ -7,6 +7,9 @@ import { getFirestore } from "firebase-admin/firestore";
 import { onRequest } from "firebase-functions/v2/https";
 import nunjucks from "nunjucks";
 import { waiverRouter } from "./waiver/routes";
+import { ticketingRouter } from './ticketing/routes';
+import { ticketingSecrets } from './ticketing/config';
+export { ticketingMaintenance, ticketingWebhookWorker, ticketingEmailWorker } from './ticketing/workers';
 import { normalizeRental, groupRentals, rentalContactEmail, type PublicRental } from './rentals-data';
 import { seedRentals } from './rentals-seed';
 import {
@@ -48,6 +51,7 @@ const app = express();
 app.use(compression());
 const env = nunjucks.configure(templates, { autoescape: true, noCache: true });
 env.express(app);
+app.set('nunjucksEnv', env);
 app.set("view engine", "njk");
 
 async function loadEvents(): Promise<PublicEvent[]> {
@@ -134,6 +138,7 @@ app.use((request, response, next) => {
 });
 
 app.use("/manafest-waiver", waiverRouter(commonContext));
+app.use(ticketingRouter(commonContext));
 
 app.get("/", async (_request: Request, response: Response) => {
   const events = (await loadEvents()).filter((event) => manaFest.status !== "archived" || !event.isManaFest);
@@ -269,6 +274,6 @@ app.use((_request: Request, response: Response) => {
 
 export { app };
 export const publicSite = onRequest(
-  { region: "us-central1", memory: "256MiB", maxInstances: 10, concurrency: 8 },
+  { region: "us-central1", memory: "512MiB", maxInstances: 10, concurrency: 8, secrets: ticketingSecrets },
   app,
 );

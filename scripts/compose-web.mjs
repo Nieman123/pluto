@@ -12,6 +12,7 @@ await mkdir(resolve(dist, "assets/images/social"), { recursive: true });
 await cp(resolve(root, "build/web"), resolve(dist, "app"), { recursive: true });
 await cp(resolve(root, "site/static"), dist, { recursive: true });
 await cp(resolve(root, "site/dist/site.js"), resolve(dist, "assets/site.js"));
+await cp(resolve(root, 'site/dist/ticketing.js'), resolve(dist, 'assets/ticketing.js'));
 await cp(resolve(root, "web/gallery"), resolve(dist, "gallery"), { recursive: true });
 const festivalGallery = resolve(root, "assets/gallery/manafest-2026");
 await mkdir(resolve(dist, "gallery/manafest-2026"), { recursive: true });

@@ -157,6 +157,12 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // Only the server publishes allowlisted event data; ticketing ledgers remain API-only.
+    match /publishedEvents/{eventId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     match /manaFestSettings/{settingsId} {
       allow read: if signedIn();
       allow create, update, delete: if isAdmin();
