@@ -4,15 +4,16 @@ Audited application revision: `a6aa9f6` on `native-ticketing`.
 
 ## Remediation checkpoint — October 3, 2026
 
-The findings below describe the original audited revision. Subsequent branch work has fixed A8 (commit `1bb5721`) and implemented A1, A2, A4 and A7 with targeted regressions. A3, A5 and A6 remain outstanding. The readiness decision remains **functional beta / prelaunch** until the remaining fixes and external acceptance gates pass.
+The findings below describe the original audited revision. Subsequent branch work has fixed A8 (commit `1bb5721`) and A1, A2, A4 and A7 (commit `fcda6bc`) with targeted regressions. A3 is implemented and verified locally; its deployed staging gate remains open. A5 and A6 remain outstanding. The readiness decision remains **functional beta / prelaunch** until the remaining fixes and external acceptance gates pass.
 
 - A1: provider ownership is resolved from authoritative objects; relevant unresolved events remain pending, unrelated events are explicitly ignored. Admission is held during refund/dispute reconciliation, including before first issuance, and maintenance revisits paid orders.
 - A2: provider tax setup is validated before reservation. Definite first-request rejection releases stock; uncertain outcomes retain it. Customer cancellation does not create a payment session. Managers can resolve a known rejected/unsent request or an authoritative expired/paid Session, with an audit note; an empty provider search cannot release uncertain stock.
+- A3: explicit proxy-address/subnet configuration replaces implicit assumptions; forged prefixes are ignored after the nearest untrusted peer. Minute network bursts use distributed counters; client/account, event, contact, order and PIN limits remain distinct. An HTTP emulator regression passes 75 purchasers, 45 RSVPs and 15 recovery requests on one simulated network while repeated contact/client activity is rejected. See [deployed acceptance procedure](ticketing-proxy-acceptance.md); no cloud topology or throughput claim follows from this local test.
 - A4: wallet entries load independently. Revoked holder credentials are removed; order history and temporary failures retain access with recovery/retry guidance. Chromium covers valid tickets beside refunded/retransferred access and transient failures.
 - A7: unknown fees are stored separately from confirmed zero; repeat verification updates finances without issuing tickets again. Dashboard proceeds are labeled provisional while fees or financial reviews remain unresolved, and unmapped provider refunds are included in refund totals.
 - A8: terminal refund status cannot regress, and completion validates ticket allocations and ledger bounds. Deterministic overlapping-worker and lost-response tests assert exactly-once money and stock updates.
 
-Checkpoint validation: 12 demo-emulator hardening tests; existing ticketing and RSVP integration suites; three private-access rule contexts; 15 Flutter tests; Flutter analysis; wallet Chromium regression; TypeScript and site builds. Payment tests use a controlled provider substitute. Real Stripe/Resend delivery, deployed proxy identity, phone gate rehearsals and bank/live setup remain acceptance gates.
+Checkpoint validation: 13 demo-emulator hardening tests; existing ticketing and RSVP integration suites; three private-access rule contexts; 15 Flutter tests; Flutter analysis; wallet Chromium regression; 30 Functions tests and eight configuration/reporting tests; TypeScript and site builds. Payment tests use a controlled provider substitute. Real Stripe/Resend delivery, deployed proxy identity, phone gate rehearsals and bank/live setup remain acceptance gates.
 
 ## Readiness decision
 

@@ -159,8 +159,11 @@ async function main() {
   await assert.rejects(() => service.scannerLogin(expiringPin.pin, `pin-test-${randomUUID()}`), /invalid, expired or revoked/);
   await assert.rejects(() => service.createScannerPin(pinEvent, 'Too long', Date.now() + 10 * 86400000, staff), /future expiry/);
   const throttleIp = `pin-throttle-${randomUUID()}`;
-  await db.collection('ticketingRateLimits').doc(hash(`${Math.floor(Date.now() / 3600000)}:scanner-login-ip:${throttleIp}`)).set({ count: 40 });
-  await assert.rejects(() => service.scannerLogin(scannerPin.pin, throttleIp), e => e.status === 429);
+  const realNow = Date.now, throttleAt = realNow(); Date.now = () => throttleAt;
+  try {
+    await db.collection('ticketingRateLimits').doc(hash(`60000:${Math.floor(throttleAt / 60000)}:scanner-login-ip:${throttleIp}:0`)).set({ count: 40 });
+    await assert.rejects(() => service.scannerLogin(scannerPin.pin, throttleIp), e => e.status === 429);
+  } finally { Date.now = realNow; }
   const recoverRequest = request(await makeEvent()), recoverOrder = await service.checkout(recoverRequest, buyer);
   const recoverRef = service.order(recoverOrder.orderId), recoverSnapshot = (await recoverRef.get()).data();
   await recoverRef.update({ status: 'provisioning', sessionId: null, createdAt: Date.now() - 6 * 60000 });

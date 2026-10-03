@@ -6,6 +6,8 @@ import { Operations } from './operations';
 import { allMedia, csv, fail, id, integer, publicEvent, serializeJson, TicketingError, type EventDraft } from './route-utils';
 import { baseUrl, isLive, webhookKey } from './config';
 import { orderPdf } from './pdf';
+import { clientIdentity } from './client-identity';
+import { email } from './domain';
 
 export function ticketingRouter(context: (path: string) => Record<string, unknown>, service = new Operations()) {
   const router = express.Router();
@@ -102,15 +104,23 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
     res.locals.actor = await service.actor((req.get('authorization') || '').replace(/^Bearer /, ''), true);
     const scannerRoutes = ['/staff/scan', '/staff/manifest', '/staff/scan-review', '/staff/guestlist', '/staff/guestlist/arrive', '/scanner/session'];
     if (req.get('x-pluto-scanner') && scannerRoutes.includes(req.path)) res.locals.scanner = await service.scannerSession(req.get('x-pluto-scanner')!);
-    const upload = req.path === '/staff/media', identity = res.locals.scanner?.uid || res.locals.actor?.uid || req.ip || 'unknown';
-    await service.rateLimit(identity, upload ? 'upload' : 'api', upload ? 200 : res.locals.actor || res.locals.scanner ? 3000 : 600);
+    const upload = req.path === '/staff/media', identity = clientIdentity(req, res.locals.actor?.uid, res.locals.scanner ? req.get('x-pluto-scanner') : undefined);
+    res.locals.rateIdentity = identity;
+    await service.rateLimit(req.ip || 'unknown', 'network-burst', 6000, 60000, 16);
+    await service.rateLimit(identity, upload ? 'upload' : 'api', upload ? 200 : res.locals.actor || res.locals.scanner ? 6000 : 1200);
     next();
   });
   const actor = (res: Response): DecodedIdToken => res.locals.actor || fail('Sign in to continue.', 401);
   const admissionIdentity = (req: Request, res: Response) => req.get('x-pluto-scanner') ? { scannerToken: req.get('x-pluto-scanner')! } : actor(res).uid;
   const bodyId = (req: Request, key = 'eventId') => id(req.body?.[key]);
-  router.post('/tickets/api/checkout', async (req, res) => { await service.rateLimit(req.ip || 'unknown', 'checkout', 60); res.json(await service.checkout(req.body, res.locals.actor)); });
-  router.post('/tickets/api/rsvp', async (req, res) => { await service.rateLimit(req.ip || 'unknown', 'rsvp', 30); res.json(await service.rsvp(req.body, res.locals.actor)); });
+  const purchaseLimit = async (req: Request, res: Response, lane: string) => {
+    const eventId = bodyId(req), contact = email(req.body.email);
+    await service.rateLimit(req.ip || 'unknown', `${lane}-network-burst`, 512, 60000, 8);
+    await service.rateLimit(res.locals.rateIdentity, `${lane}-client:${eventId}`, 30);
+    await service.rateLimit(contact, `${lane}-contact:${eventId}`, lane === 'rsvp' ? 6 : 20);
+  };
+  router.post('/tickets/api/checkout', async (req, res) => { await purchaseLimit(req, res, 'checkout'); res.json(await service.checkout(req.body, res.locals.actor)); });
+  router.post('/tickets/api/rsvp', async (req, res) => { await purchaseLimit(req, res, 'rsvp'); res.json(await service.rsvp(req.body, res.locals.actor)); });
   router.post('/tickets/api/staff/rsvp/review', async (req, res) => res.json(await service.reviewRsvp(bodyId(req), bodyId(req, 'orderId'), req.body.decision, req.body.note, actor(res).uid)));
   router.post('/tickets/api/staff/rsvp/withdraw', async (req, res) => res.json(await service.withdrawRsvp(bodyId(req), bodyId(req, 'orderId'), actor(res).uid)));
   router.post('/tickets/api/checkout-attempt', async (req, res) => res.json(await service.checkoutAttempt(req.body.accessKey)));
@@ -119,9 +129,10 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   router.post('/tickets/api/download', async (req, res) => res.type('pdf').set('Content-Disposition', 'attachment; filename="Pluto-payment-receipt.pdf"').send(await orderPdf(await service.view(bodyId(req, 'orderId'), req.body.accessKey, res.locals.actor))));
   router.post('/tickets/api/mine', async (_req, res) => res.json(await service.mine(actor(res))));
   router.post('/tickets/api/claim', async (_req, res) => res.json(await service.claim(actor(res))));
-  router.post('/tickets/api/recover', async (req, res) => { await service.rateLimit(req.ip || 'unknown', 'recovery', 10); res.json(await service.recover(req.body.email)); });
+  router.post('/tickets/api/recover', async (req, res) => { await service.rateLimit(res.locals.rateIdentity, 'recovery-client', 10); await service.rateLimit(email(req.body.email), 'recovery-contact', 3); res.json(await service.recover(req.body.email)); });
   router.post('/tickets/api/recover/accept', async (req, res) => res.json(await service.acceptRecovery(req.body.token)));
-  router.post('/tickets/api/resend', async (req, res) => { await service.rateLimit(req.ip || 'unknown', 'resend', 20); res.json(await service.resend(bodyId(req, 'orderId'), req.body.accessKey, res.locals.actor)); });
+  router.post('/tickets/api/resend', async (req, res) => { await service.rateLimit(bodyId(req, 'orderId'), 'resend-order', 20); res.json(await service.resend(bodyId(req, 'orderId'), req.body.accessKey, res.locals.actor)); });
+  router.post('/tickets/api/staff/network-context', async (req, res) => { await service.admin(actor(res).uid); res.json({ clientIp: req.ip, proxyChain: req.ips, socketIp: req.socket.remoteAddress, trustedProxies: process.env.TICKETING_TRUSTED_PROXIES || '' }); });
   router.post('/tickets/api/transfer', async (req, res) => res.json(await service.transfer(bodyId(req, 'orderId'), req.body.accessKey, res.locals.actor, bodyId(req, 'ticketId'), req.body.email, req.body.holderToken)));
   router.post('/tickets/api/transfer/accept', async (req, res) => res.json(await service.acceptTransfer(req.body.token, res.locals.actor)));
   router.post('/tickets/api/holder', async (req, res) => res.json(await service.holder(req.body.token, res.locals.actor)));

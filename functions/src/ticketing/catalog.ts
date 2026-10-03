@@ -1,4 +1,4 @@
-import { getFirestore, type Firestore } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp, type Firestore } from 'firebase-admin/firestore';
 import { getAuth, type DecodedIdToken } from 'firebase-admin/auth';
 import { getStorage } from 'firebase-admin/storage';
 import sharp from 'sharp';
@@ -19,12 +19,13 @@ export class Catalog {
     if (!scope || !roles.some(role => scope.roles?.includes(role))) fail('This account does not have access to this event.', 403);
   }
   async admin(uid: string) { if (!(await this.db.collection('adminUsers').doc(uid).get()).exists) fail('Administrator access is required.', 403); }
-  async rateLimit(identity: string, lane: string, limit = 120) {
-    const hour = Math.floor(Date.now() / 3600000), ref = this.db.collection('ticketingRateLimits').doc(hash(`${hour}:${lane}:${identity}`));
+  async rateLimit(identity: string, lane: string, limit = 120, windowMs = 3600000, shards = 1) {
+    const bucket = Math.floor(Date.now() / windowMs), shard = shards === 1 ? 0 : parseInt(hash(randomUUID()).slice(0, 8), 16) % shards;
+    const ref = this.db.collection('ticketingRateLimits').doc(hash(`${windowMs}:${bucket}:${lane}:${identity}:${shard}`));
     await this.db.runTransaction(async tx => {
       const count = (await tx.get(ref)).data()?.count || 0;
-      if (count >= limit) fail('Too many requests. Please try again later.', 429);
-      tx.set(ref, { count: count + 1, expiresAtMs: (hour + 2) * 3600000 });
+      if (count >= Math.ceil(limit / shards)) fail('Too many requests. Please try again later.', 429, 'rate-limited');
+      tx.set(ref, { count: count + 1, expiresAt: Timestamp.fromMillis((bucket + 2) * windowMs) });
     });
   }
   async list(uid: string) {

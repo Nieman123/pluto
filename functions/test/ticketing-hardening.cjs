@@ -2,11 +2,43 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { hash } = require('../lib/ticketing/domain');
 const { harness } = require('./ticketing-harness.cjs');
+const express = require('express');
+const { ticketingRouter } = require('../lib/ticketing/routes');
+const { configureTrustedProxy } = require('../lib/ticketing/client-identity');
 
 async function inbox(h, oid, type, objectId, extra = {}) {
   const ref = h.db.collection('ticketingWebhookInbox').doc(hash(`${h.prefix}_${objectId}`));
   await ref.set({ orderId: oid, type, objectId, livemode: false, status: 'pending', ...extra }); return ref;
 }
+
+test('A3: 75 purchasers on one network remain independent while contact/client abuse is limited', async () => {
+  const h = harness(), app = express(); configureTrustedProxy(app, 'loopback'); app.use(ticketingRouter(() => ({}), h.service));
+  const server = app.listen(0, '127.0.0.1'); await new Promise(resolve => server.once('listening', resolve));
+  try {
+    const eid = await h.event(d => d.pools.forEach(p => p.capacity = 200)), network = `198.51.100.${1 + Math.floor(Math.random() * 250)}`;
+    const endpoint = `http://127.0.0.1:${server.address().port}/tickets/api/`;
+    const post = (path, body, client) => fetch(endpoint + path, { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'http://127.0.0.1:4173', 'X-Forwarded-For': `203.0.113.66,${network}`, 'X-Pluto-Client': client }, body: JSON.stringify(body) });
+    for (let start = 0; start < 75; start += 5) {
+      const results = await Promise.all(Array.from({ length: 5 }, (_, index) => post('checkout', h.request(eid, { email: `${h.prefix}-${start + index}@example.test` }), h.newKey())));
+      for (const response of results) assert.equal(response.status, 200, await response.text());
+    }
+    assert.equal(h.sessions.size, 75); assert.equal((await h.service.event(eid).collection('pools').doc('friday').get()).data().held, 75);
+    const client = h.newKey(), attempt = h.request(eid, { email: `${h.prefix}-repeat@example.test` });
+    for (let i = 0; i < 20; i++) assert.equal((await post('checkout', attempt, client)).status, 200);
+    assert.equal((await post('checkout', attempt, h.newKey())).status, 429, 'rotating a device ID cannot bypass the contact limit');
+    let rejected = false;
+    for (let i = 0; i < 31; i++) { const response = await post('checkout', h.request(eid, { email: `${h.prefix}-device-${i}@example.test` }), client); if (response.status === 429) { rejected = true; break; } }
+    assert.equal(rejected, true, 'one client cannot bypass its limit by changing email');
+    const rsvpEvent = await h.event(d => { d.registrationMode = 'rsvp'; d.offers = [{ ...d.offers[0], unitAmount: 0, maxPerOrder: 1 }]; d.pools.forEach(p => p.capacity = 100); });
+    for (let start = 0; start < 45; start += 5) {
+      const results = await Promise.all(Array.from({ length: 5 }, (_, index) => post('rsvp', h.request(rsvpEvent, { email: `${h.prefix}-rsvp-${start + index}@example.test` }), h.newKey())));
+      for (const response of results) assert.equal(response.status, 200, await response.text());
+    }
+    for (let i = 0; i < 15; i++) assert.equal((await post('recover', { email: `${h.prefix}-recover-${i}@example.test` }, h.newKey())).status, 200);
+    const counter = (await h.db.collection('ticketingRateLimits').doc(hash(`${3600000}:${Math.floor(Date.now() / 3600000)}:checkout-client:${eid}:client:${hash(client)}:0`)).get()).data();
+    assert.ok(counter.expiresAt.toMillis() > Date.now(), 'TTL uses a Firestore Timestamp');
+  } finally { await new Promise(resolve => server.close(resolve)); await h.cleanup(); }
+});
 
 test('A2: inactive provider taxes fail before reservation and the same attempt works after repair', async () => {
   const h = harness();

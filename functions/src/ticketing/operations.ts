@@ -54,7 +54,7 @@ export class Operations extends Rsvps {
     return { revoked: true };
   }
   async scannerLogin(rawPin: unknown, ip: string) {
-    await this.rateLimit(ip, 'scanner-login-ip', 40);
+    await this.rateLimit(ip, 'scanner-login-ip', 40, 60000);
     const pin = typeof rawPin === 'string' ? rawPin.replace(/[\s-]/g, '') : '';
     if (!/^\d{8}$/.test(pin)) fail('Enter a valid 8-digit scanner PIN.', 401);
     const lookupHash = this.scannerPinHash(pin);

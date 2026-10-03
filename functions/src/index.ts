@@ -9,6 +9,7 @@ import nunjucks from "nunjucks";
 import { waiverRouter } from "./waiver/routes";
 import { ticketingRouter } from './ticketing/routes';
 import { ticketingSecrets } from './ticketing/config';
+import { configureTrustedProxy } from './ticketing/client-identity';
 export { ticketingMaintenance, ticketingWebhookWorker, ticketingEmailWorker } from './ticketing/workers';
 import { normalizeRental, groupRentals, rentalContactEmail, type PublicRental } from './rentals-data';
 import { seedRentals } from './rentals-seed';
@@ -48,6 +49,7 @@ async function ensureRentalsInitialized() {
 }
 
 const app = express();
+configureTrustedProxy(app);
 app.use(compression());
 const env = nunjucks.configure(templates, { autoescape: true, noCache: true });
 env.express(app);

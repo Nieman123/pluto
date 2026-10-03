@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
+import 'src/ticket_client_identity.dart';
 
 class TicketingException implements Exception {
   const TicketingException(this.status, this.message, {this.code = ''});
@@ -34,6 +35,7 @@ class TicketingRepository {
         .post(_baseUri.resolve('/tickets/api/$path'),
             headers: <String, String>{
               'Content-Type': 'application/json',
+              'X-Pluto-Client': ticketClientIdentity(),
               if (token != null) 'Authorization': 'Bearer $token'
             },
             body: jsonEncode(body))
