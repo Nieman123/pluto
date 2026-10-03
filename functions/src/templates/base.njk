@@ -48,6 +48,7 @@
       </a>
       <nav class="desktop-nav" aria-label="Primary navigation">
         <a href="/" {% if path == '/' %}aria-current="page"{% endif %}>Home</a>
+        <a href="/events" {% if path and (path == '/events' or path.startsWith('/events/')) %}aria-current="page"{% endif %}>Events</a>
         <a href="/manafest" {% if path == '/manafest' %}aria-current="page"{% endif %}>ManaFest</a>
         <a href="/rentals" {% if path == '/rentals' %}aria-current="page"{% endif %}>Rentals</a>
         <a href="/links" {% if path == '/links' %}aria-current="page"{% endif %}>Links</a>
@@ -69,6 +70,7 @@
       </div>
       <nav class="mobile-menu" id="mobile-menu" data-mobile-menu hidden aria-label="Mobile navigation">
         <a href="/" {% if path == '/' %}aria-current="page"{% endif %}>Home</a>
+        <a href="/events" {% if path and (path == '/events' or path.startsWith('/events/')) %}aria-current="page"{% endif %}>Events</a>
         <a href="/manafest" {% if path == '/manafest' %}aria-current="page"{% endif %}>ManaFest</a>
         <a href="/rentals" {% if path == '/rentals' %}aria-current="page"{% endif %}>Rentals</a>
         <a href="/links" {% if path == '/links' %}aria-current="page"{% endif %}>Links</a>
@@ -90,6 +92,7 @@
         <p>Underground sound, strange gatherings, and room to be yourself.</p>
       </div>
       <nav aria-label="Footer navigation">
+        <a href="/events">Events & tickets</a>
         <a href="/manafest" {% if path == '/manafest' %}aria-current="page"{% endif %}>ManaFest</a>
         <a href="/rentals" {% if path == '/rentals' %}aria-current="page"{% endif %}>Rentals</a>
         <a href="/links" {% if path == '/links' %}aria-current="page"{% endif %}>Links</a>

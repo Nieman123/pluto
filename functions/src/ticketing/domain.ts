@@ -92,12 +92,11 @@ export function validateDraft(raw: any): EventDraft {
     return { id: id(o.id), name: text(o.name, 'ticket name', 150, true), description: text(o.description || '', 'ticket description', 1000),
       kind: ['admission', 'camping', 'vehicle'].includes(o.kind) ? o.kind : 'admission', unitAmount: integer(o.unitAmount, 'ticket price', 0, 1000000),
       maxPerOrder: integer(o.maxPerOrder ?? 10, 'order limit', 1, 20), salesStart, salesEnd, validFrom, validUntil, active: o.active !== false,
-      pools: poolUse, requiresOfferIds: list(o.requiresOfferIds || [], 'required ticket types', 30).map(id),
+      pools: poolUse, requiresOfferIds: [],
       taxCode: text(o.taxCode || '', 'tax code', 80), stripeProductId: text(o.stripeProductId || '', 'Stripe product', 80),
       stripeTaxRateIds: list(o.stripeTaxRateIds || [], 'tax rates', 5).map(v => text(v, 'tax rate', 80, true)) };
   });
   unique(offers.map(o => o.id), 'ticket types');
-  for (const offer of offers) if (offer.requiresOfferIds.some(key => key === offer.id || !offers.some(o => o.id === key))) fail('Check required ticket types.');
   const promos: Promotion[] = list(raw.promos || [], 'promotions', 40).map(p => {
     const code = text(p.code, 'promo code', 40, true).toUpperCase();
     if (!/^[A-Z0-9_-]+$/.test(code)) fail('Check promo code.');
@@ -144,7 +143,6 @@ export function cart(draft: EventDraft, items: any, code: unknown, now = Date.no
     const offer = draft.offers.find(o => o.id === line.offerId && o.active);
     if (!offer || now < Date.parse(offer.salesStart) || now >= Date.parse(offer.salesEnd)) fail('This ticket is not currently on sale.', 409);
     const quantity = integer(line.quantity, 'quantity', 1, offer.maxPerOrder);
-    if (offer.requiresOfferIds.length && !lines.some(l => offer.requiresOfferIds.includes(l.offerId) && l.quantity > 0)) fail(`${offer.name} requires an eligible admission ticket.`);
     for (let n = 0; n < quantity; n++) {
       units.push({ offerId: offer.id, name: offer.name, kind: offer.kind, originalAmount: offer.unitAmount, amount: offer.unitAmount, discount: 0,
         pools: offer.pools, validFrom: offer.validFrom, validUntil: offer.validUntil, taxCode: offer.taxCode, stripeProductId: offer.stripeProductId, stripeTaxRateIds: offer.stripeTaxRateIds });

@@ -14,10 +14,12 @@ test('rich content drops executable markup and unsafe links', () => {
   const safe = html('<p>Good <strong>music</strong></p><script>alert(1)</script><img src=x onerror=alert(1)><a href="javascript:alert(1)">Bad</a><iframe src="evil"></iframe>');
   assert.match(safe, /<strong>music/); assert.doesNotMatch(safe, /script|onerror|iframe|javascript/);
 });
-test('day and weekend tickets consume shared pools with add-on dependencies', () => {
+test('day and weekend tickets share pools while vehicle passes can be purchased separately', () => {
   const d = validateDraft(fixture()); const result = cart(d, [{ offerId: 'weekend', quantity: 2 }, { offerId: 'vehicle', quantity: 1 }], '', Date.now());
   assert.deepEqual(result.consumption, { friday: 2, saturday: 2, vehicles: 1 }); assert.equal(result.total, 21000);
-  assert.throws(() => cart(d, [{ offerId: 'vehicle', quantity: 1 }], '', Date.now()), /requires/);
+  assert.equal(cart(d, [{ offerId: 'vehicle', quantity: 1 }], '', Date.now()).total, 1000);
+  d.offers[2].requiresOfferIds = ['weekend'];
+  assert.deepEqual(cart(d, [{ offerId: 'vehicle', quantity: 1 }], '', Date.now()).consumption, { vehicles: 1 }, 'legacy offer prerequisites cannot block a standalone purchase');
   assert.throws(() => assertCapacity(result.consumption, { friday: { capacity: 2, sold: 1, held: 0 }, saturday: { capacity: 2, sold: 0, held: 0 }, vehicles: { capacity: 2, sold: 0, held: 0 } }), /not enough/);
 });
 test('fixed discounts allocate exact cents without making a small ticket negative', () => {
