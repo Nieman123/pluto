@@ -5,12 +5,39 @@ export function initCheckout() {
   const config = JSON.parse(document.querySelector('#native-checkout-config').textContent), storageKey = `pluto-checkout-${config.eventId}`;
   const rsvp = config.registrationMode && config.registrationMode !== 'tickets';
   let checkout, result, frozen, countdown;
+  let account = null, profileName = '';
+  const contacts = { buyerName: form.elements.buyerName, email: form.elements.email };
+  const filledFromAccount = new Map();
+  function syncContact() {
+    const stored = { buyerName: profileName || account?.displayName || '', email: account?.email || '' };
+    for (const [name, input] of Object.entries(contacts)) {
+      const value = typeof stored[name] === 'string' ? stored[name].trim() : '';
+      const known = !!account && !!value && value.length <= input.maxLength && (name !== 'email' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value));
+      if (!frozen) {
+        if (known) { input.value = value; filledFromAccount.set(name, value); }
+        else {
+          if (input.value === filledFromAccount.get(name)) input.value = '';
+          filledFromAccount.delete(name);
+        }
+      }
+      // A reserved checkout keeps its original contact, even after account changes.
+      input.closest('label').hidden = known && input.value === value;
+    }
+  }
+  window.addEventListener('pluto-auth', event => {
+    account = event.detail; profileName = ''; syncContact();
+  });
+  window.addEventListener('pluto-profile', event => {
+    if (account?.uid !== event.detail.uid) return;
+    profileName = event.detail.displayName; syncContact();
+  });
   function lockCart() {
     form.querySelectorAll('input,select').forEach(input => { input.disabled = !!frozen; });
     if (frozen) {
       for (const [name, value] of Object.entries({ buyerName: frozen.name, email: frozen.email, promoCode: frozen.promoCode })) if (form.elements[name]) form.elements[name].value = value || '';
       for (const item of frozen.items) { const select = form.elements[item.offerId]; if (select) select.value = String(item.quantity); }
     }
+    syncContact();
     form.querySelector('[type=submit]').textContent = rsvp ? frozen ? 'Resume RSVP request' : config.registrationMode === 'rsvp-approval' ? 'Request RSVP' : 'Confirm RSVP' : frozen ? 'Resume reserved checkout' : 'Continue to payment';
   }
   const promoter = new URLSearchParams(location.search).get('ref');

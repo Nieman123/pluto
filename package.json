@@ -25,6 +25,7 @@
     "test:ticketing:wallet-access": "node --test functions/test/wallet-access.cjs",
     "test:ticketing:location-access": "node --test functions/test/location-reveal-access.cjs",
     "test:ticketing:location-browser": "node scripts/ticketing/location-reveal-browser-test.cjs",
+    "test:ticketing:checkout-account-browser": "node scripts/ticketing/checkout-account-browser-test.cjs",
     "test:ticketing:qr": "node scripts/ticketing/qr-decoder-test.cjs",
     "test:ticketing:scanner-browser": "node scripts/ticketing/scanner-pin-browser-test.cjs",
     "test:ticketing:rsvp-browser": "node scripts/ticketing/rsvp-browser-test.cjs",

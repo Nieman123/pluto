@@ -116,6 +116,7 @@ function pageMeta(path: string) {
 }
 
 function commonContext(path: string) {
+  const [firestoreHost, firestorePort] = (process.env.FIRESTORE_EMULATOR_HOST || "").split(":");
   const firebaseConfig = {
     apiKey: "AIzaSyBLv7MumBOjUHpmAUiu9nLfhWvwmAYKorE",
     appId: "1:763906028056:web:c1261eba96f8b0c792896d",
@@ -125,6 +126,7 @@ function commonContext(path: string) {
     storageBucket: "pluto-9b6ca.appspot.com",
     measurementId: googleAnalyticsId,
     ...(process.env.FIREBASE_AUTH_EMULATOR_HOST ? { authEmulatorUrl: `http://${process.env.FIREBASE_AUTH_EMULATOR_HOST}`, projectId: process.env.GCLOUD_PROJECT || "demo-pluto-waiver" } : {}),
+    ...(firestoreHost ? { firestoreEmulator: { host: firestoreHost, port: Number(firestorePort) } } : {}),
   };
   return {
     path,
