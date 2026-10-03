@@ -69,7 +69,7 @@ jobs:
         env:
           GCLOUD_PROJECT: demo-pluto-ticketing
           TICKETING_STORAGE_BUCKET: demo-pluto-ticketing.appspot.com
-        run: npx firebase-tools@15.32.1 emulators:exec --project demo-pluto-ticketing --config firebase.ticketing-test.json --only auth,firestore,storage "npm run test:ticketing:integration && npm run test:ticketing:hardening && npm run test:ticketing:rsvp && npm run test:ticketing:rules && npm run test:rewards"
+        run: npx firebase-tools@15.32.1 emulators:exec --project demo-pluto-ticketing --config firebase.ticketing-test.json --only auth,firestore,storage "npm run test:ticketing:integration && npm run test:ticketing:hardening && npm run test:ticketing:order-operations && npm run test:ticketing:rsvp && npm run test:ticketing:rules && npm run test:rewards"
 
       - name: Test Flutter project
         run: flutter test

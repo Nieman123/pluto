@@ -4,8 +4,9 @@ import { adminGuestList } from './guestlist.js';
 import { adminRsvps } from './rsvps.js';
 import { financialSummary } from './financial-summary.js';
 import { revenueChart } from './revenue-chart.js';
+import { allOrders, eventOrders } from './orders.js';
 
-let record, events = [], dirty = false, pendingUploads = 0, studio = false, globalAdmin = false, saving;
+let record, events = [], dirty = false, pendingUploads = 0, studio = false, globalAdmin = false, saving, allOrdersMode = false;
 const get = (path, object = record?.draft) => path.split('.').reduce((o, key) => o?.[key], object);
 function set(path, value) { const keys = path.split('.'), last = keys.pop(); let target = record.draft; for (const key of keys) target = target[key] ??= {}; target[last] = value; dirty = true; syncSaveState(); }
 function syncSaveState() {
@@ -63,6 +64,7 @@ function defaultDraft() {
 }
 export async function loadEvents() {
   const result = await api('staff/events', { revenue: true }); events = result.events; globalAdmin = result.admin;
+  document.querySelector('#orders-all').hidden = !globalAdmin || allOrdersMode;
   const selector = document.querySelector('#staff-event'), current = selector.value;
   selector.innerHTML = '<option value="">Select an event</option>' + events.map(e => `<option value="${esc(e.id)}">${esc(e.title)} · ${esc(e.status)}</option>`).join('');
   if (events.some(e => e.id === current)) selector.value = current;
@@ -82,8 +84,9 @@ export async function loadEvents() {
     cards.querySelectorAll('[data-open-event]').forEach(button => button.onclick = () => action(button, () => selectEvent(button.dataset.openEvent)));
     const requested = new URLSearchParams(location.search).get('event');
     if (!record && requested && events.some(e => e.id === requested) && document.querySelector('#event-workspace')?.hidden) await selectEvent(requested, new URLSearchParams(location.search).get('view') === 'studio');
+    else if (!record && globalAdmin && new URLSearchParams(location.search).get('view') === 'orders') await showAllOrders();
   }
-  message(result.admin ? 'Choose an event to open its dashboard.' : 'Your assigned events are ready.');
+  message(allOrdersMode ? 'Orders across all events are ready.' : result.admin ? 'Choose an event to open its dashboard.' : 'Your assigned events are ready.');
   return result;
 }
 async function selectEvent(eventId, edit = false) {
@@ -91,6 +94,7 @@ async function selectEvent(eventId, edit = false) {
   if (pendingUploads) throw new Error('Wait for the image upload to finish before switching views.');
   if (dirty) await save();
   const scope = events.find(e => e.id === eventId);
+  allOrdersMode = false; document.querySelector('#all-orders-view').hidden = true; document.querySelector('#all-orders-view').replaceChildren(); document.querySelector('#orders-all').hidden = !globalAdmin;
   studio = edit; document.querySelector('#staff-event').value = eventId;
   document.querySelector('#events-index').hidden = true; document.querySelector('#event-workspace').hidden = false;
   document.querySelector('#events-back').hidden = false;
@@ -113,6 +117,17 @@ async function selectEvent(eventId, edit = false) {
   if (edit && record) render();
   else if (scope?.roles.some(r => ['manager', 'cash', 'refund'].includes(r))) await dashboard();
   else { document.querySelector('#event-dashboard').innerHTML = '<div class="empty-state"><h3>You’re on the team.</h3><p>Use your assigned operations tools above, or open Admission to check tickets at the door.</p></div>'; }
+}
+async function showAllOrders() {
+  if (!globalAdmin) throw new Error('Administrator access is required.');
+  if (pendingUploads) throw new Error('Wait for the image upload to finish before switching views.');
+  if (dirty) await save();
+  record = null; allOrdersMode = true; document.querySelector('#staff-event').value = '';
+  document.querySelector('#events-index').hidden = true; document.querySelector('#event-workspace').hidden = true;
+  document.querySelector('#event-editor').replaceChildren(); document.querySelector('#event-dashboard').replaceChildren();
+  document.querySelector('#events-back').hidden = false; document.querySelector('#orders-all').hidden = true;
+  const root = document.querySelector('#all-orders-view'); root.hidden = false;
+  history.replaceState(null, '', '/tickets/admin?view=orders'); await allOrders(root, events, selectEvent);
 }
 async function save() {
   if (pendingUploads) throw new Error('Wait for the image upload to finish before saving.');
@@ -242,30 +257,14 @@ async function dashboard() {
   const root = document.querySelector('#event-dashboard');
   root.innerHTML = `<h2>Orders & event performance</h2>${provisional ? `<p role="status">Proceeds are provisional.${pendingFees ? ` Stripe fees are still pending for ${pendingFees} paid order${pendingFees === 1 ? '' : 's'}.` : ''} Payment reviews and unmapped refunds must be resolved before final reconciliation.</p>` : ''}<div class="ticket-stat-grid">${[['Paid orders', paid.length], ['Tickets issued', paid.reduce((n, o) => n + o.units.length, 0)], ['Gross sales', money(gross)], ['Discounts', money(discounts)], ['Inclusive tax', money(tax)], ['Refunds (including unmapped)', money(refunds)], [pendingFees ? 'Confirmed Stripe payment fees' : 'Stripe payment fees', money(fees)], [provisional ? 'Provisional proceeds before operating costs' : 'Proceeds before operating costs', money(proceeds)], ['Cash sales', money(paid.filter(o => o.method === 'cash').reduce((n, o) => n + o.total, 0))], ['Comps', paid.filter(o => o.method === 'comp').length]].map(([label, value]) => `<div class="ticket-stat"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('')}</div>
   <h3>Inventory</h3>${data.pools.map(p => `<p>${esc(p.name)}: ${p.sold} sold · ${p.held} reserved · ${p.capacity - p.sold - p.held} available</p>`).join('')}
-  ${record ? '<nav class="studio-navigation" aria-label="Event dashboard sections"><a href="#event-rsvps">RSVPs</a><a href="#event-guestlist">Guest list</a><a href="#event-ticket-settings">Ticketing setup</a></nav><section id="event-rsvps" aria-label="Event RSVPs"></section><section id="event-guestlist" aria-label="Event guest list"></section>' : ''}<div class="ticket-toolbar"><input id="order-filter" aria-label="Search orders" placeholder="Search buyer, email or order"><button class="button button-quiet" id="order-export">Export CSV</button><button class="button button-quiet" id="order-reconcile">Retry pending jobs</button></div><div class="table-scroll" tabindex="0" role="region" aria-label="Event orders"><table class="ticket-table"><thead><tr><th>Buyer</th><th>Status</th><th>Method</th><th>Total</th><th>Promoter</th><th>Review</th><th>Actions</th></tr></thead><tbody id="order-rows"></tbody></table></div>${record ? '<section id="event-ticket-settings" aria-label="Event ticketing setup"></section>' : ''}`;
-  function rows(query = '') { root.querySelector('#order-rows').innerHTML = data.orders.filter(o => `${o.name} ${o.email} ${o.orderId}`.toLowerCase().includes(query.toLowerCase())).map(o => `<tr><td>${esc(o.name)}<br>${esc(o.email)}</td><td>${esc(o.status)}</td><td>${esc(o.method)}</td><td>${money(o.total)}</td><td>${esc(o.promoterId)}</td><td>${esc(o.reviewReason || '')}</td><td><button class="button button-quiet" data-open-order="${esc(o.orderId)}">Details</button></td></tr>`).join('');
-    root.querySelectorAll('[data-open-order]').forEach(button => button.onclick = () => action(button, async () => {
-      const order = await api('staff/order', { orderId: button.dataset.openOrder });
-      if (order.method === 'rsvp') { dialog(`<h2>${esc(order.eventTitle)} RSVP</h2><p>${esc(order.name)} · ${esc(order.email)}</p><p>${esc(order.rsvpStatus === 'pending' ? 'Awaiting approval' : order.rsvpStatus)}</p>${order.decisionNote ? `<p>${esc(order.decisionNote)}</p>` : ''}<p>Manage approval or withdrawal in the dashboard’s RSVPs section. RSVP passes have no payment to refund.</p>`); return; }
-      const content = dialog(`<h2>${esc(order.eventTitle)}</h2><p>${esc(order.name)} · ${esc(order.email)} · ${money(order.total)} · ${esc(order.status)}</p><form id="refund-form">${order.tickets.map(t => `<label><input type="checkbox" name="ticket" value="${esc(t.id)}" ${t.status !== 'valid' ? 'disabled' : ''}> ${esc(t.name)} · ${money(t.amount)} · ${esc(t.status)} ${t.admission ? '· already admitted (capacity will not reopen)' : ''}</label>`).join('')}${order.externalRefundAmount ? `<p>An existing Stripe Dashboard refund of ${money(order.externalRefundAmount)} needs ticket mapping.</p><button type="button" class="button button-quiet" id="map-dashboard-refund">Map existing refund to selected tickets</button>` : ''}<button class="button button-primary" ${order.externalRefundAmount ? 'disabled' : ''} ${order.status !== 'paid' ? 'disabled' : ''}>Approve selected ticket refunds</button></form><p>Refunds return to the original payment method. Cash refunds must be returned at the till.</p>`);
-      content.querySelector('#map-dashboard-refund')?.addEventListener('click', event => action(event.currentTarget, async () => {
-        const ticketIds = new FormData(content.querySelector('form')).getAll('ticket');
-        await api('staff/refund-external', { orderId: order.orderId, ticketIds }); document.querySelector('#ticketing-dialog').close(); await dashboard(); message('The existing refund is mapped; no additional money was refunded.');
-      }));
-      if (order.method === 'stripe' && order.total > 0 && order.status !== 'paid') {
-        content.insertAdjacentHTML('beforeend', `<form id="checkout-resolution-form"><h3>Resolve checkout reservation</h3><p>Creation state: ${esc(order.providerState)}. Inventory can be released when no request was sent, Stripe rejected creation, or Stripe confirms the Session expired. Uncertain payment outcomes stay reserved.</p><label>Stripe Session ID (optional)<input name="sessionId" placeholder="cs_test_…"></label><label>Resolution note<input name="note" required maxlength="500" placeholder="Why this checkout is being reviewed"></label><button class="button button-quiet">Verify Stripe checkout & resolve reservation</button></form>`);
-        content.querySelector('#checkout-resolution-form').onsubmit = event => { event.preventDefault(); action(event.submitter, async () => {
-          const fields = new FormData(event.target); await api('staff/checkout-resolve', { orderId: order.orderId, sessionId: fields.get('sessionId'), note: fields.get('note') });
-          document.querySelector('#ticketing-dialog').close(); await dashboard(); message('Checkout reconciled with an audit record. Review the final order status.');
-        }); };
-      }
-      let attempt = accessKey(), selected;
-      content.querySelector('form').onsubmit = event => { event.preventDefault(); action(event.submitter, async () => { selected ??= new FormData(event.target).getAll('ticket'); if (!selected.length) throw new Error('Select at least one ticket.'); await api('staff/refund', { orderId: order.orderId, ticketIds: selected, attempt }); document.querySelector('#ticketing-dialog').close(); await dashboard(); message('Refund approved. Pending payment-provider refunds remain blocked from admission.'); }); };
-    }));
-  }
+  ${record ? '<nav class="studio-navigation" aria-label="Event dashboard sections"><a href="#event-rsvps">RSVPs</a><a href="#event-guestlist">Guest list</a><a href="#event-order-list">Orders</a><a href="#event-ticket-settings">Ticketing setup</a></nav><section id="event-rsvps" aria-label="Event RSVPs"></section><section id="event-guestlist" aria-label="Event guest list"></section>' : ''}<section id="event-order-list" aria-label="Event orders"></section>${record ? '<section id="event-ticket-settings" aria-label="Event ticketing setup"></section>' : ''}`;
   const graph = document.createElement('section'); graph.className = 'revenue-panel'; graph.setAttribute('aria-label', 'Revenue tracking'); root.querySelector('.ticket-stat-grid').before(graph);
   revenueChart(graph, data.orders, record?.draft.timezone || events.find(e => e.id === eventId)?.timezone || 'America/New_York');
-  rows(); root.querySelector('#order-filter').oninput = event => rows(event.target.value);
+  eventOrders(root.querySelector('#event-order-list'), data.orders, {
+    refresh: dashboard, openEvent: selectEvent,
+    exportOrders: async () => download(await api('staff/export', { eventId }, true), 'Pluto-orders.csv'),
+    retry: globalAdmin ? async () => { const result = await api('staff/retry', { eventId }); await dashboard(); message(`Retry finished: ${result.orders || 0} orders checked.`); } : undefined,
+  });
   if (record) render();
   if (record) {
     const showRsvps = record.draft.registrationMode && record.draft.registrationMode !== 'tickets' || data.orders.some(o => o.method === 'rsvp');
@@ -273,8 +272,6 @@ async function dashboard() {
     root.querySelector('a[href="#event-rsvps"]').hidden = !showRsvps;
     adminRsvps(root.querySelector('#event-rsvps'), eventId, data.orders, dashboard);
   }
-  bind('#order-export', async () => download(await api('staff/export', { eventId }, true), 'Pluto-orders.csv'));
-  bind('#order-reconcile', async () => { const result = await api('staff/retry', { eventId }); message(`Retry finished: ${result.orders || 0} orders checked.`); await dashboard(); });
   if (record) await adminGuestList(root.querySelector('#event-guestlist'), eventId);
 }
 async function cash() {
@@ -313,7 +310,8 @@ export function initEditor() {
   document.querySelector('#staff-event')?.addEventListener('change', event => action(null, async () => { if (dirty) { event.target.value = record.id; message('Save your draft before switching events.', true); return; } await selectEvent(event.target.value); }));
   bind('#event-studio', () => selectEvent(document.querySelector('#staff-event').value, true));
   bind('#event-orders', async () => { if (dirty) await save(); await selectEvent(document.querySelector('#staff-event').value); });
-  bind('#events-back', async () => { if (dirty) await save(); record = null; document.querySelector('#staff-event').value = ''; document.querySelector('#event-workspace').hidden = true; document.querySelector('#events-index').hidden = false; document.querySelector('#events-back').hidden = true; history.replaceState(null, '', '/tickets/admin'); await loadEvents(); });
+  bind('#orders-all', showAllOrders);
+  bind('#events-back', async () => { if (dirty) await save(); record = null; allOrdersMode = false; document.querySelector('#all-orders-view').hidden = true; document.querySelector('#all-orders-view').replaceChildren(); document.querySelector('#staff-event').value = ''; document.querySelector('#event-workspace').hidden = true; document.querySelector('#events-index').hidden = false; document.querySelector('#events-back').hidden = true; history.replaceState(null, '', '/tickets/admin'); await loadEvents(); });
   bind('#event-cash', cash); bind('#event-roles', roles);
   bind('#event-scanner-pins', scannerPins);
   bind('#event-promoter-stats', async () => { const data = await api('staff/promoter-stats', { eventId: document.querySelector('#staff-event').value }); document.querySelector('#event-dashboard').innerHTML = `<h2>Your promoter performance</h2><p>${esc(data.promoterId)}</p><div class="ticket-stat-grid">${[['Attributed orders', data.orders], ['Ticket units', data.tickets], ['Gross', money(data.gross)], ['Refunds', money(data.refunds)]].map(([label, value]) => `<div class="ticket-stat"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('')}</div>`; });

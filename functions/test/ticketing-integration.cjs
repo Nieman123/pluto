@@ -223,8 +223,8 @@ async function main() {
   const post = (path, body = {}, token = '') => fetch(`${endpoint}/tickets/api/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { 'X-Pluto-Scanner': token } : {}) }, body: JSON.stringify(body) });
   const loginResponse = await post('scanner/login', { pin: routePin.pin }); assert.equal(loginResponse.status, 200);
   const routeLogin = await loginResponse.json();
-  for (const path of ['staff/events', 'staff/get', 'staff/orders', 'staff/scanner-pins', 'staff/scanner-pins/create', 'staff/roles', 'staff/cash', 'staff/refund', 'mine', 'staff/guestlist/add', 'staff/guestlist/save', 'staff/guestlist/remove']) {
-    assert.equal((await post(path, { eventId: pinEvent, orderId: pinOrder.orderId, guestId: guest.id, uid: 'pretend-staff', label: 'Unauthorized', roles: ['manager'] }, routeLogin.token)).status, 401, `scanner has no access to ${path}`);
+  for (const path of ['staff/events', 'staff/get', 'staff/orders', 'staff/all-orders', 'staff/order', 'staff/order/check-in', 'staff/scanner-pins', 'staff/scanner-pins/create', 'staff/roles', 'staff/cash', 'staff/refund', 'mine', 'staff/guestlist/add', 'staff/guestlist/save', 'staff/guestlist/remove']) {
+    assert.equal((await post(path, { eventId: pinEvent, orderId: pinOrder.orderId, ticketId: revokedTicket.id, scanId: randomUUID(), guestId: guest.id, uid: 'pretend-staff', label: 'Unauthorized', roles: ['manager'] }, routeLogin.token)).status, 401, `scanner has no access to ${path}`);
   }
   assert.equal((await post('staff/manifest', { eventId: eventId }, routeLogin.token)).status, 403);
   assert.equal((await post('staff/manifest', { eventId: pinEvent }, routeLogin.token)).status, 200);

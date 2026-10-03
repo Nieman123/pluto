@@ -1,7 +1,7 @@
 import Stripe from 'stripe';
 import { randomUUID } from 'node:crypto';
 import { type DecodedIdToken } from 'firebase-admin/auth';
-import { Timestamp, type Firestore, type Transaction } from 'firebase-admin/firestore';
+import { FieldPath, Timestamp, type Firestore, type Transaction } from 'firebase-admin/firestore';
 import { Catalog } from './catalog';
 import { apiVersion, appTicketsUrl, baseUrl, isLive, keyPair, readTicket, signTicket, stripeClient } from './config';
 import { assertCapacity, cart, email, fail, hash, holderVenue, id, integer, receipt, secret, text, ticketId, type EventDraft, type Unit } from './domain';
@@ -528,8 +528,8 @@ export class Orders extends Catalog {
     if (at < lease.generatedAt || at > lease.offlineUntil || at > Date.now() + 120000 || at < Date.parse(item.validFrom) || at > Date.parse(item.validUntil)) fail('Recorded admission is outside the authenticated preparation or admission window.', 409);
     return { at, rejection: managerReview ? 'offline-manager-review' : Date.now() > lease.replayUntil ? 'offline-replay-expired' : '', verified: true, leaseHash, version, originUid: lease.uid as string };
   }
-  async scan(eventId: string, qr: unknown, scanId: unknown, identity: string | ScannerProof, offline = false, details?: OfflineSubmission, managerReview = false) {
-    if (typeof identity === 'string') await this.role(identity, eventId, [managerReview ? 'manager' : 'admission']);
+  async scan(eventId: string, qr: unknown, scanId: unknown, identity: string | ScannerProof, offline = false, details?: OfflineSubmission, managerReview = false, source: 'qr' | 'order-dashboard' = 'qr') {
+    if (typeof identity === 'string') await this.role(identity, eventId, managerReview ? ['manager'] : ['manager', 'admission']);
     const parsed = readTicket(qr, this.signing()), key = id(scanId);
     if (parsed.eventId !== eventId) fail('This ticket belongs to a different event.', 409);
     return this.db.runTransaction(async tx => {
@@ -543,13 +543,14 @@ export class Orders extends Catalog {
       const order = ticket ? (await tx.get(this.order(ticket.orderId))).data() : null;
       const at = evidence?.at || Date.now();
       let result = 'accepted';
-      if (!ticket || order?.financialBlocked || ticket.version !== parsed.version || ticket.status !== 'valid' || ['cancelled', 'archived'].includes(event?.status)) result = 'invalid';
-      else if (at < Date.parse(ticket.validFrom) || at > Date.parse(ticket.validUntil)) result = 'outside-window';
+      if (!ticket || !event || order?.status !== 'paid' || order.financialBlocked || ticket.rsvp && order.rsvpStatus !== 'approved' || ticket.version !== parsed.version || ticket.status !== 'valid' || ['cancelled', 'archived'].includes(event.status)) result = 'invalid';
+      else if (!Number.isFinite(Date.parse(ticket.validFrom)) || !Number.isFinite(Date.parse(ticket.validUntil)) || at < Date.parse(ticket.validFrom) || at > Date.parse(ticket.validUntil)) result = 'outside-window';
       else if (ticket.admission) result = 'duplicate';
       else if (evidence?.rejection) result = evidence.rejection;
-      const record = { ticketId: parsed.id, ...access, uid: evidence?.originUid || uid, result, at, syncedAt: Date.now(), offline, name: ticket?.name || '',
+      const record = { ticketId: parsed.id, ...access, uid: evidence?.originUid || uid, result, at, syncedAt: Date.now(), offline, name: ticket?.name || '', source,
         ...(evidence ? { offlineLeaseHash: evidence.leaseHash, offlineVersion: evidence.version, offlineProofVerified: evidence.verified, submittedBy: uid } : {}) };
       tx.create(scanRef, record); if (result === 'accepted') tx.update(ticketRef, { admission: { at, ...access, scanId: key, offline } });
+      if (result === 'accepted' && source === 'order-dashboard') tx.create(this.event(eventId).collection('audit').doc(), { action: 'ticket-manually-checked-in', orderId: ticket!.orderId, ticketId: parsed.id, scanId: key, uid, at });
       return record;
     });
   }
@@ -631,6 +632,63 @@ export class Orders extends Catalog {
     const pools = await this.event(eventId).collection('pools').get();
     return { orders: orders.docs.map(d => { const { accessHash, clientSecret, inputHash, ...safe } = d.data(); return { orderId: d.id, ...safe }; }).sort((a: any, b: any) => b.createdAt - a.createdAt),
       pools: pools.docs.map(d => d.data()) };
+  }
+  async allOrders(raw: any, uid: string) {
+    await this.admin(uid);
+    const limit = integer(raw.limit ?? 50, 'page size', 1, 100), search = text(raw.search || '', 'order search', 254).toLowerCase();
+    const eventId = raw.eventId ? id(raw.eventId) : '', status = text(raw.status || '', 'order status', 40);
+    let cursor = raw.cursor ? { createdAt: integer(raw.cursor.createdAt, 'order cursor', 0, Number.MAX_SAFE_INTEGER), orderId: id(raw.cursor.orderId) } : null;
+    const orders: any[] = []; let scanned = 0, hasMore = false;
+    // Bound reads per request; filtered searches can continue through older pages.
+    while (scanned < 500 && orders.length < limit) {
+      const size = Math.min(search || eventId || status ? 100 : limit, 500 - scanned);
+      let query = this.db.collection('ticketingOrders').orderBy('createdAt', 'desc').orderBy(FieldPath.documentId(), 'desc').limit(size);
+      if (cursor) query = query.startAfter(cursor.createdAt, cursor.orderId);
+      const page = await query.get(); hasMore = page.size === size;
+      for (let i = 0; i < page.docs.length; i++) {
+        const doc = page.docs[i], o = doc.data(); scanned++; cursor = { createdAt: o.createdAt, orderId: doc.id };
+        if ((!eventId || o.eventId === eventId) && (!status || o.status === status) && (!search || `${o.name} ${o.email} ${doc.id} ${o.eventTitle}`.toLowerCase().includes(search))) {
+          orders.push({ orderId: doc.id, eventId: o.eventId, eventTitle: o.eventTitle, name: o.name, email: o.email, status: o.status, method: o.method, rsvpStatus: o.rsvpStatus || '', total: o.total, refundedAmount: o.refundedAmount || 0, createdAt: o.createdAt, promoterId: o.promoterId || '', reviewReason: o.financialReviewReason || o.reviewReason || '' });
+        }
+        if (orders.length === limit) { hasMore = i < page.docs.length - 1 || hasMore; break; }
+      }
+      if (!hasMore) break;
+    }
+    return { orders, cursor: hasMore ? cursor : null, hasMore, scanned };
+  }
+  async staffOrder(orderId: string, uid: string) {
+    let order = (await this.order(orderId).get()).data(); if (!order) fail('Order not found.', 404);
+    await this.role(uid, order.eventId, ['manager', 'refund', 'cash']);
+    if (order.method === 'stripe' && order.sessionId && order.status !== 'paid') await this.verifySession(orderId);
+    order = (await this.order(orderId).get()).data()!;
+    const [eventSnap, tickets, refunds, audit, admin, scope] = await Promise.all([
+      this.event(order.eventId).get(), this.tickets().where('orderId', '==', orderId).get(), this.db.collection('ticketingRefunds').where('orderId', '==', orderId).get(),
+      this.event(order.eventId).collection('audit').where('orderId', '==', orderId).get(), this.db.collection('adminUsers').doc(uid).get(), this.db.collection('ticketingStaff').doc(`${order.eventId}_${uid}`).get(),
+    ]);
+    const roles: string[] = admin.exists ? ['manager', 'refund', 'cash', 'admission'] : scope.data()?.roles || [], draft = eventSnap.data()?.liveDraft || eventSnap.data()?.draft, eventStatus = eventSnap.data()?.status || 'missing';
+    const canAdmit = roles.some(r => ['manager', 'admission'].includes(r)), now = Date.now();
+    return { orderId, eventId: order.eventId, eventTitle: order.eventTitle, eventSlug: order.eventSlug, eventStatus, timezone: draft?.timezone || 'America/New_York',
+      name: order.name, email: order.email, status: order.status, method: order.method, rsvpStatus: order.rsvpStatus || '', decisionNote: order.decisionNote || '',
+      total: order.total, discount: order.discount || 0, taxAmount: order.taxAmount || 0, refundedAmount: order.refundedAmount || 0, externalRefundAmount: order.externalRefundAmount || 0,
+      stripeFee: order.stripeFee ?? null, stripeFeeStatus: order.stripeFeeStatus || 'pending', createdAt: order.createdAt, paidAt: order.paidAt || null, expiresAt: order.expiresAt,
+      promoCode: order.promoCode || '', promoterId: order.promoterId || '', financialBlocked: !!order.financialBlocked, reviewReason: order.financialReviewReason || order.reviewReason || '',
+      providerState: order.providerState || 'unknown', sessionId: order.sessionId || '', paymentIntentId: order.paymentIntentId || '', receiptUrl: order.receiptUrl || '', livemode: order.livemode,
+      permissions: { canRefund: roles.includes('refund'), canCheckIn: canAdmit, canResolve: roles.includes('manager') },
+      tickets: tickets.docs.map(doc => { const t = doc.data();
+        const reason = t.admission ? 'Already checked in' : !canAdmit ? 'Admission permission required' : order!.financialBlocked ? 'Payment requires review' : order!.status !== 'paid' ? 'Order is not paid or confirmed' : t.rsvp && order!.rsvpStatus !== 'approved' ? 'RSVP is not approved' : t.status !== 'valid' ? 'Ticket is not valid' : ['cancelled', 'archived', 'missing'].includes(eventStatus) ? 'Event is not open for admission' : !Number.isFinite(Date.parse(t.validFrom)) || !Number.isFinite(Date.parse(t.validUntil)) || now < Date.parse(t.validFrom) || now > Date.parse(t.validUntil) ? 'Outside admission window' : '';
+        return { id: doc.id, number: (t.index ?? 0) + 1, name: t.name, kind: t.kind, holderName: t.holderName || order!.name, holderEmail: t.holderEmail || order!.email, status: t.status,
+          amount: t.amount, originalAmount: t.originalAmount, discount: t.discount || 0, taxAmount: t.taxAmount || 0, validFrom: t.validFrom, validUntil: t.validUntil, admission: t.admission || null,
+          canCheckIn: !reason, checkInReason: reason };
+      }).sort((a, b) => a.number - b.number),
+      refunds: refunds.docs.map(doc => { const r = doc.data(); return { id: doc.id, amount: r.amount, status: r.status, ticketIds: r.ticketIds || [], approvedBy: r.approvedBy || '', createdAt: r.createdAt, completedAt: r.completedAt || null, stripeRefundId: r.stripeRefundId || '', external: !!r.external, taxReviewRequired: !!r.taxReviewRequired }; }).sort((a, b) => b.createdAt - a.createdAt),
+      activity: audit.docs.map(doc => { const a = doc.data(); return { action: a.action, at: a.at, uid: a.uid || '', ticketId: a.ticketId || '', note: a.note || '', amount: a.amount ?? null }; }).sort((a, b) => b.at - a.at).slice(0, 30) };
+  }
+  async checkInOrderTicket(orderId: string, ticketId: string, scanId: unknown, uid: string) {
+    const order = (await this.order(orderId).get()).data(); if (!order) fail('Order not found.', 404);
+    await this.role(uid, order.eventId, ['manager', 'refund', 'cash']); await this.role(uid, order.eventId, ['manager', 'admission']);
+    const ticket = (await this.tickets().doc(id(ticketId)).get()).data();
+    if (!ticket || ticket.orderId !== orderId) fail('This ticket does not belong to the selected order.', 409);
+    return this.scan(order.eventId, this.credential(ticket, ticketId), scanId, uid, false, undefined, false, 'order-dashboard');
   }
   async promoterStats(eventId: string, uid: string) {
     await this.role(uid, eventId, ['promoter']);
