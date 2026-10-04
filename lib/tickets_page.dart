@@ -201,7 +201,13 @@ class _TicketsPageState extends State<TicketsPage> {
       String path, Map<String, dynamic> body) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     final scope = uid == null ? 'guest' : 'account-$uid';
-    final result = await _cache.request(path, body, scope, _repository.request);
+    final Map<String, dynamic> result;
+    try {
+      result = await _cache.request(path, body, scope, _repository.request);
+    } catch (_) {
+      if (mounted) setState(() => _data = null);
+      rethrow;
+    }
     if (FirebaseAuth.instance.currentUser?.uid != uid) {
       await _cache.clear(scope);
       throw const TicketingException(

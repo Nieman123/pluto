@@ -61,6 +61,14 @@ async function semantics(page) { await page.locator('flt-semantics-placeholder')
     const guest = await guestContext.newPage(); active = guest;
     await guest.goto(`${base}/app/tickets?order=${orderId}`); await semantics(guest);
     await guest.getByText('Show this code at the door', { exact: true }).waitFor({ timeout: 45000 });
+    const denyOrder = route => route.fulfill({ status: 403, contentType: 'application/json', body: JSON.stringify({ error: 'Use your current secure order link.' }) });
+    await guest.route('**/tickets/api/order', denyOrder);
+    await guest.getByRole('button', { name: 'Refresh tickets' }).click();
+    await guest.getByText('Use your current secure order link.', { exact: true }).waitFor();
+    assert.equal(await guest.getByText('Show this code at the door', { exact: true }).count(), 0, 'an authoritative denial must clear the QR already on screen');
+    await guest.unroute('**/tickets/api/order', denyOrder);
+    await guest.getByRole('button', { name: 'Refresh tickets' }).click();
+    await guest.getByText('Show this code at the door', { exact: true }).waitFor();
     await guest.goto(`${base}/app/tickets`); await semantics(guest);
     await guest.getByText('Show this code at the door', { exact: true }).waitFor({ timeout: 45000 });
     await guest.getByText(/A saved order needs a new secure link/).waitFor();

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:pluto/src/offline_ticket_cache.dart';
@@ -129,6 +130,29 @@ void main() {
             (_, __) async =>
                 throw const TicketingException(503, 'Unavailable')),
         throwsA(isA<TicketingException>()));
+    expect(disk, isEmpty);
+  });
+  test(
+      'offline session refresh can use saved tickets; a revoked session cannot',
+      () async {
+    await cache.request('mine', {}, 'account-a',
+        (_, __) async => {'orders': [], 'tickets': order()['tickets']});
+    expect(
+        (await cache.request(
+            'mine',
+            {},
+            'account-a',
+            (_, __) async => throw FirebaseAuthException(
+                code: 'network-request-failed')))['tickets'][0]['qr'],
+        'signed-qr');
+    await expectLater(
+        cache.request(
+            'mine',
+            {},
+            'account-a',
+            (_, __) async =>
+                throw FirebaseAuthException(code: 'user-token-expired')),
+        throwsA(isA<FirebaseAuthException>()));
     expect(disk, isEmpty);
   });
   test(

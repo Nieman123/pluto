@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import '../ticketing_repository.dart';
 
@@ -133,7 +134,15 @@ class OfflineTicketCache {
       await _invalidate(path, body, scope, key);
       rethrow;
     } catch (error) {
-      if (error is! http.ClientException && error is! TimeoutException) rethrow;
+      if (error is FirebaseAuthException &&
+          error.code != 'network-request-failed') {
+        await clear(scope);
+        rethrow;
+      }
+      if (error is! http.ClientException &&
+          error is! TimeoutException &&
+          !(error is FirebaseAuthException &&
+              error.code == 'network-request-failed')) rethrow;
       final saved = read(key);
       if (saved == null) rethrow;
       try {

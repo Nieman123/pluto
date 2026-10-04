@@ -8,7 +8,7 @@ Health diagnostics, manager support corrections/recovery/RSVP reopening, guest R
 
 Previously loaded web tickets can now survive an offline app reload; account caches clear on identity changes and refreshes replace revoked admission. Native guest access uses a persistent secure-storage adapter rather than process-only memory. Actual installed Android/iOS builds and device acceptance remain unverified; offline gate preparation retains the existing staff procedure. These changes do not establish readiness for public paid sales or deploy anything to production.
 
-Local validation: 76 Functions/root tests, 31 Flutter tests, clean analysis and a release web build; four support/delivery-signature tests, 21 admission/payment hardening tests and five wallet/location access tests in demo emulators; existing RSVP/order/free-event/rules suites; seven focused Chromium suites covering mobile health/support, offline reload and refund invalidation, RSVP email proof/approval, wallet recovery, orders, account checkout/navigation, location reveal and free events. Provider delivery and installed-device behavior still need deployed acceptance.
+Local validation: 76 Functions/root tests, 32 Flutter tests, clean analysis and a release web build; four support/delivery-signature tests, 21 admission/payment hardening tests and five wallet/location access tests in demo emulators; existing RSVP/order/free-event/rules suites; seven focused Chromium suites covering mobile health/support, offline reload and refund invalidation, RSVP email proof/approval, wallet recovery, orders, account checkout/navigation, location reveal and free events. Provider delivery and installed-device behavior still need deployed acceptance.
 
 ## Remediation checkpoint — October 3, 2026
 
