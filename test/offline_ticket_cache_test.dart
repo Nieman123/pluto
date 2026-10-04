@@ -70,21 +70,42 @@ void main() {
         throwsA(isA<http.ClientException>()));
     expect(disk, isEmpty);
   });
-  test('authoritative revocation clears every cached view for this account',
+  test('authoritative revocation removes an order from every cached view',
       () async {
     await cache.request('order', body, 'account-a', (_, __) async => order());
     await cache.request(
-        'mine', {}, 'account-a', (_, __) async => {'orders': [], ...order()});
+        'mine',
+        {},
+        'account-a',
+        (_, __) async => {
+              'orders': [],
+              'tickets': [
+                {...order()['tickets'][0] as Map, 'orderId': 'one'}
+              ]
+            });
     await cache.request('order', body, 'account-b', (_, __) async => order());
     await expectLater(
         cache.request('order', body, 'account-a',
             (_, __) async => throw const TicketingException(403, 'Revoked')),
         throwsA(isA<TicketingException>()));
-    await expectLater(cache.request('mine', {}, 'account-a', offline),
-        throwsA(isA<http.ClientException>()));
+    expect((await cache.request('mine', {}, 'account-a', offline))['tickets'],
+        isEmpty);
     expect(
         (await cache.request('order', body, 'account-b', offline))['offline'],
         true);
+  });
+  test(
+      'an obsolete order link cannot erase offline access to unrelated purchases',
+      () async {
+    await cache.request('order', body, 'guest', (_, __) async => order());
+    await expectLater(
+        cache.request('order', {'orderId': 'obsolete'}, 'guest',
+            (_, __) async => throw const TicketingException(403, 'Replaced')),
+        throwsA(isA<TicketingException>()));
+    expect(
+        (await cache.request('order', body, 'guest', offline))['tickets'][0]
+            ['qr'],
+        'signed-qr');
   });
   test(
       'successful refund update removes QR from older account wallet snapshots',

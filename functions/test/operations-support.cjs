@@ -63,6 +63,7 @@ test('RSVP email proof is single-use, limited, and reopen needs new approval and
 
 test('delivery events survive webhook/send races and health exposes bounded, permission-checked alerts', async () => {
   const h = harness(), messageId = randomUUID();
+  const heartbeat = h.db.collection('ticketingHealth').doc('maintenance'), previousHeartbeat = (await heartbeat.get()).data();
   try {
     const eid = await h.event(), raw = h.request(eid), result = await h.service.checkout(raw, null); await h.pay(result.orderId);
     const jobId = `receipt_${result.orderId}`, job = h.db.collection('ticketingEmailJobs').doc(jobId);
@@ -74,6 +75,7 @@ test('delivery events survive webhook/send races and health exposes bounded, per
     await recordDelivery(h.db, `${messageId}-delivered`, { type: 'email.delivered', created_at: new Date().toISOString(), data: { email_id: messageId } });
     assert.equal((await job.get()).data().deliveryStatus, 'bounced');
     await h.service.tickets().doc((await h.service.view(result.orderId, raw.accessKey, null)).tickets[0].id).delete();
+    await heartbeat.set({ completedAt: Date.now() - 20 * 60000, summary: { errors: 0 } });
     await assert.rejects(() => h.service.health('non-admin', true), /Administrator/);
     const health = await h.service.health(h.staff, true);
     assert.ok(health.issues.some(i => i.kind === 'email-review' && i.jobId === jobId));
@@ -84,7 +86,7 @@ test('delivery events survive webhook/send races and health exposes bounded, per
     await h.db.collection('ticketingHealth').doc('maintenance').set({ completedAt: Date.now(), summary: { errors: 2 } });
     assert.ok((await h.service.health(h.staff, true)).issues.some(i => i.id === 'maintenance-errors'), 'a recent heartbeat must not hide failed operations');
   } finally {
-    await h.db.collection('ticketingHealth').doc('maintenance').delete();
+    if (previousHeartbeat) await heartbeat.set(previousHeartbeat); else await heartbeat.delete();
     for (const doc of (await h.db.collection('ticketingEmailDelivery').where('providerMessageId', '==', messageId).get()).docs) await doc.ref.delete();
     await h.cleanup();
   }

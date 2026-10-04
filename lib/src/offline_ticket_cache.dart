@@ -23,6 +23,52 @@ class OfflineTicketCache {
     }
   }
 
+  Future<void> _invalidate(
+      String path, Map<String, dynamic> body, String scope, String key) async {
+    if (path == 'mine') return clear(scope);
+    String? orderId = body['orderId'] as String?;
+    String? ticketId;
+    try {
+      final stored = jsonDecode(read(key)!) as Map;
+      orderId ??= stored['data']['orderId'] as String?;
+      ticketId = stored['data']['id'] as String?;
+    } catch (_) {/* A new/unknown link has no previous admission snapshot. */}
+    for (final other in keys().where((k) => k.startsWith(prefix(scope)))) {
+      try {
+        if (other == key) {
+          await remove(other);
+          continue;
+        }
+        final stored = jsonDecode(read(other)!) as Map<String, dynamic>;
+        final payload = stored['data'] as Map<String, dynamic>;
+        bool affected(Map item) =>
+            orderId != null && item['orderId'] == orderId ||
+            ticketId != null && item['id'] == ticketId;
+        if (affected(payload)) {
+          await remove(other);
+          continue;
+        }
+        bool changed = false;
+        for (final list in ['tickets', 'orders']) {
+          if (payload[list] is List) {
+            final previous = payload[list] as List;
+            final retained = [
+              for (final item in previous)
+                if (!affected(item as Map)) item
+            ];
+            if (retained.length != previous.length) {
+              changed = true;
+              payload[list] = retained;
+            }
+          }
+        }
+        if (changed) await write(other, jsonEncode(stored));
+      } catch (_) {
+        await remove(other);
+      }
+    }
+  }
+
   Future<Map<String, dynamic>> request(
       String path,
       Map<String, dynamic> body,
@@ -82,8 +128,9 @@ class OfflineTicketCache {
       return data;
     } on TicketingException {
       // An HTTP response is authoritative. Never mask access revocation, payment
-      // review or another server error with an old QR from any cached view.
-      await clear(scope);
+      // review or another server error with the affected order's old QR. Other
+      // purchases remain available; a mine/auth rejection clears the account.
+      await _invalidate(path, body, scope, key);
       rethrow;
     } catch (error) {
       if (error is! http.ClientException && error is! TimeoutException) rethrow;

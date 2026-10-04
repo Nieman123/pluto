@@ -52,10 +52,18 @@ async function semantics(page) { await page.locator('flt-semantics-placeholder')
     await admin.locator('#ticketing-dialog-close').click();
     stage = 'offline reload';
     const guestContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
-    await guestContext.addInitScript(({ orderId, key }) => localStorage.setItem(`pluto-order-${orderId}`, key), { orderId, key: recovery.accessKey });
+    await guestContext.addInitScript(({ orderId, key }) => {
+      // An obsolete reference loads after the valid order in the wallet. Its
+      // denial must not erase the valid order's freshly saved offline snapshot.
+      localStorage.setItem(`pluto-order-${'e'.repeat(64)}`, 'f'.repeat(64));
+      localStorage.setItem(`pluto-order-${orderId}`, key);
+    }, { orderId, key: recovery.accessKey });
     const guest = await guestContext.newPage(); active = guest;
     await guest.goto(`${base}/app/tickets?order=${orderId}`); await semantics(guest);
     await guest.getByText('Show this code at the door', { exact: true }).waitFor({ timeout: 45000 });
+    await guest.goto(`${base}/app/tickets`); await semantics(guest);
+    await guest.getByText('Show this code at the door', { exact: true }).waitFor({ timeout: 45000 });
+    await guest.getByText(/A saved order needs a new secure link/).waitFor();
     await guest.evaluate(async () => { await navigator.serviceWorker.ready; });
     await guestContext.setOffline(true); await guest.reload(); await semantics(guest);
     await guest.getByText('Saved tickets · Offline', { exact: true }).waitFor({ timeout: 45000 });
