@@ -1,7 +1,7 @@
-import { Rsvps } from './rsvps';
+import { Waitlists } from './waitlists';
 import { email, fail, hash, integer, secret, text } from './domain';
 
-export class Support extends Rsvps {
+export class Support extends Waitlists {
   async correctOrder(orderId: string, raw: any, uid: string) {
     const initial = (await this.order(orderId).get()).data();
     if (!initial) fail('Order not found.', 404);

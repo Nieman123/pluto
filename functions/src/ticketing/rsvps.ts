@@ -6,26 +6,27 @@ import { assertCapacity, cart, email, fail, hash, id, receipt, text, ticketId, t
 import { isLive, keyPair } from './config';
 import { randomInt } from 'node:crypto';
 import { secret } from './domain';
+import { waitlistHold, withoutWaitlistHold } from './waitlist-hold';
 
 export class Rsvps extends Guests {
-  async requestRsvpVerification(raw: any, actor: DecodedIdToken | null) {
+  async requestRsvpVerification(raw: any, actor: DecodedIdToken | null, purpose = 'rsvp') {
     const target = email(raw.email), eventId = id(raw.eventId), event = (await this.event(eventId).get()).data(), draft = event?.liveDraft || event?.draft;
-    if (event?.status !== 'published' || !['rsvp', 'rsvp-approval'].includes(draft?.registrationMode) || Date.now() >= Date.parse(draft.endAt)) fail('RSVPs are not open for this event.', 409);
+    if (event?.status !== 'published' || (purpose === 'waitlist' ? !draft?.waitlistEnabled : !['rsvp', 'rsvp-approval'].includes(draft?.registrationMode)) || Date.now() >= Date.parse(draft.endAt)) fail('Registration is not open for this event.', 409);
     if (actor?.email_verified && actor.email?.toLowerCase() === target) return { verified: true };
     const token = secret(), code = String(randomInt(1000000)).padStart(6, '0'), expiresAt = Date.now() + 15 * 60000;
     const batch = this.db.batch(), verificationId = hash(token);
-    batch.create(this.db.collection('ticketingRsvpVerification').doc(verificationId), { eventId, email: target, codeHash: hash(`${token}:${code}`), expiresAt, attempts: 0, used: false });
-    batch.create(this.db.collection('ticketingEmailJobs').doc(`verify_${verificationId}`), { type: 'rsvp-verification', verificationId, eventId, eventTitle: draft.title, to: target, code, status: 'pending', attempts: 0, createdAt: Date.now() });
+    batch.create(this.db.collection('ticketingRsvpVerification').doc(verificationId), { eventId, email: target, purpose, codeHash: hash(`${token}:${code}`), expiresAt, attempts: 0, used: false });
+    batch.create(this.db.collection('ticketingEmailJobs').doc(`verify_${verificationId}`), { type: purpose === 'waitlist' ? 'waitlist-verification' : 'rsvp-verification', verificationId, eventId, eventTitle: draft.title, to: target, code, status: 'pending', attempts: 0, createdAt: Date.now() });
     await batch.commit(); return { verificationToken: token, expiresAt };
   }
-  private async rsvpProof(raw: any, actor: DecodedIdToken | null) {
+  protected async rsvpProof(raw: any, actor: DecodedIdToken | null, purpose = 'rsvp') {
     const target = email(raw.email);
     if (actor?.email_verified && actor.email?.toLowerCase() === target) return null;
     if (typeof raw.verificationToken !== 'string' || !/^[a-f0-9]{64}$/.test(raw.verificationToken) || typeof raw.verificationCode !== 'string' || !/^\d{6}$/.test(raw.verificationCode)) fail('Verify your RSVP email before submitting.', 403, 'rsvp-email-verification');
     const ref = this.db.collection('ticketingRsvpVerification').doc(hash(raw.verificationToken));
     const valid = await this.db.runTransaction(async tx => {
       const proof = (await tx.get(ref)).data();
-      if (!proof || proof.used || proof.expiresAt <= Date.now() || proof.attempts >= 10 || proof.eventId !== raw.eventId || proof.email !== target) return false;
+      if (!proof || (proof.purpose || 'rsvp') !== purpose || proof.used || proof.expiresAt <= Date.now() || proof.attempts >= 10 || proof.eventId !== raw.eventId || proof.email !== target) return false;
       const matches = proof.codeHash === hash(`${raw.verificationToken}:${raw.verificationCode}`);
       tx.update(ref, { attempts: proof.attempts + 1 }); return matches;
     });
@@ -45,38 +46,40 @@ export class Rsvps extends Guests {
     const eventId = id(raw.eventId), accessKey = receipt(raw.accessKey), orderId = hash(accessKey), ref = this.order(orderId);
     const contact = { email: email(raw.email), name: text(raw.name, 'name', 150, true), ownerUid: actor?.uid || '' };
     if (!Array.isArray(raw.items) || raw.items.length !== 1 || raw.items[0]?.quantity !== 1 || raw.promoCode) fail('RSVP once per person. Choose one admission pass.');
-    const inputHash = hash(JSON.stringify({ eventId, ...contact, offerId: id(raw.items[0].offerId) }));
+    const inputHash = hash(JSON.stringify({ eventId, ...contact, offerId: id(raw.items[0].offerId), ...(raw.waitlistToken ? { waitlist: hash(receipt(raw.waitlistToken)) } : {}) }));
     keyPair(this.signing());
     const previousAttempt = (await ref.get()).data();
     if (!previousAttempt) {
       const preflight = (await this.event(eventId).get()).data(), draft = preflight?.liveDraft || preflight?.draft;
       if (preflight?.status !== 'published' || !['rsvp', 'rsvp-approval'].includes(draft?.registrationMode) || Date.now() >= Date.parse(draft.endAt)) fail('RSVPs are not open for this event.', 409);
     }
-    const proofRef = previousAttempt ? null : await this.rsvpProof(raw, actor);
+    const proofRef = previousAttempt || raw.waitlistToken ? null : await this.rsvpProof(raw, actor);
     await this.db.runTransaction(async tx => {
       const existing = (await tx.get(ref)).data() as Order | undefined;
       if (existing) { if (existing.method !== 'rsvp' || existing.inputHash !== inputHash) fail('This RSVP attempt has different details. Use the original request or start a new attempt.', 409); return; }
-      if (!proofRef && !(actor?.email_verified && actor.email?.toLowerCase() === contact.email)) fail('Verify your RSVP email before submitting.', 403, 'rsvp-email-verification');
       const eventRef = this.event(eventId), event = (await tx.get(eventRef)).data(), now = Date.now();
       if (!event || event.status !== 'published') fail('RSVPs are not open for this event.', 409);
       const draft = (event.liveDraft || event.draft) as EventDraft;
       if (!['rsvp', 'rsvp-approval'].includes(draft.registrationMode) || now >= Date.parse(draft.endAt)) fail('RSVPs are not open for this event.', 409);
       const priced = cart(draft, raw.items, '', now);
+      const hold = await waitlistHold(tx, this.db, raw, eventId, contact.email, draft, now);
+      if (!proofRef && !hold && !(actor?.email_verified && actor.email?.toLowerCase() === contact.email)) fail('Verify your RSVP email before submitting.', 403, 'rsvp-email-verification');
       if (priced.total !== 0 || priced.units.some(u => u.kind !== 'admission')) fail('This event is not configured for free RSVP admission.', 409);
       const contactRef = eventRef.collection('rsvpContacts').doc(hash(contact.email)), previous = await tx.get(contactRef);
       const proof = proofRef ? (await tx.get(proofRef)).data() : null;
       if (proofRef && (!proof || proof.used || proof.expiresAt <= now || proof.email !== contact.email || proof.eventId !== eventId)) fail('This email code has already been used or expired.', 403, 'rsvp-email-verification');
       if (previous.exists) fail('An RSVP already exists for this email. Open it in My tickets or recover it with your email.', 409);
       const pools = await Promise.all(Object.keys(priced.consumption).map(key => tx.get(eventRef.collection('pools').doc(key))));
-      assertCapacity(priced.consumption, Object.fromEntries(pools.map(p => [p.id, p.data()])));
-      const pending = draft.registrationMode === 'rsvp-approval';
+      assertCapacity(priced.consumption, withoutWaitlistHold(Object.fromEntries(pools.map(p => [p.id, p.data()])), hold));
+      const pending = draft.registrationMode === 'rsvp-approval' && !hold?.entry.approvedBy;
       const order: Order = { eventId, eventTitle: draft.title, eventSlug: draft.slug, ...contact, accessHash: hash(accessKey), inputHash,
         ...priced, tax: draft.tax, currency: 'usd', livemode: isLive(), status: pending ? 'pending-approval' : 'paid', method: 'rsvp',
-        rsvpStatus: pending ? 'pending' : 'approved', approvalRequired: pending, createdAt: now, expiresAt: Date.parse(draft.endAt),
+        rsvpStatus: pending ? 'pending' : 'approved', approvalRequired: draft.registrationMode === 'rsvp-approval', createdAt: now, expiresAt: Date.parse(draft.endAt),
         promoterId: '', transferCutoff: draft.admissionStartsAt, taxAmount: 0, refundedAmount: 0 };
       if (!pending) this.issueRsvp(tx, orderId, order, pools);
       else tx.create(this.db.collection('ticketingEmailJobs').doc(`rsvppending_${orderId}`), { type: 'rsvp-pending', orderId, to: order.email, status: 'pending', createdAt: now, attempts: 0 });
       tx.create(ref, { ...order, revision: event.publishedRevision, ...(pending ? {} : { paidAt: now }) });
+      if (hold) { pools.forEach(pool => tx.update(pool.ref, { held: pool.data()!.held - hold.entry.consumption[pool.id] })); tx.update(hold.ref, { status: 'claimed', orderId, claimedAt: now }); }
       tx.update(ref, { emailVerifiedAt: now });
       if (proofRef) tx.update(proofRef, { used: true, usedAt: now });
       tx.create(contactRef, { orderId, at: now });

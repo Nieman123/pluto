@@ -10,8 +10,10 @@ export async function collectHealth(db: Firestore, now = Date.now()) {
     db.collection('ticketingWebhookInbox').where('status', '==', 'pending').limit(501),
     db.collection('ticketingEmailJobs').where('status', 'in', ['pending', 'review']).limit(501),
     db.collection('ticketingEmailJobs').where('deliveryStatus', 'in', ['bounced', 'failed', 'complained', 'suppressed']).limit(501),
+    db.collection('ticketingCampaigns').where('status', '==', 'pending').limit(501),
+    db.collection('ticketingWaitlist').where('status', '==', 'offered').limit(501),
   ];
-  const [[orders, refunds, webhooks, emails, delivery], heartbeat, blocked] = await Promise.all([Promise.all(queries.map(q => q.get())), db.collection('ticketingHealth').doc('maintenance').get(), db.collection('ticketingOrders').where('financialBlocked', '==', true).limit(501).get()]);
+  const [[orders, refunds, webhooks, emails, delivery, campaigns, offers], heartbeat, blocked] = await Promise.all([Promise.all(queries.map(q => q.get())), db.collection('ticketingHealth').doc('maintenance').get(), db.collection('ticketingOrders').where('financialBlocked', '==', true).limit(501).get()]);
   const cursorRef = db.collection('ticketingHealth').doc('issuance-cursor'), cursor = (await cursorRef.get()).data();
   const paidQuery = db.collection('ticketingOrders').where('status', '==', 'paid').orderBy(FieldPath.documentId()).limit(51);
   let paid = await (cursor?.after ? paidQuery.startAfter(cursor.after) : paidQuery).get();
@@ -42,13 +44,15 @@ export async function collectHealth(db: Firestore, now = Date.now()) {
     if (e.status === 'review' || ['bounced', 'failed', 'complained', 'suppressed'].includes(e.deliveryStatus)) add(`email_${doc.id}`, 'email-review', 'Email needs attention', e.orderId || '', e.createdAt || now, e.deliveryStatus ? `Delivery status: ${e.deliveryStatus}. Check the contact before sending a new access link.` : e.lastError || 'Sending outcome requires review.', 'warning', doc.id);
     else if (e.status === 'pending' && age(now, e.createdAt || now, 10)) add(`email_${doc.id}`, 'email', 'Email is waiting to send', e.orderId || '', e.createdAt || now, e.lastError || 'Background delivery has not completed.', 'warning', doc.id);
   }
+  for (const doc of campaigns.docs.slice(0, 500)) { const c = doc.data(); if (age(now, c.createdAt || now, 15)) add(`campaign_${doc.id}`, 'announcement', 'Attendee email queue is delayed', '', c.createdAt, 'Check maintenance logs and the event announcements panel. Large audiences require several bounded worker passes.'); }
+  for (const doc of offers.docs.slice(0, 500)) { const o = doc.data(); if (age(now, o.offerExpiresAt || now, 10)) add(`offer_${doc.id}`, 'waitlist', 'Expired waitlist reservation needs release', '', o.offerExpiresAt, 'Check maintenance logs before changing capacity. The expired offer cannot be claimed.'); }
   const maintenance = heartbeat.data() || {};
   if (!maintenance.completedAt || age(now, maintenance.completedAt, 15)) add('maintenance', 'maintenance', 'Maintenance heartbeat is overdue', '', maintenance.startedAt || now, maintenance.failedAt ? 'The most recent run failed. Check the function logs.' : 'No successful run has been recorded in the last 15 minutes.', 'critical');
   else if (maintenance.failedAt > maintenance.completedAt || maintenance.summary?.errors > 0) add('maintenance-errors', 'maintenance', 'Background operations need attention', '', maintenance.failedAt || maintenance.completedAt, maintenance.failedAt > maintenance.completedAt ? 'The latest maintenance run failed. Check its function logs.' : `${maintenance.summary.errors} operations failed during the last pass. Review the function logs and affected provider outcomes.`, 'critical');
-  const truncated = [orders, refunds, webhooks, emails, delivery, blocked].some(q => q.size > 500) || paid.size > 50 || !!cursor?.after;
+  const truncated = [orders, refunds, webhooks, emails, delivery, blocked, campaigns, offers].some(q => q.size > 500) || paid.size > 50 || !!cursor?.after;
   if (truncated) add('limited-check', 'coverage', 'Health check coverage is limited', '', now, 'This pass checks up to 500 records per queue and 50 paid orders. Continue review in All Orders and provider dashboards.');
   issues.sort((a, b) => Number(b.severity === 'critical') - Number(a.severity === 'critical') || a.at - b.at);
   // Keep the cached Firestore document and response bounded even during a large outage.
   return { checkedAt: now, maintenance, truncated: truncated || issues.length > 200, checkedPaidOrders, issues: issues.slice(0, 200), counts: { critical: issues.filter(i => i.severity === 'critical').length, warning: issues.filter(i => i.severity === 'warning').length,
-    pendingRefunds: refunds.size, pendingWebhooks: webhooks.size, pendingEmails: emails.docs.filter(d => d.data().status === 'pending').length } };
+    pendingCampaigns: campaigns.size, waitlistOffers: offers.size, pendingRefunds: refunds.size, pendingWebhooks: webhooks.size, pendingEmails: emails.docs.filter(d => d.data().status === 'pending').length } };
 }

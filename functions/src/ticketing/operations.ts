@@ -3,7 +3,7 @@ import { FieldPath } from 'firebase-admin/firestore';
 import { error as logError, warn as logWarning } from 'firebase-functions/logger';
 import type Stripe from 'stripe';
 import { type Order } from './orders';
-import { Support } from './support';
+import { Communications } from './communications';
 import { fail, hash, id, integer, receipt, secret, text, ticketId, TicketingError } from './domain';
 import { isLive, keyPair, resendKey } from './config';
 import { scannerAccess } from './scanner-access';
@@ -12,7 +12,7 @@ import { legacyTicketingEmail, renderTicketingEmail, type EmailKind, type Ticket
 import { collectHealth } from './health';
 import { applyDelivery } from './delivery';
 
-export class Operations extends Support {
+export class Operations extends Communications {
   async submitOfflineReview(eventId: string, raw: any, uid: string) {
     await this.role(uid, eventId, ['manager']);
     return raw.kind === 'guest' ? this.arriveGuest(eventId, id(raw.guestId), raw.scanId, uid, true, raw, true) : this.scan(eventId, raw.qr, raw.scanId, uid, true, raw, true);
@@ -325,12 +325,17 @@ export class Operations extends Support {
         await ref.update({ status: 'cancelled', leaseUntil: 0, token: null, emailPayload: null, lastError: 'Recipient was corrected. Send a new access link to the current contact.' }); return;
       }
       let payload: { from: string; to: string[]; subject: string; text: string; html?: string } | undefined = job.emailPayload;
-      if (job.type === 'rsvp-verification') {
+      if (['campaign', 'waitlist-offer'].includes(job.type)) {
+        const eligible = await this.engagementEmail(job);
+        if (!eligible) { await ref.update({ status: 'cancelled', leaseUntil: 0, token: null, emailPayload: null }); return; }
+        if (!payload) { payload = eligible; await ref.update({ emailPayload: payload }); }
+      }
+      if (['rsvp-verification', 'waitlist-verification'].includes(job.type)) {
         const proof = (await this.db.collection('ticketingRsvpVerification').doc(job.verificationId).get()).data();
         if (!proof || proof.used || proof.expiresAt <= Date.now()) { await ref.update({ status: 'cancelled', leaseUntil: 0, code: null, emailPayload: null }); return; }
         if (!payload) {
           const event = (await this.event(job.eventId).get()).data(), draft = event?.liveDraft || event?.draft;
-          payload = { from: process.env.TICKETING_EMAIL_FROM || 'Pluto Events <tickets@pluto.events>', to: [job.to], ...renderTicketingEmail({ kind: 'rsvp-verification',
+          payload = { from: process.env.TICKETING_EMAIL_FROM || 'Pluto Events <tickets@pluto.events>', to: [job.to], ...renderTicketingEmail({ kind: job.type,
             order: { eventTitle: job.eventTitle, total: 0, currency: 'usd', units: [] }, orderId: '', note: job.code, baseUrl: deploymentConfig().baseUrl,
             actionUrl: `${deploymentConfig().baseUrl}/events/${draft.slug}`, staging: deploymentConfig().environment === 'staging' }) };
           await ref.update({ emailPayload: payload });
@@ -419,6 +424,8 @@ export class Operations extends Support {
     for (const doc of refunds.docs) { try { if (doc.data().external) await this.finishRefund(doc.id, 'succeeded'); else await this.processRefund(doc.id); summary.refunds++; } catch (error) { summary.errors++; await this.workerFailure(doc.ref, 'refund', error); } }
     const inbox = await this.pendingBatch('ticketingWebhookInbox', ['pending'], 100);
     for (const doc of inbox.docs) if ((doc.data().retryAt || 0) <= now) { try { await this.processWebhook(doc.id); summary.webhooks++; } catch { summary.errors++; } }
+    summary.waitlists = await this.waitlistMaintenance();
+    summary.campaigns = await this.communicationMaintenance();
     const jobs = await this.pendingBatch('ticketingEmailJobs', ['pending'], 100);
     for (const doc of jobs.docs) { await this.emailJob(doc.id); summary.emails++; }
     return summary;

@@ -7,6 +7,7 @@ import { allMedia, fail, hash, id, integer, publicEvent, text, validateDraft, ty
 import { baseUrl, isLive } from './config';
 import { storageBucket } from '../deployment-config';
 import { revenueSummary } from './revenue';
+import { publicationNotice } from './event-notice';
 
 export class Catalog {
   constructor(public db: Firestore = getFirestore()) {}
@@ -146,6 +147,8 @@ export class Catalog {
       if (status === 'published') tx.set(card, { title: draft.title, details: `${draft.subtitle}\n${draft.city}, ${draft.region}`, ticketUrl: `${baseUrl()}/events/${draft.slug}`, registrationMode: draft.registrationMode,
         flyerImageUrl: draft.flyer || draft.hero ? `${baseUrl()}/events/${draft.slug}/media/${(draft.flyer || draft.hero)!.assetId}` : '', isActive: true, isManaFest: false, sortOrder: 0, updatedAt: new Date() });
       else tx.delete(card);
+      const notice = publicationNotice(eventId, current, releasedDraft, status, expected, uid);
+      if (notice) tx.set(this.db.collection('ticketingCampaigns').doc(notice.key), notice);
       tx.create(ref.collection('audit').doc(), { action, uid, at: Date.now(), revision: expected });
     });
     return { status: action === 'publish' ? 'published' : action === 'unpublish' ? 'draft' : action === 'cancel' ? 'cancelled' : 'archived' };
