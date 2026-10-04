@@ -9,6 +9,7 @@ process.env.GCLOUD_PROJECT = 'demo-pluto-ticketing'; process.env.FIRESTORE_EMULA
 backend('firebase-admin/app').initializeApp({ projectId: 'demo-pluto-ticketing' });
 const db = backend('firebase-admin/firestore').getFirestore(), eid = randomUUID(), { fixture } = require('../../functions/test/ticketing-fixture.cjs');
 const base = 'http://127.0.0.1:4173';
+const catalogIds = Array.from({ length: 12 }, () => randomUUID());
 async function api(page, path, data) {
   return page.evaluate(async ({ path, data }) => {
     const { getAuth } = await import('https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js');
@@ -23,7 +24,25 @@ async function api(page, path, data) {
     await page.locator('#staff-controls:not([hidden])').waitFor();
     const draft = fixture(); draft.title = 'Scheduled location browser check'; draft.slug = `location-${eid}`;
     await api(page, 'staff/save', { eventId: eid, draft, revision: 0 });
+    const image = await backend('sharp')({ create: { width: 24, height: 36, channels: 3, background: '#72499c' } }).png().toBuffer();
+    const flyer = await api(page, 'staff/media', { eventId: eid, image: image.toString('base64') });
+    const media = (await db.collection('ticketingEvents').doc(eid).collection('media').doc(flyer.assetId).get()).data();
+    const batch = db.batch();
+    for (const id of catalogIds) {
+      const ref = db.collection('ticketingEvents').doc(id);
+      batch.set(ref, { draft: { ...draft, title: `Catalog flyer ${id}`, slug: `catalog-${id}`, flyer }, revision: 1, status: 'draft' });
+      batch.set(ref.collection('media').doc(flyer.assetId), media);
+    }
+    await batch.commit();
+    const downloads = new Set(); let maxDownloads = 0, flyerRequests = 0;
+    page.on('request', request => { if (request.url().endsWith('/tickets/api/staff/card-flyer')) { downloads.add(request); flyerRequests++; maxDownloads = Math.max(maxDownloads, downloads.size); } });
+    const finish = request => downloads.delete(request); page.on('requestfinished', finish); page.on('requestfailed', finish);
+    await page.goto(`${base}/tickets/admin`);
+    await page.waitForFunction(() => { const images = [...document.querySelectorAll('[data-card-flyer]')]; return images.length >= 12 && images.every(image => image.naturalWidth > 0); });
+    assert.ok(maxDownloads <= 2, 'catalog flyer downloads must not crowd out editor requests');
+    const beforeStudio = flyerRequests;
     await page.goto(`${base}/tickets/admin?event=${eid}&view=studio`); await page.locator('#field-venueVisibility').waitFor();
+    assert.equal(flyerRequests, beforeStudio, 'a direct Studio visit must not download the hidden catalog flyers');
     await page.locator('#field-venueRevealScheduled').check();
     const at = Date.now() + 3600000, parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: draft.timezone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(at)).map(p => [p.type, p.value]));
     const local = `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
@@ -61,6 +80,7 @@ async function api(page, path, data) {
     await customer.close();
     console.log('Location browser checks passed: Studio schedule/timezone save, public hint/privacy/accessibility and automatic holder reveal.');
   } finally {
+    for (const id of catalogIds) await db.recursiveDelete(db.collection('ticketingEvents').doc(id));
     await browser.close(); await db.recursiveDelete(db.collection('ticketingEvents').doc(eid)); await db.collection('publishedEvents').doc(eid).delete();
     await db.collection('eventSlugs').doc(`location-${eid}`).delete(); await db.collection('currentEvents').doc(`native-${eid}`).delete();
   }

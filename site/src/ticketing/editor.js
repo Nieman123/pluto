@@ -21,6 +21,19 @@ async function healthBadge() {
   } catch { /* Keep event editing usable while health services are unavailable. */ }
 }
 const get = (path, object = record?.draft) => path.split('.').reduce((o, key) => o?.[key], object);
+async function loadCardFlyers(cards) {
+  const uid = user?.uid, images = [...cards.querySelectorAll('[data-card-flyer]')];
+  // Loading every authenticated flyer at once contends with editor requests
+  // on the same rate-limit counter. Stop if the list is replaced or hidden.
+  async function next() {
+    while (images.length && user?.uid === uid && !document.querySelector('#events-index').hidden) {
+      const image = images.shift(); if (!image.isConnected) return;
+      try { const blob = await api('staff/card-flyer', { eventId: image.dataset.cardFlyer }, true), url = URL.createObjectURL(blob); image.onload = image.onerror = () => URL.revokeObjectURL(url); image.src = url; }
+      catch { image.remove(); }
+    }
+  }
+  await Promise.all([next(), next()]);
+}
 function set(path, value) {
   if (!updateEventSchedule(record.draft, path, value)) {
     const keys = path.split('.'), last = keys.pop(); let target = record.draft; for (const key of keys) target = target[key] ??= {}; target[last] = value;
@@ -94,10 +107,6 @@ export async function loadEvents() {
   const cards = document.querySelector('#event-list');
   if (cards) {
     cards.innerHTML = events.length ? events.map(e => `<button class="admin-event-card ${e.flyer ? 'has-flyer' : ''}" data-open-event="${esc(e.id)}">${e.flyer ? `<img class="admin-card-flyer" data-card-flyer="${esc(e.id)}" alt="Flyer for ${esc(e.title)}">` : ''}<span class="status-pill status-${esc(e.status)}">${esc(e.status)}</span><span class="event-card-date">${esc(new Date(e.startAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: e.timezone }))}</span><strong>${esc(e.title)}</strong><span>${esc(e.city || 'Location to be announced')}${e.region ? `, ${esc(e.region)}` : ''}</span>${e.revenue ? `<span class="card-revenue"><span>This week <b>${money(e.revenue.thisWeek)}</b></span><span>Total gross <b>${money(e.revenue.gross)}</b></span></span>` : ''}<span class="card-action">View dashboard <span aria-hidden="true">↗</span></span></button>`).join('') : '<div class="empty-state"><h3>Your next event starts here.</h3><p>Create an event, add the artwork and ticket types, then publish when you’re ready.</p></div>';
-    cards.querySelectorAll('[data-card-flyer]').forEach(async image => {
-      try { const blob = await api('staff/card-flyer', { eventId: image.dataset.cardFlyer }, true), url = URL.createObjectURL(blob); image.onload = image.onerror = () => URL.revokeObjectURL(url); image.src = url; }
-      catch { image.remove(); }
-    });
     const weekly = document.querySelector('#weekly-revenue'), financial = events.filter(e => e.revenue);
     weekly.hidden = !financial.length;
     weekly.innerHTML = `<div class="ticket-stat-grid weekly-stat-grid">${[['This week', 'thisWeek'], ['Last week', 'lastWeek'], ['Total gross revenue', 'gross']].map(([label, key]) => `<div class="ticket-stat"><span>${label}</span><strong>${money(financial.reduce((n, e) => n + e.revenue[key], 0))}</strong></div>`).join('')}</div><p class="revenue-note">Paid gross sales · Monday–Sunday in each event’s timezone · before refunds, tax and fees</p>`;
@@ -106,6 +115,7 @@ export async function loadEvents() {
     if (!record && requested && events.some(e => e.id === requested) && document.querySelector('#event-workspace')?.hidden) await selectEvent(requested, new URLSearchParams(location.search).get('view') === 'studio');
     else if (!record && globalAdmin && new URLSearchParams(location.search).get('view') === 'orders') await showAllOrders();
     else if (!record && globalAdmin && new URLSearchParams(location.search).get('view') === 'health') await showHealth();
+    if (!document.querySelector('#events-index').hidden) loadCardFlyers(cards);
   }
   message(allOrdersMode ? 'Orders across all events are ready.' : result.admin ? 'Choose an event to open its dashboard.' : 'Your assigned events are ready.');
   return result;
