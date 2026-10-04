@@ -102,7 +102,11 @@ export class Catalog {
     const draft = validateDraft(before.draft);
     if (action === 'publish') {
       if (!draft.city || !draft.region || !draft.descriptionHtml || !draft.offers.length) fail('Add location, description and tickets before publishing.');
-      if (draft.offers.some(o => Date.parse(o.validFrom) < Date.parse(draft.admissionStartsAt))) fail('The first admission time must be no later than any ticket admission window.');
+      const earlyTicket = draft.offers.find(o => Date.parse(o.validFrom) < Date.parse(draft.admissionStartsAt));
+      if (earlyTicket) {
+        const format = (value: string) => new Intl.DateTimeFormat('en-US', { timeZone: draft.timezone, dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+        fail(`"${earlyTicket.name}" admits guests from ${format(earlyTicket.validFrom)}, before First admission (${format(draft.admissionStartsAt)}; ${draft.timezone}). In Event dashboard → Ticket types & passes, update this ticket's Admission valid from, or move First admission earlier.`);
+      }
       if (draft.registrationMode === 'tickets') {
         if (isLive() && (!draft.tax.confirmed || draft.tax.mode === 'sandbox')) fail('Confirm the event tax configuration before live sales.');
         if (draft.tax.mode === 'automatic' && (!draft.tax.confirmed || !draft.tax.performanceLocationId || draft.offers.some(o => !o.taxCode || !o.stripeProductId))) fail('Automatic tax needs confirmed venue, registration and product configuration.');
