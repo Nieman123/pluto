@@ -204,14 +204,23 @@ async function main() {
   await emailRef.set({ type: 'receipt', orderId: comp.orderId, to: 'delivered@resend.dev', status: 'pending', attempts: 0, createdAt: Date.now() });
   process.env.RESEND_API_KEY = 'resend-test-fixture';
   const originalFetch = global.fetch, deliveryBodies = []; let confirmDelivery = false;
-  global.fetch = async (_url, options) => { deliveryBodies.push(options.body); const payload = JSON.parse(options.body); assert.equal(payload.attachments, undefined); assert.ok(!payload.text.includes('PLUTO1.')); return { ok: confirmDelivery }; };
+  global.fetch = async (_url, options) => { deliveryBodies.push(options.body); const payload = JSON.parse(options.body); assert.equal(payload.attachments, undefined); assert.ok(!payload.text.includes('PLUTO1.')); assert.match(payload.html, /Open my tickets/); assert.ok(!payload.html.includes('PLUTO1.') && !payload.html.includes('Private secret venue')); assert.equal(options.headers['Idempotency-Key'], `pluto-${mailId}`); return { ok: confirmDelivery }; };
   await service.emailJob(mailId);
   const retry = (await emailRef.get()).data(); assert.equal(retry.status, 'pending'); assert.ok(retry.token);
+  assert.ok(retry.emailPayload.html, 'rendered content is persisted before an uncertain provider result');
+  const publicEventRef = db.collection('publishedEvents').doc(active), originalCity = (await publicEventRef.get()).data().city;
+  await publicEventRef.update({ city: 'Changed after the first delivery attempt' });
   await service.acceptRecovery(retry.token); await emailRef.update({ retryAt: 0 }); confirmDelivery = true;
-  await service.emailJob(mailId); global.fetch = originalFetch;
+  try { await service.emailJob(mailId); } finally { global.fetch = originalFetch; await publicEventRef.update({ city: originalCity }); }
   assert.equal(deliveryBodies[0], deliveryBodies[1], 'email retries retain an identical idempotent payload');
   assert.equal((await emailRef.get()).data().status, 'sent');
+  assert.equal((await emailRef.get()).data().emailPayload, null, 'delivered capability links are removed from the job snapshot');
   await assert.rejects(() => service.acceptRecovery(retry.token), /already used/, 'email retry cannot reactivate a consumed capability');
+  const legacyId = `legacy_mail_${randomUUID()}`, legacyToken = newKey();
+  await db.collection('ticketingEmailJobs').doc(legacyId).set({ type: 'receipt', orderId: comp.orderId, to: 'delivered@resend.dev', token: legacyToken, firstDeliveryAt: Date.now(), status: 'pending', attempts: 1, createdAt: Date.now() });
+  global.fetch = async (_url, options) => { const payload = JSON.parse(options.body); assert.equal(payload.html, undefined, 'already attempted legacy deliveries preserve their previous text-only payload'); assert.match(payload.text, new RegExp(`#recovery=${legacyToken}`)); return { ok: true }; };
+  try { await service.emailJob(legacyId); } finally { global.fetch = originalFetch; }
+  assert.equal((await db.collection('ticketingEmailJobs').doc(legacyId).get()).data().status, 'sent');
   const Stripe = require('stripe'), express = require('express'), sdk = new Stripe('sk_test_fixture', { apiVersion: '2026-09-30.endive' });
   fake.webhooks = sdk.webhooks; process.env.STRIPE_WEBHOOK_SECRET = 'whsec_ticketing_fixture';
   const { ticketingRouter } = require('../lib/ticketing/routes'), app = express();
