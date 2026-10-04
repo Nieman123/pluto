@@ -26,6 +26,9 @@ html{scroll-padding-top:100px}.native-event.checkout-active .native-hero,.native
 .announcement-preview { padding: 20px; margin: 16px 0; border: 1px solid #655775; border-radius: 12px; background: #181220; }
 .announcement-preview [data-preview-body] { white-space: pre-wrap; overflow-wrap: anywhere; }
 
+.native-story .button-quiet { color: inherit; border-color: currentColor; }
+.theme-light .native-story .button-quiet:hover { background: #21182c0c; }
+
 #ticketing-dialog { max-width: min(1000px, calc(100vw - 20px)); max-height: 90dvh; overflow: auto; padding: 20px; border: 1px solid #655775; border-radius: 20px; background: #211a2b; color: #f7f3fc; }
 #ticketing-dialog::backdrop { background: #09050dcc; backdrop-filter: blur(8px); }
 #ticketing-dialog #ticketing-dialog-close { position: sticky; top: 0; z-index: 2; float: right; margin-bottom: 18px; }
