@@ -6,6 +6,8 @@ Browser CI uses an inert Stripe key fixture because free ticket checkout initial
 
 The manual `Release` workflow runs from `main`, accepts a full commit SHA already merged into `main`, reruns validation, then rebuilds and deploys that revision to the selected environment. Production additionally requires explicit confirmation, GitHub environment reviewer protections and a completed successful staging release of the same SHA. Deployment status is recorded against the selected revision, including rollback revisions. Success requires deployed project/revision checks and public page/configuration smoke tests. A failed or cancelled deployment is not staging acceptance; inspect the environment for partial changes before retrying.
 
+The deploy command uses `--non-interactive --force` to acknowledge the webhook/email workers' intentional retry policies on first deployment. Firebase's force flag also accepts function deletions and other deployment confirmations, so keep the four named function targets explicit and review changes to their identities, regions and triggers. The flag does not bypass the project, revision, staging-evidence or GitHub environment guards. Retried executions incur normal execution charges; permanent failures need operational review.
+
 Local validation passed unit and release-policy tests, Flutter analysis/tests, demo and synthetic staging builds, workflow syntax, all eight browser suites across focused runs, and the ticketing/rewards/Storage/rental/waiver emulator checks. These results validate the source safeguards. No GitHub-hosted workflow or cloud release has run yet; complete the setup below before the first staging deployment.
 
 ## Projects and isolation
