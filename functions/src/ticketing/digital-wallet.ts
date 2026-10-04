@@ -8,8 +8,10 @@ import { baseUrl } from './config';
 import { fail } from './domain';
 import { cmsSignature } from './cms-signature';
 
-export const walletCredentials = defineSecret('TICKETING_WALLET_CREDENTIALS');
-export const walletSecrets = process.env.TICKETING_WALLETS_ENABLED === 'true' ? [walletCredentials] : [];
+// Firebase discovers every declared parameter, even if no function binds it.
+// Do not declare optional issuer credentials until wallet exports are enabled.
+export const walletCredentials = process.env.TICKETING_WALLETS_ENABLED === 'true' ? defineSecret('TICKETING_WALLET_CREDENTIALS') : undefined;
+export const walletSecrets = walletCredentials ? [walletCredentials] : [];
 export interface WalletTicket {
   id: string; version: number; orderId: string; eventId: string; eventTitle: string; eventSlug: string;
   name: string; holderName: string; qr: string; validFrom: string; validUntil: string;
@@ -41,7 +43,7 @@ export class DigitalWallet {
   constructor(private configured?: Credentials, private request: typeof fetch = fetch) {}
   private config(): Credentials {
     if (this.configured) return this.configured;
-    if (process.env.TICKETING_WALLETS_ENABLED !== 'true') return {};
+    if (process.env.TICKETING_WALLETS_ENABLED !== 'true' || !walletCredentials) return {};
     try { return JSON.parse(Buffer.from(walletCredentials.value(), 'base64').toString('utf8')); } catch { return {}; }
   }
   options() {
