@@ -554,6 +554,17 @@ class _TicketsPageState extends State<TicketsPage> {
         ] else
           _body(
               'This admission credential is unavailable here. It may have been transferred, refunded or revoked.'),
+        if ((ticket['calendarUrl'] as String? ?? '').isNotEmpty) ...<Widget>[
+          const SizedBox(height: 16),
+          SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                  onPressed: _busy
+                      ? null
+                      : () => htmlOpenLink(ticket['calendarUrl'] as String),
+                  icon: const Icon(Icons.event_outlined, size: 18),
+                  label: const Text('Add to Calendar'))),
+        ],
         if (_showAddToWallet &&
             ticket['qr'] != null &&
             ticket['admission'] == null) ...<Widget>[

@@ -53,7 +53,7 @@ export class Door extends Support {
         const inside = state?.inside !== false;
         if (action === 'exit' && !inside || action === 'reenter' && inside) fail('That arrival or exit is already recorded.', 409);
         const from = Date.parse(kind === 'ticket' ? person.validFrom : draft.admissionStartsAt), until = Date.parse(kind === 'ticket' ? person.validUntil : draft.endAt) + (kind === 'guest' ? 6 * 3600000 : 0);
-        if (action === 'reenter' && (event.status !== 'published' || !Number.isFinite(from) || !Number.isFinite(until) || Date.now() < from || Date.now() > until || kind === 'guest' && person.deletedAt || kind === 'ticket' && (person.status !== 'valid' || order?.status !== 'paid' || order.financialBlocked || person.rsvp && order.rsvpStatus !== 'approved'))) fail('This pass cannot re-enter.', 409);
+        if (action === 'reenter' && (['cancelled', 'archived'].includes(event.status) || !Number.isFinite(from) || !Number.isFinite(until) || Date.now() < from || Date.now() > until || kind === 'guest' && person.deletedAt || kind === 'ticket' && (person.status !== 'valid' || order?.status !== 'paid' || order.financialBlocked || person.rsvp && order.rsvpStatus !== 'approved'))) fail('This pass cannot re-enter.', 409);
         result = { inside: action === 'reenter', version: version + 1, kind, id: raw.id, at: Date.now(), uid: access.uid };
       }
       tx.set(stateRef, result);

@@ -1,6 +1,6 @@
 import type { EventDraft } from './domain';
 type CalendarEvent = Pick<EventDraft, 'title' | 'slug' | 'startAt' | 'endAt' | 'timezone' | 'city' | 'region' | 'venueVisibility'> &
-  Partial<Pick<EventDraft, 'venueName' | 'address'>> & { id: string; revision?: number; status?: string };
+  Partial<Pick<EventDraft, 'venueName' | 'address'>> & { id: string; revision?: number; calendarSequence?: number; status?: string };
 const stamp = (value: string) => new Date(value).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
 const escaped = (value: string) => value.replace(/\\/g, '\\\\').replace(/\r\n|\r|\n/g, '\\n').replace(/;/g, '\\;').replace(/,/g, '\\,');
 // RFC 5545: fold by UTF-8 octets without splitting a multibyte character.
@@ -20,6 +20,6 @@ export function eventCalendar(event: CalendarEvent, base: string, now = new Date
   const links = calendarLinks(event, base);
   return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Pluto Events//Event Calendar//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'BEGIN:VEVENT',
     `UID:${event.id}@pluto.events`, `DTSTAMP:${stamp(now)}`, `DTSTART:${stamp(event.startAt)}`, `DTEND:${stamp(event.endAt)}`,
-    `SEQUENCE:${event.revision || 0}`, `SUMMARY:${escaped(event.title)}`, `DESCRIPTION:${escaped(links.details)}`, `LOCATION:${escaped(links.location)}`,
+    `SEQUENCE:${event.calendarSequence ?? event.revision ?? 0}`, `SUMMARY:${escaped(event.title)}`, `DESCRIPTION:${escaped(links.details)}`, `LOCATION:${escaped(links.location)}`,
     `URL:${links.url}`, `STATUS:${event.status === 'cancelled' ? 'CANCELLED' : 'CONFIRMED'}`, 'END:VEVENT', 'END:VCALENDAR', ''].map(fold).join('\r\n');
 }

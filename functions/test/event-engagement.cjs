@@ -82,7 +82,9 @@ test('scheduled reminders and location notices deduplicate; cancellation reaches
     for (const notice of notices) { const jobs = (await h.db.collection('ticketingEmailJobs').where('campaignId', '==', notice.id).get()).docs; assert.equal(jobs.length, 1); const payload = await h.service.engagementEmail(jobs[0].data()); assert.ok(payload); assert.ok(!payload.text.includes('123 Hidden Lane')); }
     const approval = await h.event(d => { d.registrationMode = 'rsvp-approval'; d.offers = [{ ...d.offers[0], unitAmount: 0, maxPerOrder: 1 }]; });
     const pending = h.request(approval), rsvp = await h.service.rsvp(pending, verified(pending.email));
+    const sequence = (await h.db.collection('publishedEvents').doc(approval).get()).data().calendarSequence;
     await h.service.publish(approval, 'cancel', 1, h.staff);
+    assert.ok((await h.db.collection('publishedEvents').doc(approval).get()).data().calendarSequence > sequence, 'calendar cancellation advances even without a new draft revision');
     const cancelled = (await h.db.collection('ticketingCampaigns').where('eventId', '==', approval).get()).docs[0];
     await h.service.campaignPage(cancelled.id); await h.service.campaignPage(cancelled.id);
     const jobs = (await h.db.collection('ticketingEmailJobs').where('campaignId', '==', cancelled.id).get()).docs;

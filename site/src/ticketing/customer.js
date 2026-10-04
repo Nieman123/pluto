@@ -1,9 +1,11 @@
 import { accessKey, action, api, bind, dialog, message, money } from './api.js';
+import { initWaitlist } from './waitlist.js';
 
 export function initCheckout() {
   const form = document.querySelector('#native-checkout-form'); if (!form) return;
   const config = JSON.parse(document.querySelector('#native-checkout-config').textContent), storageKey = `pluto-checkout-${config.eventId}`;
-const rsvp = ['rsvp', 'rsvp-approval'].includes(config.registrationMode);
+  const rsvp = ['rsvp', 'rsvp-approval'].includes(config.registrationMode);
+  const initiallyClosed = form.querySelector('[type=submit]').disabled;
   let checkout, result, frozen, countdown;
   let account = null, profileName = '';
   const contacts = { buyerName: form.elements.buyerName, email: form.elements.email };
@@ -38,6 +40,7 @@ const rsvp = ['rsvp', 'rsvp-approval'].includes(config.registrationMode);
       for (const item of frozen.items) { const select = form.elements[item.offerId]; if (select) select.value = String(item.quantity); }
     }
     syncContact();
+    form.querySelector('[type=submit]').disabled = frozen ? false : initiallyClosed;
     form.querySelector('[type=submit]').textContent = rsvp ? frozen ? 'Resume RSVP request' : config.registrationMode === 'rsvp-approval' ? 'Request RSVP' : 'Confirm RSVP' : frozen ? 'Resume reserved checkout' : 'Continue to payment';
   }
   const promoter = new URLSearchParams(location.search).get('ref');
@@ -45,6 +48,7 @@ const rsvp = ['rsvp', 'rsvp-approval'].includes(config.registrationMode);
   form.addEventListener('input', () => { const total = [...form.querySelectorAll('[data-ticket-quantity]')].reduce((n, select) => n + Number(select.value) * Number(select.dataset.price), 0); document.querySelector('#ticket-total').textContent = rsvp ? 'Free RSVP · One pass per named person' : `${money(total)} before any promotion`; });
   async function mount(request) {
     frozen = request; localStorage.setItem(storageKey, JSON.stringify(frozen));
+    lockCart();
     try { result = await api(rsvp ? 'rsvp' : 'checkout', frozen); }
     catch (error) {
       if ([400, 403, 409].includes(error.status)) {
@@ -101,4 +105,5 @@ const rsvp = ['rsvp', 'rsvp-approval'].includes(config.registrationMode);
   });
   const saved = localStorage.getItem(storageKey);
   if (saved && !config.preview) { try { frozen = JSON.parse(saved); lockCart(); message('Your previous cart is saved. Continue to resume the same payment attempt.'); } catch { frozen = null; localStorage.removeItem(storageKey); } }
+  initWaitlist(config, request => { if (frozen) throw new Error('Resume or close your saved checkout before claiming another offer.'); return mount(request); });
 }

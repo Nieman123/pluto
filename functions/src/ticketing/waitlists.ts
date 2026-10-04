@@ -16,6 +16,7 @@ export class Waitlists extends Rsvps {
       if (resume && entry?.accessHash !== accessHash) fail('Waitlist access changed. Verify your email again.', 403);
       if (!draft || event?.status !== 'published' || !draft.waitlistEnabled || !waitlistEligible(draft, offerId) || now >= Date.parse(draft.endAt)) fail('This waitlist is not open.', 409);
       const priced = cart(draft, [{ offerId, quantity: 1 }], '', now);
+      if (['rsvp', 'rsvp-approval'].includes(draft.registrationMode) && (await tx.get(this.event(eventId).collection('rsvpContacts').doc(hash(target)))).exists) fail('An RSVP already exists for this email. Open My tickets or contact the organizer before joining a waitlist.', 409);
       const proof = proofRef ? (await tx.get(proofRef)).data() : null;
       if (!resume && proofRef && (!proof || proof.used || proof.expiresAt <= now || proof.eventId !== eventId || proof.email !== target || proof.purpose !== 'waitlist')) fail('Verify your waitlist email again.', 403);
       if (!proofRef && !resume && !(actor?.email_verified && actor.email?.toLowerCase() === target)) fail('Verify your waitlist email first.', 403);
@@ -40,17 +41,18 @@ export class Waitlists extends Rsvps {
       canClaim: !!raw.token && currentWaitlistOffer(entry, draft, event?.status),
       offerExpiresAt: entry.offerExpiresAt || null, registrationMode: draft?.registrationMode, orderId: entry.status === 'claimed' ? entry.orderId : null };
   }
-  async expireWaitlist(entryId: string, withdrawn = false, expectedAttempt?: number) {
+  async expireWaitlist(entryId: string, withdrawn = false, expectedAttempt?: number, proof?: any) {
     const ref = this.db.collection('ticketingWaitlist').doc(id(entryId));
     await this.db.runTransaction(async tx => {
       const entry = (await tx.get(ref)).data(); if (!entry || ['claimed', 'withdrawn', 'expired'].includes(entry.status) || expectedAttempt !== undefined && (entry.status !== 'offered' || entry.offerAttempt !== expectedAttempt)) return;
+      if (proof && (proof.token ? entry.inviteHash !== hash(receipt(proof.token)) : entry.accessHash !== hash(receipt(proof.accessKey)))) fail('Waitlist access changed. Use your current link.', 403);
       const pools = entry.status === 'offered' ? await Promise.all(Object.keys(entry.consumption).map(key => tx.get(this.event(entry.eventId).collection('pools').doc(key)))) : [];
       pools.forEach(pool => { if (!pool.exists || pool.data()!.held < entry.consumption[pool.id]) fail('Waitlist inventory needs review.', 409); });
       pools.forEach(pool => tx.update(pool.ref, { held: pool.data()!.held - entry.consumption[pool.id] }));
       tx.update(ref, { status: withdrawn ? 'withdrawn' : 'expired', endedAt: Date.now() });
     });
   }
-  async withdrawWaitlist(raw: any) { const entry = await this.waitlistView(raw); await this.expireWaitlist(entry.entryId, true); return { saved: true }; }
+  async withdrawWaitlist(raw: any) { const entry = await this.waitlistView(raw); await this.expireWaitlist(entry.entryId, true, undefined, raw); return { saved: true }; }
   async staffWaitlist(eventId: string, uid: string, cursor = '') {
     await this.role(uid, eventId);
     let query = this.db.collection('ticketingWaitlist').where('eventId', '==', eventId).orderBy(FieldPath.documentId()).limit(101);
