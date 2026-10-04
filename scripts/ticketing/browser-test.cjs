@@ -4,6 +4,7 @@ const { resolve } = require('node:path');
 const { createRequire } = require('node:module');
 const { chromium } = require('playwright');
 const { default: AxeBuilder } = require('@axe-core/playwright');
+const fillFlutterInput = require('../ci/flutter-input.cjs');
 const backend = createRequire(resolve(__dirname, '../../functions/package.json'));
 process.env.GCLOUD_PROJECT = 'demo-pluto-ticketing';
 process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8185';
@@ -240,8 +241,8 @@ async function surface(page, name) {
     await account.getByRole('textbox', { name: 'Name', exact: true }).focus();
     await account.waitForFunction(expected => [...document.querySelectorAll('input')].some(input => input.value === expected), 'Account Guest');
     assert.equal(await account.getByRole('textbox', { name: 'Name', exact: true }).inputValue(), 'Account Guest');
-    await account.locator('input[type=password]').nth(0).fill('Preview-account-2026!');
-    await account.locator('input[type=password]').nth(1).fill('Preview-account-2026!');
+    await fillFlutterInput(account, 'Password', 'Preview-account-2026!');
+    await fillFlutterInput(account, 'Confirm password', 'Preview-account-2026!');
     await account.getByRole('button', { name: 'Create Account', exact: true }).click();
     await account.getByRole('button', { name: 'Send verification email', exact: true }).waitFor({ timeout: 30000 });
     assert.ok(account.url().includes(`/app/tickets?order=${accountOrder.orderId}`));
@@ -286,8 +287,14 @@ async function surface(page, name) {
     await door.locator('#admission-results').filter({ hasText: 'Offline: queued' }).waitFor();
     await context.setOffline(false); await door.locator('#admission-replay').click();
     await door.locator('#admission-conflicts').filter({ hasText: 'Needs review' }).waitFor();
+    const conflictScanId = await door.locator('[data-review-conflict]').getAttribute('data-review-conflict');
     await door.locator('[data-conflict-note]').fill('Verified refunded credential; no additional admission authorized.');
-    await door.locator('[data-review-conflict]').click(); await door.locator('#admission-conflicts').filter({ hasText: 'Reviewed' }).waitFor();
+    await door.getByRole('button', { name: 'Reject recorded admission', exact: true }).click();
+    await door.locator('#ticketing-message').filter({ hasText: 'resolved with an audit record' }).waitFor();
+    assert.equal(await door.locator(`[data-review-conflict="${conflictScanId}"]`).count(), 0);
+    const resolvedScan = (await db.collection('ticketingEvents').doc('ticketing-preview-event').collection('scans').doc(conflictScanId).get()).data();
+    assert.equal(resolvedScan.resolution.decision, 'reject');
+    assert.equal((await db.collection('ticketingTickets').doc(conflictTicket.id).get()).data().status, 'refunded');
     await context.close();
     console.log('Browser checks passed: large flyer and error retry, hero/gallery, private preview, publishing, duplication, explicit ticket saves/reload, standalone vehicle pass, dashboard/studio navigation, desktop/mobile accessibility, app QR/transfer/guest wallet, account signup/verification/claim/reload, offline admission/replay/conflict review.');
   } catch (error) { console.error('Browser phase:', stage); if (activePage) { await activePage.screenshot({ path: 'tmp/ticketing-browser-failure.png' }).catch(() => {}); console.error((await activePage.locator('body').innerText()).slice(0,1500)); } throw error; }

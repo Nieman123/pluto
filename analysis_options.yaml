@@ -23,6 +23,7 @@ analyzer:
     - "dev/conductor/lib/proto/*"
     - build/**
     - web/**
+    - tmp/**
 
 linter:
   rules:

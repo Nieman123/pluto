@@ -6,7 +6,7 @@ import { ref, getBytes, uploadBytes } from 'firebase/storage';
 let env;
 before(async () => {
   if (!process.env.FIRESTORE_EMULATOR_HOST || !process.env.FIREBASE_STORAGE_EMULATOR_HOST) throw new Error('Local Firebase emulators required');
-  env = await initializeTestEnvironment({ projectId: 'demo-pluto-waiver', firestore: { host: '127.0.0.1', port: 8080, rules: await readFile('firestore.rules', 'utf8') }, storage: { host: '127.0.0.1', port: 9199, rules: await readFile('storage.rules', 'utf8') } });
+  env = await initializeTestEnvironment({ projectId: 'demo-pluto-waiver', firestore: { rules: await readFile('firestore.rules', 'utf8') }, storage: { rules: await readFile('storage.rules', 'utf8') } });
   await env.withSecurityRulesDisabled(async c => {
     await setDoc(doc(c.firestore(), 'adminUsers', 'rules-staff'), { role: 'admin' });
     await setDoc(doc(c.firestore(), 'manafestWaivers', 'private-test'), { fullName: 'Private Test', status: 'completed' });
