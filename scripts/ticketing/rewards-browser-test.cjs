@@ -24,7 +24,7 @@ async function semantics() { await page.locator('flt-semantics-placeholder').eva
     page.on('pageerror', error => console.error('Rewards app error:', error.message));
     stage = 'sign-in'; await page.goto('http://127.0.0.1:4173/app/sign-on'); await semantics();
     await page.getByRole('textbox', { name: /Email/ }).fill(email); await page.getByRole('button', { name: 'Continue', exact: true }).click();
-    await page.locator('input[type=password]').fill(password); await page.getByRole('button', { name: 'Sign In', exact: true }).click();
+    await page.getByLabel(/Enter your password/).fill(password); await page.getByRole('button', { name: 'Sign In', exact: true }).click();
     await page.getByRole('button', { name: 'Open Rewards Shop', exact: true }).waitFor();
     await page.goto('http://127.0.0.1:4173/app/shop'); await semantics(); await page.getByRole('button', { name: 'Redeem', exact: true }).first().waitFor();
     stage = 'lost response and retry';
