@@ -77,6 +77,10 @@ async function surface(page, name) {
     await surface(page, 'admin-list-desktop');
     await page.locator('#event-new').click(); await page.locator('#event-editor-form').waitFor();
     const eventId = await page.locator('#staff-event').inputValue(), slug = `browser-${randomUUID()}`;
+    const scheduleYear = new Date().getUTCFullYear() + 1;
+    for (const [field, value] of [['startAt', `${scheduleYear}-09-17T09:00`], ['endAt', `${scheduleYear}-09-19T16:56`], ['admissionStartsAt', `${scheduleYear}-09-17T07:56`]]) {
+      await page.locator(`[data-field="${field}"]`).fill(value); await page.locator(`[data-field="${field}"]`).dispatchEvent('change');
+    }
     await page.locator('[data-field=title]').fill('A Night in Orbit');
     await page.locator('[data-field=title]').dispatchEvent('change');
     await page.locator('[data-field=slug]').fill(slug); await page.locator('[data-field=slug]').dispatchEvent('change');
@@ -101,6 +105,10 @@ async function surface(page, name) {
     await page.locator('#ticketing-message').filter({ hasText: 'Draft saved' }).waitFor().catch(async () => { throw new Error('Editor save status: ' + await page.locator('#ticketing-message').innerText()); });
     let record = (await db.collection('ticketingEvents').doc(eventId).get()).data();
     assert.ok(record.draft.hero.assetId && record.draft.flyer.assetId && record.draft.gallery[0].assetId);
+    assert.equal(record.draft.admissionStartsAt, `${scheduleYear}-09-17T11:56:00.000Z`);
+    assert.equal(record.draft.offers[0].validFrom, record.draft.admissionStartsAt, 'default ticket admission follows rescheduled event doors');
+    assert.equal(record.draft.offers[0].validUntil, record.draft.endAt, 'default ticket admission end follows the event end');
+    assert.equal(record.draft.offers[0].salesEnd, record.draft.endAt, 'default sales end follows the event end');
     const flyerAsset = (await db.collection('ticketingEvents').doc(eventId).collection('media').doc(record.draft.flyer.assetId).get()).data();
     assert.ok(flyerAsset.size < 5 * 1024 * 1024, 'large source flyers fit the backend upload limit');
     const flyerMetadata = await backend('sharp')((await backend('firebase-admin/storage').getStorage().bucket(process.env.TICKETING_STORAGE_BUCKET).file(flyerAsset.path).download())[0]).metadata();

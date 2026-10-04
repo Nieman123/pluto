@@ -5,10 +5,16 @@ import { adminRsvps } from './rsvps.js';
 import { financialSummary } from './financial-summary.js';
 import { revenueChart } from './revenue-chart.js';
 import { allOrders, eventOrders } from './orders.js';
+import { updateEventSchedule } from './event-schedule.js';
 
 let record, events = [], dirty = false, pendingUploads = 0, studio = false, globalAdmin = false, saving, allOrdersMode = false;
 const get = (path, object = record?.draft) => path.split('.').reduce((o, key) => o?.[key], object);
-function set(path, value) { const keys = path.split('.'), last = keys.pop(); let target = record.draft; for (const key of keys) target = target[key] ??= {}; target[last] = value; dirty = true; syncSaveState(); }
+function set(path, value) {
+  if (!updateEventSchedule(record.draft, path, value)) {
+    const keys = path.split('.'), last = keys.pop(); let target = record.draft; for (const key of keys) target = target[key] ??= {}; target[last] = value;
+  }
+  dirty = true; syncSaveState();
+}
 function syncSaveState() {
   document.querySelectorAll('[data-save-state]').forEach(el => { el.textContent = pendingUploads ? 'Image upload in progress…' : dirty ? 'Unsaved changes' : `Saved · Revision ${record?.revision || 0}`; el.classList.toggle('unsaved', dirty); });
 }
@@ -183,6 +189,11 @@ function render() {
       if (kind === 'date') value = path === 'venueRevealAt' && !value ? null : utcDate(value, record.draft.timezone);
       if (path.endsWith('stripeTaxRateIds')) value = input.value.split(',').map(v => v.trim()).filter(Boolean);
       if (path.includes('.pools.') && Number(value) === 0) { const parts = path.split('.'), key = parts.pop(); delete get(parts.join('.'))[key]; dirty = true; } else set(path, value);
+      if (['startAt', 'endAt', 'admissionStartsAt'].includes(path)) {
+        root.querySelectorAll('[data-field][data-kind="date"]').forEach(control => {
+          const date = get(control.dataset.field); control.value = date ? localDate(date, record.draft.timezone) : '';
+        });
+      }
       syncSaveState();
       if (path === 'venueVisibility' || path === 'venueRevealScheduled') {
         root.querySelector('[data-private-location]').hidden = d.venueVisibility !== 'holders';
