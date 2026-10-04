@@ -143,6 +143,11 @@ test('door attendance combines arrivals, supports audited retries and rejects re
     assert.equal((await h.service.attendance(eid, {}, h.staff)).counts.inside, 2);
     await h.service.doorMovement(eid, { ...exit, version: 2, attempt: h.newKey() }, h.staff); await h.service.tickets().doc(ticket.id).update({ status: 'revoked' });
     await assert.rejects(() => h.service.doorMovement(eid, { ...exit, action: 'reenter', version: 3, attempt: h.newKey() }, h.staff), /cannot re-enter/);
+    await h.service.saveGuest(eid, guest.id, '', '', 1, h.staff, true);
+    assert.equal((await h.service.attendance(eid, {}, h.staff)).rows.find(r => r.id === guest.id).valid, false, 'removed guests already inside remain available for an exit');
+    await h.service.doorMovement(eid, { kind: 'guest', id: guest.id, action: 'exit', version: 0, attempt: h.newKey() }, h.staff);
+    assert.equal((await h.service.attendance(eid, {}, h.staff)).counts.inside, 0);
+    await assert.rejects(() => h.service.doorMovement(eid, { kind: 'guest', id: guest.id, action: 'reenter', version: 1, attempt: h.newKey() }, h.staff), /cannot re-enter/);
     await assert.rejects(() => h.service.attendance(eid, {}, 'stranger'), /access/);
   } finally { await h.cleanup(); }
 });

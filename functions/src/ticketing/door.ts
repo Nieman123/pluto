@@ -21,7 +21,7 @@ export class Door extends Support {
     };
     const [tickets, guests] = await Promise.all([page(this.tickets().where('eventId', '==', eventId).orderBy(FieldPath.documentId()), raw.cursor?.tickets), page(eventRef.collection('guests').orderBy(FieldPath.documentId()), raw.cursor?.guests)]);
     const rows = [...tickets.docs.filter(d => d.data().kind === 'admission').map(d => ({ key: `ticket_${d.id}`, kind: 'ticket', id: d.id, name: d.data().holderName || d.data().name, pass: d.data().name, source: d.data().rsvp ? 'RSVP' : 'Ticket', arrivedAt: d.data().admission?.at || null, valid: d.data().status === 'valid' })),
-      ...guests.docs.filter(d => !d.data().deletedAt).map(d => ({ key: `guest_${d.id}`, kind: 'guest', id: d.id, name: d.data().name, pass: 'Guest list', source: 'Guest list', arrivedAt: d.data().arrival?.at || null, valid: true }))];
+      ...guests.docs.filter(d => !d.data().deletedAt || d.data().arrival).map(d => ({ key: `guest_${d.id}`, kind: 'guest', id: d.id, name: d.data().name, pass: 'Guest list', source: 'Guest list', arrivedAt: d.data().arrival?.at || null, valid: !d.data().deletedAt }))];
     const states = rows.length ? await this.db.getAll(...rows.map(row => eventRef.collection('doorStates').doc(row.key))) : [];
     const w = walkup.data() || { arrivals: 0, inside: 0, exits: 0, reentries: 0, version: 0 };
     return { eventId, checkedAt: Date.now(), free: (event.liveDraft || event.draft).registrationMode === 'free', rows: rows.map((row, index) => ({ ...row, inside: !!row.arrivedAt && states[index]?.data()?.inside !== false, version: states[index]?.data()?.version || 0 })),
