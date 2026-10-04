@@ -19,7 +19,7 @@ window.addEventListener('pluto-auth', async event => {
   if (mode === 'staff' && scannerSession) return;
   if (mode === 'staff' && event.detail && !navigator.onLine) { signedIn = true; action(null, restoreOfflineAdmission); return; }
   if (!event.detail) {
-    if (mode === 'admin') { document.querySelector('#orders-all').hidden = true; document.querySelector('#events-back').hidden = true; }
+    if (mode === 'admin') { document.querySelector('#orders-all').hidden = true; document.querySelector('#events-back').hidden = true; document.querySelector('#system-health').hidden = true; document.querySelector('#all-orders-view').replaceChildren(); document.querySelector('#all-orders-view').hidden = true; }
     if (signedIn && mode === 'staff') action(null, lockOfflineAdmission);
     signedIn = false;
     if (!navigator.onLine && mode === 'staff') { action(null, restoreOfflineAdmission); return; }

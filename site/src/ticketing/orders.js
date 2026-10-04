@@ -1,4 +1,5 @@
 import { accessKey, action, api, dialog, esc, money } from './api.js';
+import { orderSupport } from './support.js';
 
 const date = (value, timezone) => value ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short', ...(timezone ? { timeZone: timezone } : {}) }).format(new Date(value)) : '—';
 const label = value => String(value || '—').replaceAll('-', ' ');
@@ -58,6 +59,7 @@ export async function openOrder(orderId, { refresh: changed, openEvent } = {}) {
     ${order.permissions.canResolve && order.method === 'stripe' && order.total > 0 && order.status !== 'paid' ? `<form id="checkout-resolution-form"><h3>Resolve checkout reservation</h3><p>Creation state: ${esc(order.providerState)}. Verify payment with Stripe before releasing inventory.</p><label>Stripe Session ID (optional)<input name="sessionId" placeholder="cs_test_…"></label><label>Resolution note<input name="note" required maxlength="500"></label><button class="button button-quiet">Verify Stripe checkout & resolve reservation</button></form>` : ''}
     ${order.activity.length ? `<section><h3>Order activity</h3>${order.activity.map(a => `<article class="order-activity"><strong>${esc(label(a.action))}</strong><p>${esc(date(a.at, order.timezone))}${a.uid ? ` · ${esc(a.uid)}` : ''}</p>${a.ticketId ? `<p>Ticket ${esc(order.tickets.find(t => t.id === a.ticketId)?.number || a.ticketId)}</p>` : ''}${a.note ? `<p>${esc(a.note)}</p>` : ''}</article>`).join('')}</section>` : ''}`;
     document.querySelector('#ticketing-dialog').scrollTop = scroll;
+    orderSupport(content, order, run, draw, changed);
     content.querySelector('#order-detail-refresh').onclick = e => run(e.currentTarget, draw);
     content.querySelector('#order-detail-tickets').onclick = () => content.querySelector('[data-individual-tickets]').scrollIntoView({ block: 'start' });
     if (openEvent) content.querySelector('#order-detail-event').onclick = e => run(e.currentTarget, async () => { document.querySelector('#ticketing-dialog').close(); await openEvent(order.eventId); });

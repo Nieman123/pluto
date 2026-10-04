@@ -73,6 +73,7 @@ jobs:
       DEPLOY_WEB_CONFIG: ${{ vars.FIREBASE_WEB_CONFIG }}
       DEPLOY_PAYMENT_MODE: ${{ vars.TICKETING_MODE }}
       DEPLOY_STRIPE_PUBLISHABLE_KEY: ${{ vars.STRIPE_PUBLISHABLE_KEY }}
+      DEPLOY_RESEND_WEBHOOK_ENABLED: ${{ vars.TICKETING_RESEND_WEBHOOK_ENABLED }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

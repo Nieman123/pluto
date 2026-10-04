@@ -8,7 +8,7 @@ import { onRequest } from "firebase-functions/v2/https";
 import nunjucks from "nunjucks";
 import { waiverRouter } from "./waiver/routes";
 import { ticketingRouter } from './ticketing/routes';
-import { ticketingSecrets } from './ticketing/config';
+import { ticketingSecrets, resendWebhookSecrets } from './ticketing/config';
 import { walletSecrets } from './ticketing/digital-wallet';
 import { configureTrustedProxy } from './ticketing/client-identity';
 import { deploymentConfig } from './deployment-config';
@@ -283,6 +283,6 @@ app.use((_request: Request, response: Response) => {
 
 export { app };
 export const publicSite = onRequest(
-  { region: "us-central1", memory: "512MiB", maxInstances: 10, concurrency: 8, secrets: [...ticketingSecrets, ...walletSecrets] },
+  { region: "us-central1", memory: "512MiB", maxInstances: 10, concurrency: 8, secrets: [...ticketingSecrets, ...walletSecrets, ...resendWebhookSecrets] },
   app,
 );

@@ -6,8 +6,20 @@ import { financialSummary } from './financial-summary.js';
 import { revenueChart } from './revenue-chart.js';
 import { allOrders, eventOrders } from './orders.js';
 import { updateEventSchedule } from './event-schedule.js';
+import { healthDashboard } from './health.js';
 
 let record, events = [], dirty = false, pendingUploads = 0, studio = false, globalAdmin = false, saving, allOrdersMode = false;
+async function healthBadge() {
+  if (!globalAdmin || !user) return;
+  const uid = user.uid;
+  try {
+    const data = await api('staff/health');
+    if (!user || user.uid !== uid) return;
+    const button = document.querySelector('#system-health');
+    button.textContent = `System health${data.issues.length ? ` · ${data.issues.length} alerts` : ''}`;
+    button.classList.toggle('health-alert', data.counts.critical > 0);
+  } catch { /* Keep event editing usable while health services are unavailable. */ }
+}
 const get = (path, object = record?.draft) => path.split('.').reduce((o, key) => o?.[key], object);
 function set(path, value) {
   if (!updateEventSchedule(record.draft, path, value)) {
@@ -71,6 +83,8 @@ function defaultDraft() {
 export async function loadEvents() {
   const result = await api('staff/events', { revenue: true }); events = result.events; globalAdmin = result.admin;
   document.querySelector('#orders-all').hidden = !globalAdmin || allOrdersMode;
+  document.querySelector('#system-health').hidden = !globalAdmin;
+  healthBadge();
   const selector = document.querySelector('#staff-event'), current = selector.value;
   selector.innerHTML = '<option value="">Select an event</option>' + events.map(e => `<option value="${esc(e.id)}">${esc(e.title)} · ${esc(e.status)}</option>`).join('');
   if (events.some(e => e.id === current)) selector.value = current;
@@ -91,6 +105,7 @@ export async function loadEvents() {
     const requested = new URLSearchParams(location.search).get('event');
     if (!record && requested && events.some(e => e.id === requested) && document.querySelector('#event-workspace')?.hidden) await selectEvent(requested, new URLSearchParams(location.search).get('view') === 'studio');
     else if (!record && globalAdmin && new URLSearchParams(location.search).get('view') === 'orders') await showAllOrders();
+    else if (!record && globalAdmin && new URLSearchParams(location.search).get('view') === 'health') await showHealth();
   }
   message(allOrdersMode ? 'Orders across all events are ready.' : result.admin ? 'Choose an event to open its dashboard.' : 'Your assigned events are ready.');
   return result;
@@ -134,6 +149,20 @@ async function showAllOrders() {
   document.querySelector('#events-back').hidden = false; document.querySelector('#orders-all').hidden = true;
   const root = document.querySelector('#all-orders-view'); root.hidden = false;
   history.replaceState(null, '', '/tickets/admin?view=orders'); await allOrders(root, events, selectEvent);
+}
+async function showHealth() {
+  if (!globalAdmin) throw new Error('Administrator access is required.');
+  if (pendingUploads) throw new Error('Wait for the image upload to finish before switching views.');
+  if (dirty) await save();
+  record = null; allOrdersMode = true;
+  document.querySelector('#staff-event').value = '';
+  document.querySelector('#events-index').hidden = true;
+  document.querySelector('#event-workspace').hidden = true;
+  document.querySelector('#events-back').hidden = false;
+  document.querySelector('#orders-all').hidden = false;
+  const root = document.querySelector('#all-orders-view'); root.hidden = false;
+  history.replaceState(null, '', '/tickets/admin?view=health');
+  await healthDashboard(root, selectEvent);
 }
 async function save() {
   if (pendingUploads) throw new Error('Wait for the image upload to finish before saving.');
@@ -332,6 +361,8 @@ export function initEditor() {
   bind('#event-studio', () => selectEvent(document.querySelector('#staff-event').value, true));
   bind('#event-orders', async () => { if (dirty) await save(); await selectEvent(document.querySelector('#staff-event').value); });
   bind('#orders-all', showAllOrders);
+  bind('#system-health', showHealth);
+  setInterval(healthBadge, 60000);
   bind('#events-back', async () => { if (dirty) await save(); record = null; allOrdersMode = false; document.querySelector('#all-orders-view').hidden = true; document.querySelector('#all-orders-view').replaceChildren(); document.querySelector('#staff-event').value = ''; document.querySelector('#event-workspace').hidden = true; document.querySelector('#events-index').hidden = false; document.querySelector('#events-back').hidden = true; history.replaceState(null, '', '/tickets/admin'); await loadEvents(); });
   bind('#event-cash', cash); bind('#event-roles', roles);
   bind('#event-scanner-pins', scannerPins);

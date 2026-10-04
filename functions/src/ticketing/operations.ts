@@ -1,15 +1,18 @@
 import { createHmac, randomInt, randomUUID } from 'node:crypto';
 import { FieldPath } from 'firebase-admin/firestore';
+import { error as logError, warn as logWarning } from 'firebase-functions/logger';
 import type Stripe from 'stripe';
 import { type Order } from './orders';
-import { Rsvps } from './rsvps';
-import { fail, hash, id, integer, receipt, secret, text, ticketId } from './domain';
+import { Support } from './support';
+import { fail, hash, id, integer, receipt, secret, text, ticketId, TicketingError } from './domain';
 import { isLive, keyPair, resendKey } from './config';
 import { scannerAccess } from './scanner-access';
 import { deploymentConfig } from '../deployment-config';
 import { legacyTicketingEmail, renderTicketingEmail, type EmailKind, type TicketingEmailInput } from './email';
+import { collectHealth } from './health';
+import { applyDelivery } from './delivery';
 
-export class Operations extends Rsvps {
+export class Operations extends Support {
   async submitOfflineReview(eventId: string, raw: any, uid: string) {
     await this.role(uid, eventId, ['manager']);
     return raw.kind === 'guest' ? this.arriveGuest(eventId, id(raw.guestId), raw.scanId, uid, true, raw, true) : this.scan(eventId, raw.qr, raw.scanId, uid, true, raw, true);
@@ -311,13 +314,28 @@ export class Operations extends Rsvps {
     const ref = this.db.collection('ticketingEmailJobs').doc(id(jobId));
     const job = await this.db.runTransaction(async tx => {
       const d = (await tx.get(ref)).data();
-      if (!d || ['sent', 'review'].includes(d.status) || (d.leaseUntil || 0) > Date.now() || (d.retryAt || 0) > Date.now()) return null;
+      if (!d || ['sent', 'review', 'cancelled'].includes(d.status) || (d.leaseUntil || 0) > Date.now() || (d.retryAt || 0) > Date.now()) return null;
       if (d.firstDeliveryAt && Date.now() - d.firstDeliveryAt > 23 * 3600000) { tx.update(ref, { status: 'review', lastError: 'Email delivery outcome needs review after the provider idempotency window.' }); return null; }
       tx.update(ref, { leaseUntil: Date.now() + 120000, attempts: (d.attempts || 0) + 1 }); return d;
     });
     if (!job) return;
     try {
+      const currentOrder = job.orderId ? (await this.order(job.orderId).get()).data() : null;
+      if (currentOrder && job.type !== 'transfer' && job.to !== currentOrder.email) {
+        await ref.update({ status: 'cancelled', leaseUntil: 0, token: null, emailPayload: null, lastError: 'Recipient was corrected. Send a new access link to the current contact.' }); return;
+      }
       let payload: { from: string; to: string[]; subject: string; text: string; html?: string } | undefined = job.emailPayload;
+      if (job.type === 'rsvp-verification') {
+        const proof = (await this.db.collection('ticketingRsvpVerification').doc(job.verificationId).get()).data();
+        if (!proof || proof.used || proof.expiresAt <= Date.now()) { await ref.update({ status: 'cancelled', leaseUntil: 0, code: null, emailPayload: null }); return; }
+        if (!payload) {
+          const event = (await this.event(job.eventId).get()).data(), draft = event?.liveDraft || event?.draft;
+          payload = { from: process.env.TICKETING_EMAIL_FROM || 'Pluto Events <tickets@pluto.events>', to: [job.to], ...renderTicketingEmail({ kind: 'rsvp-verification',
+            order: { eventTitle: job.eventTitle, total: 0, currency: 'usd', units: [] }, orderId: '', note: job.code, baseUrl: deploymentConfig().baseUrl,
+            actionUrl: `${deploymentConfig().baseUrl}/events/${draft.slug}`, staging: deploymentConfig().environment === 'staging' }) };
+          await ref.update({ emailPayload: payload });
+        }
+      }
       if (!payload) {
         const order = (await this.order(job.orderId).get()).data() as Order;
         if (!order) fail('Email order is not available.', 503);
@@ -331,7 +349,7 @@ export class Operations extends Rsvps {
           // Email grants financial order access only to the original payer; transferred QR credentials are filtered in view().
           const token = job.token || secret(), recoveryRef = this.db.collection('ticketingRecovery').doc(hash(token));
           if (!job.token) await ref.update({ token });
-          await this.db.runTransaction(async tx => { if (!(await tx.get(recoveryRef)).exists) tx.create(recoveryRef, { orderId: job.orderId, expiresAt: Date.now() + 30 * 86400000, used: false }); });
+          await this.db.runTransaction(async tx => { if (!(await tx.get(recoveryRef)).exists) tx.create(recoveryRef, { orderId: job.orderId, accessRevision: (order as any).accessRevision || 0, expiresAt: Date.now() + 30 * 86400000, used: false }); });
           actionUrl += `#recovery=${token}`;
           if (order.method === 'rsvp') kind = job.type === 'rsvp-pending' ? 'rsvp-pending' : job.type === 'rsvp-declined' ? 'rsvp-declined' : 'rsvp-confirmed';
         }
@@ -347,10 +365,34 @@ export class Operations extends Rsvps {
       if (!job.firstDeliveryAt) await ref.update({ firstDeliveryAt: Date.now() });
       const result = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', 'Idempotency-Key': `pluto-${jobId}` }, body: JSON.stringify({ from: payload.from, to: payload.to, subject: payload.subject, text: payload.text, ...(payload.html ? { html: payload.html } : {}) }), signal: AbortSignal.timeout(20000) });
       if (!result.ok) fail('Email provider could not confirm delivery.', 503);
-      await ref.update({ status: 'sent', sentAt: Date.now(), leaseUntil: 0, token: null, emailPayload: null });
-    } catch (error: any) { await ref.update({ leaseUntil: 0, status: 'pending', retryAt: Date.now() + Math.min(3600000, 1000 * 2 ** Math.min(job.attempts || 0, 12)), lastError: error.name || 'unavailable' }); }
+      const delivered = await result.json() as { id?: string };
+      if (!delivered.id) fail('Email provider returned no message reference.', 503);
+      await this.db.runTransaction(async tx => {
+        const latest = (await tx.get(ref)).data()!;
+        tx.update(ref, { status: 'sent', sentAt: Date.now(), providerMessageId: delivered.id, deliveryStatus: latest.deliveryStatus || 'sent', leaseUntil: 0, token: null, code: null, emailPayload: null });
+      });
+      await applyDelivery(this.db, jobId, delivered.id);
+    } catch (error: any) {
+      await this.db.runTransaction(async tx => {
+        const latest = (await tx.get(ref)).data();
+        if (!latest || ['sent', 'cancelled', 'review'].includes(latest.status)) return;
+        tx.update(ref, { leaseUntil: 0, status: 'pending', retryAt: Date.now() + Math.min(3600000, 1000 * 2 ** Math.min(job.attempts || 0, 12)), lastError: error instanceof TicketingError ? error.message : error.name || 'unavailable' });
+      });
+    }
   }
   async maintenance() {
+    const heartbeat = this.db.collection('ticketingHealth').doc('maintenance');
+    await heartbeat.set({ startedAt: Date.now() }, { merge: true });
+    try {
+      const summary = await this.maintenancePass();
+      await heartbeat.set({ completedAt: Date.now(), summary, failedAt: null }, { merge: true });
+      await this.refreshHealth(); return summary;
+    } catch (error) {
+      await heartbeat.set({ failedAt: Date.now() }, { merge: true });
+      logError('Ticketing maintenance failed', { event: 'ticketing-maintenance-failed' }); throw error;
+    }
+  }
+  private async maintenancePass() {
     const now = Date.now(), summary: Record<string, number> = { orders: 0, refunds: 0, webhooks: 0, emails: 0, errors: 0 };
     const unsettled = await this.pendingBatch('ticketingOrders', ['provisioning', 'open', 'processing'], 200);
     for (const doc of unsettled.docs) {
@@ -367,19 +409,59 @@ export class Operations extends Rsvps {
           }
         }
         summary.orders++;
-      } catch { summary.errors++; }
+      } catch (error) { summary.errors++; await this.workerFailure(doc.ref, 'order', error); }
     }
     const paid = await this.pendingBatch('ticketingOrders', ['paid'], 100);
     for (const doc of paid.docs) if (doc.data().method === 'stripe' && doc.data().total > 0) {
-      try { await this.verifySession(doc.id); summary.orders++; } catch { summary.errors++; }
+      try { await this.verifySession(doc.id); summary.orders++; } catch (error) { summary.errors++; await this.workerFailure(doc.ref, 'order', error); }
     }
     const refunds = await this.pendingBatch('ticketingRefunds', ['pending', 'processing'], 100);
-    for (const doc of refunds.docs) { try { if (doc.data().external) await this.finishRefund(doc.id, 'succeeded'); else await this.processRefund(doc.id); summary.refunds++; } catch { summary.errors++; } }
+    for (const doc of refunds.docs) { try { if (doc.data().external) await this.finishRefund(doc.id, 'succeeded'); else await this.processRefund(doc.id); summary.refunds++; } catch (error) { summary.errors++; await this.workerFailure(doc.ref, 'refund', error); } }
     const inbox = await this.pendingBatch('ticketingWebhookInbox', ['pending'], 100);
     for (const doc of inbox.docs) if ((doc.data().retryAt || 0) <= now) { try { await this.processWebhook(doc.id); summary.webhooks++; } catch { summary.errors++; } }
     const jobs = await this.pendingBatch('ticketingEmailJobs', ['pending'], 100);
     for (const doc of jobs.docs) { await this.emailJob(doc.id); summary.emails++; }
     return summary;
+  }
+  private async workerFailure(ref: FirebaseFirestore.DocumentReference, kind: string, error: unknown) {
+    await ref.update({ lastWorkerError: error instanceof TicketingError ? error.message : error instanceof Error ? error.name : 'Unavailable', lastWorkerErrorAt: Date.now() });
+    logWarning('Ticketing worker failed', { event: 'ticketing-worker-failed', kind, recordId: ref.id });
+  }
+  async refreshHealth() {
+    const result = await collectHealth(this.db);
+    const ref = this.db.collection('ticketingHealth').doc('latest');
+    const previous = (await ref.get()).data();
+    await ref.set(result);
+    const critical = result.issues.filter(i => i.severity === 'critical').map(i => i.id).sort();
+    if (critical.length && JSON.stringify(critical) !== JSON.stringify(previous?.issues?.filter((i: any) => i.severity === 'critical').map((i: any) => i.id).sort()))
+      logError('Ticketing needs operator attention', { event: 'ticketing-health-alert', criticalCount: result.counts.critical, issueIds: critical });
+    return result;
+  }
+  async health(uid: string, refresh = false) {
+    await this.admin(uid);
+    const cached = (await this.db.collection('ticketingHealth').doc('latest').get()).data();
+    return refresh || !cached || Date.now() - cached.checkedAt > 10 * 60000 || Date.now() - (cached.maintenance?.completedAt || 0) > 15 * 60000 ? this.refreshHealth() : cached;
+  }
+  async retryHealth(raw: any, uid: string) {
+    await this.admin(uid);
+    const key = id(raw.jobId), kind = text(raw.kind, 'job type', 30);
+    if (kind === 'webhook') await this.processWebhook(key);
+    else if (kind === 'refund') {
+      const refund = (await this.db.collection('ticketingRefunds').doc(key).get()).data();
+      if (refund?.external) await this.finishRefund(key, 'succeeded'); else await this.processRefund(key);
+    }
+    else if (kind === 'email') {
+      const ref = this.db.collection('ticketingEmailJobs').doc(key);
+      await this.db.runTransaction(async tx => {
+        const job = (await tx.get(ref)).data();
+        if (!job || job.status !== 'pending' || job.firstDeliveryAt && Date.now() - job.firstDeliveryAt > 23 * 3600000) fail('Do not retry an uncertain email. Review the provider outcome and send a new access link if needed.', 409);
+        if ((job.leaseUntil || 0) > Date.now()) fail('This email is already being processed.', 409);
+        tx.update(ref, { retryAt: 0 });
+      });
+      await this.emailJob(key);
+    } else fail('Use the order detail view to resolve this alert.');
+    await this.db.collection('ticketingHealthAudit').add({ action: 'health-retry', kind, jobId: key, uid, at: Date.now() });
+    return this.refreshHealth();
   }
   async pendingBatch(collection: string, statuses: string[], size: number) {
     const cursor = this.db.collection('ticketingWorkerCursors').doc(`${collection}_${[...statuses].sort().join('_')}`), state = (await cursor.get()).data();

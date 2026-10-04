@@ -201,10 +201,10 @@ async function main() {
   await service.publish(eventId, 'archive', changed.revision + 1, staff);
   assert.equal((await db.collection('publishedEvents').doc(eventId).get()).data().title, 'Pluto Test Festival', 'archival never releases unpublished content');
   const mailId = `mail_test_${randomUUID()}`, emailRef = db.collection('ticketingEmailJobs').doc(mailId);
-  await emailRef.set({ type: 'receipt', orderId: comp.orderId, to: 'delivered@resend.dev', status: 'pending', attempts: 0, createdAt: Date.now() });
+  await emailRef.set({ type: 'receipt', orderId: comp.orderId, to: (await service.order(comp.orderId).get()).data().email, status: 'pending', attempts: 0, createdAt: Date.now() });
   process.env.RESEND_API_KEY = 'resend-test-fixture';
   const originalFetch = global.fetch, deliveryBodies = []; let confirmDelivery = false;
-  global.fetch = async (_url, options) => { deliveryBodies.push(options.body); const payload = JSON.parse(options.body); assert.equal(payload.attachments, undefined); assert.ok(!payload.text.includes('PLUTO1.')); assert.match(payload.html, /Open my tickets/); assert.ok(!payload.html.includes('PLUTO1.') && !payload.html.includes('Private secret venue')); assert.equal(options.headers['Idempotency-Key'], `pluto-${mailId}`); return { ok: confirmDelivery }; };
+  global.fetch = async (_url, options) => { deliveryBodies.push(options.body); const payload = JSON.parse(options.body); assert.equal(payload.attachments, undefined); assert.ok(!payload.text.includes('PLUTO1.')); assert.match(payload.html, /Open my tickets/); assert.ok(!payload.html.includes('PLUTO1.') && !payload.html.includes('Private secret venue')); assert.equal(options.headers['Idempotency-Key'], `pluto-${mailId}`); return { ok: confirmDelivery, json: async () => ({ id: 'email-test-retry' }) }; };
   await service.emailJob(mailId);
   const retry = (await emailRef.get()).data(); assert.equal(retry.status, 'pending'); assert.ok(retry.token);
   assert.ok(retry.emailPayload.html, 'rendered content is persisted before an uncertain provider result');
@@ -217,8 +217,8 @@ async function main() {
   assert.equal((await emailRef.get()).data().emailPayload, null, 'delivered capability links are removed from the job snapshot');
   await assert.rejects(() => service.acceptRecovery(retry.token), /already used/, 'email retry cannot reactivate a consumed capability');
   const legacyId = `legacy_mail_${randomUUID()}`, legacyToken = newKey();
-  await db.collection('ticketingEmailJobs').doc(legacyId).set({ type: 'receipt', orderId: comp.orderId, to: 'delivered@resend.dev', token: legacyToken, firstDeliveryAt: Date.now(), status: 'pending', attempts: 1, createdAt: Date.now() });
-  global.fetch = async (_url, options) => { const payload = JSON.parse(options.body); assert.equal(payload.html, undefined, 'already attempted legacy deliveries preserve their previous text-only payload'); assert.match(payload.text, new RegExp(`#recovery=${legacyToken}`)); return { ok: true }; };
+  await db.collection('ticketingEmailJobs').doc(legacyId).set({ type: 'receipt', orderId: comp.orderId, to: (await service.order(comp.orderId).get()).data().email, token: legacyToken, firstDeliveryAt: Date.now(), status: 'pending', attempts: 1, createdAt: Date.now() });
+  global.fetch = async (_url, options) => { const payload = JSON.parse(options.body); assert.equal(payload.html, undefined, 'already attempted legacy deliveries preserve their previous text-only payload'); assert.match(payload.text, new RegExp(`#recovery=${legacyToken}`)); return { ok: true, json: async () => ({ id: 'email-test-legacy' }) }; };
   try { await service.emailJob(legacyId); } finally { global.fetch = originalFetch; }
   assert.equal((await db.collection('ticketingEmailJobs').doc(legacyId).get()).data().status, 'sent');
   const Stripe = require('stripe'), express = require('express'), sdk = new Stripe('sk_test_fixture', { apiVersion: '2026-09-30.endive' });

@@ -11,6 +11,9 @@ import { email } from './domain';
 import { Rewards } from '../rewards';
 import { DigitalWallet } from './digital-wallet';
 import { allowedSiteOrigins } from '../deployment-config';
+import { Webhook } from 'svix';
+import { resendWebhookKey } from './config';
+import { recordDelivery } from './delivery';
 
 export function ticketingRouter(context: (path: string) => Record<string, unknown>, service = new Operations()) {
   const router = express.Router();
@@ -35,6 +38,18 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
       chargeId: data.charge || (event.type === 'charge.refunded' ? data.id : ''), paymentIntentId: typeof data.payment_intent === 'string' ? data.payment_intent : '',
       livemode: event.livemode, status: 'pending', receivedAt: Date.now(), attempts: 0 }); });
     res.json({ received: true });
+  });
+  router.post('/tickets/email-webhook', express.raw({ type: 'application/json', limit: '1mb' }), async (req, res) => {
+    if (process.env.TICKETING_RESEND_WEBHOOK_ENABLED !== 'true') return res.status(503).json({ error: 'Email delivery tracking is not enabled.' });
+    let event: unknown;
+    try {
+      const rawBody = (req as Request & { rawBody?: Buffer }).rawBody || req.body;
+      new Webhook(resendWebhookKey!.value()).verify(rawBody.toString('utf8'), {
+        'svix-id': req.get('svix-id') || '', 'svix-timestamp': req.get('svix-timestamp') || '', 'svix-signature': req.get('svix-signature') || '' });
+      event = JSON.parse(rawBody.toString('utf8'));
+    } catch { return res.status(400).json({ error: 'Invalid webhook signature.' }); }
+    try { res.json(await recordDelivery(service.db, req.get('svix-id')!, event)); }
+    catch (error) { res.status(error instanceof TicketingError ? 400 : 503).json({ error: 'Delivery event could not be recorded.' }); }
   });
   const page = (req: Request, res: Response) => res.render('ticketing-console', { ...context(req.path), googleAnalyticsId: '',
     meta: { title: `${req.path.includes('admin') ? 'Event studio' : req.path.includes('staff') ? 'Ticket admission' : 'My tickets'} | Pluto Events`, description: 'Manage your Pluto Events tickets.', canonical: `${baseUrl()}${req.path}` },
@@ -148,6 +163,7 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   };
   router.post('/tickets/api/checkout', async (req, res) => { await purchaseLimit(req, res, 'checkout'); res.json(await service.checkout(req.body, res.locals.actor)); });
   router.post('/tickets/api/rsvp', async (req, res) => { await purchaseLimit(req, res, 'rsvp'); res.json(await service.rsvp(req.body, res.locals.actor)); });
+  router.post('/tickets/api/rsvp/verification', async (req, res) => { await service.rateLimit(req.ip || 'unknown', 'rsvp-verification-network-burst', 512, 60000, 8); await service.rateLimit(email(req.body.email), 'rsvp-verification-contact', 5); await service.rateLimit(res.locals.rateIdentity, 'rsvp-verification-client', 20); res.json(await service.requestRsvpVerification(req.body, res.locals.actor)); });
   router.post('/tickets/api/staff/rsvp/review', async (req, res) => res.json(await service.reviewRsvp(bodyId(req), bodyId(req, 'orderId'), req.body.decision, req.body.note, actor(res).uid)));
   router.post('/tickets/api/staff/rsvp/withdraw', async (req, res) => res.json(await service.withdrawRsvp(bodyId(req), bodyId(req, 'orderId'), actor(res).uid)));
   router.post('/tickets/api/checkout-attempt', async (req, res) => res.json(await service.checkoutAttempt(req.body.accessKey)));
@@ -191,6 +207,11 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   router.post('/tickets/api/staff/orders', async (req, res) => res.json(await service.staffOrders(bodyId(req), actor(res).uid)));
   router.post('/tickets/api/staff/all-orders', async (req, res) => res.json(await service.allOrders(req.body, actor(res).uid)));
   router.post('/tickets/api/staff/order', async (req, res) => res.json(await service.staffOrder(bodyId(req, 'orderId'), actor(res).uid)));
+  router.post('/tickets/api/staff/order/correct', async (req, res) => res.json(await service.correctOrder(bodyId(req, 'orderId'), req.body, actor(res).uid)));
+  router.post('/tickets/api/staff/order/resend', async (req, res) => { await service.rateLimit(bodyId(req, 'orderId'), 'support-resend', 10); res.json(await service.supportResend(bodyId(req, 'orderId'), req.body, actor(res).uid)); });
+  router.post('/tickets/api/staff/rsvp/reopen', async (req, res) => res.json(await service.reopenRsvp(bodyId(req), bodyId(req, 'orderId'), req.body, actor(res).uid)));
+  router.post('/tickets/api/staff/health', async (req, res) => res.json(await service.health(actor(res).uid, req.body.refresh === true)));
+  router.post('/tickets/api/staff/health/retry', async (req, res) => res.json(await service.retryHealth(req.body, actor(res).uid)));
   router.post('/tickets/api/staff/order/check-in', async (req, res) => res.json(await service.checkInOrderTicket(bodyId(req, 'orderId'), bodyId(req, 'ticketId'), req.body.scanId, actor(res).uid)));
   router.post('/tickets/api/staff/export', async (req, res) => { const data = await service.staffOrders(bodyId(req), actor(res).uid); res.type('text/csv').set('Content-Disposition', 'attachment; filename="Pluto-orders.csv"').send(csv([['Order', 'Buyer', 'Email', 'Status', 'Method', 'Gross cents', 'Discount cents', 'Tax cents', 'Refund cents', 'Stripe fee cents', 'Promoter'], ...data.orders.map((o: any) => [o.orderId, o.name, o.email, o.status, o.method, o.total, o.discount, o.taxAmount, o.refundedAmount, o.stripeFee, o.promoterId])])); });
   router.post('/tickets/api/staff/cash', async (req, res) => res.json(await service.checkout(req.body, null, req.body.comp === true ? 'comp' : 'cash', actor(res).uid)));

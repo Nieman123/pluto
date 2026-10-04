@@ -1,5 +1,13 @@
 const assert = require('node:assert/strict');
 const { randomUUID } = require('node:crypto');
+const { createRequire } = require('node:module');
+const { resolve } = require('node:path');
+const requireFunctions = createRequire(resolve(__dirname, '../../functions/package.json'));
+const { initializeApp } = requireFunctions('firebase-admin/app');
+const { getFirestore } = requireFunctions('firebase-admin/firestore');
+const { hash } = require('../../functions/lib/ticketing/domain');
+if (process.env.FIRESTORE_EMULATOR_HOST !== '127.0.0.1:8185' || process.env.GCLOUD_PROJECT !== 'demo-pluto-ticketing') throw new Error('Isolated demo emulator required.');
+initializeApp({ projectId: process.env.GCLOUD_PROJECT });
 const { chromium } = require('playwright');
 const { default: AxeBuilder } = require('@axe-core/playwright');
 const { fixture } = require('../../functions/test/ticketing-fixture.cjs');
@@ -26,7 +34,14 @@ async function submit(page, slug, name) {
   await page.locator('[data-ticket-quantity]').first().selectOption('1');
   await page.locator('[name=buyerName]').fill(name); await page.locator('[name=email]').fill(`${randomUUID()}@preview.invalid`);
   const navigation = page.waitForURL('**/app/tickets?order=*');
-  await page.locator('#native-checkout-form [type=submit]').click(); await navigation;
+  const verifying = page.waitForResponse(r => r.url().endsWith('/tickets/api/rsvp/verification'));
+  await page.locator('#native-checkout-form [type=submit]').click();
+  const verification = await (await verifying).json();
+  if (!verification.verified) {
+    const job = (await getFirestore().collection('ticketingEmailJobs').doc(`verify_${hash(verification.verificationToken)}`).get()).data();
+    await page.locator('#rsvp-email-code [name=code]').fill(job.code); await page.locator('#rsvp-email-code button').click();
+  }
+  await navigation;
   const orderId = new URL(page.url()).searchParams.get('order'); assert.match(orderId, /^[a-f0-9]{64}$/);
   await semantics(page); return { orderId };
 }

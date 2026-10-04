@@ -1,0 +1,14 @@
+import { api, esc } from './api.js';
+export function orderSupport(content, order, run, redraw, changed) {
+  const panel = document.createElement('section'); panel.className = 'order-support';
+  panel.innerHTML = `<h3>Customer support</h3>${order.permissions.canSupport ? `<form data-support-correct><div class="form-grid"><label>Buyer name<input name="name" required maxlength="150" value="${esc(order.name)}"></label><label>Purchase email<input name="email" type="email" required maxlength="254" value="${esc(order.email)}"></label></div><label>Reason for correction<textarea name="note" required maxlength="500"></textarea></label><p>Confirm the customer's identity before changing their email. Existing account ownership and transferred tickets stay with their holders. Old order recovery links and unused purchaser QR codes are replaced; send a new link after saving.</p><button class="button button-primary">Save buyer details</button></form><form data-support-resend><label>Reason for sending access<textarea name="note" required maxlength="500"></textarea></label><button class="button button-quiet">Send new secure access link</button></form>${order.method === 'rsvp' && ['declined', 'withdrawn'].includes(order.rsvpStatus) ? '<form data-support-reopen><label>Reason for reopening RSVP<textarea name="note" required maxlength="500"></textarea></label><p>Reopening creates an awaiting-approval request. Its previous QR stays revoked and no capacity is reserved.</p><button class="button button-quiet">Reopen RSVP for approval</button></form>' : ''}` : '<p>An event manager can correct contact details and send new access links.</p>'}<h4>Email history</h4>${order.emails?.length ? order.emails.map(e => `<article class="order-activity"><strong>${esc(e.type)} · ${esc(e.deliveryStatus || e.status)}</strong><p>${esc(e.to)} · ${esc(new Date(e.createdAt).toLocaleString())}</p>${e.lastError ? `<p>${esc(e.lastError)}</p>` : ''}</article>`).join('') : '<p>No email jobs recorded.</p>'}`;
+  content.querySelector('section').after(panel);
+  for (const [selector, path, extra] of [
+    ['[data-support-correct]', 'staff/order/correct', { revision: order.supportRevision }],
+    ['[data-support-resend]', 'staff/order/resend', {}],
+    ['[data-support-reopen]', 'staff/rsvp/reopen', { eventId: order.eventId, revision: order.supportRevision }],
+  ]) {
+    const form = panel.querySelector(selector); if (!form) continue;
+    form.onsubmit = e => { e.preventDefault(); run(e.submitter, async () => { await api(path, { orderId: order.orderId, ...Object.fromEntries(new FormData(form)), ...extra }); await redraw(); content.querySelector('[data-order-notice]').textContent = path.endsWith('/correct') ? 'Buyer details saved. Send a new access link if the email changed.' : path.endsWith('/reopen') ? 'RSVP reopened for approval. Previous admission QR remains revoked.' : 'New secure access email queued.'; await changed?.(); }); };
+  }
+}

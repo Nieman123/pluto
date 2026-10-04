@@ -1,4 +1,5 @@
 import { action, api, dialog, esc, message } from './api.js';
+import { openOrder } from './orders.js';
 
 export function adminRsvps(root, eventId, orders, refresh) {
   const rsvps = orders.filter(o => o.method === 'rsvp'), count = state => rsvps.filter(o => o.rsvpStatus === state).length;
@@ -17,6 +18,10 @@ export function adminRsvps(root, eventId, orders, refresh) {
         } catch (error) { content.querySelector('.rsvp-error').textContent = error.message; return; }
         document.querySelector('#ticketing-dialog').close(); await refresh(); message(`RSVP ${decision === 'approve' ? 'approved' : decision === 'decline' ? 'declined' : 'withdrawn'}.`);
       }); };
+    });
+    root.querySelectorAll('.guest-row').forEach((row, index) => {
+      const button = document.createElement('button'); button.className = 'button button-quiet'; button.textContent = 'Details & support';
+      button.onclick = () => action(button, () => openOrder(matches[index].orderId, { refresh })); row.querySelector('.ticket-toolbar').append(button);
     });
   }
   search.oninput = draw; filter.onchange = draw; draw();

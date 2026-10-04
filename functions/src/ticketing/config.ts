@@ -8,6 +8,9 @@ export const stripeKey = defineSecret('STRIPE_RESTRICTED_KEY');
 export const webhookKey = defineSecret('STRIPE_WEBHOOK_SECRET');
 export const signingKey = defineSecret('TICKETING_SIGNING_KEY');
 export const resendKey = defineSecret('RESEND_API_KEY');
+export const resendWebhookKey = process.env.TICKETING_RESEND_WEBHOOK_ENABLED === 'true' ? defineSecret('RESEND_WEBHOOK_SECRET') : undefined;
+// Delivery tracking is opt-in; existing deployments do not need another secret.
+export const resendWebhookSecrets = resendWebhookKey ? [resendWebhookKey] : [];
 export const ticketingSecrets = [stripeKey, webhookKey, signingKey, resendKey];
 export const apiVersion = '2026-09-30.endive' as const;
 export const baseUrl = () => deploymentConfig().baseUrl;
