@@ -16,7 +16,7 @@ String ticketClientIdentity() {
       32, (_) => random.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
   _clientIdentity = value;
   try {
-    ticketAccessWrite(key, value);
+    ticketAccessWrite(key, value).catchError((Object _) {});
   } catch (_) {/* Keep this process identity. */}
   return value;
 }

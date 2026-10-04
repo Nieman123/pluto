@@ -5,7 +5,7 @@ const { resolve } = require('node:path');
 
 const ticketingSecrets = ['RESEND_API_KEY', 'STRIPE_RESTRICTED_KEY', 'STRIPE_WEBHOOK_SECRET', 'TICKETING_SIGNING_KEY'];
 
-function discover(walletFlag) {
+function discover(walletFlag, deliveryFlag) {
   const env = { ...process.env, GCLOUD_PROJECT: 'pluto-staging-92eb7', PLUTO_ENVIRONMENT: 'staging',
     TICKETING_MODE: 'test', TICKETING_LIVE_READY: 'false', PUBLIC_SITE_PREVIEW: 'true',
     PLUTO_FIREBASE_WEB_CONFIG: JSON.stringify({ apiKey: 'staging-public-fixture', appId: '1:987654:web:abcdef123',
@@ -15,6 +15,8 @@ function discover(walletFlag) {
     'TICKETING_WALLET_CREDENTIALS', 'TICKETING_WALLETS_ENABLED', 'TICKETING_BASE_URL', 'TICKETING_STORAGE_BUCKET',
     'WAIVER_STORAGE_BUCKET']) delete env[name];
   if (walletFlag !== undefined) env.TICKETING_WALLETS_ENABLED = walletFlag;
+  delete env.RESEND_WEBHOOK_SECRET; delete env.TICKETING_RESEND_WEBHOOK_ENABLED;
+  if (deliveryFlag !== undefined) env.TICKETING_RESEND_WEBHOOK_ENABLED = deliveryFlag;
   if (walletFlag === 'true') {
     // Staging intentionally prohibits wallet exports. Check opt-in discovery in production.
     env.GCLOUD_PROJECT = 'pluto-9b6ca';
@@ -54,4 +56,9 @@ test('Firebase discovery requires enabled wallet credentials only on the public 
   for (const endpoint of ['ticketingWebhookWorker', 'ticketingEmailWorker', 'ticketingMaintenance']) {
     assert.deepEqual(manifest.endpoints[endpoint], ticketingSecrets);
   }
+});
+test('Resend webhook secret is declared only when delivery tracking is enabled', () => {
+  const manifest = discover('false', 'true'), withDelivery = [...ticketingSecrets, 'RESEND_WEBHOOK_SECRET'].sort();
+  assert.deepEqual(manifest.params, withDelivery); assert.deepEqual(manifest.endpoints.publicSite, withDelivery);
+  for (const endpoint of ['ticketingWebhookWorker', 'ticketingEmailWorker', 'ticketingMaintenance']) assert.deepEqual(manifest.endpoints[endpoint], ticketingSecrets);
 });

@@ -28,6 +28,7 @@
     "test:ticketing:location-access": "node --test functions/test/location-reveal-access.cjs",
     "test:ticketing:location-browser": "node scripts/ticketing/location-reveal-browser-test.cjs",
     "test:ticketing:checkout-account-browser": "node scripts/ticketing/checkout-account-browser-test.cjs",
+    "test:ticketing:support": "node --test functions/test/operations-support.cjs functions/test/email-webhook.cjs",
     "test:ticketing:order-operations": "node --test functions/test/order-operations.cjs",
     "test:ticketing:orders-browser": "node scripts/ticketing/orders-browser-test.cjs",
     "test:ticketing:qr": "node scripts/ticketing/qr-decoder-test.cjs",

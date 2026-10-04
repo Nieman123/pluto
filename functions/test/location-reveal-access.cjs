@@ -37,7 +37,7 @@ test('RSVP approval is still required even after location reveal', async () => {
   const h = harness();
   try {
     const eid = await h.event(d => { d.registrationMode = 'rsvp-approval'; d.offers = [{ ...d.offers[0], unitAmount: 0, maxPerOrder: 1 }]; d.venueRevealScheduled = true; d.venueRevealAt = new Date(Date.now() - 1000).toISOString(); });
-    const raw = h.request(eid), pending = await h.service.rsvp(raw, null);
+    const raw = h.request(eid), pending = await h.service.rsvp(raw, { uid: '', email: raw.email, email_verified: true });
     const before = await h.service.view(pending.orderId, raw.accessKey, null); assert.equal(before.venue, null); assert.deepEqual(before.tickets, []);
     await h.service.reviewRsvp(eid, pending.orderId, 'approve', '', h.staff);
     const approved = await h.service.view(pending.orderId, raw.accessKey, null); assert.equal(approved.venue.available, true); assert.ok(approved.tickets[0].qr);

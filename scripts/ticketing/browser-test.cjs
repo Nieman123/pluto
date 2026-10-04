@@ -56,7 +56,7 @@ async function surface(page, name) {
     await signIn.goto(`${base}/app/sign-on`); await semantics(signIn);
     await signIn.getByRole('textbox', { name: /Email/ }).fill('staff@ticketing-preview.invalid');
     await signIn.getByRole('button', { name: 'Continue', exact: true }).click();
-    await signIn.locator('input[type=password]').fill('Local-ticketing-preview-2026!');
+    await signIn.getByLabel(/Enter your password/).fill('Local-ticketing-preview-2026!');
     await signIn.getByRole('button', { name: 'Sign In', exact: true }).click();
     await signIn.getByRole('button', { name: 'Open Admin', exact: true }).waitFor();
     await signInContext.close();

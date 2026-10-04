@@ -32,19 +32,20 @@ class RewardsRepository {
             : _pending[storageKey] ?? _newKey();
     _pending[storageKey] = key;
     try {
-      ticketAccessWrite(storageKey, key);
+      await ticketAccessWrite(storageKey, key);
     } catch (_) {/* Retain in memory. */}
     try {
       final Map<String, dynamic> result = await _api.request('rewards/$action',
           <String, dynamic>{...body, 'uid': uid, 'attempt': key});
-      _clear(storageKey, key);
+      await _clear(storageKey, key);
       return result;
     } on TicketingException catch (error) {
       // A server rejection is definite. Network/5xx failures retain the key so a
       // committed debit or award is retrieved, never applied again on retry.
       if (error.status >= 400 &&
           error.status < 500 &&
-          !<int>[401, 403, 429].contains(error.status)) _clear(storageKey, key);
+          !<int>[401, 403, 429].contains(error.status))
+        await _clear(storageKey, key);
       throw FirebaseException(
           plugin: 'pluto_rewards',
           code: error.code.isEmpty ? 'unavailable' : error.code,
@@ -52,11 +53,11 @@ class RewardsRepository {
     }
   }
 
-  static void _clear(String key, String attempt) {
+  static Future<void> _clear(String key, String attempt) async {
     if (_pending[key] != attempt) return;
     _pending.remove(key);
     try {
-      if (ticketAccessRead(key) == attempt) ticketAccessRemove(key);
+      if (ticketAccessRead(key) == attempt) await ticketAccessRemove(key);
     } catch (_) {/* Storage can be restricted. */}
   }
 

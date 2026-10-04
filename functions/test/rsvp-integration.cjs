@@ -13,6 +13,7 @@ const db = getFirestore(), staff = `rsvp-admin-${randomUUID()}`, signingKey = ge
 const service = new Operations(db, { signingKey, stripe: {} });
 const accessKey = () => randomBytes(32).toString('hex');
 const request = (eventId, overrides = {}) => ({ eventId, accessKey: accessKey(), name: 'RSVP Attendee', email: `${randomUUID()}@example.test`, items: [{ offerId: 'weekend', quantity: 1 }], ...overrides });
+async function verifiedRsvp(raw, actor) { return service.rsvp(raw, { ...actor, uid: actor?.uid || '', email: raw.email, email_verified: true }); }
 async function event(mode, capacity = 2) {
   const eventId = randomUUID(), draft = fixture(true); draft.slug += `-${eventId}`; draft.registrationMode = mode;
   draft.offers = [{ ...draft.offers[0], unitAmount: 0, maxPerOrder: 1 }]; draft.pools[0].capacity = capacity; draft.pools[1].capacity = capacity;
@@ -21,12 +22,12 @@ async function event(mode, capacity = 2) {
 const pool = async eid => (await service.event(eid).collection('pools').doc('friday').get()).data();
 async function main() {
   await db.collection('adminUsers').doc(staff).set({ role: 'admin' });
-  const open = await event('rsvp', 1), openRequest = request(open), confirmed = await service.rsvp(openRequest, null);
-  assert.equal(confirmed.status, 'paid'); await service.rsvp(openRequest, null);
+  const open = await event('rsvp', 1), openRequest = request(open), confirmed = await verifiedRsvp(openRequest, null);
+  assert.equal(confirmed.status, 'paid'); await verifiedRsvp(openRequest, null);
   let view = await service.view(confirmed.orderId, openRequest.accessKey, null);
   assert.equal(view.tickets.length, 1); assert.ok(view.tickets[0].qr); assert.equal(view.tickets[0].transferable, false); assert.ok(view.venue);
   assert.equal((await pool(open)).sold, 1); assert.equal((await pool(open)).held, 0);
-  await assert.rejects(() => service.rsvp(request(open), null), /not enough/);
+  await assert.rejects(() => verifiedRsvp(request(open), null), /not enough/);
   await assert.rejects(() => service.transfer(confirmed.orderId, openRequest.accessKey, null, view.tickets[0].id, 'unapproved@example.test'), /cannot be transferred/);
   const revokedQr = view.tickets[0].qr; await service.cancel(confirmed.orderId, openRequest.accessKey, null); await service.cancel(confirmed.orderId, openRequest.accessKey, null);
   assert.equal((await pool(open)).sold, 0); assert.equal((await service.scan(open, revokedQr, randomUUID(), staff)).result, 'invalid');
@@ -34,7 +35,7 @@ async function main() {
   assert.equal((await service.view(confirmed.orderId, openRequest.accessKey, null)).venue, null, 'withdrawn RSVPs no longer expose private venue details');
   const approval = await event('rsvp-approval', 1), first = request(approval), second = request(approval);
   const buyer = { uid: `rsvp-buyer-${randomUUID()}`, email: first.email, email_verified: true };
-  const pending = await service.rsvp(first, buyer), other = await service.rsvp(second, null);
+  const pending = await verifiedRsvp(first, buyer), other = await verifiedRsvp(second, null);
   assert.equal(pending.status, 'pending-approval'); assert.equal((await pool(approval)).sold, 0); assert.equal((await pool(approval)).held, 0);
   view = await service.view(pending.orderId, first.accessKey, null); assert.deepEqual(view.tickets, []); assert.equal(view.venue, null);
   assert.equal((await service.mine(buyer)).tickets.length, 0); assert.equal((await service.mine(buyer)).orders[0].rsvpStatus, 'pending');
@@ -44,9 +45,9 @@ async function main() {
   await assert.rejects(() => service.fulfill(pending.orderId, {}), /approval flow/);
   await assert.rejects(() => service.checkout(request(approval), null), /cannot be bypassed/);
   await assert.rejects(() => service.checkout({ ...request(approval), reason: 'Bypass' }, null, 'comp', staff), /cannot be bypassed/);
-  await assert.rejects(() => service.rsvp({ ...first, name: 'Changed' }, buyer), /different details/);
-  await assert.rejects(() => service.rsvp({ ...first, accessKey: accessKey() }, null), /already exists/);
-  await assert.rejects(() => service.rsvp(request(approval, { items: [{ offerId: 'weekend', quantity: 2 }] }), null), /once per person/);
+  await assert.rejects(() => verifiedRsvp({ ...first, name: 'Changed' }, buyer), /different details/);
+  await assert.rejects(() => verifiedRsvp({ ...first, accessKey: accessKey() }, null), /already exists/);
+  await assert.rejects(() => verifiedRsvp(request(approval, { items: [{ offerId: 'weekend', quantity: 2 }] }), null), /once per person/);
   await assert.rejects(() => service.reviewRsvp(approval, pending.orderId, 'approve', '', buyer.uid), /does not have access/);
   await assert.rejects(() => service.reviewRsvp(open, pending.orderId, 'approve', '', staff), /not found/);
   const manager = `rsvp-manager-${randomUUID()}`; await service.setStaff(approval, manager, ['manager'], staff);
@@ -63,10 +64,10 @@ async function main() {
   assert.equal((await service.scan(approval, view.tickets[0].qr, randomUUID(), staff)).result, 'accepted');
   await assert.rejects(() => service.withdrawRsvp(approval, winner.result.orderId, manager), /already arrived/);
   await assert.rejects(() => service.refund(winner.result.orderId, [view.tickets[0].id], accessKey(), staff), /no payment to refund/);
-  const withdrawEvent = await event('rsvp-approval'), withdrawing = request(withdrawEvent), withdrawn = await service.rsvp(withdrawing, null);
+  const withdrawEvent = await event('rsvp-approval'), withdrawing = request(withdrawEvent), withdrawn = await verifiedRsvp(withdrawing, null);
   await service.cancel(withdrawn.orderId, withdrawing.accessKey, null); assert.equal((await pool(withdrawEvent)).sold, 0);
   await assert.rejects(() => service.reviewRsvp(withdrawEvent, withdrawn.orderId, 'approve', '', staff), /already been resolved/);
-  const duplicateEmail = `${randomUUID()}@example.test`, attempts = await Promise.allSettled([service.rsvp(request(withdrawEvent, { email: duplicateEmail }), null), service.rsvp(request(withdrawEvent, { email: duplicateEmail }), null)]);
+  const duplicateEmail = `${randomUUID()}@example.test`, attempts = await Promise.allSettled([verifiedRsvp(request(withdrawEvent, { email: duplicateEmail }), null), verifiedRsvp(request(withdrawEvent, { email: duplicateEmail }), null)]);
   assert.equal(attempts.filter(r => r.status === 'fulfilled').length, 1, 'concurrent email retries cannot create two RSVPs');
   assert.equal((await service.guestList(approval, staff)).guests.length, 0, 'pending/declined RSVPs never become guest-list entries');
   const pin = await service.createScannerPin(approval, 'RSVP door', Date.now() + 3600000, staff), login = await service.scannerLogin(pin.pin, `rsvp-${randomUUID()}`);
@@ -80,9 +81,9 @@ async function main() {
   } finally { await new Promise(resolve => server.close(resolve)); }
   const originalFetch = global.fetch, sent = [];
   process.env.RESEND_API_KEY = 'test-rsvp-provider-key';
-  global.fetch = async (url, options) => { assert.equal(url, 'https://api.resend.com/emails'); sent.push(JSON.parse(options.body)); return { ok: true }; };
+  global.fetch = async (url, options) => { assert.equal(url, 'https://api.resend.com/emails'); sent.push(JSON.parse(options.body)); return { ok: true, json: async () => ({ id: randomUUID() }) }; };
   try {
-    await service.emailJob(`rsvppending_${pending.orderId}`); await service.emailJob(`receipt_${winner.result.orderId}`); await service.emailJob(`rsvpdeclined_${loser.orderId}`);
+    await service.emailJob(`rsvppending_${pending.orderId}`); await service.emailJob(`receipt_${winner.result.orderId}`); await service.emailJob(`rsvpdeclined_${loser.orderId}_0`);
     assert.match(sent[0].text, /approval is required/i); assert.match(sent[1].text, /RSVP is confirmed/); assert.match(sent[2].text, /declined/);
     assert.match(sent[0].html, /View RSVP status/); assert.match(sent[1].html, /Open my RSVP pass/); assert.match(sent[2].html, /View my RSVP/);
     for (const email of sent) { assert.ok(!email.attachments); assert.ok(!email.text.includes('PLUTO1.') && !email.html.includes('PLUTO1.')); assert.match(email.text, /QR codes stay in the app/); assert.ok(!email.html.includes('Private secret venue') && !email.html.includes('123 Hidden Lane')); }

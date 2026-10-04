@@ -10,8 +10,8 @@ export function browserEnvironment(input) {
   const endpoints = { FIRESTORE_EMULATOR_HOST: '127.0.0.1:8185', FIREBASE_AUTH_EMULATOR_HOST: '127.0.0.1:9095', FIREBASE_STORAGE_EMULATOR_HOST: '127.0.0.1:9295' };
   for (const [name, value] of Object.entries(endpoints)) if (input[name] !== value) throw new Error(`Browser CI requires ${name}=${value}.`);
   const env = { ...input, ...endpoints, TICKETING_STORAGE_BUCKET: 'demo-pluto-ticketing.appspot.com', WAIVER_STORAGE_BUCKET: 'demo-pluto-ticketing.appspot.com',
-    TICKETING_MODE: 'test', TICKETING_LIVE_READY: 'false', TICKETING_WALLETS_ENABLED: 'false', TICKETING_BASE_URL: 'http://127.0.0.1:4173', PUBLIC_SITE_PREVIEW: 'true', PORT: '4173' };
-  for (const name of ['STRIPE_RESTRICTED_KEY', 'STRIPE_WEBHOOK_SECRET', 'STRIPE_PUBLISHABLE_KEY', 'RESEND_API_KEY', 'TICKETING_WALLET_CREDENTIALS',
+    TICKETING_MODE: 'test', TICKETING_LIVE_READY: 'false', TICKETING_WALLETS_ENABLED: 'false', TICKETING_RESEND_WEBHOOK_ENABLED: 'false', TICKETING_BASE_URL: 'http://127.0.0.1:4173', PUBLIC_SITE_PREVIEW: 'true', PORT: '4173' };
+  for (const name of ['STRIPE_RESTRICTED_KEY', 'STRIPE_WEBHOOK_SECRET', 'STRIPE_PUBLISHABLE_KEY', 'RESEND_API_KEY', 'RESEND_WEBHOOK_SECRET', 'TICKETING_WALLET_CREDENTIALS',
     'GOOGLE_APPLICATION_CREDENTIALS', 'GOOGLE_CLOUD_PROJECT', 'PLUTO_FIREBASE_WEB_CONFIG', 'PLUTO_ENVIRONMENT', 'PLUTO_RELEASE_SHA']) delete env[name];
   const { privateKey } = generateKeyPairSync('ed25519');
   env.TICKETING_SIGNING_KEY = privateKey.export({ format: 'der', type: 'pkcs8' }).toString('base64');
@@ -52,7 +52,7 @@ async function main() {
     }
     if (!ready) throw new Error('CI preview did not become ready.');
     await run('scripts/ticketing/seed-preview.cjs');
-    const suites = ['browser', 'wallet-browser', 'scanner-pin-browser', 'rsvp-browser', 'free-events-browser', 'checkout-account-browser', 'orders-browser', 'rewards-browser', 'location-reveal-browser'];
+    const suites = ['browser', 'wallet-browser', 'scanner-pin-browser', 'rsvp-browser', 'free-events-browser', 'checkout-account-browser', 'orders-browser', 'rewards-browser', 'location-reveal-browser', 'operations-offline-browser'];
     const selection = process.argv.find(arg => arg.startsWith('--suites='))?.slice(9).split(',') || suites;
     if (!selection.length || selection.some(suite => !suites.includes(suite))) throw new Error('Unknown browser suite selection.');
     for (const suite of selection) await run(`scripts/ticketing/${suite}-test.cjs`);

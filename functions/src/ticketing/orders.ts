@@ -41,7 +41,7 @@ export class Orders extends Catalog {
     if (typeof key === 'string' && /^[a-f0-9]{64}$/.test(key)) {
       if (hash(key) === order.accessHash) return order;
       const access = (await this.db.collection('ticketingAccess').doc(hash(key)).get()).data();
-      if (access?.orderId === orderId && access.expiresAt > Date.now()) return order;
+      if (access?.orderId === orderId && access.expiresAt > Date.now() && (access.accessRevision || 0) === ((order as any).accessRevision || 0)) return order;
     }
     return fail('Use your secure order link or sign in with the purchasing account.', 403);
   }
@@ -61,7 +61,7 @@ export class Orders extends Catalog {
         if (typeof raw.accessKey === 'string' && /^[a-f0-9]{64}$/.test(raw.accessKey)) {
           const proofHash = hash(raw.accessKey);
           if (proofHash === order.accessHash) authorized = true;
-          else { const access = (await tx.get(this.db.collection('ticketingAccess').doc(proofHash))).data(); authorized ||= access?.orderId === ticket.orderId && access?.expiresAt > Date.now(); }
+          else { const access = (await tx.get(this.db.collection('ticketingAccess').doc(proofHash))).data(); authorized ||= access?.orderId === ticket.orderId && access?.expiresAt > Date.now() && (access?.accessRevision || 0) === (order.accessRevision || 0); }
         }
       }
       if (!authorized) fail('Use your secure ticket link or sign in as the current ticket holder.', 403);
@@ -429,7 +429,7 @@ export class Orders extends Catalog {
     const tickets = await this.tickets().where('ownerUid', '==', actor.uid).get();
     return { orders: orders.docs.map(d => { const o = d.data(); return { orderId: d.id, eventTitle: o.eventTitle, status: o.status, method: o.method, rsvpStatus: o.rsvpStatus || '', total: o.total, createdAt: o.createdAt }; }).sort((a, b) => b.createdAt - a.createdAt),
       tickets: await Promise.all(tickets.docs.map(async t => { const d = t.data(), event = (await this.event(d.eventId).get()).data(), order = (await this.order(d.orderId).get()).data(); return { id: t.id, orderId: d.orderId, eventTitle: d.eventTitle, name: d.name, holderName: d.holderName, status: d.status,
-        admission: d.admission, transferable: !order?.financialBlocked && !d.rsvp && d.status === 'valid' && !d.admission && event?.status !== 'cancelled' && Date.now() < this.transferDeadline(d, event),
+        admission: d.admission, validFrom: d.validFrom, validUntil: d.validUntil, version: d.version, transferable: !order?.financialBlocked && !d.rsvp && d.status === 'valid' && !d.admission && event?.status !== 'cancelled' && Date.now() < this.transferDeadline(d, event),
         venue: !order?.financialBlocked && d.status === 'valid' && (!d.rsvp || order?.rsvpStatus === 'approved') ? holderVenue(event?.liveDraft || event?.draft) : null,
         qr: !order?.financialBlocked && d.status === 'valid' && event?.status !== 'cancelled' ? this.credential(d, t.id) : null }; })) };
   }
@@ -438,7 +438,7 @@ export class Orders extends Catalog {
     for (const doc of docs.docs.slice(0, 25)) {
       const token = secret();
       const batch = this.db.batch();
-      batch.set(this.db.collection('ticketingRecovery').doc(hash(token)), { orderId: doc.id, expiresAt: Date.now() + 30 * 60000, used: false });
+      batch.set(this.db.collection('ticketingRecovery').doc(hash(token)), { orderId: doc.id, accessRevision: doc.data().accessRevision || 0, expiresAt: Date.now() + 30 * 60000, used: false });
       batch.set(this.db.collection('ticketingEmailJobs').doc(`recovery_${hash(token)}`), { type: 'recovery', orderId: doc.id, to: target, token, status: 'pending', attempts: 0, createdAt: Date.now() });
       await batch.commit();
     }
@@ -448,7 +448,9 @@ export class Orders extends Catalog {
     const token = receipt(rawToken), ref = this.db.collection('ticketingRecovery').doc(hash(token)), accessKey = secret();
     const orderId = await this.db.runTransaction(async tx => {
       const record = (await tx.get(ref)).data(); if (!record || record.used || record.expiresAt < Date.now()) fail('This recovery link is expired or already used.', 403);
-      tx.update(ref, { used: true }); tx.create(this.db.collection('ticketingAccess').doc(hash(accessKey)), { orderId: record.orderId, expiresAt: Date.now() + 24 * 3600000 });
+      const order = (await tx.get(this.order(record.orderId))).data();
+      if (!order || (record.accessRevision || 0) !== (order.accessRevision || 0)) fail('This order link was replaced. Request a new recovery email.', 403);
+      tx.update(ref, { used: true }); tx.create(this.db.collection('ticketingAccess').doc(hash(accessKey)), { orderId: record.orderId, accessRevision: order.accessRevision || 0, expiresAt: Date.now() + 24 * 3600000 });
       return record.orderId;
     });
     return { orderId, accessKey };
@@ -509,6 +511,7 @@ export class Orders extends Catalog {
     const event = (await this.event(ticket.eventId).get()).data()!;
     if (event.status === 'cancelled') fail('This event has been cancelled. Contact Pluto about your order.', 409);
     return { id: access.ticketId, orderId: ticket.orderId, name: ticket.name, eventTitle: ticket.eventTitle, holderName: ticket.holderName, status: ticket.status,
+      validFrom: ticket.validFrom, validUntil: ticket.validUntil, admission: ticket.admission || null, version: ticket.version,
       transferable: !ticket.rsvp && !ticket.admission && Date.now() < this.transferDeadline(ticket, event), qr: this.credential(ticket, access.ticketId),
       venue: holderVenue(event.liveDraft || event.draft) };
   }
@@ -665,9 +668,9 @@ export class Orders extends Catalog {
     await this.role(uid, order.eventId, ['manager', 'refund', 'cash']);
     if (order.method === 'stripe' && order.sessionId && order.status !== 'paid') await this.verifySession(orderId);
     order = (await this.order(orderId).get()).data()!;
-    const [eventSnap, tickets, refunds, audit, admin, scope] = await Promise.all([
+    const [eventSnap, tickets, refunds, audit, admin, scope, emails] = await Promise.all([
       this.event(order.eventId).get(), this.tickets().where('orderId', '==', orderId).get(), this.db.collection('ticketingRefunds').where('orderId', '==', orderId).get(),
-      this.event(order.eventId).collection('audit').where('orderId', '==', orderId).get(), this.db.collection('adminUsers').doc(uid).get(), this.db.collection('ticketingStaff').doc(`${order.eventId}_${uid}`).get(),
+      this.event(order.eventId).collection('audit').where('orderId', '==', orderId).get(), this.db.collection('adminUsers').doc(uid).get(), this.db.collection('ticketingStaff').doc(`${order.eventId}_${uid}`).get(), this.db.collection('ticketingEmailJobs').where('orderId', '==', orderId).get(),
     ]);
     const roles: string[] = admin.exists ? ['manager', 'refund', 'cash', 'admission'] : scope.data()?.roles || [], draft = eventSnap.data()?.liveDraft || eventSnap.data()?.draft, eventStatus = eventSnap.data()?.status || 'missing';
     const canAdmit = roles.some(r => ['manager', 'admission'].includes(r)), now = Date.now();
@@ -677,7 +680,9 @@ export class Orders extends Catalog {
       stripeFee: order.stripeFee ?? null, stripeFeeStatus: order.stripeFeeStatus || 'pending', createdAt: order.createdAt, paidAt: order.paidAt || null, expiresAt: order.expiresAt,
       promoCode: order.promoCode || '', promoterId: order.promoterId || '', financialBlocked: !!order.financialBlocked, reviewReason: order.financialReviewReason || order.reviewReason || '',
       providerState: order.providerState || 'unknown', sessionId: order.sessionId || '', paymentIntentId: order.paymentIntentId || '', receiptUrl: order.receiptUrl || '', livemode: order.livemode,
-      permissions: { canRefund: roles.includes('refund'), canCheckIn: canAdmit, canResolve: roles.includes('manager') },
+      supportRevision: order.supportRevision || 0,
+      emails: emails.docs.map(d => { const e = d.data(); return { id: d.id, type: e.type, to: e.to, status: e.status, deliveryStatus: e.deliveryStatus || '', createdAt: e.createdAt, sentAt: e.sentAt || null, lastError: e.lastError || '' }; }).sort((a, b) => b.createdAt - a.createdAt).slice(0, 20),
+      permissions: { canRefund: roles.includes('refund'), canCheckIn: canAdmit, canResolve: roles.includes('manager'), canSupport: roles.includes('manager') },
       tickets: tickets.docs.map(doc => { const t = doc.data();
         const reason = t.admission ? 'Already checked in' : !canAdmit ? 'Admission permission required' : order!.financialBlocked ? 'Payment requires review' : order!.status !== 'paid' ? 'Order is not paid or confirmed' : t.rsvp && order!.rsvpStatus !== 'approved' ? 'RSVP is not approved' : t.status !== 'valid' ? 'Ticket is not valid' : ['cancelled', 'archived', 'missing'].includes(eventStatus) ? 'Event is not open for admission' : !Number.isFinite(Date.parse(t.validFrom)) || !Number.isFinite(Date.parse(t.validUntil)) || now < Date.parse(t.validFrom) || now > Date.parse(t.validUntil) ? 'Outside admission window' : '';
         return { id: doc.id, number: (t.index ?? 0) + 1, name: t.name, kind: t.kind, holderName: t.holderName || order!.name, holderEmail: t.holderEmail || order!.email, status: t.status,

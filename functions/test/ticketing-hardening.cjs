@@ -31,7 +31,12 @@ test('A3: 75 purchasers on one network remain independent while contact/client a
     assert.equal(rejected, true, 'one client cannot bypass its limit by changing email');
     const rsvpEvent = await h.event(d => { d.registrationMode = 'rsvp'; d.offers = [{ ...d.offers[0], unitAmount: 0, maxPerOrder: 1 }]; d.pools.forEach(p => p.capacity = 100); });
     for (let start = 0; start < 45; start += 5) {
-      const results = await Promise.all(Array.from({ length: 5 }, (_, index) => post('rsvp', h.request(rsvpEvent, { email: `${h.prefix}-rsvp-${start + index}@example.test` }), h.newKey())));
+      const results = await Promise.all(Array.from({ length: 5 }, async (_, index) => {
+        const raw = h.request(rsvpEvent, { email: `${h.prefix}-rsvp-${start + index}@example.test` }), client = h.newKey();
+        const verifying = await post('rsvp/verification', raw, client); assert.equal(verifying.status, 200);
+        const proof = await verifying.json(), job = (await h.db.collection('ticketingEmailJobs').doc(`verify_${hash(proof.verificationToken)}`).get()).data();
+        return post('rsvp', { ...raw, ...proof, verificationCode: job.code }, client);
+      }));
       for (const response of results) assert.equal(response.status, 200, await response.text());
     }
     for (let i = 0; i < 15; i++) assert.equal((await post('recover', { email: `${h.prefix}-recover-${i}@example.test` }, h.newKey())).status, 200);

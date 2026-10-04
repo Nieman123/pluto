@@ -1,4 +1,4 @@
-import { accessKey, action, api, bind, message, money } from './api.js';
+import { accessKey, action, api, bind, dialog, message, money } from './api.js';
 
 export function initCheckout() {
   const form = document.querySelector('#native-checkout-form'); if (!form) return;
@@ -47,7 +47,7 @@ const rsvp = ['rsvp', 'rsvp-approval'].includes(config.registrationMode);
     frozen = request; localStorage.setItem(storageKey, JSON.stringify(frozen));
     try { result = await api(rsvp ? 'rsvp' : 'checkout', frozen); }
     catch (error) {
-      if ([400, 409].includes(error.status)) {
+      if ([400, 403, 409].includes(error.status)) {
         const attempt = await api('checkout-attempt', { accessKey: frozen.accessKey }).catch(() => null);
         if (attempt?.exists === false) { localStorage.removeItem(storageKey); frozen = null; lockCart(); }
       }
@@ -74,6 +74,22 @@ const rsvp = ['rsvp', 'rsvp-approval'].includes(config.registrationMode);
         const items = [...form.querySelectorAll('[data-ticket-quantity]')].filter(s => Number(s.value) > 0).map(s => ({ offerId: s.name, quantity: Number(s.value) }));
         if (rsvp ? items.length !== 1 || items[0].quantity !== 1 : !items.length) throw new Error(rsvp ? 'Choose one RSVP admission pass. Each person needs their own RSVP.' : 'Choose at least one ticket.');
         frozen = { eventId: config.eventId, accessKey: accessKey(), items, promoCode: data.get('promoCode'), name: data.get('buyerName'), email: data.get('email'), ...attribution };
+        if (rsvp) {
+          let verification;
+          try { verification = await api('rsvp/verification', { eventId: config.eventId, email: frozen.email }); }
+          catch (error) { frozen = null; lockCart(); throw error; }
+          if (!verification.verified) {
+            const content = dialog(`<h2>Verify your RSVP email</h2><p>We sent a six-digit code to ${String(frozen.email).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))}. It expires in 15 minutes.</p><form id="rsvp-email-code"><label>Email verification code<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label><p>Verifying your email does not grant admission. Organizer approval still applies.</p><button class="button button-primary">Verify & submit RSVP</button></form>`);
+            const code = await new Promise(resolve => {
+              const modal = document.querySelector('#ticketing-dialog');
+              const close = () => { modal.removeEventListener('close', close); resolve(null); };
+              modal.addEventListener('close', close);
+              content.querySelector('form').onsubmit = e => { e.preventDefault(); modal.removeEventListener('close', close); resolve(new FormData(e.target).get('code')); modal.close(); };
+            });
+            if (!code) { frozen = null; lockCart(); throw new Error('RSVP was not submitted. Verify your email to continue.'); }
+            frozen.verificationToken = verification.verificationToken; frozen.verificationCode = code;
+          }
+        }
       }
       lockCart(); message(rsvp ? 'Submitting your RSVP…' : 'Preparing your reserved checkout…'); await mount(frozen);
     });

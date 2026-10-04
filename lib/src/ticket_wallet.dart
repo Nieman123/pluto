@@ -13,10 +13,12 @@ Future<Map<String, dynamic>> loadTicketWallet({
   final Map<String, dynamic> orders = <String, dynamic>{};
   final Map<String, dynamic> tickets = <String, dynamic>{};
   final Set<String> warnings = <String>{};
+  final List<int> savedTimes = <int>[];
   if (signedIn) {
     try {
       final Map<String, dynamic> linked =
           await request('mine', <String, dynamic>{});
+      if (linked['offline'] == true) savedTimes.add(linked['savedAt'] as int);
       for (final dynamic order in linked['orders'] as List) {
         orders[order['orderId'] as String] = order;
       }
@@ -42,6 +44,7 @@ Future<Map<String, dynamic>> loadTicketWallet({
         final String? token = readAccess(key);
         final Map<String, dynamic> ticket =
             await request('holder', <String, dynamic>{'token': token});
+        if (ticket['offline'] == true) savedTimes.add(ticket['savedAt'] as int);
         tickets[ticket['id'] as String] = <String, dynamic>{
           ...ticket,
           'holderToken': token
@@ -53,6 +56,7 @@ Future<Map<String, dynamic>> loadTicketWallet({
           'orderId': orderId,
           'accessKey': readAccess(key)
         });
+        if (order['offline'] == true) savedTimes.add(order['savedAt'] as int);
         orders[orderId] = order;
         for (final dynamic ticket in order['tickets'] as List) {
           tickets[ticket['id'] as String] = <String, dynamic>{
@@ -94,6 +98,8 @@ Future<Map<String, dynamic>> loadTicketWallet({
   return <String, dynamic>{
     'orders': orders.values.toList(),
     'tickets': tickets.values.toList(),
-    'warnings': warnings.toList()
+    'warnings': warnings.toList(),
+    if (savedTimes.isNotEmpty) 'offline': true,
+    if (savedTimes.isNotEmpty) 'savedAt': (savedTimes..sort()).first,
   };
 }

@@ -2,6 +2,7 @@ import { cp, mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import { createRequire } from 'node:module';
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildAttendeeShell } from './ticketing/attendee-shell.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const dist = resolve(root, "dist");
@@ -28,6 +29,7 @@ await cp(resolve(root, "assets/fonts"), resolve(dist, "assets/fonts"), { recursi
 await cp(resolve(root, "web/firebase-messaging-sw.js"), resolve(dist, "firebase-messaging-sw.js"));
 await writeFile(resolve(dist, 'assets/firebase-public-config.js'),
   `self.PLUTO_ENVIRONMENT=${JSON.stringify(deployment.environment)};self.PLUTO_FIREBASE_CONFIG=${JSON.stringify(deployment.web)};\n`);
+await buildAttendeeShell(dist);
 await cp(resolve(root, "web/favicon.png"), resolve(dist, "favicon.png"));
 await cp(resolve(root, "web/pluto-preview.jpg"), resolve(dist, "assets/images/pluto-preview.jpg"));
 await cp(

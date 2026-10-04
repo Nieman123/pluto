@@ -115,7 +115,7 @@ test('RSVP approvals remain required and transferred holder information is visib
   const h = harness(); let transferredTicket;
   try {
     const eid = await h.event(d => { d.registrationMode = 'rsvp-approval'; d.offers = [{ ...d.offers[0], unitAmount: 0, maxPerOrder: 1 }]; });
-    const raw = h.request(eid), pending = await h.service.rsvp(raw, null);
+    const raw = h.request(eid), pending = await h.service.rsvp(raw, { uid: '', email: raw.email, email_verified: true });
     assert.equal((await h.service.staffOrder(pending.orderId, h.staff)).tickets.length, 0);
     await h.service.reviewRsvp(eid, pending.orderId, 'approve', 'Approved guest', h.staff);
     const approved = await h.service.staffOrder(pending.orderId, h.staff), ticket = approved.tickets[0];

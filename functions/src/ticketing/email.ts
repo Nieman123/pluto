@@ -1,7 +1,7 @@
 import type { EventDraft } from './domain';
 import type { Order } from './orders';
 
-export type EmailKind = 'receipt' | 'recovery' | 'transfer' | 'refund' | 'rsvp-pending' | 'rsvp-declined' | 'rsvp-confirmed';
+export type EmailKind = 'receipt' | 'recovery' | 'transfer' | 'refund' | 'rsvp-pending' | 'rsvp-declined' | 'rsvp-confirmed' | 'rsvp-verification';
 export interface TicketingEmailInput {
   kind: EmailKind;
   order: Pick<Order, 'eventTitle' | 'total' | 'currency' | 'units' | 'taxAmount'>;
@@ -29,6 +29,12 @@ function content(input: TicketingEmailInput) {
   const title = order.eventTitle;
   const linkHelp = 'Keep this link private. It can be opened once within 30 days. You can request another link from My tickets.';
   switch (kind) {
+    case 'rsvp-verification': return {
+      subject: `${title} RSVP email code`, label: 'VERIFY YOUR EMAIL', heading: 'One more step to RSVP.',
+      preview: 'Confirm your email address to submit your RSVP.',
+      paragraphs: [`Your verification code is ${note}. Enter it on the event page within 15 minutes.`, 'This code verifies your email only. Organizer approval is still required when applicable.'],
+      button: 'Open event page', help: 'If you did not request this code, ignore this email.', notice: 'This email does not grant admission or reserve capacity.',
+    };
     case 'receipt': return {
       subject: `Your ${title} tickets`, label: 'ORDER CONFIRMED', heading: 'See you on the dance floor.',
       preview: `Your ${title} order is confirmed. Open your tickets in the Pluto app.`,

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'src/html_open_link.dart';
+import 'src/offline_ticket_cache.dart';
 import 'src/ticket_access_store.dart';
 import 'src/ticket_qr.dart';
 import 'src/ticket_wallet.dart';
@@ -18,6 +19,12 @@ class TicketsPage extends StatefulWidget {
 
 class _TicketsPageState extends State<TicketsPage> {
   final TicketingRepository _repository = TicketingRepository();
+  final OfflineTicketCache _cache = OfflineTicketCache(
+      read: ticketAccessRead,
+      write: ticketAccessWrite,
+      remove: ticketAccessRemove,
+      keys: ticketAccessKeys);
+  String? _lastAccount;
   final TextEditingController _email = TextEditingController();
   StreamSubscription<User?>? _authSubscription;
   Map<String, dynamic>? _data;
@@ -27,6 +34,7 @@ class _TicketsPageState extends State<TicketsPage> {
   String? _error;
   String? _notice;
   bool _busy = false;
+  bool _refreshAfterAuthChange = false;
   static const bool _showAddToWallet =
       bool.fromEnvironment('TICKETING_WALLET_UI_ENABLED');
   Timer? _locationRevealTimer;
@@ -50,8 +58,19 @@ class _TicketsPageState extends State<TicketsPage> {
   void initState() {
     super.initState();
     _orderId = widget.uri.queryParameters['order'];
+    _lastAccount = FirebaseAuth.instance.currentUser?.uid;
     _authSubscription = FirebaseAuth.instance.authStateChanges().listen((_) {
-      if (!_busy) _refresh();
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (_lastAccount == uid) return;
+      if (_lastAccount != null && _lastAccount != uid)
+        _cache.clear('account-$_lastAccount');
+      _lastAccount = uid;
+      if (mounted) setState(() => _data = null);
+      if (!_busy) {
+        _refresh();
+      } else {
+        _refreshAfterAuthChange = true;
+      }
     });
     _openLink();
   }
@@ -82,6 +101,10 @@ class _TicketsPageState extends State<TicketsPage> {
             () => _error = error.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _busy = false);
+      if (mounted && _refreshAfterAuthChange) {
+        _refreshAfterAuthChange = false;
+        _refresh();
+      }
     }
   }
 
@@ -93,7 +116,7 @@ class _TicketsPageState extends State<TicketsPage> {
               'recover/accept',
               <String, dynamic>{'token': fragments['recovery']});
           _orderId = result['orderId'] as String;
-          ticketAccessWrite(
+          await ticketAccessWrite(
               'pluto-order-$_orderId', result['accessKey'] as String);
           if (mounted) context.replace('/tickets?order=$_orderId');
         }
@@ -104,7 +127,8 @@ class _TicketsPageState extends State<TicketsPage> {
             await _repository
                 .request('holder', <String, dynamic>{'token': _transferToken});
             _holderToken = _transferToken;
-            ticketAccessWrite('pluto-holder-$_holderToken', _holderToken!);
+            await ticketAccessWrite(
+                'pluto-holder-$_holderToken', _holderToken!);
             _transferToken = null;
           } catch (error) {
             if (!error.toString().contains('not found')) rethrow;
@@ -122,10 +146,10 @@ class _TicketsPageState extends State<TicketsPage> {
       }
     }
     if (_holderToken != null)
-      _data = await _repository
-          .request('holder', <String, dynamic>{'token': _holderToken});
+      _data = await _cachedRequest(
+          'holder', <String, dynamic>{'token': _holderToken});
     else if (_orderId != null)
-      _data = await _repository.request('order', <String, dynamic>{
+      _data = await _cachedRequest('order', <String, dynamic>{
         'orderId': _orderId,
         'accessKey': ticketAccessRead('pluto-order-$_orderId')
       });
@@ -167,11 +191,30 @@ class _TicketsPageState extends State<TicketsPage> {
   }
 
   Future<Map<String, dynamic>> _wallet() => loadTicketWallet(
-      request: _repository.request,
+      request: _cachedRequest,
       signedIn: FirebaseAuth.instance.currentUser != null,
       savedKeys: ticketAccessKeys(),
       readAccess: ticketAccessRead,
       removeAccess: ticketAccessRemove);
+
+  Future<Map<String, dynamic>> _cachedRequest(
+      String path, Map<String, dynamic> body) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final scope = uid == null ? 'guest' : 'account-$uid';
+    final Map<String, dynamic> result;
+    try {
+      result = await _cache.request(path, body, scope, _repository.request);
+    } catch (_) {
+      if (mounted) setState(() => _data = null);
+      rethrow;
+    }
+    if (FirebaseAuth.instance.currentUser?.uid != uid) {
+      await _cache.clear(scope);
+      throw const TicketingException(
+          401, 'Your account changed. Refresh your tickets.');
+    }
+    return result;
+  }
 
   Future<void> _refresh() => _run(_load);
   Future<void> _addToWallet(Map<String, dynamic> ticket) async {
@@ -346,7 +389,7 @@ class _TicketsPageState extends State<TicketsPage> {
   Widget _body(String text) => Text(text,
       style: const TextStyle(color: _muted, height: 1.6, fontSize: 14));
 
-  void _startAccount(String route) {
+  Future<void> _startAccount(String route) async {
     final Map<String, dynamic>? data = _data;
     final List<dynamic> orders =
         data?['orders'] as List<dynamic>? ?? <dynamic>[];
@@ -355,9 +398,11 @@ class _TicketsPageState extends State<TicketsPage> {
         : orders.isNotEmpty
             ? orders.first as Map
             : null;
-    ticketAccessWrite(
+    await ticketAccessWrite(
         'pluto-account-email', contact?['email'] as String? ?? '');
-    ticketAccessWrite('pluto-account-name', contact?['name'] as String? ?? '');
+    await ticketAccessWrite(
+        'pluto-account-name', contact?['name'] as String? ?? '');
+    if (!mounted) return;
     final String returnTo = Uri(
         path: '/tickets',
         queryParameters: <String, String>{
@@ -621,7 +666,7 @@ class _TicketsPageState extends State<TicketsPage> {
         Wrap(spacing: 12, runSpacing: 8, children: <Widget>[
           if (data['status'] == 'paid')
             TextButton(
-                onPressed: _busy
+                onPressed: _busy || data['offline'] == true
                     ? null
                     : () => _run(() async {
                           await _repository.request('resend', <String, dynamic>{
@@ -637,7 +682,7 @@ class _TicketsPageState extends State<TicketsPage> {
           if (data['method'] == 'rsvp' &&
               <String>['pending', 'approved'].contains(data['rsvpStatus']))
             TextButton(
-                onPressed: _busy
+                onPressed: _busy || data['offline'] == true
                     ? null
                     : () => _run(() async {
                           final bool? withdraw = await showDialog<bool>(
@@ -792,6 +837,12 @@ class _TicketsPageState extends State<TicketsPage> {
                                             style: const TextStyle(
                                                 color: _accent, height: 1.6))
                                       ]),
+                                    if (data?['offline'] == true)
+                                      _panel(children: <Widget>[
+                                        _title('Saved tickets · Offline'),
+                                        _body(
+                                            'Last synced ${DateFormat.yMMMd().add_jm().format(DateTime.fromMillisecondsSinceEpoch(data!['savedAt'] as int))}. Admission status and venue details may have changed. Reconnect to refresh before arrival.')
+                                      ]),
                                     for (final dynamic warning
                                         in data?['warnings'] as List? ??
                                             <dynamic>[])
@@ -818,7 +869,7 @@ class _TicketsPageState extends State<TicketsPage> {
                                                           });
                                                       _holderToken =
                                                           _transferToken;
-                                                      ticketAccessWrite(
+                                                      await ticketAccessWrite(
                                                           'pluto-holder-$_holderToken',
                                                           _holderToken!);
                                                       _transferToken = null;
@@ -908,7 +959,10 @@ class _TicketsPageState extends State<TicketsPage> {
                                           padding:
                                               const EdgeInsets.only(bottom: 14),
                                           child: TextButton.icon(
-                                              onPressed: _busy ? null : _claim,
+                                              onPressed: _busy ||
+                                                      data?['offline'] == true
+                                                  ? null
+                                                  : _claim,
                                               icon: const Icon(Icons.sync),
                                               label: const Text(
                                                   'Link purchases with my verified email'))),

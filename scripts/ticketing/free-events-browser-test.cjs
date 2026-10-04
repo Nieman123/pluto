@@ -82,7 +82,7 @@ async function field(page, path, value) {
     await app.goto(`${base}/app/sign-on`); await semantics(app);
     await app.getByRole('textbox', { name: /Email/ }).fill('staff@ticketing-preview.invalid');
     await app.getByRole('button', { name: 'Continue', exact: true }).click();
-    await app.locator('input[type=password]').fill('Local-ticketing-preview-2026!');
+    await app.getByLabel(/Enter your password/).fill('Local-ticketing-preview-2026!');
     await app.getByRole('button', { name: 'Sign In', exact: true }).click();
     await app.getByRole('button', { name: 'Open Admin', exact: true }).waitFor();
     await app.goto(`${base}/app/`); await semantics(app);

@@ -6,9 +6,34 @@ import { financialSummary } from './financial-summary.js';
 import { revenueChart } from './revenue-chart.js';
 import { allOrders, eventOrders } from './orders.js';
 import { updateEventSchedule } from './event-schedule.js';
+import { healthDashboard } from './health.js';
 
 let record, events = [], dirty = false, pendingUploads = 0, studio = false, globalAdmin = false, saving, allOrdersMode = false;
+async function healthBadge() {
+  if (!globalAdmin || !user) return;
+  const uid = user.uid;
+  try {
+    const data = await api('staff/health');
+    if (!user || user.uid !== uid) return;
+    const button = document.querySelector('#system-health');
+    button.textContent = `System health${data.issues.length ? ` · ${data.issues.length} alerts` : ''}`;
+    button.classList.toggle('health-alert', data.counts.critical > 0);
+  } catch { /* Keep event editing usable while health services are unavailable. */ }
+}
 const get = (path, object = record?.draft) => path.split('.').reduce((o, key) => o?.[key], object);
+async function loadCardFlyers(cards) {
+  const uid = user?.uid, images = [...cards.querySelectorAll('[data-card-flyer]')];
+  // Loading every authenticated flyer at once contends with editor requests
+  // on the same rate-limit counter. Stop if the list is replaced or hidden.
+  async function next() {
+    while (images.length && user?.uid === uid && !document.querySelector('#events-index').hidden) {
+      const image = images.shift(); if (!image.isConnected) return;
+      try { const blob = await api('staff/card-flyer', { eventId: image.dataset.cardFlyer }, true), url = URL.createObjectURL(blob); image.onload = image.onerror = () => URL.revokeObjectURL(url); image.src = url; }
+      catch { image.remove(); }
+    }
+  }
+  await Promise.all([next(), next()]);
+}
 function set(path, value) {
   if (!updateEventSchedule(record.draft, path, value)) {
     const keys = path.split('.'), last = keys.pop(); let target = record.draft; for (const key of keys) target = target[key] ??= {}; target[last] = value;
@@ -71,6 +96,8 @@ function defaultDraft() {
 export async function loadEvents() {
   const result = await api('staff/events', { revenue: true }); events = result.events; globalAdmin = result.admin;
   document.querySelector('#orders-all').hidden = !globalAdmin || allOrdersMode;
+  document.querySelector('#system-health').hidden = !globalAdmin;
+  healthBadge();
   const selector = document.querySelector('#staff-event'), current = selector.value;
   selector.innerHTML = '<option value="">Select an event</option>' + events.map(e => `<option value="${esc(e.id)}">${esc(e.title)} · ${esc(e.status)}</option>`).join('');
   if (events.some(e => e.id === current)) selector.value = current;
@@ -80,10 +107,6 @@ export async function loadEvents() {
   const cards = document.querySelector('#event-list');
   if (cards) {
     cards.innerHTML = events.length ? events.map(e => `<button class="admin-event-card ${e.flyer ? 'has-flyer' : ''}" data-open-event="${esc(e.id)}">${e.flyer ? `<img class="admin-card-flyer" data-card-flyer="${esc(e.id)}" alt="Flyer for ${esc(e.title)}">` : ''}<span class="status-pill status-${esc(e.status)}">${esc(e.status)}</span><span class="event-card-date">${esc(new Date(e.startAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: e.timezone }))}</span><strong>${esc(e.title)}</strong><span>${esc(e.city || 'Location to be announced')}${e.region ? `, ${esc(e.region)}` : ''}</span>${e.revenue ? `<span class="card-revenue"><span>This week <b>${money(e.revenue.thisWeek)}</b></span><span>Total gross <b>${money(e.revenue.gross)}</b></span></span>` : ''}<span class="card-action">View dashboard <span aria-hidden="true">↗</span></span></button>`).join('') : '<div class="empty-state"><h3>Your next event starts here.</h3><p>Create an event, add the artwork and ticket types, then publish when you’re ready.</p></div>';
-    cards.querySelectorAll('[data-card-flyer]').forEach(async image => {
-      try { const blob = await api('staff/card-flyer', { eventId: image.dataset.cardFlyer }, true), url = URL.createObjectURL(blob); image.onload = image.onerror = () => URL.revokeObjectURL(url); image.src = url; }
-      catch { image.remove(); }
-    });
     const weekly = document.querySelector('#weekly-revenue'), financial = events.filter(e => e.revenue);
     weekly.hidden = !financial.length;
     weekly.innerHTML = `<div class="ticket-stat-grid weekly-stat-grid">${[['This week', 'thisWeek'], ['Last week', 'lastWeek'], ['Total gross revenue', 'gross']].map(([label, key]) => `<div class="ticket-stat"><span>${label}</span><strong>${money(financial.reduce((n, e) => n + e.revenue[key], 0))}</strong></div>`).join('')}</div><p class="revenue-note">Paid gross sales · Monday–Sunday in each event’s timezone · before refunds, tax and fees</p>`;
@@ -91,6 +114,8 @@ export async function loadEvents() {
     const requested = new URLSearchParams(location.search).get('event');
     if (!record && requested && events.some(e => e.id === requested) && document.querySelector('#event-workspace')?.hidden) await selectEvent(requested, new URLSearchParams(location.search).get('view') === 'studio');
     else if (!record && globalAdmin && new URLSearchParams(location.search).get('view') === 'orders') await showAllOrders();
+    else if (!record && globalAdmin && new URLSearchParams(location.search).get('view') === 'health') await showHealth();
+    if (!document.querySelector('#events-index').hidden) loadCardFlyers(cards);
   }
   message(allOrdersMode ? 'Orders across all events are ready.' : result.admin ? 'Choose an event to open its dashboard.' : 'Your assigned events are ready.');
   return result;
@@ -134,6 +159,20 @@ async function showAllOrders() {
   document.querySelector('#events-back').hidden = false; document.querySelector('#orders-all').hidden = true;
   const root = document.querySelector('#all-orders-view'); root.hidden = false;
   history.replaceState(null, '', '/tickets/admin?view=orders'); await allOrders(root, events, selectEvent);
+}
+async function showHealth() {
+  if (!globalAdmin) throw new Error('Administrator access is required.');
+  if (pendingUploads) throw new Error('Wait for the image upload to finish before switching views.');
+  if (dirty) await save();
+  record = null; allOrdersMode = true;
+  document.querySelector('#staff-event').value = '';
+  document.querySelector('#events-index').hidden = true;
+  document.querySelector('#event-workspace').hidden = true;
+  document.querySelector('#events-back').hidden = false;
+  document.querySelector('#orders-all').hidden = false;
+  const root = document.querySelector('#all-orders-view'); root.hidden = false;
+  history.replaceState(null, '', '/tickets/admin?view=health');
+  await healthDashboard(root, selectEvent);
 }
 async function save() {
   if (pendingUploads) throw new Error('Wait for the image upload to finish before saving.');
@@ -332,6 +371,8 @@ export function initEditor() {
   bind('#event-studio', () => selectEvent(document.querySelector('#staff-event').value, true));
   bind('#event-orders', async () => { if (dirty) await save(); await selectEvent(document.querySelector('#staff-event').value); });
   bind('#orders-all', showAllOrders);
+  bind('#system-health', showHealth);
+  setInterval(healthBadge, 60000);
   bind('#events-back', async () => { if (dirty) await save(); record = null; allOrdersMode = false; document.querySelector('#all-orders-view').hidden = true; document.querySelector('#all-orders-view').replaceChildren(); document.querySelector('#staff-event').value = ''; document.querySelector('#event-workspace').hidden = true; document.querySelector('#events-index').hidden = false; document.querySelector('#events-back').hidden = true; history.replaceState(null, '', '/tickets/admin'); await loadEvents(); });
   bind('#event-cash', cash); bind('#event-roles', roles);
   bind('#event-scanner-pins', scannerPins);

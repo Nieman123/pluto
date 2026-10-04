@@ -73,7 +73,7 @@ jobs:
         env:
           GCLOUD_PROJECT: demo-pluto-ticketing
           TICKETING_STORAGE_BUCKET: demo-pluto-ticketing.appspot.com
-        run: npx --yes firebase-tools@15.32.1 emulators:exec --project demo-pluto-ticketing --config firebase.ticketing-test.json --only auth,firestore,storage "npm run test:ticketing:integration && npm run test:ticketing:hardening && npm run test:ticketing:order-operations && npm run test:ticketing:rsvp && npm run test:ticketing:free && npm run test:ticketing:rules && npm run test:rewards && npm run test:ci:browser"
+        run: npx --yes firebase-tools@15.32.1 emulators:exec --project demo-pluto-ticketing --config firebase.ticketing-test.json --only auth,firestore,storage "npm run test:ticketing:integration && npm run test:ticketing:hardening && npm run test:ticketing:order-operations && npm run test:ticketing:support && npm run test:ticketing:rsvp && npm run test:ticketing:free && npm run test:ticketing:rules && npm run test:rewards && npm run test:ci:browser"
       - name: Keep browser failure evidence
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
