@@ -101,8 +101,9 @@ export class Catalog {
     const ref = this.event(eventId), before = (await ref.get()).data(); if (!before) fail('Event not found.', 404);
     const draft = validateDraft(before.draft);
     if (action === 'publish') {
-      if (!draft.city || !draft.region || !draft.descriptionHtml || !draft.offers.length) fail('Add location, description and tickets before publishing.');
-      const earlyTicket = draft.offers.find(o => Date.parse(o.validFrom) < Date.parse(draft.admissionStartsAt));
+      if (!draft.city || !draft.region || !draft.descriptionHtml) fail('Add location and description before publishing.');
+      if (draft.registrationMode !== 'free' && !draft.offers.length) fail('Add tickets or an RSVP pass before publishing.');
+      const earlyTicket = draft.registrationMode === 'free' ? undefined : draft.offers.find(o => Date.parse(o.validFrom) < Date.parse(draft.admissionStartsAt));
       if (earlyTicket) {
         const format = (value: string) => new Intl.DateTimeFormat('en-US', { timeZone: draft.timezone, dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
         fail(`"${earlyTicket.name}" admits guests from ${format(earlyTicket.validFrom)}, before First admission (${format(draft.admissionStartsAt)}; ${draft.timezone}). In Event dashboard → Ticket types & passes, update this ticket's Admission valid from, or move First admission earlier.`);
@@ -142,7 +143,7 @@ export class Catalog {
       if (status === 'draft') tx.delete(this.db.collection('publishedEvents').doc(eventId));
       else tx.set(this.db.collection('publishedEvents').doc(eventId), published);
       const card = this.db.collection('currentEvents').doc(`native-${eventId}`);
-      if (status === 'published') tx.set(card, { title: draft.title, details: `${draft.subtitle}\n${draft.city}, ${draft.region}`, ticketUrl: `${baseUrl()}/events/${draft.slug}`,
+      if (status === 'published') tx.set(card, { title: draft.title, details: `${draft.subtitle}\n${draft.city}, ${draft.region}`, ticketUrl: `${baseUrl()}/events/${draft.slug}`, registrationMode: draft.registrationMode,
         flyerImageUrl: draft.flyer || draft.hero ? `${baseUrl()}/events/${draft.slug}/media/${(draft.flyer || draft.hero)!.assetId}` : '', isActive: true, isManaFest: false, sortOrder: 0, updatedAt: new Date() });
       else tx.delete(card);
       tx.create(ref.collection('audit').doc(), { action, uid, at: Date.now(), revision: expected });

@@ -3,7 +3,7 @@ import { accessKey, action, api, bind, message, money } from './api.js';
 export function initCheckout() {
   const form = document.querySelector('#native-checkout-form'); if (!form) return;
   const config = JSON.parse(document.querySelector('#native-checkout-config').textContent), storageKey = `pluto-checkout-${config.eventId}`;
-  const rsvp = config.registrationMode && config.registrationMode !== 'tickets';
+const rsvp = ['rsvp', 'rsvp-approval'].includes(config.registrationMode);
   let checkout, result, frozen, countdown;
   let account = null, profileName = '';
   const contacts = { buyerName: form.elements.buyerName, email: form.elements.email };

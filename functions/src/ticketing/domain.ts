@@ -59,7 +59,7 @@ export interface Offer {
 }
 export interface Promotion { code: string; type: 'percent' | 'fixed'; value: number; limit: number; startsAt: string; endsAt: string; offerIds: string[] }
 export interface EventDraft {
-  registrationMode: 'tickets' | 'rsvp' | 'rsvp-approval';
+  registrationMode: 'tickets' | 'rsvp' | 'rsvp-approval' | 'free';
   title: string; slug: string; subtitle: string; descriptionHtml: string; startAt: string; endAt: string; admissionStartsAt: string;
   timezone: string; city: string; region: string; venueName: string; address: string; directions: string; venueVisibility: 'public' | 'holders';
   venueRevealScheduled: boolean; venueRevealAt: string | null;
@@ -117,8 +117,10 @@ export function validateDraft(raw: any): EventDraft {
   const taxMode = raw.tax?.mode || 'sandbox';
   if (!['sandbox', 'manual', 'automatic'].includes(taxMode)) fail('Invalid tax mode.');
   const registrationMode = raw.registrationMode || 'tickets';
-  if (!['tickets', 'rsvp', 'rsvp-approval'].includes(registrationMode)) fail('Choose a valid registration type.');
-  if (registrationMode !== 'tickets' && offers.some(o => o.active && (o.unitAmount !== 0 || o.kind !== 'admission' || o.maxPerOrder !== 1))) fail('Active RSVP passes must be free admission passes, one per person. Use Set up free RSVP pass on the dashboard.');
+  if (!['tickets', 'rsvp', 'rsvp-approval', 'free'].includes(registrationMode)) fail('Choose a valid registration type.');
+  if (['rsvp', 'rsvp-approval'].includes(registrationMode) && offers.some(o => o.active && (o.unitAmount !== 0 || o.kind !== 'admission' || o.maxPerOrder !== 1))) fail('Active RSVP passes must be free admission passes, one per person. Use Set up free RSVP pass on the dashboard.');
+  if (registrationMode === 'free' && offers.some(o => o.active)) fail('Free events do not issue tickets. Deactivate ticket types before saving.');
+  if (registrationMode === 'free' && raw.venueVisibility !== 'public') fail('Free events need a public venue so guests can find the event without a ticket or RSVP.');
   const venueRevealScheduled = raw.venueVisibility === 'holders' && raw.venueRevealScheduled === true;
   const venueRevealAt = venueRevealScheduled ? date(raw.venueRevealAt, 'location reveal time') : null;
   if (venueRevealAt && venueRevealAt >= endAt) fail('Location reveal must be before the event ends.');
@@ -138,7 +140,7 @@ export function allMedia(draft: EventDraft): Media[] {
 export function publicEvent(eventId: string, draft: EventDraft, status: string, revision: number) {
   const { pools, promos, tax, address, venueName, directions, ...content } = draft;
   return { ...content, id: eventId, status, revision,
-    offers: draft.offers.filter(o => o.active).map(({ stripeProductId, stripeTaxRateIds, taxCode, pools, ...offer }) => offer),
+    offers: (draft.registrationMode === 'free' ? [] : draft.offers.filter(o => o.active)).map(({ stripeProductId, stripeTaxRateIds, taxCode, pools, ...offer }) => offer),
     ...(draft.venueVisibility === 'public' ? { venueName, address, directions } : {}),
   };
 }

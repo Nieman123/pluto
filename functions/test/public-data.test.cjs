@@ -43,6 +43,12 @@ test("event normalization never embeds legacy flyer data in public HTML", () => 
   assert.equal(event.flyerImageUrl, "/assets/images/pluto-preview.jpg");
 });
 
+test('homepage event cards distinguish free entry and RSVP from ticket sales, with legacy defaults', () => {
+  assert.equal(normalizeEvent('legacy', { title: 'Old event' }).registrationMode, 'tickets');
+  for (const mode of ['free', 'rsvp', 'rsvp-approval']) assert.equal(normalizeEvent(mode, { registrationMode: mode }).registrationMode, mode);
+  assert.equal(normalizeEvent('invalid', { registrationMode: 'bad' }).registrationMode, 'tickets');
+});
+
 test("events sort by explicit order and then newest update", () => {
   const sorted = sortEvents([
     { id: "a", sortOrder: 1, updatedAtMs: 10 },

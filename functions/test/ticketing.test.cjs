@@ -25,6 +25,15 @@ test('legacy events stay ticketed and RSVP modes only allow free named admission
   draft.offers[0].kind = 'vehicle'; assert.throws(() => validateDraft(draft), /Active RSVP passes/);
   draft.registrationMode = 'forged'; assert.throws(() => validateDraft(draft), /valid registration type/);
 });
+
+test('free events need no ticket inventory and keep venue information public', () => {
+  const draft = { ...fixture(), registrationMode: 'free', venueVisibility: 'public', offers: [], pools: [], promos: [] };
+  const valid = validateDraft(draft), projection = publicEvent('free-party', valid, 'published', 1);
+  assert.equal(valid.registrationMode, 'free'); assert.deepEqual(projection.offers, []);
+  assert.equal(projection.address, draft.address);
+  assert.throws(() => validateDraft({ ...draft, venueVisibility: 'holders' }), /Free events need a public venue/);
+  assert.throws(() => validateDraft({ ...draft, offers: fixture().offers, pools: fixture().pools }), /Free events do not issue tickets/);
+});
 test('day and weekend tickets share pools while vehicle passes can be purchased separately', () => {
   const d = validateDraft(fixture()); const result = cart(d, [{ offerId: 'weekend', quantity: 2 }, { offerId: 'vehicle', quantity: 1 }], '', Date.now());
   assert.deepEqual(result.consumption, { friday: 2, saturday: 2, vehicles: 1 }); assert.equal(result.total, 21000);

@@ -29,3 +29,16 @@ test('first admission before event start is valid when ticket windows are no ear
   const { service, transaction } = catalog(d);
   await assert.rejects(service.publish('event', 'publish', 1, 'admin'), error => error === transaction);
 });
+
+test('free events publish with no pools, offers or ticket tax setup', async () => {
+  const d = { ...fixture(), registrationMode: 'free', venueVisibility: 'public', offers: [], pools: [], promos: [] };
+  const { service, transaction } = catalog(d);
+  await assert.rejects(service.publish('event', 'publish', 1, 'admin'), error => error === transaction);
+});
+
+test('inactive ticket windows do not block publishing a free event after rescheduling', async () => {
+  const d = fixture(); d.registrationMode = 'free'; d.venueVisibility = 'public';
+  d.offers.forEach(o => o.active = false); d.admissionStartsAt = d.endAt;
+  const { service, transaction } = catalog(d);
+  await assert.rejects(service.publish('event', 'publish', 1, 'admin'), error => error === transaction);
+});

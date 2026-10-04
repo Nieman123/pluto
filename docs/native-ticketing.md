@@ -67,6 +67,14 @@ Admin flow: `/tickets/admin` → choose an event → orders/performance dashboar
 
 Artwork uploads accept JPEG/PNG/WebP sources up to 20 MB, resize them in the browser and send the resulting image within the backend's 5 MB limit. Errors appear beside the upload control and allow retry. Draft artwork stays private until publication.
 
+### Free events with no registration
+
+Choose **Event registration → Free event · Just show up** in Event Studio or the event dashboard. Add the description, dates, flyer/gallery and public venue/directions, then save and publish. These events appear on `/events`, the homepage and app event cards with **View event** and a free-entry label. The landing page shows **Just show up** and venue information without a checkout, RSVP form, payment widget or admission QR. No ticket inventory or event tax setup is required.
+
+Changing an existing event to this mode deactivates its ticket types in the draft and makes the venue/directions public when published. Existing orders, tickets and audit history are retained; the dashboard keeps historical order reporting when orders exist. Free events cannot issue new purchases, comps or RSVPs through the API. Their dashboard retains the optional guest list, which does not track every walk-up attendee or enforce venue capacity.
+
+Flutter's **Admin → Events** now opens the shared Event Studio at `/tickets/admin`; the old event creation/edit/delete form has been removed. Existing legacy event records remain visible. The separate rewards QR tools remain available.
+
 ### Guest list
 
 1. Open an event dashboard and select **Guest list**. Managers/admins can paste up to 100 names at a time, one per person, with an optional shared door note. Use **Edit** to change a name/note or remove an entry. Changes save directly to the guest list and do not require publishing the event.
@@ -77,7 +85,7 @@ Guest-list admission creates no order, ticket, QR, PDF or email and does not con
 
 ### Open and approval-required RSVPs
 
-1. In the event dashboard's **Ticketing setup**, choose **Event registration**: **Ticketed event**, **Open RSVP · No approval needed**, or **RSVP · Organizer approval required**. Existing events default to Ticketed event.
+1. In Event Studio or the event dashboard's **Ticketing setup**, choose **Event registration**: **Open RSVP · No approval needed**, or **RSVP · Organizer approval required**. Existing events default to Ticketed event; **Free event · Just show up** is available for gatherings without registration.
 2. Select **Set up free RSVP pass** for an RSVP event. This deactivates existing ticket options and adds one free named admission pass using the first admission option's capacity pools. Existing orders/tickets remain valid. Customize the pass, capacity and registration/admission windows, then **Save ticketing settings** and **Publish ticketing changes**. Active RSVP offers must be free admission passes with a one-person limit. Stored promotions and inactive paid options are preserved but do not apply to RSVPs. Free RSVP publication does not require Stripe or tax setup.
 3. An attendee selects one pass and submits their name/email on the landing page. Open RSVP immediately creates a confirmed in-app pass, within available capacity. Approval-required RSVP creates an **Awaiting approval** request in My tickets with no ticket record, QR, private venue details or guest-list entry. Submission retries reuse the original attempt; a second RSVP for the same email/event directs the attendee to their existing request/recovery flow.
 4. Managers/admins use the dashboard's **RSVPs** section to search/filter requests, **Approve** or **Decline**, and optionally leave a note visible to the attendee. Pending requests do not hold stock, so there may be more pending requests than spaces. Approval checks current published capacity and the requested active pass in a transaction; if space is exhausted, the request remains pending. Decisions are final; duplicate action retries do not issue extra passes. Changing the event's approval mode does not automatically approve pending requests.

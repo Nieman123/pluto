@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -12,7 +11,6 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
-import 'current_events_repository.dart';
 import 'link_box.dart';
 import 'links_repository.dart';
 import 'manafest_admin_panel.dart';
@@ -67,7 +65,7 @@ extension AdminSectionX on AdminSection {
       case AdminSection.manafest:
         return 'Manage festival schedule, guide, updates, hidden lineup, and hidden map data.';
       case AdminSection.events:
-        return 'Create and edit current event cards shown across the site.';
+        return 'Create event pages and manage ticketed, RSVP and free events in Event Studio.';
       case AdminSection.rentals:
         return 'Manage rental equipment, quantities, photos, and pricing.';
       case AdminSection.rewards:
@@ -106,17 +104,11 @@ class AdminPage extends StatefulWidget {
 }
 
 class _AdminPageState extends State<AdminPage> {
-  final CurrentEventsRepository _eventsRepository = CurrentEventsRepository();
   final LinksRepository _linksRepository = LinksRepository();
   final UserProfileRepository _profileRepository = UserProfileRepository();
   final PublicMediaRepository _publicMediaRepository = PublicMediaRepository();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _detailsController = TextEditingController();
-  final TextEditingController _ticketUrlController = TextEditingController();
-  final TextEditingController _sortOrderController =
-      TextEditingController(text: '0');
   final TextEditingController _rewardNameController = TextEditingController();
   final TextEditingController _rewardDescriptionController =
       TextEditingController();
@@ -141,13 +133,6 @@ class _AdminPageState extends State<AdminPage> {
       TextEditingController(text: '0');
   final TextEditingController _linkImageUrlController = TextEditingController();
 
-  String? _editingEventId;
-  String _flyerDataUrl = '';
-  String _flyerImageUrl = '';
-  String _flyerStoragePath = '';
-  bool _flyerUploadPending = false;
-  bool _isActive = true;
-  bool _isSaving = false;
   String? _editingRewardId;
   String _rewardImageDataUrl = '';
   bool _rewardIsActive = true;
@@ -174,10 +159,6 @@ class _AdminPageState extends State<AdminPage> {
 
   @override
   void dispose() {
-    _titleController.dispose();
-    _detailsController.dispose();
-    _ticketUrlController.dispose();
-    _sortOrderController.dispose();
     _rewardNameController.dispose();
     _rewardDescriptionController.dispose();
     _rewardPointsCostController.dispose();
@@ -194,198 +175,6 @@ class _AdminPageState extends State<AdminPage> {
     _linkSortOrderController.dispose();
     _linkImageUrlController.dispose();
     super.dispose();
-  }
-
-  Future<void> _pickFlyerImage() async {
-    final FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: <String>['png', 'jpg', 'jpeg', 'webp'],
-      withData: true,
-    );
-    if (result == null || result.files.isEmpty) {
-      return;
-    }
-
-    final PlatformFile file = result.files.first;
-    final Uint8List? fileBytes = file.bytes;
-    if (fileBytes == null) {
-      setState(() {
-        _statusMessage = 'Unable to read image bytes.';
-      });
-      return;
-    }
-
-    if (fileBytes.lengthInBytes > PublicMediaRepository.maxImageBytes) {
-      setState(() {
-        _statusMessage = 'Flyer images must be 5 MB or smaller.';
-      });
-      return;
-    }
-
-    final String mimeType = _mimeTypeForExtension(file.extension ?? '');
-    final String dataUrl = 'data:$mimeType;base64,${base64Encode(fileBytes)}';
-
-    setState(() {
-      _flyerDataUrl = dataUrl;
-      _flyerUploadPending = true;
-      _statusMessage = 'Flyer selected.';
-    });
-  }
-
-  Future<void> _saveEvent() async {
-    final String title = _titleController.text.trim();
-    if (title.isEmpty) {
-      setState(() {
-        _statusMessage = 'Title is required.';
-      });
-      return;
-    }
-
-    final int? parsedSortOrder = int.tryParse(_sortOrderController.text.trim());
-    if (parsedSortOrder == null) {
-      setState(() {
-        _statusMessage = 'Sort order must be a number.';
-      });
-      return;
-    }
-
-    setState(() {
-      _isSaving = true;
-      _statusMessage = '';
-    });
-
-    try {
-      final String documentId =
-          _editingEventId ?? _eventsRepository.newEventId();
-      String flyerImageUrl = _flyerImageUrl;
-      String flyerStoragePath = _flyerStoragePath;
-      String flyerDataUrl = _flyerDataUrl;
-      if (_flyerUploadPending) {
-        final PublicMediaUpload upload =
-            await _publicMediaRepository.uploadEventFlyer(
-          eventId: documentId,
-          dataUrl: _flyerDataUrl,
-        );
-        flyerImageUrl = upload.downloadUrl;
-        flyerStoragePath = upload.storagePath;
-        flyerDataUrl = '';
-      }
-
-      final String eventId = await _eventsRepository.saveEvent(
-        id: documentId,
-        title: title,
-        details: _detailsController.text,
-        ticketUrl: _ticketUrlController.text,
-        flyerDataUrl: flyerDataUrl,
-        flyerImageUrl: flyerImageUrl,
-        flyerStoragePath: flyerStoragePath,
-        isActive: _isActive,
-        sortOrder: parsedSortOrder,
-      );
-
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _editingEventId = eventId;
-        _flyerDataUrl = flyerDataUrl;
-        _flyerImageUrl = flyerImageUrl;
-        _flyerStoragePath = flyerStoragePath;
-        _flyerUploadPending = false;
-        _statusMessage = 'Event saved.';
-      });
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _statusMessage = 'Failed to save event: $error';
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSaving = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _deleteEvent(CurrentEvent event) async {
-    final bool? shouldDelete = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Delete Event?'),
-          content: Text('Delete "${event.title}" from current events?'),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Delete'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (shouldDelete != true) {
-      return;
-    }
-
-    try {
-      await _eventsRepository.deleteEvent(event.id);
-      if (!mounted) {
-        return;
-      }
-      if (_editingEventId == event.id) {
-        _startNewEvent();
-      }
-      setState(() {
-        _statusMessage = 'Event deleted.';
-      });
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _statusMessage = 'Failed to delete event: $error';
-      });
-    }
-  }
-
-  void _editEvent(CurrentEvent event) {
-    setState(() {
-      _editingEventId = event.id;
-      _titleController.text = event.title;
-      _detailsController.text = event.details;
-      _ticketUrlController.text = event.ticketUrl;
-      _sortOrderController.text = event.sortOrder.toString();
-      _isActive = event.isActive;
-      _flyerDataUrl = event.flyerDataUrl;
-      _flyerImageUrl = event.flyerImageUrl;
-      _flyerStoragePath = event.flyerStoragePath;
-      _flyerUploadPending = false;
-      _statusMessage = 'Editing "${event.title}".';
-    });
-  }
-
-  void _startNewEvent() {
-    setState(() {
-      _editingEventId = null;
-      _titleController.clear();
-      _detailsController.clear();
-      _ticketUrlController.clear();
-      _sortOrderController.text = '0';
-      _flyerDataUrl = '';
-      _flyerImageUrl = '';
-      _flyerStoragePath = '';
-      _flyerUploadPending = false;
-      _isActive = true;
-      _statusMessage = 'New event form ready.';
-    });
   }
 
   InputDecoration _inputDecoration(String labelText) {
@@ -1630,20 +1419,45 @@ class _AdminPageState extends State<AdminPage> {
       case AdminSection.rentals:
         return const RentalsAdminPanel();
       case AdminSection.events:
-        return _buildSectionEditorLayout(
-          primaryChildren: <Widget>[
-            Card(child: Padding(padding: const EdgeInsets.all(20), child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 900),
+            child: ListView(
+              padding: const EdgeInsets.all(16),
               children: <Widget>[
-                Text('Native ticketing & event studio', style: Theme.of(context).textTheme.titleLarge),
-                const Text('Build event landing pages, manage ticket sales, and view event performance.'),
-                FilledButton.icon(onPressed: () => htmlNavigateTo('/tickets/admin'), icon: const Icon(Icons.confirmation_number), label: const Text('Open event studio')),
-                TextButton(onPressed: () => htmlNavigateTo('/tickets/staff'), child: const Text('Open ticket admission')),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text('Event Studio',
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineSmall
+                                ?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 12),
+                        const Text(
+                            'Create and publish event pages for ticketed events, RSVPs and free gatherings. Manage flyers, galleries, schedules and venue details in Event Studio.'),
+                        const SizedBox(height: 20),
+                        FilledButton.icon(
+                          onPressed: () => htmlNavigateTo('/tickets/admin'),
+                          icon: const Icon(Icons.event_outlined),
+                          label: const Text('Open Event Studio'),
+                        ),
+                        TextButton(
+                          onPressed: () => htmlNavigateTo('/tickets/staff'),
+                          child: const Text('Open ticket admission'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
-            ))),
-            _buildEditorCard(),
-          ],
-          secondaryChildren: <Widget>[_buildEventsCard()],
+            ),
+          ),
         );
       case AdminSection.rewards:
         return _buildSectionEditorLayout(
@@ -1663,128 +1477,6 @@ class _AdminPageState extends State<AdminPage> {
           secondaryChildren: <Widget>[_buildLinksItemsCard()],
         );
     }
-  }
-
-  Widget _buildEditorCard() {
-    final Uint8List? flyerBytes = decodeFlyerDataUrl(_flyerDataUrl);
-
-    return Card(
-      color: Colors.black.withValues(alpha: 0.45),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(
-              _editingEventId == null
-                  ? 'Create Current Event'
-                  : 'Edit Current Event',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: _titleController,
-              style: const TextStyle(color: Colors.white),
-              cursorColor: Colors.white,
-              decoration: _inputDecoration('Title'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _detailsController,
-              maxLines: 3,
-              style: const TextStyle(color: Colors.white),
-              cursorColor: Colors.white,
-              decoration:
-                  _inputDecoration('Details (date, time, location, etc.)'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _ticketUrlController,
-              style: const TextStyle(color: Colors.white),
-              cursorColor: Colors.white,
-              decoration: _inputDecoration('Ticket URL (optional)'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _sortOrderController,
-              keyboardType: TextInputType.number,
-              style: const TextStyle(color: Colors.white),
-              cursorColor: Colors.white,
-              decoration: _inputDecoration('Sort Order'),
-            ),
-            SwitchListTile(
-              title: const Text('Active event'),
-              value: _isActive,
-              onChanged: (bool value) {
-                setState(() {
-                  _isActive = value;
-                });
-              },
-            ),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: <Widget>[
-                ElevatedButton(
-                  onPressed: _isSaving ? null : _pickFlyerImage,
-                  child: const Text('Upload Flyer Image'),
-                ),
-                OutlinedButton(
-                  onPressed: _isSaving
-                      ? null
-                      : () {
-                          setState(() {
-                            _flyerDataUrl = '';
-                            _flyerImageUrl = '';
-                            _flyerStoragePath = '';
-                            _flyerUploadPending = false;
-                            _statusMessage = 'Flyer image removed.';
-                          });
-                        },
-                  child: const Text('Remove Flyer'),
-                ),
-              ],
-            ),
-            if (flyerBytes != null || _flyerImageUrl.isNotEmpty) ...<Widget>[
-              const SizedBox(height: 12),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: flyerBytes != null
-                    ? Image.memory(
-                        flyerBytes,
-                        height: 260,
-                        fit: BoxFit.cover,
-                      )
-                    : Image.network(
-                        _flyerImageUrl,
-                        height: 260,
-                        fit: BoxFit.cover,
-                      ),
-              ),
-            ],
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: <Widget>[
-                ElevatedButton(
-                  onPressed: _isSaving ? null : _saveEvent,
-                  child: const Text('Save Event'),
-                ),
-                OutlinedButton(
-                  onPressed: _isSaving ? null : _startNewEvent,
-                  child: const Text('New Event'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   Widget _buildRewardEditorCard() {
@@ -2723,110 +2415,6 @@ class _AdminPageState extends State<AdminPage> {
     );
   }
 
-  Widget _buildEventsCard() {
-    return Card(
-      color: Colors.black.withValues(alpha: 0.45),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: StreamBuilder<List<CurrentEvent>>(
-          stream: _eventsRepository.watchEvents(onlyActive: false),
-          builder: (BuildContext context,
-              AsyncSnapshot<List<CurrentEvent>> snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const SizedBox(
-                height: 120,
-                child: Center(child: CircularProgressIndicator()),
-              );
-            }
-
-            if (snapshot.hasError) {
-              return Text(
-                'Failed to load events: ${snapshot.error}',
-                style: const TextStyle(color: Colors.white70),
-              );
-            }
-
-            final List<CurrentEvent> events = snapshot.data ?? <CurrentEvent>[];
-            if (events.isEmpty) {
-              return const Text(
-                'No current events found. Create one using the form.',
-                style: TextStyle(color: Colors.white70),
-              );
-            }
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                const Text(
-                  'Current Events',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                ...events.map((CurrentEvent event) {
-                  return Card(
-                    color: Colors.black.withValues(alpha: 0.35),
-                    margin: const EdgeInsets.only(bottom: 10),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(
-                            event.title.isEmpty ? '(Untitled)' : event.title,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'Active: ${event.isActive} | Sort: ${event.sortOrder}',
-                            style: const TextStyle(color: Colors.white70),
-                          ),
-                          Text(
-                            'Updated: ${_formatDate(event.updatedAt)}',
-                            style: const TextStyle(color: Colors.white70),
-                          ),
-                          if (event.details.isNotEmpty) ...<Widget>[
-                            const SizedBox(height: 6),
-                            Text(
-                              event.details,
-                              style: const TextStyle(color: Colors.white70),
-                            ),
-                          ],
-                          const SizedBox(height: 10),
-                          Wrap(
-                            spacing: 10,
-                            runSpacing: 10,
-                            children: <Widget>[
-                              ElevatedButton(
-                                onPressed: () => _editEvent(event),
-                                child: const Text('Edit'),
-                              ),
-                              OutlinedButton(
-                                onPressed: () => _deleteEvent(event),
-                                child: const Text('Delete'),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
-
   String _formatDate(DateTime? date) {
     if (date == null) {
       return 'Unknown';
@@ -2912,10 +2500,7 @@ class _AdminPageState extends State<AdminPage> {
                 );
               },
             ),
-            if (_isSaving ||
-                _isSavingReward ||
-                _isSavingEventQr ||
-                _isSavingLinkItem)
+            if (_isSavingReward || _isSavingEventQr || _isSavingLinkItem)
               Container(
                 color: Colors.black45,
                 child: const Center(child: CircularProgressIndicator()),

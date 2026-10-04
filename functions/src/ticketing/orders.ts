@@ -107,7 +107,10 @@ export class Orders extends Catalog {
     if (!(await ref.get()).exists) {
       const event = (await this.event(eventId).get()).data();
       if (!event || event.status !== 'published') fail('Ticket sales are not open for this event.', 409);
-      const draft = (event.liveDraft || event.draft) as EventDraft, priced = cart(draft, raw.items, raw.promoCode, now);
+      const draft = (event.liveDraft || event.draft) as EventDraft;
+      if (draft.registrationMode === 'free') fail('This event has free entry. No ticket or RSVP is required.', 409);
+      if (draft.registrationMode && draft.registrationMode !== 'tickets') fail('Use the RSVP form for this event. RSVP approval cannot be bypassed with a ticket checkout.', 409);
+      const priced = cart(draft, raw.items, raw.promoCode, now);
       if (priced.total > 0 && method !== 'comp') await this.checkTaxConfiguration({ tax: draft.tax, units: priced.units, livemode: isLive() });
       preflightRevision = event.publishedRevision;
     }
@@ -118,6 +121,7 @@ export class Orders extends Catalog {
       if (!event || event.status !== 'published') fail('Ticket sales are not open for this event.', 409);
       if (preflightRevision !== undefined && event.publishedRevision !== preflightRevision) fail('Ticket settings changed during checkout. Retry to use the current settings.', 409);
       const draft = (event.liveDraft || event.draft) as EventDraft;
+      if (draft.registrationMode === 'free') fail('This event has free entry. No ticket or RSVP is required.', 409);
       if (draft.registrationMode && draft.registrationMode !== 'tickets') fail('Use the RSVP form for this event. RSVP approval cannot be bypassed with a ticket checkout.', 409);
       if (now >= Date.parse(draft.endAt)) fail('This event has ended.', 409);
       if (isLive() && (!draft.tax.confirmed || draft.tax.mode === 'sandbox')) fail('Live sales need confirmed event taxes.', 503);
