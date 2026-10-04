@@ -1410,6 +1410,16 @@ class _AdminPageState extends State<AdminPage> {
     );
   }
 
+  String _eventManagementUrl(String path) {
+    final Uri origin = <String>['http', 'https'].contains(Uri.base.scheme)
+        ? Uri.base
+        : Uri.parse(
+            const String.fromEnvironment('PLUTO_ENVIRONMENT') == 'staging'
+                ? 'https://pluto-staging-92eb7.web.app'
+                : 'https://pluto.events');
+    return origin.resolve(path).toString();
+  }
+
   Widget _buildAuthorizedAdminContent(User user) {
     switch (widget.section) {
       case null:
@@ -1443,12 +1453,14 @@ class _AdminPageState extends State<AdminPage> {
                             'Create and publish event pages for ticketed events, RSVPs and free gatherings. Manage flyers, galleries, schedules and venue details in Event Studio.'),
                         const SizedBox(height: 20),
                         FilledButton.icon(
-                          onPressed: () => htmlNavigateTo('/tickets/admin'),
+                          onPressed: () => htmlNavigateTo(
+                              _eventManagementUrl('/tickets/admin')),
                           icon: const Icon(Icons.event_outlined),
                           label: const Text('Open Event Studio'),
                         ),
                         TextButton(
-                          onPressed: () => htmlNavigateTo('/tickets/staff'),
+                          onPressed: () => htmlNavigateTo(
+                              _eventManagementUrl('/tickets/staff')),
                           child: const Text('Open ticket admission'),
                         ),
                       ],
