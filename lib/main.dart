@@ -24,11 +24,17 @@ import 'src/deferred_widget.dart';
 import 'src/signed_in/signed_in_app_shell.dart';
 import 'src/theme/config.dart';
 import 'src/theme/custom_theme.dart';
+import 'src/ticket_access_store.dart';
 import 'tickets_page.dart' deferred as tickets_page;
 
 Future<void> main() async {
   //setUrlStrategy(PathUrlStrategy());
   WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await ticketAccessInitialize();
+  } catch (_) {
+    debugPrint('Persistent ticket storage is unavailable on this device.');
+  }
   configureApp();
   const String emulatorHost = String.fromEnvironment('FIREBASE_EMULATOR_HOST');
   const String emulatorProject = String.fromEnvironment(
