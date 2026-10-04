@@ -92,7 +92,35 @@ async function submit(page, expected, status = 'paid') {
       resolveBody(route.request().postDataJSON()); return route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'Controlled retry check' }) });
     }));
     await page.locator('#native-checkout-form [type=submit]').click(); assert.deepEqual(await bodyReady, saved);
+    stage = 'admin-only website navigation';
+    await page.goto(`${base}/events`); await signIn(page, users[1]);
+    const adminLinks = page.locator('[data-auth-admin]');
+    assert.equal(await adminLinks.count(), 2);
+    await page.waitForFunction(() => [...document.querySelectorAll('[data-auth-admin]')].every(link => link.hidden));
+    await db.collection('adminUsers').doc(users[1].uid).set({ name: 'Navigation test admin' });
+    await page.getByRole('link', { name: 'Ticket Admin', exact: true }).click();
+    await page.waitForURL(`${base}/tickets/admin`);
+    await page.locator('#staff-controls:not([hidden])').waitFor();
+    assert.equal(await page.locator('.desktop-nav [data-auth-admin]').getAttribute('aria-current'), 'page');
+    for (const width of [1280, 1024, 901]) {
+      await page.setViewportSize({ width, height: 900 });
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `Admin navigation fits ${width}px`);
+    }
+    await page.screenshot({ path: 'tmp/ticket-admin-navigation-desktop.png' });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByRole('button', { name: 'Open menu', exact: true }).click();
+    await page.getByRole('navigation', { name: 'Mobile navigation' }).getByRole('link', { name: 'Ticket Admin', exact: true }).waitFor();
+    await page.screenshot({ path: 'tmp/ticket-admin-navigation-mobile.png' });
+    await db.collection('adminUsers').doc(users[1].uid).delete();
+    await page.waitForFunction(() => [...document.querySelectorAll('[data-auth-admin]')].every(link => link.hidden));
+    await db.collection('adminUsers').doc(users[1].uid).set({ name: 'Navigation test admin' });
+    await page.getByRole('link', { name: 'Ticket Admin', exact: true }).waitFor();
+    await page.evaluate(async () => { const { getAuth, signOut } = await import('https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js'); await signOut(getAuth()); });
+    await page.waitForFunction(() => [...document.querySelectorAll('[data-auth-admin]')].every(link => link.hidden));
+    await signIn(page, users[0]);
+    await page.waitForFunction(() => [...document.querySelectorAll('[data-auth-admin]')].every(link => link.hidden));
     console.log('Account checkout checks passed: saved profile/email hidden, missing fields editable, guest/free ticket/open and approval RSVP orders retain correct identity, sign-out/stale-profile isolation, immutable resumed contact and mobile accessibility.');
+    console.log('Website navigation checks passed: admin-only desktop/mobile link, dashboard destination/current-page state, narrow desktop layout, live role grant/revocation, sign-out and account switching.');
   } catch (error) {
     console.error(`Account checkout failure at ${stage}:`, error);
     if (active) await active.screenshot({ path: 'tmp/checkout-account-failure.png', fullPage: true }).catch(() => {});
@@ -108,6 +136,6 @@ async function submit(page, expected, status = 'paid') {
       await db.recursiveDelete(db.collection('ticketingEvents').doc(event.eventId)); await db.collection('publishedEvents').doc(event.eventId).delete();
       await db.collection('eventSlugs').doc(event.slug).delete(); await db.collection('currentEvents').doc(`native-${event.eventId}`).delete();
     }
-    for (const user of users) { await db.collection('userProfiles').doc(user.uid).delete(); await auth.deleteUser(user.uid).catch(() => {}); }
+    for (const user of users) { await db.collection('adminUsers').doc(user.uid).delete(); await db.collection('userProfiles').doc(user.uid).delete(); await auth.deleteUser(user.uid).catch(() => {}); }
   }
 })().catch(error => { console.error(error); process.exitCode = 1; });

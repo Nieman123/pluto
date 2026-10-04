@@ -102,6 +102,12 @@ function showAuthState(isSignedIn) {
   });
 }
 
+function showAdminState(isAdmin) {
+  document.querySelectorAll('[data-auth-admin]').forEach(element => {
+    element.hidden = !isAdmin;
+  });
+}
+
 async function enhanceAuth() {
   const configElement = document.querySelector("#firebase-config");
   if (!configElement?.textContent) return;
@@ -118,25 +124,36 @@ async function enhanceAuth() {
   if (firebaseConfig.authEmulatorUrl && ['localhost', '127.0.0.1'].includes(location.hostname)) {
     authModule.connectAuthEmulator(auth, firebaseConfig.authEmulatorUrl, { disableWarnings: true });
   }
-  let profileStore;
+  let profileStore, stopAdminWatch, authRevision = 0;
 
   onAuthStateChanged(auth, async (user) => {
+    const revision = ++authRevision;
+    stopAdminWatch?.(); stopAdminWatch = undefined;
+    showAdminState(false);
     showAuthState(Boolean(user));
     window.dispatchEvent(new CustomEvent("pluto-auth", { detail: user }));
-    if (!user || document.querySelector('[data-waiver-page], [data-waiver-staff]')) return;
+    if (!user) return;
 
     let avatarUrl = user.photoURL || "/assets/images/pluto-logo.webp";
     let displayName = user.displayName || "";
     try {
-      const { doc, getDoc, getFirestore, connectFirestoreEmulator } = await import(
+      const { doc, getDoc, getFirestore, connectFirestoreEmulator, onSnapshot } = await import(
         "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js"
       );
+      if (revision !== authRevision) return;
       if (!profileStore) {
         profileStore = getFirestore(firebaseApp);
         if (firebaseConfig.firestoreEmulator && ['localhost', '127.0.0.1'].includes(location.hostname)) {
           connectFirestoreEmulator(profileStore, firebaseConfig.firestoreEmulator.host, firebaseConfig.firestoreEmulator.port);
         }
       }
+      stopAdminWatch = onSnapshot(doc(profileStore, 'adminUsers', user.uid), snapshot => {
+        if (revision === authRevision && auth.currentUser?.uid === user.uid) showAdminState(snapshot.exists());
+      }, error => {
+        if (revision === authRevision) showAdminState(false);
+        console.warn('Admin navigation unavailable', error);
+      });
+      if (document.querySelector('[data-waiver-page], [data-waiver-staff]')) return;
       const snapshot = await getDoc(doc(profileStore, "userProfiles", user.uid));
       if (typeof snapshot.data()?.displayName === "string" && snapshot.data().displayName.trim()) {
         displayName = snapshot.data().displayName.trim();
@@ -146,9 +163,9 @@ async function enhanceAuth() {
         avatarUrl = profileImage;
       }
     } catch (error) {
-      console.warn("Profile enhancement unavailable", error);
+      console.warn("Account enhancement unavailable", error);
     }
-    if (auth.currentUser?.uid !== user.uid) return;
+    if (revision !== authRevision || auth.currentUser?.uid !== user.uid) return;
     window.dispatchEvent(new CustomEvent("pluto-profile", { detail: { uid: user.uid, displayName } }));
     document.querySelectorAll("[data-auth-avatar]").forEach((image) => {
       image.src = avatarUrl;
