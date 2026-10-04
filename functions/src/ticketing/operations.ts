@@ -4,8 +4,10 @@ import type Stripe from 'stripe';
 import { type Order } from './orders';
 import { Rsvps } from './rsvps';
 import { fail, hash, id, integer, receipt, secret, text, ticketId } from './domain';
-import { appTicketsUrl, baseUrl, isLive, keyPair, resendKey } from './config';
+import { isLive, keyPair, resendKey } from './config';
 import { scannerAccess } from './scanner-access';
+import { deploymentConfig } from '../deployment-config';
+import { legacyTicketingEmail, renderTicketingEmail, type EmailKind, type TicketingEmailInput } from './email';
 
 export class Operations extends Rsvps {
   async submitOfflineReview(eventId: string, raw: any, uid: string) {
@@ -315,27 +317,37 @@ export class Operations extends Rsvps {
     });
     if (!job) return;
     try {
-      const order = (await this.order(job.orderId).get()).data() as Order;
-      let subject = `Your ${order.eventTitle} tickets`, message = '';
-      if (job.type === 'recovery') message = `Recover your order in the Pluto app: ${appTicketsUrl()}#recovery=${job.token}\nThis link expires in 30 minutes and can be used once.`;
-      else if (job.type === 'transfer') { subject = `A ${order.eventTitle} ticket was sent to you`; message = `Accept your ticket in the Pluto app: ${appTicketsUrl()}#transfer=${job.token}\nTransfers close when the event's first admission window opens.`; }
-      else if (job.type === 'refund') { subject = `${order.eventTitle} refund confirmation`; message = `Your refund of $${(job.amount / 100).toFixed(2)} was approved and processed. Refunded tickets are no longer valid.`; }
-      else {
-        // Email grants financial order access only to the original payer; transferred QR credentials are filtered in view().
-        const token = job.token || secret(), recoveryRef = this.db.collection('ticketingRecovery').doc(hash(token));
-        if (!job.token) await ref.update({ token });
-        await this.db.runTransaction(async tx => { if (!(await tx.get(recoveryRef)).exists) tx.create(recoveryRef, { orderId: job.orderId, expiresAt: Date.now() + 30 * 86400000, used: false }); });
-        if (order.method === 'rsvp') {
-          subject = `${order.eventTitle} RSVP ${job.type === 'rsvp-pending' ? 'received' : job.type === 'rsvp-declined' ? 'declined' : 'confirmed'}`;
-          message = job.type === 'rsvp-pending' ? 'Your RSVP request was received. Organizer approval is required before you can attend or receive an admission QR. Check the current status in the Pluto app.' : job.type === 'rsvp-declined' ? `Your RSVP was declined. This does not grant admission.${job.note ? `\nOrganizer note: ${job.note}` : ''}` : 'Your RSVP is confirmed. Open your admission QR in the Pluto app. This pass is for the named attendee and cannot be transferred.';
-          message += `\nView your RSVP: ${appTicketsUrl()}#recovery=${token}\nThis link can be opened once within 30 days. QR codes stay in the app; no ticket PDF is attached.`;
-        } else message = `Thanks for joining us. Your order total is $${(order.total / 100).toFixed(2)}.\nOpen the Pluto app to view your receipt, tickets and venue details: ${appTicketsUrl()}#recovery=${token}\nThis link can be opened once within 30 days. You can request another link from My tickets. Admission tickets are kept in the app; no ticket PDF is attached.`;
+      let payload: { from: string; to: string[]; subject: string; text: string; html?: string } | undefined = job.emailPayload;
+      if (!payload) {
+        const order = (await this.order(job.orderId).get()).data() as Order;
+        if (!order) fail('Email order is not available.', 503);
+        const config = deploymentConfig(), ticketsUrl = `${config.baseUrl}/app/tickets`;
+        let kind: EmailKind = 'receipt', actionUrl = ticketsUrl;
+        if (job.type === 'recovery' || job.type === 'transfer') {
+          kind = job.type;
+          actionUrl += `#${kind}=${job.token}`;
+        } else if (job.type === 'refund') kind = 'refund';
+        else {
+          // Email grants financial order access only to the original payer; transferred QR credentials are filtered in view().
+          const token = job.token || secret(), recoveryRef = this.db.collection('ticketingRecovery').doc(hash(token));
+          if (!job.token) await ref.update({ token });
+          await this.db.runTransaction(async tx => { if (!(await tx.get(recoveryRef)).exists) tx.create(recoveryRef, { orderId: job.orderId, expiresAt: Date.now() + 30 * 86400000, used: false }); });
+          actionUrl += `#recovery=${token}`;
+          if (order.method === 'rsvp') kind = job.type === 'rsvp-pending' ? 'rsvp-pending' : job.type === 'rsvp-declined' ? 'rsvp-declined' : 'rsvp-confirmed';
+        }
+        const input: TicketingEmailInput = { kind, order, orderId: job.orderId, actionUrl, baseUrl: config.baseUrl, amount: job.amount, note: job.note, staging: config.environment === 'staging' };
+        if (!job.firstDeliveryAt) input.event = (await this.db.collection('publishedEvents').doc(order.eventId).get()).data() as TicketingEmailInput['event'];
+        payload = { from: process.env.TICKETING_EMAIL_FROM || 'Pluto Events <tickets@pluto.events>', to: [job.to],
+          ...(job.firstDeliveryAt ? legacyTicketingEmail(input) : renderTicketingEmail(input)) };
+        // Snapshot before the first provider attempt: event edits / refunds must
+        // never change a retry's payload under the same Resend idempotency key.
+        await ref.update({ emailPayload: payload });
       }
       const key = resendKey.value(); if (!key) fail('Email delivery is not configured yet.', 503);
       if (!job.firstDeliveryAt) await ref.update({ firstDeliveryAt: Date.now() });
-      const result = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', 'Idempotency-Key': `pluto-${jobId}` }, body: JSON.stringify({ from: process.env.TICKETING_EMAIL_FROM || 'Pluto Events <tickets@pluto.events>', to: [job.to], subject, text: message }), signal: AbortSignal.timeout(20000) });
+      const result = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', 'Idempotency-Key': `pluto-${jobId}` }, body: JSON.stringify({ from: payload.from, to: payload.to, subject: payload.subject, text: payload.text, ...(payload.html ? { html: payload.html } : {}) }), signal: AbortSignal.timeout(20000) });
       if (!result.ok) fail('Email provider could not confirm delivery.', 503);
-      await ref.update({ status: 'sent', sentAt: Date.now(), leaseUntil: 0, token: null });
+      await ref.update({ status: 'sent', sentAt: Date.now(), leaseUntil: 0, token: null, emailPayload: null });
     } catch (error: any) { await ref.update({ leaseUntil: 0, status: 'pending', retryAt: Date.now() + Math.min(3600000, 1000 * 2 ** Math.min(job.attempts || 0, 12)), lastError: error.name || 'unavailable' }); }
   }
   async maintenance() {

@@ -84,7 +84,8 @@ async function main() {
   try {
     await service.emailJob(`rsvppending_${pending.orderId}`); await service.emailJob(`receipt_${winner.result.orderId}`); await service.emailJob(`rsvpdeclined_${loser.orderId}`);
     assert.match(sent[0].text, /approval is required/i); assert.match(sent[1].text, /RSVP is confirmed/); assert.match(sent[2].text, /declined/);
-    for (const email of sent) { assert.ok(!email.attachments); assert.ok(!email.text.includes('PLUTO1.')); assert.match(email.text, /QR codes stay in the app/); }
+    assert.match(sent[0].html, /View RSVP status/); assert.match(sent[1].html, /Open my RSVP pass/); assert.match(sent[2].html, /View my RSVP/);
+    for (const email of sent) { assert.ok(!email.attachments); assert.ok(!email.text.includes('PLUTO1.') && !email.html.includes('PLUTO1.')); assert.match(email.text, /QR codes stay in the app/); assert.ok(!email.html.includes('Private secret venue') && !email.html.includes('123 Hidden Lane')); }
   } finally { global.fetch = originalFetch; }
   assert.equal(readTicket(view.tickets[0].qr, signingKey).eventId, approval);
   console.log('RSVP integration passed: open/pending/approval/decline/withdrawal, no preapproval credentials or private venue, capacity and duplicate races, no checkout/comp/transfer bypass, manager/PIN boundaries, scanner admission and link-only email notices.');
