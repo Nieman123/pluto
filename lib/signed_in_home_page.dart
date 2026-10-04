@@ -324,6 +324,11 @@ class SignedInHomePage extends StatelessWidget {
                         ),
                       ),
                     ],
+                    if (event.isFree) ...<Widget>[
+                      const SizedBox(height: 8),
+                      const Text('Free entry · No RSVP required',
+                          style: TextStyle(color: _DashboardColors.muted)),
+                    ],
                     const SizedBox(height: 11),
                     Wrap(
                       spacing: 8,
@@ -332,11 +337,13 @@ class SignedInHomePage extends StatelessWidget {
                         if (event.ticketUrl.trim().isNotEmpty)
                           ElevatedButton.icon(
                             onPressed: () => _openLink(event.ticketUrl),
-                            icon: const Icon(
-                              Icons.confirmation_number_outlined,
+                            icon: Icon(
+                              event.isFree
+                                  ? Icons.event_outlined
+                                  : Icons.confirmation_number_outlined,
                               size: 18,
                             ),
-                            label: const Text('Tickets'),
+                            label: Text(event.actionLabel),
                           ),
                         if (manaFestUiEnabled && event.isManaFest)
                           OutlinedButton.icon(

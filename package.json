@@ -16,6 +16,7 @@
     "test:ticketing:integration": "node functions/test/ticketing-integration.cjs",
     "test:ticketing:hardening": "node --test functions/test/ticketing-hardening.cjs functions/test/offline-hardening.cjs",
     "test:ticketing:rsvp": "node functions/test/rsvp-integration.cjs",
+    "test:ticketing:free": "node --test functions/test/free-events.cjs",
     "test:ticketing:rules": "node --test test/ticketing-rules.test.mjs",
     "test:rewards": "node --test functions/test/rewards-hardening.cjs && node --test test/rewards-rules.test.mjs",
     "test:rewards:browser": "node scripts/ticketing/rewards-browser-test.cjs",

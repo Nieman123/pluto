@@ -12,6 +12,7 @@ class CurrentEvent {
     required this.flyerDataUrl,
     this.flyerImageUrl = '',
     this.flyerStoragePath = '',
+    this.registrationMode = 'tickets',
     required this.isActive,
     required this.sortOrder,
     required this.createdAt,
@@ -31,6 +32,7 @@ class CurrentEvent {
       flyerDataUrl: (data['flyerDataUrl'] as String? ?? '').trim(),
       flyerImageUrl: (data['flyerImageUrl'] as String? ?? '').trim(),
       flyerStoragePath: (data['flyerStoragePath'] as String? ?? '').trim(),
+      registrationMode: data['registrationMode'] as String? ?? 'tickets',
       isActive: data['isActive'] as bool? ?? true,
       sortOrder: _parseInt(data['sortOrder']),
       createdAt: _parseTimestamp(data['createdAt']),
@@ -45,12 +47,22 @@ class CurrentEvent {
   final String flyerDataUrl;
   final String flyerImageUrl;
   final String flyerStoragePath;
+  final String registrationMode;
   final bool isActive;
   final int sortOrder;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
   Uint8List? get flyerBytes => decodeFlyerDataUrl(flyerDataUrl);
+
+  bool get isFree => registrationMode == 'free';
+  bool get isRsvp =>
+      registrationMode == 'rsvp' || registrationMode == 'rsvp-approval';
+  String get actionLabel => isFree
+      ? 'View event'
+      : isRsvp
+          ? 'RSVP'
+          : 'Tickets';
 
   static int _parseInt(dynamic value) {
     if (value is int) {
@@ -106,8 +118,6 @@ class CurrentEventsRepository {
   CollectionReference<Map<String, dynamic>> get _currentEventsCollection =>
       _firestore.collection('currentEvents');
 
-  String newEventId() => _currentEventsCollection.doc().id;
-
   Stream<List<CurrentEvent>> watchEvents({required bool onlyActive}) {
     return _currentEventsCollection
         .snapshots()
@@ -121,48 +131,6 @@ class CurrentEventsRepository {
       filteredEvents.sort(_sortEvents);
       return filteredEvents;
     });
-  }
-
-  Future<String> saveEvent({
-    required String? id,
-    required String title,
-    required String details,
-    required String ticketUrl,
-    required String flyerDataUrl,
-    String flyerImageUrl = '',
-    String flyerStoragePath = '',
-    required bool isActive,
-    required int sortOrder,
-  }) async {
-    final DocumentReference<Map<String, dynamic>> document =
-        (id == null || id.isEmpty)
-            ? _currentEventsCollection.doc()
-            : _currentEventsCollection.doc(id);
-    final DocumentSnapshot<Map<String, dynamic>> snapshot =
-        await document.get();
-
-    final Map<String, dynamic> payload = <String, dynamic>{
-      'title': title.trim(),
-      'details': details.trim(),
-      'ticketUrl': ticketUrl.trim(),
-      'flyerDataUrl': flyerDataUrl,
-      'flyerImageUrl': flyerImageUrl.trim(),
-      'flyerStoragePath': flyerStoragePath.trim(),
-      'isActive': isActive,
-      'sortOrder': sortOrder,
-      'updatedAt': FieldValue.serverTimestamp(),
-    };
-
-    if (!snapshot.exists) {
-      payload['createdAt'] = FieldValue.serverTimestamp();
-    }
-
-    await document.set(payload, SetOptions(merge: true));
-    return document.id;
-  }
-
-  Future<void> deleteEvent(String id) async {
-    await _currentEventsCollection.doc(id).delete();
   }
 
   Future<bool> isAdminUser(String uid) async {

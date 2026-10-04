@@ -54,8 +54,9 @@
           <div class="event-card-body">
             <h3 id="event-{{ loop.index }}-title">{{ event.title }}</h3>
             {% if event.details %}<p>{{ event.details }}</p>{% endif %}
+            {% if event.registrationMode == 'free' %}<p>Free entry · No RSVP required</p>{% endif %}
             <div class="event-actions">
-              {% if event.ticketUrl %}<a class="button button-primary" href="{{ event.ticketUrl }}" target="_blank" rel="noopener noreferrer">Get tickets</a>{% endif %}
+              {% if event.ticketUrl %}<a class="button button-primary" href="{{ event.ticketUrl }}" target="_blank" rel="noopener noreferrer">{% if event.registrationMode == 'free' %}View event{% elif event.registrationMode == 'rsvp' or event.registrationMode == 'rsvp-approval' %}RSVP{% else %}Get tickets{% endif %}</a>{% endif %}
               {% if event.isManaFest %}<a class="button button-quiet" href="/manafest">ManaFest details</a>{% endif %}
             </div>
           </div>

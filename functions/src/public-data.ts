@@ -8,6 +8,7 @@ export interface PublicEvent {
   title: string;
   details: string;
   ticketUrl: string;
+  registrationMode?: 'tickets' | 'rsvp' | 'rsvp-approval' | 'free';
   flyerImageUrl: string;
   isManaFest: boolean;
   sortOrder: number;
@@ -152,6 +153,7 @@ export function normalizeEvent(id: string, data: DocumentData): PublicEvent | nu
     title,
     details: asString(data.details),
     ticketUrl: safeExternalUrl(data.ticketUrl),
+    registrationMode: ['free', 'rsvp', 'rsvp-approval'].includes(data.registrationMode) ? data.registrationMode : 'tickets',
     flyerImageUrl,
     isManaFest,
     sortOrder: asInt(data.sortOrder),

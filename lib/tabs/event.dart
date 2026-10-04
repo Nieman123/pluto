@@ -91,6 +91,8 @@ class Event extends StatelessWidget {
     required String ticketUrl,
     required Widget flyer,
     required bool showManaFestDetails,
+    String actionLabel = 'Click For Tickets',
+    bool free = false,
   }) {
     final Color textColor =
         Theme.of(context).primaryColorLight.withValues(alpha: 0.9);
@@ -126,6 +128,10 @@ class Event extends StatelessWidget {
               child: flyer,
             ),
             const SizedBox(height: 10),
+            if (free)
+              const Center(
+                  child: Text('Free entry · No RSVP required',
+                      style: TextStyle(color: Colors.white70))),
             Center(
               child: Wrap(
                 alignment: WrapAlignment.center,
@@ -135,7 +141,7 @@ class Event extends StatelessWidget {
                   if (ticketUrl.trim().isNotEmpty)
                     ElevatedButton(
                       onPressed: () => _openLink(ticketUrl),
-                      child: const Text('Click For Tickets'),
+                      child: Text(actionLabel),
                     ),
                   if (showManaFestDetails)
                     OutlinedButton(
@@ -186,6 +192,8 @@ class Event extends StatelessWidget {
                       ticketUrl: event.ticketUrl,
                       flyer: _buildFlyer(context: context, event: event),
                       showManaFestDetails: event.isManaFest,
+                      actionLabel: event.actionLabel,
+                      free: event.isFree,
                     ),
                   ))
               .toList(),
