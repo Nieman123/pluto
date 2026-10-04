@@ -4,7 +4,7 @@
 
 Global administrators have **System health** on `/tickets/admin`. The navigation badge refreshes once a minute. The dashboard reports stalled payment events, unresolved refunds, checkout reservations, missing ticket issuance, email failures and the maintenance heartbeat. **Run health check** refreshes diagnostics; it does not issue tickets or release stock.
 
-Maintenance stores its last successful run and emits structured Cloud Logging events. Checks are bounded: up to 500 records per queue, a rotating batch of 50 paid orders, and 200 visible alerts. The dashboard explicitly labels limited coverage. A clean sampled pass does not establish that every historical order is correct.
+Maintenance stores its last successful run and emits structured Cloud Logging events for critical issues and actionable warnings. Checks are bounded: up to 500 records per queue, a rotating batch of 50 paid orders, and 200 visible alerts. The dashboard explicitly labels limited coverage. A clean sampled pass does not establish that every historical order is correct.
 
 - **Payment event:** Retry safely processes the original inbox item and retrieves authoritative Stripe objects.
 - **Refund:** Retry safely uses the original approved allocation and provider idempotency key. An already-recorded external Stripe refund is mapped locally rather than charged again.
@@ -22,7 +22,7 @@ The dashboard and logs work without new secrets. Email/text notifications requir
 
    ```text
    resource.type="cloud_run_revision"
-   severity>=ERROR
+   severity>=WARNING
    jsonPayload.event=("ticketing-health-alert" OR "ticketing-maintenance-failed")
    ```
 

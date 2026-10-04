@@ -432,9 +432,10 @@ export class Operations extends Support {
     const ref = this.db.collection('ticketingHealth').doc('latest');
     const previous = (await ref.get()).data();
     await ref.set(result);
-    const critical = result.issues.filter(i => i.severity === 'critical').map(i => i.id).sort();
-    if (critical.length && JSON.stringify(critical) !== JSON.stringify(previous?.issues?.filter((i: any) => i.severity === 'critical').map((i: any) => i.id).sort()))
-      logError('Ticketing needs operator attention', { event: 'ticketing-health-alert', criticalCount: result.counts.critical, issueIds: critical });
+    const actionable = (issues: any[] = []) => issues.filter(i => i.kind !== 'coverage').map(i => `${i.severity}:${i.id}`).sort();
+    const active = actionable(result.issues);
+    if (active.length && JSON.stringify(active) !== JSON.stringify(actionable(previous?.issues)))
+      (result.counts.critical ? logError : logWarning)('Ticketing needs operator attention', { event: 'ticketing-health-alert', criticalCount: result.counts.critical, warningCount: result.counts.warning, issueIds: active });
     return result;
   }
   async health(uid: string, refresh = false) {

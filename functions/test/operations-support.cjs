@@ -81,7 +81,10 @@ test('delivery events survive webhook/send races and health exposes bounded, per
     assert.ok(health.issues.some(i => i.kind === 'maintenance'));
     await assert.rejects(() => h.service.retryHealth({ kind: 'email', jobId }, h.staff), /Do not retry/);
     assert.ok(!JSON.stringify(health).includes(raw.email));
+    await h.db.collection('ticketingHealth').doc('maintenance').set({ completedAt: Date.now(), summary: { errors: 2 } });
+    assert.ok((await h.service.health(h.staff, true)).issues.some(i => i.id === 'maintenance-errors'), 'a recent heartbeat must not hide failed operations');
   } finally {
+    await h.db.collection('ticketingHealth').doc('maintenance').delete();
     for (const doc of (await h.db.collection('ticketingEmailDelivery').where('providerMessageId', '==', messageId).get()).docs) await doc.ref.delete();
     await h.cleanup();
   }

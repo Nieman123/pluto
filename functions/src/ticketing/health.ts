@@ -44,6 +44,7 @@ export async function collectHealth(db: Firestore, now = Date.now()) {
   }
   const maintenance = heartbeat.data() || {};
   if (!maintenance.completedAt || age(now, maintenance.completedAt, 15)) add('maintenance', 'maintenance', 'Maintenance heartbeat is overdue', '', maintenance.startedAt || now, maintenance.failedAt ? 'The most recent run failed. Check the function logs.' : 'No successful run has been recorded in the last 15 minutes.', 'critical');
+  else if (maintenance.failedAt > maintenance.completedAt || maintenance.summary?.errors > 0) add('maintenance-errors', 'maintenance', 'Background operations need attention', '', maintenance.failedAt || maintenance.completedAt, maintenance.failedAt > maintenance.completedAt ? 'The latest maintenance run failed. Check its function logs.' : `${maintenance.summary.errors} operations failed during the last pass. Review the function logs and affected provider outcomes.`, 'critical');
   const truncated = [orders, refunds, webhooks, emails, delivery, blocked].some(q => q.size > 500) || paid.size > 50 || !!cursor?.after;
   if (truncated) add('limited-check', 'coverage', 'Health check coverage is limited', '', now, 'This pass checks up to 500 records per queue and 50 paid orders. Continue review in All Orders and provider dashboards.');
   issues.sort((a, b) => Number(b.severity === 'critical') - Number(a.severity === 'critical') || a.at - b.at);

@@ -61,7 +61,7 @@ async function semantics(page) { await page.locator('flt-semantics-placeholder')
     await guest.getByText('Saved tickets · Offline', { exact: true }).waitFor({ timeout: 45000 });
     await guest.getByText('Show this code at the door', { exact: true }).waitFor();
     await guest.screenshot({ path: 'tmp/ticketing-attendee-offline-mobile.png', fullPage: true });
-    await guest.mouse.wheel(0, 750); await guest.waitForTimeout(300);
+    await guest.mouse.move(190, 600); await guest.mouse.wheel(0, 950); await guest.waitForTimeout(300);
     await guest.screenshot({ path: 'tmp/ticketing-attendee-offline-qr-mobile.png', fullPage: true });
     await guest.mouse.wheel(0, -2000); await guest.waitForTimeout(300);
     stage = 'refund clears saved QR';
