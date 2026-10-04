@@ -60,6 +60,7 @@ export interface Offer {
 export interface Promotion { code: string; type: 'percent' | 'fixed'; value: number; limit: number; startsAt: string; endsAt: string; offerIds: string[] }
 export interface EventDraft {
   registrationMode: 'tickets' | 'rsvp' | 'rsvp-approval' | 'free';
+  remindersEnabled?: boolean; waitlistEnabled?: boolean; waitlistOfferMinutes?: number;
   title: string; slug: string; subtitle: string; descriptionHtml: string; startAt: string; endAt: string; admissionStartsAt: string;
   timezone: string; city: string; region: string; venueName: string; address: string; directions: string; venueVisibility: 'public' | 'holders';
   venueRevealScheduled: boolean; venueRevealAt: string | null;
@@ -124,7 +125,7 @@ export function validateDraft(raw: any): EventDraft {
   const venueRevealScheduled = raw.venueVisibility === 'holders' && raw.venueRevealScheduled === true;
   const venueRevealAt = venueRevealScheduled ? date(raw.venueRevealAt, 'location reveal time') : null;
   if (venueRevealAt && venueRevealAt >= endAt) fail('Location reveal must be before the event ends.');
-  return { registrationMode, title: text(raw.title, 'title', 200, true), slug, subtitle: text(raw.subtitle || '', 'subtitle', 400), descriptionHtml: html(raw.descriptionHtml || ''),
+  return { registrationMode, remindersEnabled: raw.remindersEnabled !== false, waitlistEnabled: raw.waitlistEnabled === true && registrationMode !== 'free', waitlistOfferMinutes: integer(raw.waitlistOfferMinutes ?? 30, 'waitlist offer minutes', 15, 120), title: text(raw.title, 'title', 200, true), slug, subtitle: text(raw.subtitle || '', 'subtitle', 400), descriptionHtml: html(raw.descriptionHtml || ''),
     startAt, endAt, admissionStartsAt, timezone, city: text(raw.city || '', 'city', 100), region: text(raw.region || '', 'state', 100),
     venueName: text(raw.venueName || '', 'venue', 200), address: text(raw.address || '', 'address', 500), directions: text(raw.directions || '', 'directions', 3000),
     venueVisibility: raw.venueVisibility === 'holders' ? 'holders' : 'public', venueRevealScheduled, venueRevealAt, hero: media(raw.hero), flyer: media(raw.flyer),

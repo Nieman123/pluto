@@ -22,3 +22,16 @@ html{scroll-padding-top:100px}.native-event.checkout-active .native-hero,.native
 .health-issue.warning { border-left: 4px solid #ffb65d; padding-left: 1rem; }
 .health-alert { border-color: #ffb4ab !important; color: #ffb4ab !important; }
 .order-support form { margin: 1.2rem 0; }
+
+.announcement-preview { padding: 20px; margin: 16px 0; border: 1px solid #655775; border-radius: 12px; background: #181220; }
+.announcement-preview [data-preview-body] { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.native-story .button-quiet { color: inherit; border-color: currentColor; }
+.theme-light .native-story .button-quiet:hover { background: #21182c0c; }
+
+#ticketing-dialog { max-width: min(1000px, calc(100vw - 20px)); max-height: 90dvh; overflow: auto; padding: 20px; border: 1px solid #655775; border-radius: 20px; background: #211a2b; color: #f7f3fc; }
+#ticketing-dialog::backdrop { background: #09050dcc; backdrop-filter: blur(8px); }
+#ticketing-dialog #ticketing-dialog-close { position: sticky; top: 0; z-index: 2; float: right; margin-bottom: 18px; }
+#ticketing-dialog h2 { clear: both; }
+#ticketing-dialog label { display: block; margin: 16px 0; }
+#ticketing-dialog input, #ticketing-dialog textarea, #ticketing-dialog select { font: inherit; width: 100%; padding: 12px; border: 1px solid #655775; border-radius: 8px; background: #19141f; color: #f7f3fc; }

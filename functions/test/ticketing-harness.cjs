@@ -74,7 +74,7 @@ function harness() {
     }
     for (const eid of events) {
       const e = (await service.event(eid).get()).data();
-      for (const name of ['ticketingRsvpVerification', 'ticketingEmailJobs']) for (const doc of (await db.collection(name).where('eventId', '==', eid).get()).docs) await doc.ref.delete();
+      for (const name of ['ticketingRsvpVerification', 'ticketingEmailJobs', 'ticketingCampaigns', 'ticketingWaitlist']) for (const doc of (await db.collection(name).where('eventId', '==', eid).get()).docs) { if (name === 'ticketingWaitlist') for (const token of (await db.collection('ticketingWaitlistTokens').where('entryId', '==', doc.id).get()).docs) await token.ref.delete(); await doc.ref.delete(); }
       for (const name of ['ticketingScannerPins', 'ticketingScannerSessions', 'ticketingOfflineLeases']) for (const doc of (await db.collection(name).where('eventId', '==', eid).get()).docs) await doc.ref.delete();
       await db.recursiveDelete(service.event(eid)); await db.collection('publishedEvents').doc(eid).delete(); await db.collection('currentEvents').doc(`native-${eid}`).delete();
       if (e) await db.collection('eventSlugs').doc(e.draft.slug).delete();

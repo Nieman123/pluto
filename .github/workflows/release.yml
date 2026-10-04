@@ -113,6 +113,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/release/evidence.mjs start
+      - name: Add required indexes while preserving existing indexes and TTL settings
+        # Non-interactive defaults decline deletion of cloud-only indexes/field overrides.
+        # Keep this separate from --force, which acknowledges worker retry policies below.
+        run: npx --yes firebase-tools@15.32.1 deploy --config firebase.release.json --only firestore:indexes --project "$DEPLOY_PROJECT_ID" --non-interactive
       - name: Deploy coordinated backend, workers, client and access rules
         # Acknowledge the webhook/email workers' intentional retry policies in CI.
         # Keep function targets explicit; --force also accepts implicit deletions.

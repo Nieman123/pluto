@@ -1,7 +1,7 @@
 import type { EventDraft } from './domain';
 import type { Order } from './orders';
 
-export type EmailKind = 'receipt' | 'recovery' | 'transfer' | 'refund' | 'rsvp-pending' | 'rsvp-declined' | 'rsvp-confirmed' | 'rsvp-verification';
+export type EmailKind = 'receipt' | 'recovery' | 'transfer' | 'refund' | 'rsvp-pending' | 'rsvp-declined' | 'rsvp-confirmed' | 'rsvp-verification' | 'waitlist-verification' | 'waitlist-offer' | 'announcement' | 'event-reminder' | 'event-location' | 'event-rescheduled' | 'event-cancelled';
 export interface TicketingEmailInput {
   kind: EmailKind;
   order: Pick<Order, 'eventTitle' | 'total' | 'currency' | 'units' | 'taxAmount'>;
@@ -9,10 +9,11 @@ export interface TicketingEmailInput {
   actionUrl: string;
   baseUrl: string;
   // Only published schedule / city fields are used. Exact locations stay in the app.
-  event?: Pick<EventDraft, 'startAt' | 'timezone' | 'city' | 'region' | 'venueVisibility' | 'venueRevealScheduled' | 'venueRevealAt'>;
+  event?: Pick<EventDraft, 'startAt' | 'timezone' | 'city' | 'region' | 'venueVisibility' | 'venueRevealScheduled' | 'venueRevealAt'> & Partial<Pick<EventDraft, 'slug' | 'endAt'>>;
   amount?: number;
   note?: string;
   staging?: boolean;
+  heading?: string;
 }
 
 const escape = (value: string) => value.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
@@ -29,6 +30,20 @@ function content(input: TicketingEmailInput) {
   const title = order.eventTitle;
   const linkHelp = 'Keep this link private. It can be opened once within 30 days. You can request another link from My tickets.';
   switch (kind) {
+    case 'waitlist-verification': return {
+      subject: `${title} waitlist email code`, label: 'VERIFY YOUR EMAIL', heading: 'One more step to join.', preview: 'Confirm your email address to join the waitlist.',
+      paragraphs: [`Your verification code is ${note}. Enter it on the event page within 15 minutes.`], button: 'Open event page', help: 'Ignore this email if you did not request it.', notice: 'Joining the waitlist does not grant admission or reserve a spot.',
+    };
+    case 'waitlist-offer': return {
+      subject: `A spot is available for ${title}`, label: 'YOUR WAITLIST OFFER', heading: 'Your turn to join us.', preview: 'Complete registration before your reserved spot expires.',
+      paragraphs: [note || 'Open Pluto to claim your reserved admission pass.'], button: 'Claim my spot', help: 'This link is private and expires at the time shown above.', notice: 'A paid pass requires successful payment. Admission QR codes stay in Pluto.',
+    };
+    case 'announcement': case 'event-reminder': case 'event-location': case 'event-rescheduled': case 'event-cancelled': return {
+      subject: `${kind === 'event-cancelled' ? 'Cancelled: ' : kind === 'event-location' ? 'Location available: ' : kind === 'event-reminder' ? 'Reminder: ' : 'Update: '}${title}`,
+      label: kind === 'event-cancelled' ? 'EVENT CANCELLED' : kind === 'event-location' ? 'LOCATION AVAILABLE' : kind === 'event-reminder' ? 'EVENT REMINDER' : 'EVENT UPDATE',
+      heading: input.heading || title, preview: note?.slice(0, 120) || 'Open Pluto for the latest event information.', paragraphs: [note || 'Check Pluto for the latest event information.'],
+      button: 'Open Pluto', help: '', notice: 'Exact private locations and admission QR codes stay in the Pluto app.',
+    };
     case 'rsvp-verification': return {
       subject: `${title} RSVP email code`, label: 'VERIFY YOUR EMAIL', heading: 'One more step to RSVP.',
       preview: 'Confirm your email address to submit your RSVP.',
@@ -103,7 +118,8 @@ export function renderTicketingEmail(input: TicketingEmailInput) {
   const totalLabel = kind === 'refund' ? 'Refund amount' : 'Order total';
   const total = kind === 'refund' ? input.amount || 0 : order.total;
   const showTotal = kind === 'receipt' || kind === 'refund';
-  const showReference = kind !== 'transfer';
+  const showReference = kind !== 'transfer' && !!input.orderId;
+  const calendarUrl = event?.slug ? `${input.baseUrl}/events/${encodeURIComponent(event.slug)}/calendar.ics` : '';
   const reference = input.orderId.slice(0, 12).toUpperCase();
   const paragraph = (value: string, style = '') => `<p style="margin:0 0 16px;color:#ddd5e6;font-size:16px;line-height:1.65;${style}">${escape(value)}</p>`;
   const meta = (label: string, value: string) => `<tr><td style="padding:0 0 18px"><p style="margin:0 0 5px;color:#b7a5c5;font-size:11px;font-weight:700;letter-spacing:1.5px">${label}</p><p style="margin:0;color:#f7f3fc;font-size:15px;line-height:1.6;overflow-wrap:anywhere;word-break:break-word">${escape(value)}</p></td></tr>`;
@@ -114,7 +130,7 @@ export function renderTicketingEmail(input: TicketingEmailInput) {
     [...[...lines.values()].map(line => `${line.name} × ${line.quantity}: ${money(line.amount, order.currency)}`),
       showTotal ? `${totalLabel}: ${money(total, order.currency)}` : '',
       kind === 'receipt' && order.taxAmount ? `Includes tax: ${money(order.taxAmount, order.currency)}` : ''].filter(Boolean).join('\n'),
-    c.note ? `Organizer note: ${c.note}` : '', `${c.button}: ${input.actionUrl}`, c.help, c.notice,
+    c.note ? `Organizer note: ${c.note}` : '', `${c.button}: ${input.actionUrl}`, calendarUrl ? `Add to Calendar: ${calendarUrl}` : '', c.help, c.notice,
     `My tickets: ${input.baseUrl}/app/tickets\nPluto · Events for dance music enthusiasts`,
   ].filter(Boolean).join('\n\n');
   const html = `<!doctype html>
@@ -134,7 +150,7 @@ export function renderTicketingEmail(input: TicketingEmailInput) {
 ${c.paragraphs.map(value => paragraph(value)).join('')}
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:26px 0;background-color:#251c30;border:1px solid #493855;border-radius:12px"><tr><td style="padding:24px">
 <p style="margin:0 0 8px;color:#c4a2ff;font-size:11px;font-weight:700;letter-spacing:1.5px">THE EVENT</p>
-<h2 style="margin:0 0 22px;color:#f7f3fc;font-size:23px;line-height:1.35;overflow-wrap:anywhere">${escape(order.eventTitle)}</h2>
+<h2 style="margin:0 0 22px;color:#f7f3fc;font-size:23px;line-height:1.35;overflow-wrap:anywhere">${escape(order.eventTitle)}</h2>${calendarUrl ? `<p style="margin:0 0 20px"><a href="${escape(calendarUrl)}" style="color:#c4a2ff;font-size:14px">Add to Calendar</a></p>` : ''}
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">${begins ? meta('EVENT BEGINS', begins) : ''}${city ? meta('CITY', city) : ''}</table>
 ${location ? paragraph(location, 'font-size:13px;line-height:1.6;') : ''}
 ${showReference ? `<p style="margin:0;color:#b7a5c5;font-size:11px;letter-spacing:1px">ORDER · ${escape(reference)}</p>` : ''}

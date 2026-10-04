@@ -1,5 +1,12 @@
 # Pluto readiness audit — October 3, 2026
 
+## Event engagement and door checkpoint — October 4, 2026
+
+Recommendations 4–7 now include email announcements/reminders, schedule/cancellation/location notices, unified door arrivals and audited exits/re-entry, free-event walk-up counts, public/app/email calendar links, and verified waitlists with expiring capacity reservations and approval-aware RSVP claims. This extends the earlier checkpoints; the original audit below remains historical evidence.
+
+Local validation covers reservation races/expiry, queue deduplication, current-holder targeting, private-calendar/email filtering, approval gates and PIN scope. Deployed email delivery, index activation, physical calendar imports and gate/load rehearsals remain acceptance gates. Before staging deployment, grant the dedicated deployer `roles/datastore.indexAdmin`; the release now includes the required composite indexes. See [operation limits and acceptance checklist](event-engagement-and-door-tools.md).
+
+
 Audited application revision: `a6aa9f6` on `native-ticketing`.
 
 ## Operations and attendee access checkpoint — October 4, 2026

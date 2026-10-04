@@ -14,6 +14,7 @@ import { allowedSiteOrigins } from '../deployment-config';
 import { Webhook } from 'svix';
 import { resendWebhookKey } from './config';
 import { recordDelivery } from './delivery';
+import { calendarLinks, eventCalendar } from './calendar';
 
 export function ticketingRouter(context: (path: string) => Record<string, unknown>, service = new Operations()) {
   const router = express.Router();
@@ -71,7 +72,7 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   async function renderEvent(event: any, req: Request, res: Response, preview = false) {
     const media = (m: any) => m ? { ...m, url: `/events/${event.slug}/media/${m.assetId}` } : null;
     const rsvp = ['rsvp', 'rsvp-approval'].includes(event.registrationMode), free = event.registrationMode === 'free';
-    const mapped = { ...event, rsvp, free, hero: media(event.hero), flyer: media(event.flyer), gallery: event.gallery.map(media), lineup: event.lineup.map((a: any) => ({ ...a, image: media(a.image) })) };
+    const mapped = { ...event, rsvp, free, calendar: calendarLinks(event, baseUrl()), hero: media(event.hero), flyer: media(event.flyer), gallery: event.gallery.map(media), lineup: event.lineup.map((a: any) => ({ ...a, image: media(a.image) })) };
     const pools = free ? [] : (await service.event(event.id).collection('pools').get()).docs.map(d => d.data());
     const privateEvent = free ? undefined : (await service.event(event.id).get()).data();
     const offerPools = privateEvent?.liveDraft?.offers || privateEvent?.draft.offers || [];
@@ -80,7 +81,7 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
     mapped.offers = (free ? [] : event.offers).map((o: any) => {
       const remaining = Math.max(0, Math.min(...Object.entries(offerPools.find((p: any) => p.id === o.id)?.pools || {}).map(([key, count]) => { const p = pools.find(p => p.id === key); return p ? Math.floor((p.capacity - p.sold - p.held) / (count as number)) : 0; }), 1000000));
       const availability = Date.parse(o.salesStart) > now ? 'Coming soon' : Date.parse(o.salesEnd) <= now ? 'Sales closed' : remaining <= 0 ? 'Sold out' : 'Available';
-      return { ...o, remaining, availability, available: availability === 'Available', quantityLimit: Math.min(o.maxPerOrder, remaining), priceLabel: (o.unitAmount / 100).toFixed(2) };
+      return { ...o, remaining, availability, available: availability === 'Available', waitlistAllowed: !!event.waitlistEnabled && event.status === 'published' && availability === 'Sold out' && o.kind === 'admission' && !o.requiresOfferIds.length, quantityLimit: Math.min(o.maxPerOrder, remaining), priceLabel: (o.unitAmount / 100).toFixed(2) };
     });
     const dateLabel = new Intl.DateTimeFormat('en-US', { timeZone: event.timezone, dateStyle: 'full', timeStyle: 'short' });
     const state = event.status === 'cancelled' ? 'Cancelled' : event.status === 'archived' || Date.parse(event.endAt) <= now ? 'Past event' : free ? 'Free entry' : mapped.offers.some((o: any) => o.available) ? rsvp ? 'RSVPs open' : 'Tickets available' : mapped.offers.some((o: any) => o.availability === 'Coming soon') ? 'Coming soon' : mapped.offers.some((o: any) => o.availability === 'Sold out') ? 'Sold out' : rsvp ? 'RSVPs closed' : 'Sales closed';
@@ -104,6 +105,12 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
     const slug = (await service.db.collection('eventSlugs').doc(id(req.params.slug)).get()).data(); if (!slug) fail('Image not found.', 404);
     res.type('webp').send(await service.media(slug.eventId, id(req.params.assetId)));
   });
+  router.get('/events/:slug/calendar.ics', async (req, res) => {
+    const slug = (await service.db.collection('eventSlugs').doc(id(req.params.slug)).get()).data();
+    const event = slug ? (await service.db.collection('publishedEvents').doc(slug.eventId).get()).data() : null;
+    if (!event) fail('Event not found.', 404);
+    res.type('text/calendar; charset=utf-8').set('Content-Disposition', 'attachment; filename="pluto-event.ics"').send(eventCalendar(event as any, baseUrl()));
+  });
   router.get('/events/:slug', async (req, res) => {
     const slug = (await service.db.collection('eventSlugs').doc(id(req.params.slug)).get()).data(); if (!slug) fail('Event not found.', 404);
     if (slug.redirect) return res.redirect(301, `/events/${slug.redirect}`);
@@ -122,7 +129,7 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
     next();
   }, express.json({ limit: '7300kb' }), async (req, res, next) => {
     res.locals.actor = await service.actor((req.get('authorization') || '').replace(/^Bearer /, ''), true);
-    const scannerRoutes = ['/staff/scan', '/staff/manifest', '/staff/scan-review', '/staff/guestlist', '/staff/guestlist/arrive', '/scanner/session'];
+    const scannerRoutes = ['/staff/scan', '/staff/manifest', '/staff/scan-review', '/staff/guestlist', '/staff/guestlist/arrive', '/staff/attendance', '/staff/attendance/move', '/scanner/session'];
     if (req.get('x-pluto-scanner') && scannerRoutes.includes(req.path)) res.locals.scanner = await service.scannerSession(req.get('x-pluto-scanner')!);
     const upload = req.path === '/staff/media', identity = clientIdentity(req, res.locals.actor?.uid, res.locals.scanner ? req.get('x-pluto-scanner') : undefined);
     res.locals.rateIdentity = identity;
@@ -133,6 +140,16 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   const actor = (res: Response): DecodedIdToken => res.locals.actor || fail('Sign in to continue.', 401);
   const admissionIdentity = (req: Request, res: Response) => req.get('x-pluto-scanner') ? { scannerToken: req.get('x-pluto-scanner')! } : actor(res).uid;
   const bodyId = (req: Request, key = 'eventId') => id(req.body?.[key]);
+  router.post('/tickets/api/waitlist/verification', async (req, res) => { await service.rateLimit(email(req.body.email), 'waitlist-verification-contact', 5); await service.rateLimit(res.locals.rateIdentity, 'waitlist-verification-client', 20); res.json(await service.requestRsvpVerification(req.body, res.locals.actor, 'waitlist')); });
+  router.post('/tickets/api/waitlist/join', async (req, res) => { await service.rateLimit(email(req.body.email), 'waitlist-join-contact', 20); res.json(await service.joinWaitlist(req.body, res.locals.actor)); });
+  router.post('/tickets/api/waitlist/view', async (req, res) => res.json(await service.waitlistView(req.body)));
+  router.post('/tickets/api/waitlist/withdraw', async (req, res) => res.json(await service.withdrawWaitlist(req.body)));
+  router.post('/tickets/api/staff/waitlist', async (req, res) => res.json(await service.staffWaitlist(bodyId(req), actor(res).uid, req.body.cursor)));
+  router.post('/tickets/api/staff/waitlist/approve', async (req, res) => res.json(await service.approveWaitlist(bodyId(req), bodyId(req, 'entryId'), actor(res).uid, req.body.note)));
+  router.post('/tickets/api/staff/communications', async (req, res) => res.json(await service.communications(bodyId(req), actor(res).uid)));
+  router.post('/tickets/api/staff/announcements', async (req, res) => res.json(await service.announce(bodyId(req), req.body, actor(res).uid)));
+  router.post('/tickets/api/staff/attendance', async (req, res) => res.json(await service.attendance(bodyId(req), req.body, admissionIdentity(req, res))));
+  router.post('/tickets/api/staff/attendance/move', async (req, res) => res.json(await service.doorMovement(bodyId(req), req.body, admissionIdentity(req, res))));
   router.post('/tickets/api/wallet/options', (_req, res) => res.json(digitalWallet.options()));
   router.post('/tickets/api/wallet/apple', async (req, res) => {
     if (!digitalWallet.options().apple) fail('Apple Wallet passes are not available yet.', 503, 'wallet-unavailable');

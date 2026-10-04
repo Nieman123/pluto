@@ -65,3 +65,7 @@ The service worker caches the app shell, fonts and public SDK assets. It does no
 ## Retention
 
 New private collections are `ticketingHealth`, `ticketingHealthAudit`, `ticketingEmailDelivery` and `ticketingRsvpVerification`. Direct client access is denied, including for admins. Numeric challenge expiry is enforced in the API; it is not a Firestore TTL policy. Include expired challenge cleanup and delivery-event retention in the project's retention job/policy before high-volume use. Email payloads/codes are scrubbed after successful send or cancellation; support audits retain the correction reason and before/after contact for accountability.
+
+## Event engagement and door tools
+
+See [announcements, reminders, attendance, calendar and waitlist operations](event-engagement-and-door-tools.md). The next coordinated release includes composite Firestore indexes and needs `roles/datastore.indexAdmin` on the environment deployment account. System health reports delayed campaigns and expired waitlist holds alongside existing email failures.

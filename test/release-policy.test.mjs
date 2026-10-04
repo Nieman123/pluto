@@ -85,3 +85,10 @@ test('PR workflow has no deployment, credential inheritance or privileged PR tri
   const flutter = await readFile('lib/firebase_options.dart', 'utf8');
   assert.ok(flutter.includes(projects.staging));
 });
+test('release adds required indexes without forcing deletion of existing indexes or TTL overrides', async () => {
+  const release = await readFile('.github/workflows/release.yml', 'utf8');
+  const deployments = [...release.matchAll(/run: ([^\n]*firebase-tools[^\n]* deploy[^\n]*)/g)].map(m => m[1]);
+  const indexDeploys = deployments.filter(command => command.includes('firestore:indexes'));
+  assert.equal(indexDeploys.length, 1); assert.match(indexDeploys[0], /--non-interactive/); assert.doesNotMatch(indexDeploys[0], /--force/);
+  assert.ok(deployments.some(command => command.includes('functions:ticketingMaintenance') && command.includes('--force')));
+});

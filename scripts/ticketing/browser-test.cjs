@@ -116,7 +116,7 @@ async function surface(page, name) {
     stage = 'ticket type saving';
     assert.equal(await page.locator('#event-editor [data-field^="offers."]').count(), 0, 'ticket settings are outside Event Studio');
     await page.locator('#event-orders').click(); await page.locator('#event-ticket-settings-form').waitFor();
-    assert.equal(await page.locator('#event-ticket-settings fieldset').count(), 4);
+    assert.deepEqual(await page.locator('#event-ticket-settings fieldset > legend').allTextContents(), ['Capacity pools', 'Ticket types & passes', 'Promotions', 'Event tax setup', 'Reminders & waitlist']);
     await page.locator('#event-ticket-settings a[href="#event-capacity"]').click();
     await page.locator('[data-field="pools.0.capacity"]').fill('275'); await page.locator('[data-field="pools.0.capacity"]').dispatchEvent('change');
     await page.locator('[data-add=offers]').click();

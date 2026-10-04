@@ -7,6 +7,7 @@ import { revenueChart } from './revenue-chart.js';
 import { allOrders, eventOrders } from './orders.js';
 import { updateEventSchedule } from './event-schedule.js';
 import { healthDashboard } from './health.js';
+import { attendancePanel, communicationsPanel, waitlistPanel } from './event-tools.js';
 
 let record, events = [], dirty = false, pendingUploads = 0, studio = false, globalAdmin = false, saving, allOrdersMode = false;
 async function healthBadge() {
@@ -88,7 +89,7 @@ async function imagePayload(file) {
 }
 function defaultDraft() {
   const startAt = new Date(Date.now() + 7 * 86400000).toISOString(), endAt = new Date(Date.now() + 7 * 86400000 + 8 * 3600000).toISOString(), salesStart = new Date(Date.now() - 60000).toISOString();
-  return { registrationMode: 'tickets', title: 'New Pluto event', slug: `new-event-${crypto.randomUUID().slice(0, 8)}`, subtitle: '', descriptionHtml: '<p>Tell your guests what makes this event special.</p>', startAt, endAt, admissionStartsAt: startAt,
+  return { registrationMode: 'tickets', remindersEnabled: true, waitlistEnabled: false, waitlistOfferMinutes: 30, title: 'New Pluto event', slug: `new-event-${crypto.randomUUID().slice(0, 8)}`, subtitle: '', descriptionHtml: '<p>Tell your guests what makes this event special.</p>', startAt, endAt, admissionStartsAt: startAt,
     timezone: 'America/New_York', city: 'Asheville', region: 'NC', venueName: '', address: '', directions: '', venueVisibility: 'holders', venueRevealScheduled: false, venueRevealAt: null, hero: null, flyer: null, gallery: [], lineup: [],
     sections: [{ id: 'faq', type: 'faq', title: 'Good to know', bodyHtml: '<p>Bring your ticket and a valid photo ID.</p>', visible: true }], theme: { preset: 'pluto', accent: '#c4a2ff', font: 'Montserrat' },
     pools: [{ id: 'admission', name: 'General admission', capacity: 200 }], offers: [{ id: 'general', name: 'General admission', description: '', kind: 'admission', unitAmount: 4000, maxPerOrder: 10, salesStart, salesEnd: endAt, validFrom: startAt, validUntil: endAt, active: true, pools: { admission: 1 }, requiresOfferIds: [], taxCode: '', stripeProductId: '', stripeTaxRateIds: [] }], promos: [], tax: { mode: 'sandbox', confirmed: false, performanceLocationId: '' } };
@@ -137,12 +138,16 @@ async function selectEvent(eventId, edit = false) {
   document.querySelector('#event-roles').hidden = !globalAdmin || edit;
   document.querySelector('#event-scanner-pins').hidden = !scope?.roles.includes('manager');
   document.querySelector('#event-promoter-stats').hidden = edit || !scope?.roles.includes('promoter');
+  document.querySelector('#event-communications').hidden = edit || !scope?.roles.includes('manager');
+  document.querySelector('#event-waitlist').hidden = edit || !scope?.roles.includes('manager') || scope?.registrationMode === 'free';
+  document.querySelector('#event-attendance').hidden = edit || !scope?.roles.some(r => ['manager', 'admission'].includes(r));
   document.querySelector('#event-orders').hidden = !edit;
   document.querySelector('#event-cash').hidden = edit || !scope?.roles.includes('cash');
   document.querySelector('#event-editor').hidden = !edit; document.querySelector('#event-dashboard').hidden = edit;
   if (!edit) document.querySelector('#event-editor').replaceChildren();
   history.replaceState(null, '', `/tickets/admin?event=${encodeURIComponent(eventId)}${edit ? '&view=studio' : ''}`);
   if (scope?.roles.includes('manager')) record = await api('staff/get', { eventId }); else record = null;
+  if (record) { record.draft.remindersEnabled ??= true; record.draft.waitlistEnabled ??= false; record.draft.waitlistOfferMinutes ??= 30; }
   if (scope?.registrationMode && scope.registrationMode !== 'tickets') document.querySelector('#event-cash').hidden = true;
   dirty = false;
   if (edit && record) render();
@@ -207,7 +212,7 @@ function render() {
   if (studio) document.querySelector('#event-dashboard').replaceChildren();
   const studioHeader = `<nav class="studio-navigation" aria-label="Event editor sections"><a href="#event-details">Details</a><a href="#event-venue">Venue</a><a href="#event-artwork">Artwork</a><a href="#event-theme">Theme</a><a href="#event-lineup">Lineup</a><a href="#event-sections">Page sections</a></nav><form id="event-editor-form"><h2>${esc(d.title)}</h2><p>Revision ${record.revision} · ${esc(record.status || 'draft')}</p><div class="ticket-toolbar"><button type="submit" class="button button-primary">Save draft</button><button type="button" class="button button-quiet" data-event-action="preview">Preview</button><button type="button" class="button button-primary" data-event-action="publish">Publish</button><button type="button" class="button button-quiet" data-event-action="unpublish">Unpublish</button><button type="button" class="button button-quiet" data-event-action="archive">Archive</button><button type="button" class="button button-quiet" data-event-action="cancel">Mark cancelled</button><button type="button" class="button button-quiet" data-event-action="duplicate">Duplicate</button><button type="button" class="button button-quiet" data-event-action="history">Version history</button><a class="button button-quiet" href="/events/${esc(d.slug)}" target="_blank" rel="noopener">Public page</a></div>`;
   const ticketingHeader = `<h2>${free ? 'Event setup' : 'Ticketing setup'}</h2>${free ? '<p>Manage your event type here and build the public page in Event Studio.</p>' : '<p>Manage capacity, passes, promotions and event taxes. Save settings to your draft, then publish to apply them to ticket sales.</p><nav class="studio-navigation" aria-label="Ticketing settings sections"><a href="#event-capacity">Capacity pools</a><a href="#event-tickets">Ticket types & passes</a><a href="#event-promotions">Promotions</a><a href="#event-tax">Event tax setup</a></nav>'}<form id="event-ticket-settings-form"><div class="ticket-toolbar"><button type="submit" class="button button-primary">${free ? 'Save event settings' : 'Save ticketing settings'}</button><button type="button" class="button button-quiet" data-event-action="publish">${free ? 'Publish event changes' : 'Publish ticketing changes'}</button><span data-save-state role="status"></span></div>`;
-  root.innerHTML = `${studio ? studioHeader : ticketingHeader}${studio ? studioFields(d) : free ? '' : ticketingFields(d)}<div class="studio-save-bar"><span data-save-state role="status"></span><button type="submit" class="button button-primary">${studio ? 'Save draft' : free ? 'Save event settings' : 'Save ticketing settings'}</button></div></form>`;
+  root.innerHTML = `${studio ? studioHeader : ticketingHeader}${studio ? studioFields(d) : free ? '' : ticketingFields(d)}${!studio && !free ? `<fieldset><legend>Reminders & waitlist</legend>${field('remindersEnabled', 'Email attendees 24 hours and 4 hours before the event', 'check')}<p>Emails link to Pluto for tickets and private venue details. Published schedule changes, cancellations and scheduled location releases also notify current attendees.</p>${field('waitlistEnabled', 'Enable waitlists for sold-out admission passes', 'check')}${field('waitlistOfferMinutes', 'Waitlist offer claim window (15–120 minutes)', 'number')}<p>One independent admission pass per offer, in join order. Approval-required RSVPs need organizer approval before an offer is sent. Save and publish to apply these settings.</p></fieldset>` : ''}<div class="studio-save-bar"><span data-save-state role="status"></span><button type="submit" class="button button-primary">${studio ? 'Save draft' : free ? 'Save event settings' : 'Save ticketing settings'}</button></div></form>`;
   {
     const rsvp = ['rsvp', 'rsvp-approval'].includes(d.registrationMode);
     root.querySelector('form').insertAdjacentHTML('afterbegin', `<div class="registration-settings">${field('registrationMode', 'Event registration', 'select', { choices: [['tickets', 'Ticketed event'], ['rsvp', 'Open RSVP · No approval needed'], ['rsvp-approval', 'RSVP · Organizer approval required'], ['free', 'Free event · Just show up']] })}<p>${free ? 'Free entry with no tickets, RSVP or admission QR required. Venue and directions are public. Ticket types are deactivated in this draft; existing orders stay valid.' : d.registrationMode === 'rsvp-approval' ? 'RSVPs are free, one pass per named person. Attendees receive no QR until you approve their request. Pending requests hold no capacity.' : d.registrationMode === 'rsvp' ? 'RSVPs are free, one pass per named person. Attendees receive their in-app QR immediately, within available capacity.' : 'Use tickets for paid or free ticket sales. Choose Free event for gatherings people can simply show up to.'}</p>${rsvp ? '<button class="button button-quiet" type="button" id="setup-rsvp-pass">Set up free RSVP pass</button><p>This deactivates existing ticket options and adds one free RSVP pass using the first admission option’s capacity pools. Existing orders stay valid. Edit the pass in the event dashboard before saving and publishing. Promotions do not apply to RSVPs.</p>' : ''}</div>`);
@@ -295,7 +300,7 @@ function render() {
   }));
   root.querySelectorAll('fieldset').forEach(section => {
     const name = section.querySelector('legend')?.textContent;
-    section.id = { 'The essentials': 'event-details', 'Venue & directions': 'event-venue', 'Artwork & gallery': 'event-artwork', 'Page theme': 'event-theme', 'Lineup & set times': 'event-lineup', 'Page sections': 'event-sections', 'Capacity pools': 'event-capacity', 'Ticket types & passes': 'event-tickets', 'Promotions': 'event-promotions', 'Event tax setup': 'event-tax' }[name] || '';
+    section.id = { 'The essentials': 'event-details', 'Venue & directions': 'event-venue', 'Artwork & gallery': 'event-artwork', 'Page theme': 'event-theme', 'Lineup & set times': 'event-lineup', 'Page sections': 'event-sections', 'Capacity pools': 'event-capacity', 'Ticket types & passes': 'event-tickets', 'Promotions': 'event-promotions', 'Event tax setup': 'event-tax', 'Reminders & waitlist': 'event-engagement' }[name] || '';
     if (!studio) {
       const group = document.createElement('details'), summary = document.createElement('summary'); group.className = 'ticket-settings-group'; group.dataset.section = section.id; summary.textContent = name;
       group.open = groups.length ? expanded.has(section.id) : section.id === 'event-tickets';
@@ -369,6 +374,9 @@ export function initEditor() {
   bind('#event-new', async () => { const eid = crypto.randomUUID(); await api('staff/save', { eventId: eid, draft: defaultDraft(), revision: 0 }); await loadEvents(); document.querySelector('#staff-event').value = eid; await selectEvent(eid, true); });
   document.querySelector('#staff-event')?.addEventListener('change', event => action(null, async () => { if (dirty) { event.target.value = record.id; message('Save your draft before switching events.', true); return; } await selectEvent(event.target.value); }));
   bind('#event-studio', () => selectEvent(document.querySelector('#staff-event').value, true));
+  bind('#event-communications', () => communicationsPanel(document.querySelector('#staff-event').value));
+  bind('#event-waitlist', () => waitlistPanel(document.querySelector('#staff-event').value));
+  bind('#event-attendance', () => attendancePanel(document.querySelector('#staff-event').value));
   bind('#event-orders', async () => { if (dirty) await save(); await selectEvent(document.querySelector('#staff-event').value); });
   bind('#orders-all', showAllOrders);
   bind('#system-health', showHealth);

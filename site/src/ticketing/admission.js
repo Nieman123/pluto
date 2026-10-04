@@ -1,6 +1,7 @@
 import { BrowserQRCodeReader } from '@zxing/browser';
 import { action, api, bind, esc, message, scannerSession, setScannerSession, user } from './api.js';
 import { doorGuestList } from './guestlist.js';
+import { attendancePanel } from './event-tools.js';
 let manifest, verificationKey, cameraControls, scanning = false;
 const eventId = () => document.querySelector('#staff-event').value;
 const scannerStorage = 'pluto-scanner-session';
@@ -26,6 +27,7 @@ export async function cacheStaffEvents(result, uid, expiresAt = Date.now() + 24 
   if (events.some(e => e.id === previous?.selected) && previous.uid === uid) selector.value = previous.selected;
 }
 export async function lockOfflineAdmission(clearCachedSession = true) {
+  document.querySelector('#ticketing-dialog')?.close(); document.querySelector('#ticketing-dialog-content')?.replaceChildren();
   cameraControls?.stop(); cameraControls = null; manifest = null; verificationKey = null;
   if (clearCachedSession) await dbOperation('state', 'readwrite', s => s.delete('session'));
   document.querySelector('#staff-controls').hidden = true;
@@ -56,6 +58,7 @@ async function closeScanner(clearStored = true, clearCachedSession = true) {
   setScannerSession(null); if (clearStored) localStorage.removeItem(scannerStorage); await lockOfflineAdmission(clearCachedSession); scannerView(false);
 }
 export async function initScanner() {
+  bind('#admission-attendance', () => attendancePanel(eventId()));
   document.querySelector('#scanner-login-form').onsubmit = event => { event.preventDefault(); action(event.submitter, async () => {
     const session = await api('scanner/login', { pin: new FormData(event.target).get('pin') });
     await lockOfflineAdmission(); await openScanner(session); event.target.reset();

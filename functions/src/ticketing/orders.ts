@@ -9,6 +9,7 @@ import { scannerAccess, type ScannerProof } from './scanner-access';
 import { guestEntry } from './guest-entry';
 import { readOfflineItem, signOfflineItem, type OfflineSubmission } from './offline-proof';
 import type { WalletTicket } from './digital-wallet';
+import { waitlistHold, withoutWaitlistHold } from './waitlist-hold';
 
 export interface Order {
   eventId: string; eventTitle: string; eventSlug: string; ownerUid: string; email: string; name: string; accessHash: string; inputHash: string;
@@ -95,9 +96,10 @@ export class Orders extends Catalog {
     });
   }
   async checkout(raw: any, actor: DecodedIdToken | null, method = 'stripe', staffUid = '') {
+    if (raw.waitlistToken && method !== 'stripe') fail('Claim waitlist offers through the event page.', 409);
     const eventId = id(raw.eventId), accessKey = receipt(raw.accessKey), orderId = hash(accessKey), ref = this.order(orderId);
     const contact = { email: email(raw.email), name: text(raw.name, 'name', 150, true), ownerUid: actor?.uid || '' };
-    const requestHash = hash(JSON.stringify({ eventId, items: raw.items, promoCode: raw.promoCode || '', ...contact, method,
+    const requestHash = hash(JSON.stringify({ eventId, items: raw.items, promoCode: raw.promoCode || '', ...contact, method, ...(raw.waitlistToken ? { waitlist: hash(receipt(raw.waitlistToken)) } : {}),
       ...(method !== 'stripe' ? { cashReceived: raw.cashReceived || 0, reason: raw.reason || '', taxState: raw.taxState || '', taxPostalCode: raw.taxPostalCode || '', taxCity: raw.taxCity || '', taxLine1: raw.taxLine1 || '' } : {}) }));
     // Configuration fails before inventory is reserved or payment is accepted.
     keyPair(this.signing()); if (method === 'stripe') this.stripe();
@@ -134,8 +136,9 @@ export class Orders extends Catalog {
       }
       const taxCustomerAddress = method === 'cash' && draft.tax.mode === 'automatic' && priced.total > 0 ? { country: 'US', state: text(raw.taxState, 'billing state', 2, true).toUpperCase(), postal_code: text(raw.taxPostalCode, 'billing ZIP', 10, true), line1: text(raw.taxLine1, 'billing street', 500, true), city: text(raw.taxCity, 'billing city', 100, true) } : null;
       if (taxCustomerAddress && (!/^[A-Z]{2}$/.test(taxCustomerAddress.state) || !/^\d{5}(?:-\d{4})?$/.test(taxCustomerAddress.postal_code))) fail('Check the US billing state and ZIP for the cash tax calculation.');
+      const hold = await waitlistHold(tx, this.db, raw, eventId, contact.email, draft, now);
       const poolSnapshots = await Promise.all(Object.keys(priced.consumption).map(key => tx.get(this.event(eventId).collection('pools').doc(key))));
-      const pools: Record<string, any> = Object.fromEntries(poolSnapshots.map(s => [s.id, s.data()])); assertCapacity(priced.consumption, pools);
+      const pools: Record<string, any> = Object.fromEntries(poolSnapshots.map(s => [s.id, s.data()])); assertCapacity(priced.consumption, withoutWaitlistHold(pools, hold));
       const promoRef = priced.promoCode ? this.event(eventId).collection('promos').doc(priced.promoCode) : null;
       const promotion = promoRef ? (await tx.get(promoRef)).data() : null;
       if (promoRef && (!promotion || promotion.held + promotion.used >= promotion.limit)) fail('This promotion has reached its redemption limit.', 409);
@@ -144,7 +147,8 @@ export class Orders extends Catalog {
         const promoter = (await tx.get(this.event(eventId).collection('promoters').doc(id(raw.promoterId)))).data();
         if (promoter?.active === true) promoterId = id(raw.promoterId);
       }
-      for (const [key, count] of Object.entries(priced.consumption)) tx.update(this.event(eventId).collection('pools').doc(key), { held: pools[key].held + count });
+      for (const [key, count] of Object.entries(priced.consumption)) tx.update(this.event(eventId).collection('pools').doc(key), { held: pools[key].held + count - (hold?.entry.consumption[key] || 0) });
+      if (hold) tx.update(hold.ref, { status: 'claimed', orderId, claimedAt: now });
       if (promoRef) tx.update(promoRef, { held: promotion!.held + 1 });
       tx.create(ref, { eventId, eventTitle: draft.title, eventSlug: draft.slug, ...contact, accessHash: hash(accessKey), inputHash: requestHash,
         ...priced, tax: draft.tax, taxCustomerAddress, currency: 'usd', livemode: isLive(), status: 'provisioning', method, createdAt: now, expiresAt: now + 35 * 60000,
@@ -397,6 +401,7 @@ export class Orders extends Catalog {
     return { orderId, status: latest.status };
   }
   credential(ticket: any, ticketKey: string) { return signTicket({ id: ticketKey, eventId: ticket.eventId, version: ticket.version, validFrom: ticket.validFrom, validUntil: ticket.validUntil }, this.signing()); }
+  private calendarUrl(event: any) { return event?.publishedSlug ? `${baseUrl()}/events/${encodeURIComponent(event.publishedSlug)}/calendar.ics` : ''; }
   transferDeadline(ticket: any, event: any) { return Math.min(Date.parse(ticket.transferCutoff || ticket.validFrom), Date.parse((event.liveDraft || event.draft).admissionStartsAt)); }
   async view(orderId: string, accessKey: unknown, actor: DecodedIdToken | null, refresh = false) {
     let order = await this.authorize(orderId, accessKey, actor);
@@ -405,12 +410,12 @@ export class Orders extends Catalog {
     const event = (await this.event(order.eventId).get()).data();
     const held = tickets.filter(t => !order.financialBlocked && t.data().status === 'valid' && (!t.data().rsvp || order.rsvpStatus === 'approved') && (t.data().ownerUid === actor?.uid || t.data().holderEmail === order.email));
     const venue = held.length ? holderVenue(event?.liveDraft || event?.draft) : null;
-    return { orderId, eventId: order.eventId, eventTitle: order.eventTitle, eventSlug: order.eventSlug, eventStatus: event?.status, status: order.status, method: order.method, total: order.total,
+    return { orderId, eventId: order.eventId, eventTitle: order.eventTitle, eventSlug: order.eventSlug, calendarUrl: this.calendarUrl(event), eventStatus: event?.status, status: order.status, method: order.method, total: order.total,
       rsvpStatus: order.rsvpStatus || '', approvalRequired: order.approvalRequired === true, decisionNote: order.decisionNote || '',
       providerState: order.providerState || 'unknown',
       discount: order.discount, taxAmount: order.taxAmount || 0, refundedAmount: order.refundedAmount || 0, externalRefundAmount: (order as any).externalRefundAmount || 0, reviewReason: order.financialReviewReason || order.reviewReason || '', financialBlocked: !!order.financialBlocked, name: order.name, email: order.email, createdAt: order.createdAt, receiptUrl: order.receiptUrl || '',
       tickets: tickets.map(t => { const d = t.data(), canUse = held.includes(t); return { id: t.id, name: d.name, holderName: d.holderName, status: d.status, validFrom: d.validFrom, validUntil: d.validUntil, admission: d.admission,
-        amount: d.amount, venue: canUse ? venue : null, transferable: !d.rsvp && canUse && d.status === 'valid' && !d.admission && event?.status !== 'cancelled' && Date.now() < this.transferDeadline(d, event), qr: canUse && d.status === 'valid' && event?.status !== 'cancelled' ? this.credential(d, t.id) : null }; }), venue };
+        amount: d.amount, calendarUrl: this.calendarUrl(event), venue: canUse ? venue : null, transferable: !d.rsvp && canUse && d.status === 'valid' && !d.admission && event?.status !== 'cancelled' && Date.now() < this.transferDeadline(d, event), qr: canUse && d.status === 'valid' && event?.status !== 'cancelled' ? this.credential(d, t.id) : null }; }), venue };
   }
   async claim(actor: DecodedIdToken) {
     if (!actor.email_verified || !actor.email) fail('Verify your account email before claiming orders.', 403);
@@ -430,7 +435,7 @@ export class Orders extends Catalog {
     return { orders: orders.docs.map(d => { const o = d.data(); return { orderId: d.id, eventTitle: o.eventTitle, status: o.status, method: o.method, rsvpStatus: o.rsvpStatus || '', total: o.total, createdAt: o.createdAt }; }).sort((a, b) => b.createdAt - a.createdAt),
       tickets: await Promise.all(tickets.docs.map(async t => { const d = t.data(), event = (await this.event(d.eventId).get()).data(), order = (await this.order(d.orderId).get()).data(); return { id: t.id, orderId: d.orderId, eventTitle: d.eventTitle, name: d.name, holderName: d.holderName, status: d.status,
         admission: d.admission, validFrom: d.validFrom, validUntil: d.validUntil, version: d.version, transferable: !order?.financialBlocked && !d.rsvp && d.status === 'valid' && !d.admission && event?.status !== 'cancelled' && Date.now() < this.transferDeadline(d, event),
-        venue: !order?.financialBlocked && d.status === 'valid' && (!d.rsvp || order?.rsvpStatus === 'approved') ? holderVenue(event?.liveDraft || event?.draft) : null,
+        calendarUrl: this.calendarUrl(event), venue: !order?.financialBlocked && d.status === 'valid' && (!d.rsvp || order?.rsvpStatus === 'approved') ? holderVenue(event?.liveDraft || event?.draft) : null,
         qr: !order?.financialBlocked && d.status === 'valid' && event?.status !== 'cancelled' ? this.credential(d, t.id) : null }; })) };
   }
   async recover(rawEmail: unknown) {
@@ -513,7 +518,7 @@ export class Orders extends Catalog {
     return { id: access.ticketId, orderId: ticket.orderId, name: ticket.name, eventTitle: ticket.eventTitle, holderName: ticket.holderName, status: ticket.status,
       validFrom: ticket.validFrom, validUntil: ticket.validUntil, admission: ticket.admission || null, version: ticket.version,
       transferable: !ticket.rsvp && !ticket.admission && Date.now() < this.transferDeadline(ticket, event), qr: this.credential(ticket, access.ticketId),
-      venue: holderVenue(event.liveDraft || event.draft) };
+      calendarUrl: this.calendarUrl(event), venue: holderVenue(event.liveDraft || event.draft) };
   }
   protected async admissionAccess(identity: string | ScannerProof, eventId: string, tx: Transaction, manager = false) {
     if (typeof identity !== 'string') {
