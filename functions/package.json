@@ -14,12 +14,16 @@
   },
   "dependencies": {
     "compression": "^1.8.1",
+    "do-not-zip": "1.0.0",
     "express": "^5.1.0",
     "firebase-admin": "^13.10.0",
     "firebase-functions": "^7.2.5",
     "nunjucks": "^3.2.4",
     "pdf-lib": "^1.17.1",
-    "pdfkit": "^0.20.2"
+    "pdfkit": "^0.20.2",
+    "sanitize-html": "2.18.0",
+    "sharp": "0.35.5",
+    "stripe": "23.0.0"
   },
   "overrides": {
     "@grpc/grpc-js": "1.14.5"
@@ -30,6 +34,7 @@
     "@types/node": "^22.0.0",
     "@types/nunjucks": "^3.2.6",
     "@types/pdfkit": "^0.17.6",
+    "@types/sanitize-html": "^2.16.2",
     "typescript": "^5.8.0"
   }
 }

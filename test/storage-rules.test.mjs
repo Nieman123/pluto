@@ -9,12 +9,10 @@ let environment;
 
 before(async () => {
   environment = await initializeTestEnvironment({
-    projectId: "pluto-storage-rules-test",
+    projectId: "demo-pluto-storage-rules-test",
     firestore: { rules: await readFile("firestore.rules", "utf8") },
     storage: {
       rules: await readFile("storage.rules", "utf8"),
-      host: "127.0.0.1",
-      port: 9199,
     },
   });
 });

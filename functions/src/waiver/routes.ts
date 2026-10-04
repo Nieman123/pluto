@@ -2,6 +2,7 @@ import express, { type Request, type Response } from 'express';
 import { legalView, consents, consentVersion, documentHash, electronicDisclosure, sourcePdf, version } from './document';
 import { receiptKey, textField, validateSubmission, WaiverError } from './validation';
 import { WaiverService } from './service';
+import { allowedSiteOrigins, deploymentConfig } from '../deployment-config';
 
 export function waiverRouter(context: (path: string) => Record<string, unknown>, service = new WaiverService()) {
   const router = express.Router();
@@ -13,7 +14,7 @@ export function waiverRouter(context: (path: string) => Record<string, unknown>,
     const staff = req.path === '/staff';
     res.render(staff ? 'waiver-staff' : 'waiver', {
       ...context('/manafest-waiver'), googleAnalyticsId: '', staff,
-      meta: { title: `${staff ? 'Waiver check-in' : 'ManaFest 2026 attendee waiver'} | Pluto Events`, description: 'Read and sign the ManaFest 2026 attendee waiver.', canonical: `https://pluto.events/manafest-waiver${staff ? '/staff' : ''}` },
+      meta: { title: `${staff ? 'Waiver check-in' : 'ManaFest 2026 attendee waiver'} | Pluto Events`, description: 'Read and sign the ManaFest 2026 attendee waiver.', canonical: `${deploymentConfig().baseUrl}/manafest-waiver${staff ? '/staff' : ''}` },
       legalView, consents, consentVersion, documentHash, electronicDisclosure, version,
       waiverPreview: Boolean(process.env.FIRESTORE_EMULATOR_HOST),
     });
@@ -21,10 +22,7 @@ export function waiverRouter(context: (path: string) => Record<string, unknown>,
   router.get('/original.pdf', (_req, res) => res.type('pdf').set('Content-Disposition', 'attachment; filename="ManaFest_2026_Attendee_Waiver.pdf"').send(sourcePdf));
   router.use('/api', (req, _res, next) => {
     if (req.method !== 'POST') return next(new WaiverError(405, 'Use POST for waiver requests.'));
-    const allowed = new Set(['https://pluto.events', 'https://www.pluto.events', 'https://pluto-9b6ca.web.app', 'https://pluto-9b6ca.firebaseapp.com']);
-    if (process.env.FUNCTIONS_EMULATOR === 'true' || process.env.FIRESTORE_EMULATOR_HOST) {
-      allowed.add('http://127.0.0.1:4173'); allowed.add('http://localhost:4173');
-    }
+    const allowed = allowedSiteOrigins();
     if (!allowed.has(req.get('origin') || '') || req.get('sec-fetch-site') === 'cross-site') return next(new WaiverError(403, 'Open the waiver on Pluto Events to continue.'));
     if (!req.is('application/json')) return next(new WaiverError(415, 'Send a JSON request.'));
     // Functions may parse the body before Express. Check rawBody as well as the parser limit.

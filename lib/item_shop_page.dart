@@ -62,7 +62,8 @@ class _ItemShopPageState extends State<ItemShopPage> {
     });
 
     try {
-      await _profileRepository.redeemReward(
+      final Map<String, dynamic> receipt =
+          await _profileRepository.redeemReward(
         uid: user.uid,
         rewardItem: rewardItem,
       );
@@ -71,7 +72,7 @@ class _ItemShopPageState extends State<ItemShopPage> {
       }
       setState(() {
         _statusMessage =
-            'Reward request submitted: ${rewardItem.name} (${rewardItem.pointsCost} Pluto Points).';
+            'Reward request submitted: ${receipt['rewardName']} (${receipt['pointsCost']} Pluto Points).';
       });
     } catch (error) {
       if (!mounted) {

@@ -1,9 +1,12 @@
-import { cp, mkdir, readdir, rm } from "node:fs/promises";
+import { cp, mkdir, readdir, rm, writeFile } from "node:fs/promises";
+import { createRequire } from 'node:module';
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const dist = resolve(root, "dist");
+const require = createRequire(import.meta.url);
+const deployment = require('../functions/lib/deployment-config.js').deploymentConfig();
 
 await rm(dist, { recursive: true, force: true });
 await mkdir(resolve(dist, "app"), { recursive: true });
@@ -12,6 +15,7 @@ await mkdir(resolve(dist, "assets/images/social"), { recursive: true });
 await cp(resolve(root, "build/web"), resolve(dist, "app"), { recursive: true });
 await cp(resolve(root, "site/static"), dist, { recursive: true });
 await cp(resolve(root, "site/dist/site.js"), resolve(dist, "assets/site.js"));
+await cp(resolve(root, 'site/dist/ticketing.js'), resolve(dist, 'assets/ticketing.js'));
 await cp(resolve(root, "web/gallery"), resolve(dist, "gallery"), { recursive: true });
 const festivalGallery = resolve(root, "assets/gallery/manafest-2026");
 await mkdir(resolve(dist, "gallery/manafest-2026"), { recursive: true });
@@ -22,6 +26,8 @@ for (const name of await readdir(festivalGallery)) {
 }
 await cp(resolve(root, "assets/fonts"), resolve(dist, "assets/fonts"), { recursive: true });
 await cp(resolve(root, "web/firebase-messaging-sw.js"), resolve(dist, "firebase-messaging-sw.js"));
+await writeFile(resolve(dist, 'assets/firebase-public-config.js'),
+  `self.PLUTO_ENVIRONMENT=${JSON.stringify(deployment.environment)};self.PLUTO_FIREBASE_CONFIG=${JSON.stringify(deployment.web)};\n`);
 await cp(resolve(root, "web/favicon.png"), resolve(dist, "favicon.png"));
 await cp(resolve(root, "web/pluto-preview.jpg"), resolve(dist, "assets/images/pluto-preview.jpg"));
 await cp(

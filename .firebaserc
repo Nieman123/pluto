@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "pluto-9b6ca"
+    "default": "pluto-9b6ca",
+    "production": "pluto-9b6ca",
+    "staging": "pluto-staging-92eb7"
   }
 }

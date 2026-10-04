@@ -7,6 +7,12 @@ import { getFirestore } from "firebase-admin/firestore";
 import { onRequest } from "firebase-functions/v2/https";
 import nunjucks from "nunjucks";
 import { waiverRouter } from "./waiver/routes";
+import { ticketingRouter } from './ticketing/routes';
+import { ticketingSecrets } from './ticketing/config';
+import { walletSecrets } from './ticketing/digital-wallet';
+import { configureTrustedProxy } from './ticketing/client-identity';
+import { deploymentConfig } from './deployment-config';
+export { ticketingMaintenance, ticketingWebhookWorker, ticketingEmailWorker } from './ticketing/workers';
 import { normalizeRental, groupRentals, rentalContactEmail, type PublicRental } from './rentals-data';
 import { seedRentals } from './rentals-seed';
 import {
@@ -26,7 +32,6 @@ if (!getApps().some((app) => app.name === '[DEFAULT]')) initializeApp();
 const db = getFirestore();
 const runtimeRoot = __dirname;
 const templates = join(runtimeRoot, "templates");
-const googleAnalyticsId = "G-Y6GBW8P032";
 const manaFest = JSON.parse(
   readFileSync(join(runtimeRoot, "content/manafest.json"), "utf8"),
 ) as Record<string, unknown>;
@@ -45,9 +50,11 @@ async function ensureRentalsInitialized() {
 }
 
 const app = express();
+configureTrustedProxy(app);
 app.use(compression());
 const env = nunjucks.configure(templates, { autoescape: true, noCache: true });
 env.express(app);
+app.set('nunjucksEnv', env);
 app.set("view engine", "njk");
 
 async function loadEvents(): Promise<PublicEvent[]> {
@@ -109,31 +116,31 @@ function pageMeta(path: string) {
 }
 
 function commonContext(path: string) {
+  const deployment = deploymentConfig();
+  const googleAnalyticsId = deployment.web.measurementId || '';
+  const [firestoreHost, firestorePort] = (process.env.FIRESTORE_EMULATOR_HOST || "").split(":");
   const firebaseConfig = {
-    apiKey: "AIzaSyBLv7MumBOjUHpmAUiu9nLfhWvwmAYKorE",
-    appId: "1:763906028056:web:c1261eba96f8b0c792896d",
-    messagingSenderId: "763906028056",
-    projectId: "pluto-9b6ca",
-    authDomain: "pluto-9b6ca.firebaseapp.com",
-    storageBucket: "pluto-9b6ca.appspot.com",
-    measurementId: googleAnalyticsId,
-    ...(process.env.FIREBASE_AUTH_EMULATOR_HOST ? { authEmulatorUrl: `http://${process.env.FIREBASE_AUTH_EMULATOR_HOST}`, projectId: process.env.GCLOUD_PROJECT || "demo-pluto-waiver" } : {}),
+    ...deployment.web,
+    ...(process.env.FIREBASE_AUTH_EMULATOR_HOST ? { authEmulatorUrl: `http://${process.env.FIREBASE_AUTH_EMULATOR_HOST}` } : {}),
+    ...(firestoreHost ? { firestoreEmulator: { host: firestoreHost, port: Number(firestorePort) } } : {}),
   };
   return {
     path,
-    meta: pageMeta(path),
+    meta: Object.fromEntries(Object.entries(pageMeta(path)).map(([key, value]) => [key, typeof value === 'string' ? value.replaceAll('https://pluto.events', deployment.baseUrl) : value])),
     googleAnalyticsId,
     firebaseConfigJson: serializeJsonLd(firebaseConfig),
   };
 }
 
 app.use((request, response, next) => {
+  if (deploymentConfig().environment !== 'production') response.set('X-Robots-Tag', 'noindex, nofollow');
   response.set("Cache-Control", publicHtmlCacheControl);
   response.set("Content-Type", "text/html; charset=utf-8");
   next();
 });
 
 app.use("/manafest-waiver", waiverRouter(commonContext));
+app.use(ticketingRouter(commonContext));
 
 app.get("/", async (_request: Request, response: Response) => {
   const events = (await loadEvents()).filter((event) => manaFest.status !== "archived" || !event.isManaFest);
@@ -233,6 +240,13 @@ app.get("/links", async (_request: Request, response: Response) => {
   });
 });
 
+app.get('/__deployment', (_request, response) => {
+  const config = deploymentConfig();
+  response.set('Cache-Control', 'no-store').json({ environment: config.environment, projectId: config.web.projectId,
+    revision: config.revision, paymentMode: process.env.TICKETING_MODE || 'test',
+    ...(config.environment === 'emulator' ? { previewInstance: process.env.PLUTO_CI_PREVIEW_ID || '' } : {}) });
+});
+
 app.get('/rentals', async (_request: Request, response: Response) => {
   let rentals: PublicRental[] = [];
   let rentalsUnavailable = false;
@@ -269,6 +283,6 @@ app.use((_request: Request, response: Response) => {
 
 export { app };
 export const publicSite = onRequest(
-  { region: "us-central1", memory: "256MiB", maxInstances: 10, concurrency: 8 },
+  { region: "us-central1", memory: "512MiB", maxInstances: 10, concurrency: 8, secrets: [...ticketingSecrets, ...walletSecrets] },
   app,
 );

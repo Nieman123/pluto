@@ -1,0 +1,23 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { validateDraft, holderVenue, publicEvent } = require('../lib/ticketing/domain');
+const { fixture } = require('./ticketing-fixture.cjs');
+test('private reveal defaults to immediate, validates time, and opens at the exact boundary', () => {
+  const original = fixture(), legacy = validateDraft(original);
+  assert.equal(legacy.venueRevealScheduled, false); assert.equal(legacy.venueRevealAt, null);
+  assert.equal(holderVenue(legacy).address, original.address);
+  const at = new Date(Date.now() + 3600000).toISOString();
+  const draft = validateDraft({ ...original, venueRevealScheduled: true, venueRevealAt: at });
+  const before = holderVenue(draft, Date.parse(at) - 1);
+  assert.deepEqual([before.available, before.name, before.address, before.directions], [false, '', '', '']);
+  assert.equal(before.revealAt, at); assert.equal(holderVenue(draft, Date.parse(at)).address, original.address);
+  assert.equal(holderVenue(draft, Date.parse(at) + 1).directions, original.directions);
+  const projection = JSON.stringify(publicEvent('event', draft, 'published', 1));
+  for (const privateValue of [original.venueName, original.address, original.directions]) assert.ok(!projection.includes(privateValue));
+  assert.throws(() => validateDraft({ ...original, venueRevealScheduled: true }), /location reveal time/);
+  assert.throws(() => validateDraft({ ...original, venueRevealScheduled: true, venueRevealAt: original.endAt }), /before the event ends/);
+  assert.throws(() => validateDraft({ ...original, venueRevealScheduled: true, venueRevealAt: 'invalid' }), /location reveal time/);
+  const publicDraft = validateDraft({ ...original, venueVisibility: 'public', venueRevealScheduled: true, venueRevealAt: at });
+  assert.equal(publicDraft.venueRevealScheduled, false); assert.equal(holderVenue(publicDraft).available, true);
+  assert.equal(holderVenue({ ...draft, venueRevealAt: null }).available, false, 'incomplete scheduled data fails closed');
+});

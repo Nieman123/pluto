@@ -118,6 +118,7 @@ async function enhanceAuth() {
   if (firebaseConfig.authEmulatorUrl && ['localhost', '127.0.0.1'].includes(location.hostname)) {
     authModule.connectAuthEmulator(auth, firebaseConfig.authEmulatorUrl, { disableWarnings: true });
   }
+  let profileStore;
 
   onAuthStateChanged(auth, async (user) => {
     showAuthState(Boolean(user));
@@ -125,12 +126,21 @@ async function enhanceAuth() {
     if (!user || document.querySelector('[data-waiver-page], [data-waiver-staff]')) return;
 
     let avatarUrl = user.photoURL || "/assets/images/pluto-logo.webp";
+    let displayName = user.displayName || "";
     try {
-      const { doc, getDoc, getFirestore } = await import(
+      const { doc, getDoc, getFirestore, connectFirestoreEmulator } = await import(
         "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js"
       );
-      const firestore = getFirestore(firebaseApp);
-      const snapshot = await getDoc(doc(firestore, "userProfiles", user.uid));
+      if (!profileStore) {
+        profileStore = getFirestore(firebaseApp);
+        if (firebaseConfig.firestoreEmulator && ['localhost', '127.0.0.1'].includes(location.hostname)) {
+          connectFirestoreEmulator(profileStore, firebaseConfig.firestoreEmulator.host, firebaseConfig.firestoreEmulator.port);
+        }
+      }
+      const snapshot = await getDoc(doc(profileStore, "userProfiles", user.uid));
+      if (typeof snapshot.data()?.displayName === "string" && snapshot.data().displayName.trim()) {
+        displayName = snapshot.data().displayName.trim();
+      }
       const profileImage = snapshot.data()?.profileImageDataUrl;
       if (typeof profileImage === "string" && profileImage.startsWith("data:image/")) {
         avatarUrl = profileImage;
@@ -138,6 +148,8 @@ async function enhanceAuth() {
     } catch (error) {
       console.warn("Profile enhancement unavailable", error);
     }
+    if (auth.currentUser?.uid !== user.uid) return;
+    window.dispatchEvent(new CustomEvent("pluto-profile", { detail: { uid: user.uid, displayName } }));
     document.querySelectorAll("[data-auth-avatar]").forEach((image) => {
       image.src = avatarUrl;
     });

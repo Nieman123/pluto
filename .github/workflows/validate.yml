@@ -1,0 +1,84 @@
+name: Validate
+on:
+  workflow_call:
+    inputs:
+      revision:
+        type: string
+        required: false
+        default: ''
+permissions:
+  contents: read
+jobs:
+  application:
+    name: Application, rules and browser checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.revision || github.sha }}
+          persist-credentials: false
+      - name: Validate workflow syntax with verified actionlint
+        run: |
+          mkdir -p tmp/actionlint
+          curl --fail --location --retry 3 https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz -o tmp/actionlint.tar.gz
+          printf '8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  tmp/actionlint.tar.gz\n' | sha256sum --check
+          tar -xzf tmp/actionlint.tar.gz -C tmp/actionlint
+          tmp/actionlint/actionlint -shellcheck='' -pyflakes='' .github/workflows/build.yml .github/workflows/validate.yml .github/workflows/release.yml
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            functions/package-lock.json
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - name: Install locked dependencies
+        run: |
+          npm ci
+          npm ci --prefix functions
+          flutter pub get --enforce-lockfile
+          npx playwright install --with-deps chromium
+      - name: Unit tests and release safeguards
+        run: npm test
+      - name: Flutter analysis and tests
+        run: |
+          flutter analyze .
+          flutter test
+      - name: Storage and rentals access rules
+        run: npx --yes firebase-tools@15.32.1 emulators:exec --project demo-pluto-storage-rules-test --only firestore,storage "npm run test:storage && npm run test:rentals:rules"
+      - name: Waiver transactions and access rules
+        env:
+          GCLOUD_PROJECT: demo-pluto-waiver
+          WAIVER_STORAGE_BUCKET: demo-pluto-waiver.appspot.com
+        run: npx --yes firebase-tools@15.32.1 emulators:exec --project demo-pluto-waiver --config firebase.waiver-preview.json --only auth,firestore,storage "npm run test:waiver:integration && npm run test:waiver:rules"
+      - name: Build isolated demo website and Flutter app
+        env:
+          GCLOUD_PROJECT: demo-pluto-ticketing
+          FIRESTORE_EMULATOR_HOST: 127.0.0.1:8185
+          FIREBASE_AUTH_EMULATOR_HOST: 127.0.0.1:9095
+          FIREBASE_STORAGE_EMULATOR_HOST: 127.0.0.1:9295
+        run: |
+          flutter build web --release --base-href /app/ --dart-define=FIREBASE_EMULATOR_HOST=127.0.0.1 --dart-define=FIREBASE_EMULATOR_PROJECT=demo-pluto-ticketing
+          npm run build:public
+      - name: Ticketing, RSVP, rewards, access rules and browser regressions
+        env:
+          GCLOUD_PROJECT: demo-pluto-ticketing
+          TICKETING_STORAGE_BUCKET: demo-pluto-ticketing.appspot.com
+        run: npx --yes firebase-tools@15.32.1 emulators:exec --project demo-pluto-ticketing --config firebase.ticketing-test.json --only auth,firestore,storage "npm run test:ticketing:integration && npm run test:ticketing:hardening && npm run test:ticketing:order-operations && npm run test:ticketing:rsvp && npm run test:ticketing:rules && npm run test:rewards && npm run test:ci:browser"
+      - name: Keep browser failure evidence
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: browser-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: tmp/*.png
+          if-no-files-found: ignore
+          retention-days: 7

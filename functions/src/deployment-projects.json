@@ -1,0 +1,6 @@
+{
+  "production": "pluto-9b6ca",
+  "staging": "pluto-staging-92eb7",
+  "productionBaseUrl": "https://pluto.events",
+  "stagingBaseUrl": "https://pluto-staging-92eb7.web.app"
+}

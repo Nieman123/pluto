@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 
 import 'src/background/pluto_background.dart';
 import 'src/nav_bar/nav_bar.dart';
+import 'src/ticket_access_store.dart';
+import 'src/ticket_account_flow.dart';
 
 enum _CredentialAction {
   signIn,
@@ -51,7 +53,8 @@ class _AdminOnly extends StatelessWidget {
 }
 
 class SignOnPage extends StatefulWidget {
-  const SignOnPage({Key? key}) : super(key: key);
+  const SignOnPage({Key? key, this.returnTo}) : super(key: key);
+  final String? returnTo;
 
   @override
   State<SignOnPage> createState() => _SignOnPageState();
@@ -67,6 +70,14 @@ class _SignOnPageState extends State<SignOnPage> {
   bool _showPasswordStep = false;
   _CredentialAction _credentialAction = _CredentialAction.signIn;
   String _statusMessage = '';
+
+  @override
+  void initState() {
+    super.initState();
+    if (ticketAccountReturn(widget.returnTo) != null) {
+      _emailController.text = ticketAccessRead('pluto-account-email') ?? '';
+    }
+  }
 
   @override
   void dispose() {
@@ -144,6 +155,13 @@ class _SignOnPageState extends State<SignOnPage> {
     try {
       await action();
       if (!mounted) {
+        return;
+      }
+      final String? returnTo = ticketAccountReturn(widget.returnTo);
+      if (FirebaseAuth.instance.currentUser != null && returnTo != null) {
+        ticketAccessRemove('pluto-account-email');
+        ticketAccessRemove('pluto-account-name');
+        context.go(returnTo);
         return;
       }
       setState(() {

@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../html_open_link.dart';
+import '../ticket_account_flow.dart';
 
 //The top Nav Bar
 class NavBar extends StatelessWidget implements PreferredSizeWidget {
@@ -27,6 +28,11 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
     label: 'Dashboard',
     icon: Icons.dashboard,
     route: '/',
+  );
+  static const _NavMenuAction _ticketsMenuAction = _NavMenuAction.route(
+    label: 'Tickets',
+    icon: Icons.confirmation_number_outlined,
+    route: '/tickets',
   );
   static const List<_NavMenuAction> _homeSectionMenuActions = <_NavMenuAction>[
     _NavMenuAction.homeSection(
@@ -102,6 +108,7 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
     return <_NavMenuAction>[
       _dashboardMenuAction,
       ...compactHomeActions(showSectionSubItems: showHomeSectionSubItems),
+      _ticketsMenuAction,
       const _NavMenuAction.route(
         label: 'Rewards Shop',
         icon: Icons.card_giftcard,
@@ -136,6 +143,7 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
   }) {
     return <_NavMenuAction>[
       ...compactHomeActions(showSectionSubItems: showHomeSectionSubItems),
+      _ticketsMenuAction,
       const _NavMenuAction.route(
         label: 'Create Account',
         icon: Icons.person_add_alt_1,
@@ -186,7 +194,20 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
       await htmlNavigateTo('/');
       return;
     }
-    GoRouter.of(context).go(action.route!);
+    GoRouter.of(context).go(authRoute(context, action.route!));
+  }
+
+  static String authRoute(BuildContext context, String route) {
+    if (route != '/sign-up' && route != '/sign-on') return route;
+    final Uri uri = GoRouterState.of(context).uri;
+    final String? returnTo = ticketAccountReturn(uri.toString()) ??
+        ticketAccountReturn(uri.queryParameters['returnTo']);
+    return returnTo == null
+        ? route
+        : Uri(
+            path: route,
+            queryParameters: <String, String>{'returnTo': returnTo},
+          ).toString();
   }
 }
 
@@ -302,7 +323,8 @@ class _CreateAccountNavButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return TextButton(
-      onPressed: () => GoRouter.of(context).go('/sign-up'),
+      onPressed: () =>
+          GoRouter.of(context).go(NavBar.authRoute(context, '/sign-up')),
       style: TextButton.styleFrom(
         backgroundColor: const Color(0xFF7A3FD0).withValues(alpha: 0.24),
         foregroundColor: const Color(0xFFF3E8FF),

@@ -1,0 +1,137 @@
+name: Release
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Deployment environment
+        type: choice
+        options: [staging, production]
+        default: staging
+        required: true
+      revision:
+        description: Full 40-character SHA already merged into main (also used for rollback)
+        type: string
+        required: true
+      confirmation:
+        description: 'Production only: type deploy pluto-9b6ca'
+        type: string
+        default: ''
+      enable_live_payments:
+        description: Confirm real payment, bank, policies and launch acceptance before enabling live sales
+        type: boolean
+        default: false
+permissions:
+  contents: read
+# Never cancel a release halfway through deployment.
+concurrency:
+  group: release-${{ inputs.environment }}
+  cancel-in-progress: false
+jobs:
+  selection:
+    runs-on: ubuntu-latest
+    outputs:
+      revision: ${{ steps.guard.outputs.revision }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require trusted workflow and explicit revision
+        id: guard
+        env:
+          REVISION: ${{ inputs.revision }}
+        run: |
+          node --input-type=module <<'JS'
+          import { appendFileSync } from 'node:fs';
+          import { execFileSync } from 'node:child_process';
+          if (process.env.GITHUB_REF !== 'refs/heads/main' || !/^[a-f0-9]{40}$/.test(process.env.REVISION || '')) throw new Error('Run Release from main with a full commit SHA.');
+          execFileSync('git', ['merge-base', '--is-ancestor', process.env.REVISION, 'origin/main']);
+          appendFileSync(process.env.GITHUB_OUTPUT, `revision=${process.env.REVISION}\n`);
+          JS
+  validation:
+    needs: selection
+    uses: ./.github/workflows/validate.yml
+    with:
+      revision: ${{ needs.selection.outputs.revision }}
+  deploy:
+    needs: [selection, validation]
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment:
+      name: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      actions: read
+      deployments: write
+    env:
+      RELEASE_ENVIRONMENT: ${{ inputs.environment }}
+      RELEASE_SHA: ${{ needs.selection.outputs.revision }}
+      RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
+      RELEASE_LIVE_APPROVED: ${{ inputs.enable_live_payments }}
+      DEPLOY_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+      DEPLOY_WEB_CONFIG: ${{ vars.FIREBASE_WEB_CONFIG }}
+      DEPLOY_PAYMENT_MODE: ${{ vars.TICKETING_MODE }}
+      DEPLOY_STRIPE_PUBLISHABLE_KEY: ${{ vars.STRIPE_PUBLISHABLE_KEY }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.RELEASE_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+      - name: Install locked dependencies and build release helpers
+        run: |
+          npm ci
+          npm ci --prefix functions
+          flutter pub get --enforce-lockfile
+          npm run build:functions
+      - name: Verify project, credentials, protected environment and staging evidence
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DEPLOY_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_DEPLOY_SERVICE_ACCOUNT }}
+        run: node scripts/release/prepare.mjs
+      - name: Build the selected environment
+        run: |
+          flutter build web --release --base-href /app/ --dart-define-from-file=tmp/release/dart-defines.json
+          npm run build:public
+      - name: Authenticate to the selected Firebase project
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          credentials_json: ${{ secrets.FIREBASE_DEPLOY_SERVICE_ACCOUNT }}
+          create_credentials_file: true
+          export_environment_variables: true
+      - name: Begin deployment evidence for the selected commit
+        id: evidence
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/release/evidence.mjs start
+      - name: Deploy coordinated backend, workers, client and access rules
+        run: npx --yes firebase-tools@15.32.1 deploy --config firebase.release.json --only firestore:rules,storage,functions:publicSite,functions:ticketingWebhookWorker,functions:ticketingEmailWorker,functions:ticketingMaintenance,hosting --project "$DEPLOY_PROJECT_ID" --non-interactive
+      - name: Verify deployed identity, pages and environment isolation
+        run: node scripts/release/smoke.mjs
+      - name: Mark deployment successful
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/release/evidence.mjs success
+      - name: Save public release manifest and smoke results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-${{ inputs.environment }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            tmp/release/manifest.json
+            tmp/release/smoke.json
+          if-no-files-found: ignore
+          retention-days: 90
+      - name: Mark failed or cancelled release
+        if: ${{ always() && steps.evidence.outcome == 'success' && (failure() || cancelled()) }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/release/evidence.mjs failure
