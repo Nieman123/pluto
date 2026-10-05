@@ -4,6 +4,8 @@ Successful door scans show a floating **Ticket scanned** confirmation with the c
 
 Ticketing console errors and status messages appear in a floating notification at the bottom of the screen, including while scrolling or using an order dialog. Errors stay until dismissed or replaced by the next message. Ordinary status messages dismiss after eight seconds; hovering or keyboard focus pauses that timer. Public event checkout retains its form-specific inline feedback.
 
+In Event Studio, the page actions appear above the section navigation. The sticky save bar includes **Publish event** for an unpublished event, **Publish changes** for edits waiting to go live, and a disabled **Published** button when the current revision is live. Publishing saves unsaved edits first. Saving a draft alone does not publish it; a failed publish leaves the draft available to retry.
+
 ## RSVP and VIP options
 
 In the event dashboard, **Ticketing setup → Ticket types & passes → Add paid VIP option** adds a $100 option. Edit its price and capacity, save ticket types, then publish the changes.
