@@ -19,3 +19,5 @@ The worker snapshots the complete provider payload before its first send attempt
 Renderer unit tests cover amounts, event timezones, escaping, private location omission and variant-specific actions. Emulator integration checks verify the actual HTML / text provider payload, stable retries after an event edit, consumed recovery links and approval boundaries. No real email is sent by these tests.
 
 Firebase Authentication password-reset and verification emails are configured separately in the Firebase console's Authentication email templates.
+
+Email/password signup requests a Firebase verification email automatically in both signup screens. The verification page's Continue action returns to Profile on the same website. Existing members can request a link and refresh verification status from Profile or the ticket wallet. Sending a link does not verify the account; ticket claiming still checks the refreshed verified-email token. A failed send keeps the new account and offers a resend path. Google signup retains its provider-verified email without sending a redundant signup verification message.

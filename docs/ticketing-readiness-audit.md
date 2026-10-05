@@ -175,3 +175,5 @@ Physical iOS/Android cameras, Safari, completed real Stripe payments/refunds, re
 5. Verify live account/bank/tax/policies, production secrets and webhook destination, backup/restore and rollback. Enable the existing live-sales gates only after those checks pass.
 
 The next milestone should be **production hardening and a controlled event pilot**, with the above results as acceptance criteria.
+
+October 5 profile accessibility follow-up: account-verification testing found two unlabeled Flutter textarea nodes in a whole-profile Axe scan while empty profile fields were below the mobile viewport. Recheck the profile form's off-screen accessible names as a P2 follow-up. The new verification regression checks mobile layout and the account action controls; it does not establish accessibility of the entire profile form.

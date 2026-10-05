@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import 'src/background/pluto_background.dart';
+import 'src/email_verification.dart';
 import 'src/nav_bar/nav_bar.dart';
 import 'user_profile_repository.dart';
 
@@ -250,6 +251,7 @@ class _ProfilePageState extends State<ProfilePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
+            EmailVerificationPanel(key: ValueKey(user.uid), user: user),
             Wrap(
               crossAxisAlignment: WrapCrossAlignment.center,
               spacing: 18,
@@ -668,10 +670,11 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
+      stream: FirebaseAuth.instance.userChanges(),
       initialData: FirebaseAuth.instance.currentUser,
       builder: (BuildContext context, AsyncSnapshot<User?> authSnapshot) {
-        if (authSnapshot.connectionState == ConnectionState.waiting) {
+        if (authSnapshot.connectionState == ConnectionState.waiting &&
+            !authSnapshot.hasData) {
           return _buildStandaloneScaffold(
             const Center(child: CircularProgressIndicator()),
           );
@@ -740,7 +743,8 @@ class _ProfilePageState extends State<ProfilePage> {
                     builder: (BuildContext context,
                         AsyncSnapshot<UserProfile?> profileSnapshot) {
                       if (profileSnapshot.connectionState ==
-                          ConnectionState.waiting) {
+                              ConnectionState.waiting &&
+                          profileSnapshot.data?.uid != user.uid) {
                         return const Center(child: CircularProgressIndicator());
                       }
 
