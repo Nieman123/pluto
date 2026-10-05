@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'src/background/pluto_background.dart';
+import 'src/email_verification.dart';
 import 'src/nav_bar/nav_bar.dart';
 import 'src/ticket_access_store.dart';
 import 'src/ticket_account_flow.dart';
@@ -48,10 +49,15 @@ class _SignUpPageState extends State<SignUpPage> {
     }
   }
 
-  void _finishAccount() {
+  void _finishAccount({String? notice}) {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     ticketAccessRemove('pluto-account-email');
     ticketAccessRemove('pluto-account-name');
     context.go(ticketAccountReturn(widget.returnTo) ?? '/');
+    if (notice != null) {
+      messenger.showSnackBar(SnackBar(
+          content: Text(notice), duration: const Duration(seconds: 10)));
+    }
   }
 
   @override
@@ -148,6 +154,8 @@ class _SignUpPageState extends State<SignUpPage> {
         );
       }
 
+      final String verificationNotice =
+          await requestSignupVerification(createdUser);
       await createdUser.updateDisplayName(displayName);
       await createdUser.reload();
 
@@ -165,7 +173,7 @@ class _SignUpPageState extends State<SignUpPage> {
       if (!mounted) {
         return;
       }
-      _finishAccount();
+      _finishAccount(notice: verificationNotice);
     } on FirebaseAuthException catch (error) {
       if (!mounted) {
         return;
@@ -271,7 +279,7 @@ class _SignUpPageState extends State<SignUpPage> {
           const PlutoBackground(),
           SafeArea(
             child: StreamBuilder<User?>(
-              stream: FirebaseAuth.instance.authStateChanges(),
+              stream: FirebaseAuth.instance.userChanges(),
               initialData: FirebaseAuth.instance.currentUser,
               builder: (BuildContext context, AsyncSnapshot<User?> snapshot) {
                 final User? user = snapshot.data;
@@ -444,7 +452,7 @@ class _SignUpPageState extends State<SignUpPage> {
           const SizedBox(height: 7),
           Text(
             ticketAccountReturn(widget.returnTo) != null
-                ? 'Use your purchase email. After creating your account, verify it in the ticket wallet to link your orders across devices.'
+                ? 'Use your purchase email. We’ll send a verification link after signup so you can link your orders across devices.'
                 : 'Create your account with the email you will use at events.',
             style: const TextStyle(
               color: _mutedTextColor,
@@ -723,6 +731,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
+              EmailVerificationPanel(key: ValueKey(user.uid), user: user),
               const SizedBox(height: 18),
               SizedBox(
                 width: double.infinity,

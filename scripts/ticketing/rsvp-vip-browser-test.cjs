@@ -162,8 +162,14 @@ async function makeRsvp(page, draft, name, email) {
     await door.reload(); await door.locator('#ticketing-message').filter({ hasText: 'Prepared offline admission' }).waitFor();
     await door.locator('[name=qr]').fill(parentOrder.tickets[0].qr); await door.locator('#admission-form button').click();
     await door.locator('#admission-results article').first().filter({ hasText: 'DUPLICATE' }).waitFor();
+    // Verify the replay response and drained queue before checking the single
+    // recorded arrival, rather than depending on an expiring notification.
+    const replayed = door.waitForResponse(response => response.url().endsWith('/tickets/api/staff/scan') && response.request().postDataJSON()?.offline === true);
     await adminContext.setOffline(false); await door.locator('#admission-replay').click();
-    await door.locator('#ticketing-message').filter({ hasText: 'Synced 1 admissions' }).waitFor();
+    const replayResponse = await replayed;
+    assert.equal(replayResponse.status(), 200);
+    assert.equal((await replayResponse.json()).result, 'accepted');
+    await door.locator('#admission-cache-status').filter({ hasText: '0 queued scans' }).waitFor();
     assert.equal((await api(admin, 'staff/attendance', { eventId: approval.eventId })).counts.arrivals, 1);
     console.log('RSVP VIP browser checks passed: $100 VIP editor/save/publish/reload, direct open-VIP payment routing, free RSVP, approval/email gate, authoritative holder name, Flutter upgrade link, checkout resume, offline VIP/RSVP duplicate/reload/replay with one arrival, and mobile/desktop accessibility.');
     await adminContext.close(); await guestContext.close();

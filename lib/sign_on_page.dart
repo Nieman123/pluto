@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'src/background/pluto_background.dart';
+import 'src/email_verification.dart';
 import 'src/nav_bar/nav_bar.dart';
 import 'src/ticket_access_store.dart';
 import 'src/ticket_account_flow.dart';
@@ -142,7 +143,8 @@ class _SignOnPageState extends State<SignOnPage> {
     await _signInWithEmail();
   }
 
-  Future<void> _runAuthAction(Future<void> Function() action) async {
+  Future<void> _runAuthAction(Future<void> Function() action,
+      {bool verifyCreatedAccount = false}) async {
     if (_isBusy) {
       return;
     }
@@ -154,18 +156,27 @@ class _SignOnPageState extends State<SignOnPage> {
 
     try {
       await action();
+      final User? user = FirebaseAuth.instance.currentUser;
+      final String successMessage = verifyCreatedAccount && user != null
+          ? await requestSignupVerification(user)
+          : 'Success.';
       if (!mounted) {
         return;
       }
       final String? returnTo = ticketAccountReturn(widget.returnTo);
       if (FirebaseAuth.instance.currentUser != null && returnTo != null) {
+        if (verifyCreatedAccount) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text(successMessage),
+              duration: const Duration(seconds: 10)));
+        }
         ticketAccessRemove('pluto-account-email');
         ticketAccessRemove('pluto-account-name');
         context.go(returnTo);
         return;
       }
       setState(() {
-        _statusMessage = 'Success.';
+        _statusMessage = successMessage;
       });
     } on FirebaseAuthException catch (error) {
       if (!mounted) {
@@ -223,7 +234,7 @@ class _SignOnPageState extends State<SignOnPage> {
         email: email,
         password: password,
       );
-    });
+    }, verifyCreatedAccount: true);
   }
 
   Future<void> _signInWithGoogle() async {
@@ -279,7 +290,7 @@ class _SignOnPageState extends State<SignOnPage> {
                       child: Padding(
                         padding: const EdgeInsets.all(20),
                         child: StreamBuilder<User?>(
-                          stream: FirebaseAuth.instance.authStateChanges(),
+                          stream: FirebaseAuth.instance.userChanges(),
                           builder: (BuildContext context,
                               AsyncSnapshot<User?> snapshot) {
                             final User? user = snapshot.data;
@@ -316,6 +327,8 @@ class _SignOnPageState extends State<SignOnPage> {
                                     style:
                                         const TextStyle(color: Colors.white70),
                                   ),
+                                  EmailVerificationPanel(
+                                      key: ValueKey(user.uid), user: user),
                                   const SizedBox(height: 16),
                                   Wrap(
                                     alignment: WrapAlignment.center,

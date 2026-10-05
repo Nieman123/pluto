@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'src/email_verification.dart';
 import 'src/html_open_link.dart';
 import 'src/offline_ticket_cache.dart';
 import 'src/ticket_access_store.dart';
@@ -462,7 +463,7 @@ class _TicketsPageState extends State<TicketsPage> {
             onPressed: _busy
                 ? null
                 : () => _run(() async {
-                      await user.sendEmailVerification();
+                      await requestEmailVerification(user);
                       if (mounted)
                         setState(() => _notice =
                             'Verification email sent. Open the link, then select “I’ve verified my email” here.');
