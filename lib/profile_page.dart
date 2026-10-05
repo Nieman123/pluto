@@ -28,6 +28,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   String _profileImageDataUrl = '';
   bool _isSavingProfile = false;
+  bool _isSigningOut = false;
   String _statusMessage = '';
 
   String? _profileHydratedForUid;
@@ -137,7 +138,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _saveProfile(User user) async {
-    if (_isSavingProfile) {
+    if (_isSavingProfile || _isSigningOut) {
       return;
     }
 
@@ -175,6 +176,26 @@ class _ProfilePageState extends State<ProfilePage> {
           _isSavingProfile = false;
         });
       }
+    }
+  }
+
+  Future<void> _signOut() async {
+    if (_isSigningOut) return;
+    final GoRouter router = GoRouter.of(context);
+    setState(() => _isSigningOut = true);
+    try {
+      await FirebaseAuth.instance.signOut();
+      router.go('/sign-on');
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not sign out. Please try again.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSigningOut = false);
     }
   }
 
@@ -229,15 +250,6 @@ class _ProfilePageState extends State<ProfilePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            const Text(
-              'My Profile',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
             Wrap(
               crossAxisAlignment: WrapCrossAlignment.center,
               spacing: 18,
@@ -317,7 +329,9 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             const SizedBox(height: 14),
             ElevatedButton(
-              onPressed: _isSavingProfile ? null : () => _saveProfile(user),
+              onPressed: _isSavingProfile || _isSigningOut
+                  ? null
+                  : () => _saveProfile(user),
               child: Text(_isSavingProfile ? 'Saving...' : 'Save Profile'),
             ),
           ],
@@ -668,69 +682,101 @@ class _ProfilePageState extends State<ProfilePage> {
           return _buildStandaloneScaffold(_buildSignedOutState());
         }
 
-        return FutureBuilder<void>(
-          future: _ensureProfileExists(user),
-          builder: (BuildContext context, AsyncSnapshot<void> ensureSnapshot) {
-            if (ensureSnapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-
-            if (ensureSnapshot.hasError) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Text(
-                    'Could not initialize profile: ${ensureSnapshot.error}',
-                    style: const TextStyle(color: Colors.white),
+        return Column(
+          children: <Widget>[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: Row(
+                children: <Widget>[
+                  const Expanded(
+                    child: Text(
+                      'My Profile',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
-                ),
-              );
-            }
-
-            return StreamBuilder<UserProfile?>(
-              stream: _profileRepository.watchProfile(
-                uid: user.uid,
-                fallbackDisplayName: _fallbackDisplayNameForUser(user),
+                  const SizedBox(width: 12),
+                  OutlinedButton.icon(
+                    onPressed: _isSigningOut ? null : _signOut,
+                    icon: const Icon(Icons.logout),
+                    label: Text(_isSigningOut ? 'Signing out...' : 'Sign Out'),
+                  ),
+                ],
               ),
-              builder: (BuildContext context,
-                  AsyncSnapshot<UserProfile?> profileSnapshot) {
-                if (profileSnapshot.connectionState ==
-                    ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+            ),
+            Expanded(
+              child: FutureBuilder<void>(
+                future: _ensureProfileExists(user),
+                builder:
+                    (BuildContext context, AsyncSnapshot<void> ensureSnapshot) {
+                  if (ensureSnapshot.connectionState ==
+                      ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-                if (profileSnapshot.hasError) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Text(
-                        'Could not load profile: ${profileSnapshot.error}',
-                        style: const TextStyle(color: Colors.white),
+                  if (ensureSnapshot.hasError) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Text(
+                          'Could not initialize profile: ${ensureSnapshot.error}',
+                          style: const TextStyle(color: Colors.white),
+                        ),
                       ),
+                    );
+                  }
+
+                  return StreamBuilder<UserProfile?>(
+                    stream: _profileRepository.watchProfile(
+                      uid: user.uid,
+                      fallbackDisplayName: _fallbackDisplayNameForUser(user),
                     ),
+                    builder: (BuildContext context,
+                        AsyncSnapshot<UserProfile?> profileSnapshot) {
+                      if (profileSnapshot.connectionState ==
+                          ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+
+                      if (profileSnapshot.hasError) {
+                        return Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Text(
+                              'Could not load profile: ${profileSnapshot.error}',
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          ),
+                        );
+                      }
+
+                      final UserProfile? profile = profileSnapshot.data;
+                      if (profile == null) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+
+                      _hydrateFormFromProfileIfNeeded(
+                          user: user, profile: profile);
+                      return Stack(
+                        children: <Widget>[
+                          Positioned.fill(
+                            child: _buildProfileContent(
+                              user: user,
+                              profile: profile,
+                            ),
+                          ),
+                          if (_statusMessage.isNotEmpty) _buildStatusOverlay(),
+                        ],
+                      );
+                    },
                   );
-                }
-
-                final UserProfile? profile = profileSnapshot.data;
-                if (profile == null) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                _hydrateFormFromProfileIfNeeded(user: user, profile: profile);
-                return Stack(
-                  children: <Widget>[
-                    Positioned.fill(
-                      child: _buildProfileContent(
-                        user: user,
-                        profile: profile,
-                      ),
-                    ),
-                    if (_statusMessage.isNotEmpty) _buildStatusOverlay(),
-                  ],
-                );
-              },
-            );
-          },
+                },
+              ),
+            ),
+          ],
         );
       },
     );
