@@ -268,7 +268,7 @@ async function surface(page, name) {
     const signupCodes = await (await account.request.get('http://127.0.0.1:9095/emulator/v1/projects/demo-pluto-ticketing/oobCodes')).json();
     assert.equal(signupCodes.oobCodes.filter(c => c.email === accountEmail && c.requestType === 'VERIFY_EMAIL').length, 1, 'ticket-wallet signup sends verification automatically');
     await account.getByRole('button', { name: 'Send verification email', exact: true }).click();
-    await account.getByText(/Verification email sent/).waitFor();
+    await account.getByText('Verification email sent. Open the link, then select “I’ve verified my email” here.', { exact: true }).last().waitFor();
     const oob = await (await account.request.get('http://127.0.0.1:9095/emulator/v1/projects/demo-pluto-ticketing/oobCodes')).json();
     assert.ok(oob.oobCodes.some(c => c.email === accountEmail && c.requestType === 'VERIFY_EMAIL'));
     const auth = backend('firebase-admin/auth').getAuth(), accountUser = await auth.getUserByEmail(accountEmail);
