@@ -13,7 +13,7 @@ The approved RSVP email must be verified before VIP checkout, through a matching
 
 Door staff can scan the VIP QR once to check in both VIP access and the underlying approved RSVP. This counts one attendee. Scanning that RSVP's admission QR afterward reports a duplicate. Prepare offline admission again after deployment so the manifest includes the link between VIP and RSVP; offline acceptance remains pending server reconciliation.
 
-Refunds remain organizer-controlled. Refunding VIP leaves the free RSVP valid; unused VIP stock is returned under the existing refund policy, while scanned stock stays consumed. Guests must close an open VIP checkout or contact Pluto about a purchased upgrade before withdrawing the linked RSVP. An already-arrived RSVP cannot be withdrawn. Revoking or reissuing the parent RSVP makes older VIP credentials unavailable.
+Refunds remain organizer-controlled. Refunding VIP leaves the free RSVP valid; unused VIP stock is returned under the existing refund policy, while scanned stock stays consumed. Guests must close an open VIP checkout or contact Pluto about an issued upgrade before withdrawing the linked RSVP. This includes upgrades discounted to $0, which admins close through the same refund controls without a provider refund. An already-arrived RSVP cannot be withdrawn. Revoking or reissuing the parent RSVP makes older VIP credentials unavailable.
 
 Local coverage includes payment/order integration tests, approval and email gates, refunds, door scanning, and browser purchase routing. Browser payment sessions are simulated; run a real Stripe sandbox purchase in staging before enabling these options for customers.
 

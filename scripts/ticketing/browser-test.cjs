@@ -282,6 +282,7 @@ async function surface(page, name) {
     await door.locator('[name=qr]').fill(admissionTicket.qr); await door.locator('#admission-form button').click();
     await door.locator('#admission-results').filter({ hasText: 'Offline: queued' }).waitFor();
     await door.reload(); await door.locator('#staff-controls:not([hidden])').waitFor();
+    await door.locator('#ticketing-message').filter({ hasText: 'Prepared offline admission' }).waitFor();
     await door.locator('[name=qr]').fill(admissionTicket.qr); await door.locator('#admission-form button').click();
     await door.locator('#admission-results').filter({ hasText: 'DUPLICATE' }).waitFor();
     await context.setOffline(false); await staff(door, '/tickets/staff');

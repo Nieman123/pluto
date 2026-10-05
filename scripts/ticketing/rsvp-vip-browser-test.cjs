@@ -133,7 +133,39 @@ async function makeRsvp(page, draft, name, email) {
     await guest.reload(); await guest.getByRole('button', { name: 'Resume reserved checkout', exact: true }).waitFor();
     await guest.getByRole('button', { name: 'Resume reserved checkout', exact: true }).click(); await guest.getByText('VIP payment ready', { exact: true }).waitFor();
     assert.equal(purchases[2].accessKey, purchases[1].accessKey, 'reloading preserves the same payment attempt');
-    console.log('RSVP VIP browser checks passed: $100 VIP editor/save/publish/reload, direct open-VIP payment routing, free RSVP, approval/email gate, authoritative holder name, Flutter upgrade link, checkout resume and mobile/desktop accessibility.');
+
+    // A fully discounted upgrade exercises real issuance and offline admission
+    // without contacting a payment provider from this isolated browser suite.
+    stage = 'VIP offline admission';
+    const latest = await api(admin, 'staff/get', { eventId: approval.eventId });
+    latest.draft.promos.push({ code: 'VIPCOMP', type: 'percent', value: 100, limit: 10, startsAt: latest.draft.offers[0].salesStart, endsAt: latest.draft.endAt, offerIds: [approval.vip.id] });
+    const revision = await api(admin, 'staff/save', { eventId: approval.eventId, draft: latest.draft, revision: latest.revision });
+    await api(admin, 'staff/publish', { eventId: approval.eventId, revision: revision.revision, action: 'publish' });
+    const issued = await api(admin, 'checkout', { ...purchases[1], promoCode: 'VIPCOMP' });
+    assert.equal(issued.status, 'paid'); assert.equal(issued.total, 0);
+    const vipOrder = await api(admin, 'order', { orderId: issued.orderId, accessKey: purchases[1].accessKey });
+    const parentKey = await guest.evaluate(id => localStorage.getItem(`pluto-order-${id}`), parentId);
+    const parentOrder = await api(admin, 'order', { orderId: parentId, accessKey: parentKey });
+    const door = await adminContext.newPage(); active = door;
+    await door.goto(`${base}/tickets/staff`); await door.locator('#staff-controls:not([hidden])').waitFor();
+    await door.locator('#staff-event').selectOption(approval.eventId);
+    await door.locator('#admission-sync').click(); await door.locator('#ticketing-message').filter({ hasText: 'prepared for offline use' }).waitFor();
+    await door.evaluate(async () => { await navigator.serviceWorker.ready; }); await door.reload();
+    await door.locator('#admission-cache-status').filter({ hasText: 'Manifest age' }).waitFor();
+    await adminContext.setOffline(true); await door.reload();
+    await door.locator('#ticketing-message').filter({ hasText: 'Prepared offline admission' }).waitFor();
+    await door.locator('[name=qr]').fill(vipOrder.tickets[0].qr); await door.locator('#admission-form button').click();
+    await door.locator('#admission-results article').first().filter({ hasText: 'Offline: queued' }).waitFor();
+    await door.locator('#admission-feedback').waitFor({ state: 'hidden' });
+    await door.locator('[name=qr]').fill(parentOrder.tickets[0].qr); await door.locator('#admission-form button').click();
+    await door.locator('#admission-results article').first().filter({ hasText: 'DUPLICATE' }).waitFor();
+    await door.reload(); await door.locator('#ticketing-message').filter({ hasText: 'Prepared offline admission' }).waitFor();
+    await door.locator('[name=qr]').fill(parentOrder.tickets[0].qr); await door.locator('#admission-form button').click();
+    await door.locator('#admission-results article').first().filter({ hasText: 'DUPLICATE' }).waitFor();
+    await adminContext.setOffline(false); await door.locator('#admission-replay').click();
+    await door.locator('#ticketing-message').filter({ hasText: 'Synced 1 admissions' }).waitFor();
+    assert.equal((await api(admin, 'staff/attendance', { eventId: approval.eventId })).counts.arrivals, 1);
+    console.log('RSVP VIP browser checks passed: $100 VIP editor/save/publish/reload, direct open-VIP payment routing, free RSVP, approval/email gate, authoritative holder name, Flutter upgrade link, checkout resume, offline VIP/RSVP duplicate/reload/replay with one arrival, and mobile/desktop accessibility.');
     await adminContext.close(); await guestContext.close();
   } catch (error) {
     console.error('RSVP VIP browser phase:', stage);

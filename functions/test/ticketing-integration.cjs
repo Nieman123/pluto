@@ -332,6 +332,22 @@ async function rsvpVipChecks() {
   assert.equal((await service.view(refundRsvp.orderId, refundRegistration.accessKey, null)).tickets[0].status, 'valid');
   await service.cancel(refundRsvp.orderId, refundRegistration.accessKey, null);
 
+  const promoEvent = await makeEvent(true, d => {
+    mixed('rsvp-approval')(d);
+    d.promos = [{ code: 'VIPCOMP', type: 'percent', value: 100, limit: 10, startsAt: d.offers[0].salesStart, endsAt: d.endAt, offerIds: ['vip'] }];
+  });
+  const promoRegistration = freeRequest(promoEvent, buyer), promoRsvp = await service.rsvp(promoRegistration, buyer);
+  await service.reviewRsvp(promoEvent, promoRsvp.orderId, 'approve', '', staff);
+  const promoAccess = await service.rsvpUpgradeAccess({ eventId: promoEvent, email: buyer.email }, buyer);
+  const promoPurchase = vipRequest(promoEvent, { promoCode: 'VIPCOMP', rsvpUpgradeToken: promoAccess.rsvpUpgradeToken }), promoVip = await service.checkout(promoPurchase, buyer);
+  assert.equal(promoVip.status, 'paid'); assert.equal(promoVip.total, 0);
+  await assert.rejects(() => service.cancel(promoRsvp.orderId, promoRegistration.accessKey, null), /close your discounted VIP/);
+  const promoView = await service.view(promoVip.orderId, promoPurchase.accessKey, null);
+  const promoRefund = await service.refund(promoVip.orderId, [promoView.tickets[0].id], newKey(), staff);
+  assert.equal(promoRefund.amount, 0);
+  assert.equal((await service.event(promoEvent).collection('pools').doc('vip').get()).data().sold, 0);
+  await service.cancel(promoRsvp.orderId, promoRegistration.accessKey, null);
+
   const expiryEvent = await makeEvent(true, mixed('rsvp-approval')), expiryRegistration = freeRequest(expiryEvent, buyer), expiryRsvp = await service.rsvp(expiryRegistration, buyer);
   await service.reviewRsvp(expiryEvent, expiryRsvp.orderId, 'approve', '', staff);
   const expired = await service.rsvpUpgradeAccess({ eventId: expiryEvent, email: buyer.email }, buyer);

@@ -153,6 +153,10 @@ export class Rsvps extends Guests {
       if (tickets.docs.some(t => t.data().admission)) fail('An RSVP that has already arrived cannot be withdrawn.', 409);
       const upgrades = await tx.get(this.db.collection('ticketingOrders').where('rsvpOrderId', '==', orderId));
       if (upgrades.docs.some(d => { const u = d.data(); return ['provisioning', 'open', 'processing', 'review'].includes(u.status) || u.status === 'paid' && u.total > (u.refundedAmount || 0); })) fail('Close any VIP checkout first. For a purchased VIP upgrade, contact Pluto before withdrawing your RSVP.', 409);
+      for (const upgrade of upgrades.docs.filter(d => d.data().status === 'paid' && d.data().total === 0)) {
+        const passes = await tx.get(this.tickets().where('orderId', '==', upgrade.id));
+        if (passes.docs.some(t => ['valid', 'refund-pending'].includes(t.data().status))) fail('Contact Pluto to close your discounted VIP upgrade before withdrawing your RSVP.', 409);
+      }
       const pools = latest.rsvpStatus === 'approved' ? await Promise.all(Object.keys(latest.consumption).map(key => tx.get(this.event(latest.eventId).collection('pools').doc(key)))) : [];
       pools.forEach(pool => tx.update(pool.ref, { sold: Math.max(0, pool.data()!.sold - latest.consumption[pool.id]) }));
       tickets.docs.forEach(t => tx.update(t.ref, { status: 'revoked', version: t.data().version + 1 }));

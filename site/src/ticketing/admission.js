@@ -6,7 +6,7 @@ let manifest, verificationKey, cameraControls, scanning = false;
 let feedbackTimer, cameraLastQr = '', cameraLastSeenAt = 0;
 const eventId = () => document.querySelector('#staff-event').value;
 const scannerStorage = 'pluto-scanner-session';
-const admissionUid = () => scannerSession?.uid || user?.uid;
+const admissionUid = () => scannerSession?.uid || user?.uid || (!navigator.onLine ? manifest?.staffUid : undefined);
 const recordedTime = () => Date.now() + (manifest?.deviceClockOffsetMs || 0);
 function clearScanFeedback() {
   clearTimeout(feedbackTimer);
@@ -114,9 +114,10 @@ export async function restoreOfflineAdmission() {
   const selector = document.querySelector('#staff-event');
   selector.innerHTML = session.events.map(e => `<option value="${esc(e.id)}">${esc(e.title)}</option>`).join('');
   if (session.events.some(e => e.id === session.selected)) selector.value = session.selected;
-  document.querySelector('#staff-controls').hidden = false;
   await restoreManifest();
   if (!manifest) throw new Error('Offline admission has expired or has not been prepared for this event. Connect and prepare it again.');
+  document.querySelector('#staff-controls').hidden = false;
+  await loadDoorGuests();
   message(`Prepared offline admission. Reconnect ${scannerSession ? 'with this PIN' : 'and sign in'} to sync scans; use one offline lane.`);
 }
 async function cacheStatus() {
@@ -161,7 +162,7 @@ async function loadDoorGuests() {
 }
 async function offlineSession() {
   const session = await dbOperation('state', 'readonly', s => s.get('session'));
-  if (!session || session.expiresAt <= recordedTime() || session.uid !== manifest?.staffUid || !manifest?.leaseToken || !manifest?.offlineUntil || manifest.offlineUntil <= recordedTime() || manifest.eventId !== eventId()) throw new Error('Offline admission access has expired. Prepare again online.');
+  if (!session || session.expiresAt <= recordedTime() || session.uid !== manifest?.staffUid || session.uid !== admissionUid() || !manifest?.leaseToken || !manifest?.offlineUntil || manifest.offlineUntil <= recordedTime() || manifest.eventId !== eventId()) throw new Error('Offline admission access has expired. Prepare again online.');
   return session;
 }
 async function offlineGuestArrival(guestId, scanId) {
