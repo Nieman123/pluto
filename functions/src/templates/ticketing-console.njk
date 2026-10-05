@@ -1,6 +1,6 @@
 {% extends 'base.njk' %}
 {% block content %}
-<link rel="stylesheet" href="/assets/ticketing.css">
+<link rel="stylesheet" href="/assets/ticketing.css?v={{ assetVersion }}">
 <section class="section ticketing-console" data-ticketing-console="{{ mode }}">
 <p class="eyebrow">PLUTO EVENTS {% if sandbox %} · SANDBOX{% endif %}</p>{% if mode == 'admin' %}<h1 class="admin-sr-only">Event administration</h1>{% else %}<h1>{% if mode == 'staff' %}At the door.{% else %}Your tickets.{% endif %}</h1>{% endif %}
 <div class="ticket-toolbar">{% if mode != 'admin' %}<a class="button button-quiet" href="/events">Explore events</a><a class="button button-quiet" href="/tickets">My tickets</a>{% endif %}{% if mode == 'admin' %}<button id="events-back" class="button button-quiet" type="button" hidden>View all Events</button><button id="orders-all" class="button button-quiet" type="button" hidden>All Orders</button><button id="system-health" class="button button-quiet" type="button" hidden>System health</button>{% elif mode != 'customer' %}<a class="button button-quiet" href="/tickets/admin">View all Events</a>{% endif %}{% if mode != 'customer' %}<a class="button button-quiet" href="/tickets/staff">Admission</a>{% endif %}</div>
@@ -29,5 +29,5 @@
 {% endif %}
 <dialog id="ticketing-dialog" aria-label="Pluto ticket tools"><button id="ticketing-dialog-close" class="button button-quiet" type="button">Close</button><div id="ticketing-dialog-content"></div></dialog>
 </section>
-<script src="/assets/ticketing.js" defer></script>
+<script src="/assets/ticketing.js?v={{ assetVersion }}" defer></script>
 {% endblock %}
