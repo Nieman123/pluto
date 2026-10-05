@@ -48,10 +48,21 @@ async function accessible(page, screenshot) {
       const result = await api(page, 'staff/cash', { eventId: eid, accessKey: randomBytes(32).toString('hex'), name: `Shared buyer ${index + 1}`, email: `${prefix}-${index}@example.test`, items: [{ offerId: 'weekend', quantity }], comp, reason: comp ? 'Local browser test' : '', cashReceived: comp ? 0 : quantity * 10000 });
       oids.push(result.orderId);
     }
+    // Preserve a historical unpaid attempt without manufacturing tickets or changing a paid order.
+    const expiredId = randomBytes(32).toString('hex'), now = Date.now(); oids.push(expiredId);
+    const paidOrder = (await db.collection('ticketingOrders').doc(oids[0]).get()).data();
+    await db.collection('ticketingOrders').doc(expiredId).set({ eventId: eids[0], eventTitle: paidOrder.eventTitle,
+      name: 'Expired checkout buyer', email: `${prefix}-expired@example.test`, method: 'stripe', status: 'expired',
+      units: [], total: 20000, createdAt: now - 3600000, expiresAt: now - 25 * 60000, expiredAt: now - 25 * 60000 });
     await page.reload();
     await page.locator(`[data-open-event="${eids[0]}"]`).click();
     await page.locator('#event-order-list').getByRole('heading', { name: 'Orders', exact: true }).waitFor();
     assert.equal(await page.locator('#order-rows [data-open-order]').count(), 1, 'event dashboard lists only its own orders');
+    assert.equal((await api(page, 'staff/orders', { eventId: eids[0] })).orders.length, 2, 'API retains expired history for reporting and CSV');
+    assert.match(await page.locator('#event-order-list').innerText(), /Expired checkouts are hidden/);
+    await page.locator('#order-filter').fill('Expired checkout buyer');
+    assert.equal(await page.locator('#order-rows [data-open-order]').count(), 0, 'search cannot bring back an expired checkout');
+    await page.locator('#order-filter').fill('');
     await page.locator(`[data-open-order="${oids[0]}"]`).click();
     const modal = page.locator('#ticketing-dialog');
     await modal.getByRole('heading', { name: 'Individual tickets' }).waitFor();
@@ -78,12 +89,17 @@ async function accessible(page, screenshot) {
     await form.getByRole('button', { name: 'Apply filters' }).click();
     await page.locator('#all-order-count').filter({ hasText: '2 orders shown.' }).waitFor();
     await page.locator('#all-order-more').click();
-    await page.locator('#all-order-count').filter({ hasText: '3 orders shown.' }).waitFor();
-    assert.equal(await page.locator('#all-order-rows [data-open-order]').count(), 3);
+    await page.locator('#all-order-count').filter({ hasText: '4 orders shown.' }).waitFor();
+    assert.equal(await page.locator('#all-order-rows [data-open-order]').count(), 4);
+    assert.equal(await page.locator(`#all-order-rows [data-open-order="${expiredId}"]`).count(), 1, 'All Orders retains expired attempts');
     assert.match(await page.locator('#all-order-rows').innerText(), /Shared arrivals/);
     assert.match(await page.locator('#all-order-rows').innerText(), /Second event/);
     await accessible(page, 'all-orders-mobile');
     await page.setViewportSize({ width: 1280, height: 900 }); await accessible(page, 'all-orders-desktop');
+    await form.locator('[name="status"]').selectOption('expired');
+    await form.getByRole('button', { name: 'Apply filters' }).click();
+    await page.locator('#all-order-count').filter({ hasText: '1 order shown.' }).waitFor();
+    assert.equal(await page.locator(`#all-order-rows [data-open-order="${expiredId}"]`).count(), 1);
     await form.locator('[name="eventId"]').selectOption(eids[0]); await form.locator('[name="status"]').selectOption('paid');
     await form.getByRole('button', { name: 'Apply filters' }).click();
     await page.locator('#all-order-count').filter({ hasText: '1 order shown.' }).waitFor();
@@ -122,7 +138,7 @@ async function accessible(page, screenshot) {
     await modal.getByRole('heading', { name: 'Individual tickets' }).waitFor();
     assert.equal(await modal.locator('#refund-form').count(), 0);
     assert.deepEqual(errors, []);
-    console.log('Order browser checks passed: titled per-event orders, detailed payments/tickets, split arrivals/reload, all-event filters/pagination/deep links, scoped permissions and desktop/mobile accessibility.');
+    console.log('Order browser checks passed: hidden expired checkouts with retained global history, titled per-event orders, detailed payments/tickets, split arrivals/reload, all-event filters/pagination/deep links, scoped permissions and desktop/mobile accessibility.');
   } finally {
     await browser.close();
     for (const oid of oids) {

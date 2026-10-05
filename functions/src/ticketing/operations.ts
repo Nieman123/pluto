@@ -325,7 +325,7 @@ export class Operations extends Communications {
         await ref.update({ status: 'cancelled', leaseUntil: 0, token: null, emailPayload: null, lastError: 'Recipient was corrected. Send a new access link to the current contact.' }); return;
       }
       let payload: { from: string; to: string[]; subject: string; text: string; html?: string } | undefined = job.emailPayload;
-      if (['campaign', 'waitlist-offer'].includes(job.type)) {
+      if (['campaign', 'waitlist-offer', 'checkout-expired'].includes(job.type)) {
         const eligible = await this.engagementEmail(job);
         if (!eligible) { await ref.update({ status: 'cancelled', leaseUntil: 0, token: null, emailPayload: null }); return; }
         if (!payload) { payload = eligible; await ref.update({ emailPayload: payload }); }
@@ -426,6 +426,7 @@ export class Operations extends Communications {
     for (const doc of inbox.docs) if ((doc.data().retryAt || 0) <= now) { try { await this.processWebhook(doc.id); summary.webhooks++; } catch { summary.errors++; } }
     summary.waitlists = await this.waitlistMaintenance();
     summary.campaigns = await this.communicationMaintenance();
+    summary.checkoutFollowups = await this.checkoutFollowupMaintenance();
     const jobs = await this.pendingBatch('ticketingEmailJobs', ['pending'], 100);
     for (const doc of jobs.docs) { await this.emailJob(doc.id); summary.emails++; }
     return summary;

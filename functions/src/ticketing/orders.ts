@@ -18,7 +18,7 @@ export interface Order {
   tax: EventDraft['tax']; currency: string; livemode: boolean; createdAt: number; expiresAt: number; promoterId: string;
   sessionId?: string; clientSecret?: string; paymentIntentId?: string; receiptUrl?: string; stripeFee?: number | null; taxAmount?: number;
   stripeFeeStatus?: 'pending' | 'confirmed'; financialBlocked?: boolean; financialCheckId?: string; financialReviewReason?: string;
-  providerState?: string; provisioningLeaseUntil?: number; provisioningAttemptId?: string;
+  providerState?: string; provisioningLeaseUntil?: number; provisioningAttemptId?: string; expiredAt?: number;
   refundedAmount?: number; refundedTaxAmount?: number; reviewReason?: string;
   transferCutoff?: string;
   rsvpStatus?: 'pending' | 'approved' | 'declined' | 'withdrawn';
@@ -33,7 +33,7 @@ export class Orders extends Catalog {
   signing() { return this.dependencies.signingKey; }
   order(orderId: string) { return this.db.collection('ticketingOrders').doc(id(orderId)); }
   tickets() { return this.db.collection('ticketingTickets'); }
-  private async validUpgradeParent(tx: Transaction, upgrade: any) {
+  protected async validUpgradeParent(tx: Transaction, upgrade: any) {
     if (!upgrade.rsvpOrderId) return true;
     if (!upgrade.rsvpTicketId) return false;
     const parent = (await tx.get(this.order(upgrade.rsvpOrderId))).data(), ticket = (await tx.get(this.tickets().doc(upgrade.rsvpTicketId))).data();
