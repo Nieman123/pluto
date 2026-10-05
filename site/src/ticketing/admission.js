@@ -6,7 +6,7 @@ let manifest, verificationKey, cameraControls, scanning = false;
 let feedbackTimer, cameraLastQr = '', cameraLastSeenAt = 0;
 const eventId = () => document.querySelector('#staff-event').value;
 const scannerStorage = 'pluto-scanner-session';
-const admissionUid = () => scannerSession?.uid || user?.uid;
+const admissionUid = () => scannerSession?.uid || user?.uid || (!navigator.onLine ? manifest?.staffUid : undefined);
 const recordedTime = () => Date.now() + (manifest?.deviceClockOffsetMs || 0);
 function clearScanFeedback() {
   clearTimeout(feedbackTimer);
@@ -114,9 +114,10 @@ export async function restoreOfflineAdmission() {
   const selector = document.querySelector('#staff-event');
   selector.innerHTML = session.events.map(e => `<option value="${esc(e.id)}">${esc(e.title)}</option>`).join('');
   if (session.events.some(e => e.id === session.selected)) selector.value = session.selected;
-  document.querySelector('#staff-controls').hidden = false;
   await restoreManifest();
   if (!manifest) throw new Error('Offline admission has expired or has not been prepared for this event. Connect and prepare it again.');
+  document.querySelector('#staff-controls').hidden = false;
+  await loadDoorGuests();
   message(`Prepared offline admission. Reconnect ${scannerSession ? 'with this PIN' : 'and sign in'} to sync scans; use one offline lane.`);
 }
 async function cacheStatus() {
@@ -161,7 +162,7 @@ async function loadDoorGuests() {
 }
 async function offlineSession() {
   const session = await dbOperation('state', 'readonly', s => s.get('session'));
-  if (!session || session.expiresAt <= recordedTime() || session.uid !== manifest?.staffUid || !manifest?.leaseToken || !manifest?.offlineUntil || manifest.offlineUntil <= recordedTime() || manifest.eventId !== eventId()) throw new Error('Offline admission access has expired. Prepare again online.');
+  if (!session || session.expiresAt <= recordedTime() || session.uid !== manifest?.staffUid || session.uid !== admissionUid() || !manifest?.leaseToken || !manifest?.offlineUntil || manifest.offlineUntil <= recordedTime() || manifest.eventId !== eventId()) throw new Error('Offline admission access has expired. Prepare again online.');
   return session;
 }
 async function offlineGuestArrival(guestId, scanId) {
@@ -232,10 +233,10 @@ async function offlineScan(qr, scanId) {
   await new Promise((resolve, reject) => {
     const transaction = db.transaction(['state', 'queue'], 'readwrite'), state = transaction.objectStore('state'), queued = transaction.objectStore('queue');
     const request = state.get(`manifest-${eventId()}`);
-    request.onsuccess = () => { const current = request.result, unit = current?.tickets.find(t => t.id === token.id); if (!unit || unit.admitted || current.staffUid !== session.uid || current.leaseToken !== manifest.leaseToken || current.offlineUntil <= recordedTime()) { transaction.abort(); return; } unit.admitted = true; state.put(current, `manifest-${eventId()}`); queued.add({ scanId, eventId: eventId(), qr, ticketId: ticket.id, deviceTime: recordedTime(), leaseToken: manifest.leaseToken, itemProof: ticket.itemProof, staffUid: session.uid }); };
+    request.onsuccess = () => { const current = request.result, unit = current?.tickets.find(t => t.id === token.id); if (!unit || unit.admitted || current.staffUid !== session.uid || current.leaseToken !== manifest.leaseToken || current.offlineUntil <= recordedTime()) { transaction.abort(); return; } unit.admitted = true; const parent = current.tickets.find(t => t.id === unit.rsvpTicketId); if (parent) parent.admitted = true; state.put(current, `manifest-${eventId()}`); queued.add({ scanId, eventId: eventId(), qr, ticketId: ticket.id, deviceTime: recordedTime(), leaseToken: manifest.leaseToken, itemProof: ticket.itemProof, staffUid: session.uid }); };
     transaction.oncomplete = () => { db.close(); resolve(); }; transaction.onabort = () => { db.close(); reject(new Error('This ticket was already admitted locally.')); }; transaction.onerror = () => { db.close(); reject(transaction.error); };
   });
-  ticket.admitted = true; return { result: 'accepted', name: ticket.name, holderName: ticket.holderName, offline: true };
+  ticket.admitted = true; const parent = manifest.tickets.find(t => t.id === ticket.rsvpTicketId); if (parent) parent.admitted = true; return { result: 'accepted', name: ticket.name, holderName: ticket.holderName, offline: true };
 }
 async function scan(qr) {
   if (scanning) return; scanning = true;
@@ -251,7 +252,7 @@ async function scan(qr) {
         result = await api('staff/scan', { eventId: eventId(), qr, scanId });
         if (result.result === 'accepted' || result.result === 'duplicate') {
           const ticket = manifest?.tickets.find(t => t.id === result.ticketId);
-          if (ticket) { ticket.admitted = true; await dbOperation('state', 'readwrite', s => s.put(manifest, `manifest-${eventId()}`)); }
+          if (ticket) { ticket.admitted = true; const parent = manifest.tickets.find(t => t.id === result.rsvpTicketId); if (parent) parent.admitted = true; await dbOperation('state', 'readwrite', s => s.put(manifest, `manifest-${eventId()}`)); }
         }
       }
       catch (error) {

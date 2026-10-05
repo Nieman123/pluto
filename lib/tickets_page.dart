@@ -727,6 +727,12 @@ class _TicketsPageState extends State<TicketsPage> {
             TextButton(
                 onPressed: () => htmlOpenLink(data['receiptUrl'] as String),
                 child: const Text('Payment receipt')),
+          if ((data['upgradeUrl'] as String? ?? '').isNotEmpty)
+            TextButton(
+                onPressed: data['offline'] == true
+                    ? null
+                    : () => htmlOpenLink(data['upgradeUrl'] as String),
+                child: const Text('Browse VIP upgrades')),
           TextButton(
               onPressed: _allTickets, child: const Text('All my tickets')),
         ]),

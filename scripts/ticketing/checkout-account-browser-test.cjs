@@ -91,7 +91,7 @@ async function submit(page, expected, status = 'paid') {
     const bodyReady = new Promise(resolveBody => page.route('**/tickets/api/checkout', route => {
       resolveBody(route.request().postDataJSON()); return route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'Controlled retry check' }) });
     }));
-    await page.locator('#native-checkout-form [type=submit]').click(); assert.deepEqual(await bodyReady, saved);
+    await page.locator('#native-checkout-form [type=submit]').click(); assert.deepEqual(await bodyReady, { ...saved, checkoutKind: 'payment' });
     stage = 'admin-only website navigation';
     await page.goto(`${base}/events`); await signIn(page, users[1]);
     const adminLinks = page.locator('[data-auth-admin]');

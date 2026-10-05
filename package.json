@@ -36,6 +36,7 @@
     "test:ticketing:qr": "node scripts/ticketing/qr-decoder-test.cjs",
     "test:ticketing:scanner-browser": "node scripts/ticketing/scanner-pin-browser-test.cjs",
     "test:ticketing:rsvp-browser": "node scripts/ticketing/rsvp-browser-test.cjs",
+    "test:ticketing:vip-browser": "node scripts/ticketing/rsvp-vip-browser-test.cjs",
     "test:ticketing:payment": "node scripts/ticketing/sandbox-payment-test.cjs",
     "preview:ticketing": "node scripts/ticketing/preview.mjs",
     "preview:ticketing:emails": "npm --prefix functions run build && node scripts/ticketing/preview-emails.mjs",

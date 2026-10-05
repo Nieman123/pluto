@@ -104,15 +104,17 @@ export class Catalog {
     if (action === 'publish') {
       if (!draft.city || !draft.region || !draft.descriptionHtml) fail('Add location and description before publishing.');
       if (draft.registrationMode !== 'free' && !draft.offers.length) fail('Add tickets or an RSVP pass before publishing.');
+      if (['rsvp', 'rsvp-approval'].includes(draft.registrationMode) && !draft.offers.some(o => o.active && o.kind === 'admission' && o.unitAmount === 0)) fail('RSVP events need an active free admission pass. Add paid VIP options alongside it.');
       const earlyTicket = draft.registrationMode === 'free' ? undefined : draft.offers.find(o => Date.parse(o.validFrom) < Date.parse(draft.admissionStartsAt));
       if (earlyTicket) {
         const format = (value: string) => new Intl.DateTimeFormat('en-US', { timeZone: draft.timezone, dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
         fail(`"${earlyTicket.name}" admits guests from ${format(earlyTicket.validFrom)}, before First admission (${format(draft.admissionStartsAt)}; ${draft.timezone}). In Event dashboard → Ticket types & passes, update this ticket's Admission valid from, or move First admission earlier.`);
       }
-      if (draft.registrationMode === 'tickets') {
+      if (draft.registrationMode === 'tickets' || draft.offers.some(o => o.active && o.unitAmount > 0)) {
         if (isLive() && (!draft.tax.confirmed || draft.tax.mode === 'sandbox')) fail('Confirm the event tax configuration before live sales.');
-        if (draft.tax.mode === 'automatic' && (!draft.tax.confirmed || !draft.tax.performanceLocationId || draft.offers.some(o => !o.taxCode || !o.stripeProductId))) fail('Automatic tax needs confirmed venue, registration and product configuration.');
-        if (draft.tax.mode === 'manual' && (!draft.tax.confirmed || draft.offers.some(o => !o.stripeTaxRateIds.length))) fail('Manual tax needs confirmed inclusive rates for every offer.');
+        const taxedOffers = draft.registrationMode === 'tickets' ? draft.offers : draft.offers.filter(o => o.active && o.unitAmount > 0);
+        if (draft.tax.mode === 'automatic' && (!draft.tax.confirmed || !draft.tax.performanceLocationId || taxedOffers.some(o => !o.taxCode || !o.stripeProductId))) fail('Automatic tax needs confirmed venue, registration and product configuration.');
+        if (draft.tax.mode === 'manual' && (!draft.tax.confirmed || taxedOffers.some(o => !o.stripeTaxRateIds.length))) fail('Manual tax needs confirmed inclusive rates for every paid offer.');
       }
       for (const m of allMedia(draft)) if (!(await ref.collection('media').doc(m.assetId).get()).exists) fail('An image is missing. Upload it again.');
       if (draft.venueVisibility === 'holders') {

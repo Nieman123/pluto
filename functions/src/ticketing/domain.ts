@@ -93,7 +93,7 @@ export function validateDraft(raw: any): EventDraft {
     const validFrom = date(o.validFrom || admissionStartsAt, 'admission start'), validUntil = date(o.validUntil || endAt, 'admission end');
     if (salesEnd <= salesStart || validUntil <= validFrom) fail('Check ticket sales and admission windows.');
     return { id: id(o.id), name: text(o.name, 'ticket name', 150, true), description: text(o.description || '', 'ticket description', 1000),
-      kind: ['admission', 'camping', 'vehicle'].includes(o.kind) ? o.kind : 'admission', unitAmount: integer(o.unitAmount, 'ticket price', 0, 1000000),
+      kind: ['admission', 'camping', 'vehicle', 'upgrade'].includes(o.kind) ? o.kind : 'admission', unitAmount: integer(o.unitAmount, 'ticket price', 0, 1000000),
       maxPerOrder: integer(o.maxPerOrder ?? 10, 'order limit', 1, 20), salesStart, salesEnd, validFrom, validUntil, active: o.active !== false,
       pools: poolUse, requiresOfferIds: [],
       taxCode: text(o.taxCode || '', 'tax code', 80), stripeProductId: text(o.stripeProductId || '', 'Stripe product', 80),
@@ -119,7 +119,16 @@ export function validateDraft(raw: any): EventDraft {
   if (!['sandbox', 'manual', 'automatic'].includes(taxMode)) fail('Invalid tax mode.');
   const registrationMode = raw.registrationMode || 'tickets';
   if (!['tickets', 'rsvp', 'rsvp-approval', 'free'].includes(registrationMode)) fail('Choose a valid registration type.');
-  if (['rsvp', 'rsvp-approval'].includes(registrationMode) && offers.some(o => o.active && (o.unitAmount !== 0 || o.kind !== 'admission' || o.maxPerOrder !== 1))) fail('Active RSVP passes must be free admission passes, one per person. Use Set up free RSVP pass on the dashboard.');
+  if (['rsvp', 'rsvp-approval'].includes(registrationMode)) {
+    for (const offer of offers.filter(o => o.active)) {
+      const kind = offer.unitAmount > 0 && registrationMode === 'rsvp-approval' ? 'upgrade' : 'admission';
+      if (offer.kind !== kind || offer.maxPerOrder !== 1) fail(registrationMode === 'rsvp-approval'
+        ? 'Use free RSVP admission passes or paid VIP upgrades, each limited to one per order. Paid upgrades require an approved RSVP.'
+        : 'Use free RSVP admission or paid admission tickets, each limited to one per order.');
+    }
+    const admissionPools = new Set(offers.filter(o => o.active && o.unitAmount === 0).flatMap(o => Object.keys(o.pools)));
+    if (offers.some(o => o.active && o.kind === 'upgrade' && Object.keys(o.pools).some(pool => admissionPools.has(pool)))) fail('VIP upgrades need a separate capacity pool from RSVP admission. Add a VIP pool so admission capacity is counted once.');
+  } else if (offers.some(o => o.active && o.kind === 'upgrade')) fail('VIP upgrade passes require an approval-required RSVP event. Use Admission for a ticket that includes entry.');
   if (registrationMode === 'free' && offers.some(o => o.active)) fail('Free events do not issue tickets. Deactivate ticket types before saving.');
   if (registrationMode === 'free' && raw.venueVisibility !== 'public') fail('Free events need a public venue so guests can find the event without a ticket or RSVP.');
   const venueRevealScheduled = raw.venueVisibility === 'holders' && raw.venueRevealScheduled === true;

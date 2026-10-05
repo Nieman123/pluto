@@ -7,11 +7,12 @@ import { isLive, keyPair } from './config';
 import { randomInt } from 'node:crypto';
 import { secret } from './domain';
 import { waitlistHold, withoutWaitlistHold } from './waitlist-hold';
+import { approvedRsvpParent } from './rsvp-upgrade';
 
 export class Rsvps extends Guests {
   async requestRsvpVerification(raw: any, actor: DecodedIdToken | null, purpose = 'rsvp') {
     const target = email(raw.email), eventId = id(raw.eventId), event = (await this.event(eventId).get()).data(), draft = event?.liveDraft || event?.draft;
-    if (event?.status !== 'published' || (purpose === 'waitlist' ? !draft?.waitlistEnabled : !['rsvp', 'rsvp-approval'].includes(draft?.registrationMode)) || Date.now() >= Date.parse(draft.endAt)) fail('Registration is not open for this event.', 409);
+    if (event?.status !== 'published' || (purpose === 'waitlist' ? !draft?.waitlistEnabled : purpose === 'upgrade' ? draft?.registrationMode !== 'rsvp-approval' : !['rsvp', 'rsvp-approval'].includes(draft?.registrationMode)) || Date.now() >= Date.parse(draft.endAt)) fail('Registration is not open for this event.', 409);
     if (actor?.email_verified && actor.email?.toLowerCase() === target) return { verified: true };
     const token = secret(), code = String(randomInt(1000000)).padStart(6, '0'), expiresAt = Date.now() + 15 * 60000;
     const batch = this.db.batch(), verificationId = hash(token);
@@ -32,6 +33,23 @@ export class Rsvps extends Guests {
     });
     if (!valid) fail('That email code is invalid or expired. Request a new code.', 403, 'rsvp-email-verification');
     return ref;
+  }
+  async rsvpUpgradeAccess(raw: any, actor: DecodedIdToken | null) {
+    const eventId = id(raw.eventId), target = email(raw.email), proofRef = await this.rsvpProof(raw, actor, 'upgrade'), token = secret(), expiresAt = Date.now() + 15 * 60000;
+    return this.db.runTransaction(async tx => {
+      const eventRef = this.event(eventId), event = (await tx.get(eventRef)).data(), draft = event?.liveDraft || event?.draft;
+      if (event?.status !== 'published' || draft?.registrationMode !== 'rsvp-approval' || Date.now() >= Date.parse(draft.endAt)) fail('VIP upgrades are not open for this event.', 409);
+      const contact = (await tx.get(eventRef.collection('rsvpContacts').doc(hash(target)))).data();
+      if (!contact) fail('An approved RSVP is required before purchasing VIP. Submit your free RSVP first.', 409);
+      const parent = (await tx.get(this.order(contact.orderId))).data(), parentTicketId = ticketId(contact.orderId, 0), ticket = (await tx.get(this.tickets().doc(parentTicketId))).data();
+      const linked = { eventId, email: target, rsvpOrderId: contact.orderId, rsvpTicketId: parentTicketId, rsvpTicketVersion: ticket?.version || 0 };
+      if (!approvedRsvpParent(parent, ticket, linked)) fail('Your RSVP must be approved before purchasing VIP. Check its status in My tickets.', 409);
+      const proof = proofRef ? (await tx.get(proofRef)).data() : null;
+      if (proofRef && (!proof || proof.used || proof.purpose !== 'upgrade' || proof.eventId !== eventId || proof.email !== target || proof.expiresAt <= Date.now())) fail('Your email code expired or was already used. Request a new code.', 403, 'rsvp-email-verification');
+      tx.create(this.db.collection('ticketingRsvpUpgradeAccess').doc(hash(token)), { ...linked, name: parent!.name, ownerUid: parent!.ownerUid || actor?.uid || '', parentAccessRevision: parent!.accessRevision || 0, expiresAt, usedBy: '' });
+      if (proofRef) tx.update(proofRef, { used: true, usedAt: Date.now() });
+      return { rsvpUpgradeToken: token, expiresAt, name: parent!.name, email: target };
+    });
   }
   private issueRsvp(tx: Transaction, orderId: string, order: Order, pools: DocumentSnapshot[]) {
     pools.forEach(pool => tx.update(pool.ref, { sold: pool.data()!.sold + order.consumption[pool.id] }));
@@ -133,6 +151,12 @@ export class Rsvps extends Guests {
       if (['withdrawn', 'declined'].includes(latest.rsvpStatus || '')) return;
       const tickets = await tx.get(this.tickets().where('orderId', '==', orderId));
       if (tickets.docs.some(t => t.data().admission)) fail('An RSVP that has already arrived cannot be withdrawn.', 409);
+      const upgrades = await tx.get(this.db.collection('ticketingOrders').where('rsvpOrderId', '==', orderId));
+      if (upgrades.docs.some(d => { const u = d.data(); return ['provisioning', 'open', 'processing', 'review'].includes(u.status) || u.status === 'paid' && u.total > (u.refundedAmount || 0); })) fail('Close any VIP checkout first. For a purchased VIP upgrade, contact Pluto before withdrawing your RSVP.', 409);
+      for (const upgrade of upgrades.docs.filter(d => d.data().status === 'paid' && d.data().total === 0)) {
+        const passes = await tx.get(this.tickets().where('orderId', '==', upgrade.id));
+        if (passes.docs.some(t => ['valid', 'refund-pending'].includes(t.data().status))) fail('Contact Pluto to close your discounted VIP upgrade before withdrawing your RSVP.', 409);
+      }
       const pools = latest.rsvpStatus === 'approved' ? await Promise.all(Object.keys(latest.consumption).map(key => tx.get(this.event(latest.eventId).collection('pools').doc(key)))) : [];
       pools.forEach(pool => tx.update(pool.ref, { sold: Math.max(0, pool.data()!.sold - latest.consumption[pool.id]) }));
       tickets.docs.forEach(t => tx.update(t.ref, { status: 'revoked', version: t.data().version + 1 }));

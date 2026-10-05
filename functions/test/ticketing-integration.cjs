@@ -253,7 +253,131 @@ async function main() {
   assert.equal((await recoverRef.get()).data().status, 'paid', 'stale expiry event cannot release a paid order');
   assert.equal((await db.collection('ticketingWebhookInbox').doc(inboxId).get()).data().status, 'done');
   await new Promise(resolve => server.close(resolve));
+  await rsvpVipChecks();
   await service.pendingBatch('ticketingEmailJobs', ['pending'], 2);
   console.log('Ticketing integration checks passed: shared inventory/promotions, payments/refunds/transfers, recovery/claim, receipt-only PDF, event roles, account-free scanner PINs, scope/expiry/revocation, login throttle, concurrent duplicate admission, conflict review, API privilege isolation.');
+}
+async function rsvpVipChecks() {
+  const { hash } = require('../lib/ticketing/domain');
+  const mixed = mode => d => {
+    d.registrationMode = mode; d.promos = [];
+    const free = { ...d.offers[0], name: 'Free RSVP', unitAmount: 0, maxPerOrder: 1 };
+    const vip = { ...free, id: 'vip', name: mode === 'rsvp' ? 'VIP admission' : 'VIP upgrade', unitAmount: 10000, kind: mode === 'rsvp' ? 'admission' : 'upgrade', pools: mode === 'rsvp' ? free.pools : { vip: 1 } };
+    d.offers = [free, vip]; d.pools.push({ id: 'vip', name: 'VIP upgrades', capacity: 1 });
+  };
+  const freeRequest = (eventId, actor) => request(eventId, { email: actor.email, name: 'Approved RSVP Guest' });
+  const vipRequest = (eventId, overrides = {}) => request(eventId, { items: [{ offerId: 'vip', quantity: 1 }], ...overrides });
+  const open = await makeEvent(true, mixed('rsvp')), openVipRequest = vipRequest(open), openVip = await service.checkout(openVipRequest, buyer);
+  await pay(openVip);
+  const openView = await service.view(openVip.orderId, openVipRequest.accessKey, null);
+  assert.equal(openView.tickets.length, 1); assert.equal(openView.tickets[0].name, 'VIP admission'); assert.ok(openView.tickets[0].qr);
+  assert.equal((await service.scan(open, openView.tickets[0].qr, randomUUID(), staff)).result, 'accepted', 'open RSVP VIP includes entry without a separate RSVP');
+  const freeOpen = await service.rsvp(freeRequest(open, buyer), buyer);
+  assert.equal(freeOpen.rsvpStatus, 'approved');
+  await assert.rejects(() => service.checkout(request(open), buyer), /RSVP form/);
+  await assert.rejects(() => service.checkout(vipRequest(open, { items: [{ offerId: 'vip', quantity: 1 }, { offerId: 'weekend', quantity: 1 }] }), buyer), /one paid VIP/);
+
+  const approval = await makeEvent(true, mixed('rsvp-approval')), registration = freeRequest(approval, buyer), pending = await service.rsvp(registration, buyer);
+  await assert.rejects(() => service.rsvpUpgradeAccess({ eventId: approval, email: buyer.email }, buyer), /must be approved/);
+  await assert.rejects(() => service.checkout(vipRequest(approval), buyer), /Verify your approved RSVP/);
+  assert.equal((await service.event(approval).collection('pools').doc('vip').get()).data().held, 0);
+  await service.reviewRsvp(approval, pending.orderId, 'approve', '', staff);
+  const parent = await service.view(pending.orderId, registration.accessKey, null);
+  assert.ok(parent.upgradeUrl); assert.equal(parent.tickets.length, 1);
+  await assert.rejects(() => service.rsvpUpgradeAccess({ eventId: approval, email: buyer.email }, null), /Verify your RSVP email/);
+  const verification = await service.requestRsvpVerification({ eventId: approval, email: buyer.email }, null, 'upgrade');
+  const code = (await db.collection('ticketingEmailJobs').doc(`verify_${hash(verification.verificationToken)}`).get()).data().code;
+  const proof = { eventId: approval, email: buyer.email, verificationToken: verification.verificationToken, verificationCode: code };
+  const access = await service.rsvpUpgradeAccess(proof, null);
+  await assert.rejects(() => service.rsvpUpgradeAccess(proof, null), /invalid or expired/);
+  await assert.rejects(() => service.checkout(vipRequest(approval, { email: 'wrong@example.test', rsvpUpgradeToken: access.rsvpUpgradeToken }), null), /verification expired/);
+  const purchase = vipRequest(approval, { name: 'Spoofed name', rsvpUpgradeToken: access.rsvpUpgradeToken }), vip = await service.checkout(purchase, buyer);
+  await service.checkout(purchase, buyer);
+  await assert.rejects(() => service.checkout(vipRequest(approval, { rsvpUpgradeToken: access.rsvpUpgradeToken }), buyer), /already used/);
+  await assert.rejects(() => service.cancel(pending.orderId, registration.accessKey, null), /Close any VIP checkout/);
+  assert.equal((await service.event(approval).collection('pools').doc('friday').get()).data().held, 0, 'VIP does not reserve another admission');
+  assert.equal((await service.event(approval).collection('pools').doc('friday').get()).data().sold, 1);
+  await pay(vip);
+  let vipView = await service.view(vip.orderId, purchase.accessKey, null);
+  assert.equal(vipView.name, 'Approved RSVP Guest'); assert.equal(vipView.rsvpOrderId, pending.orderId);
+  assert.ok(vipView.tickets[0].qr); assert.equal(vipView.tickets[0].transferable, false);
+  await assert.rejects(() => service.transfer(vip.orderId, purchase.accessKey, null, vipView.tickets[0].id, 'friend@example.test'), /cannot be transferred/);
+  const vipQr = vipView.tickets[0].qr;
+  await service.order(pending.orderId).update({ rsvpStatus: 'withdrawn' });
+  assert.equal((await service.scan(approval, vipQr, randomUUID(), staff)).result, 'invalid', 'paid VIP cannot bypass an invalid parent RSVP');
+  assert.equal((await service.view(vip.orderId, purchase.accessKey, null)).tickets[0].qr, null);
+  assert.equal((await service.mine(buyer)).tickets.find(t => t.id === vipView.tickets[0].id).qr, null);
+  assert.equal((await service.manifest(approval, staff)).tickets.find(t => t.id === vipView.tickets[0].id).status, 'invalid');
+  await assert.rejects(() => service.walletTicket({ ticketId: vipView.tickets[0].id, accessKey: purchase.accessKey }, null), /not available/);
+  assert.equal((await service.staffOrder(vip.orderId, staff)).tickets[0].canCheckIn, false);
+  await service.order(pending.orderId).update({ rsvpStatus: 'approved' });
+  await service.tickets().doc(parent.tickets[0].id).update({ version: 2 });
+  assert.equal((await service.scan(approval, vipQr, randomUUID(), staff)).result, 'invalid', 'a reissued RSVP version does not revive old VIP access');
+  await service.tickets().doc(parent.tickets[0].id).update({ version: 1 });
+  assert.equal((await service.scan(approval, vipQr, randomUUID(), staff)).result, 'accepted');
+  assert.equal((await service.attendance(approval, {}, staff)).counts.arrivals, 1, 'VIP also checks in its approved RSVP and counts one guest');
+  assert.equal((await service.scan(approval, parent.tickets[0].qr, randomUUID(), staff)).result, 'duplicate');
+  await service.refund(vip.orderId, [vipView.tickets[0].id], newKey(), staff);
+  assert.equal((await service.event(approval).collection('pools').doc('vip').get()).data().sold, 1, 'used VIP capacity is not returned by a refund');
+  assert.equal((await service.view(pending.orderId, registration.accessKey, null)).tickets[0].status, 'valid', 'VIP refund leaves the free RSVP intact');
+  await assert.rejects(() => service.cancel(pending.orderId, registration.accessKey, null), /already arrived/);
+
+  const refundEvent = await makeEvent(true, mixed('rsvp-approval')), refundRegistration = freeRequest(refundEvent, buyer), refundRsvp = await service.rsvp(refundRegistration, buyer);
+  await service.reviewRsvp(refundEvent, refundRsvp.orderId, 'approve', '', staff);
+  const refundAccess = await service.rsvpUpgradeAccess({ eventId: refundEvent, email: buyer.email }, buyer), refundRequest = vipRequest(refundEvent, { rsvpUpgradeToken: refundAccess.rsvpUpgradeToken });
+  const refundVip = await service.checkout(refundRequest, buyer); await pay(refundVip);
+  const refundView = await service.view(refundVip.orderId, refundRequest.accessKey, null);
+  await service.refund(refundVip.orderId, [refundView.tickets[0].id], newKey(), staff);
+  assert.equal((await service.event(refundEvent).collection('pools').doc('vip').get()).data().sold, 0, 'unused VIP capacity returns after refund');
+  assert.equal((await service.view(refundRsvp.orderId, refundRegistration.accessKey, null)).tickets[0].status, 'valid');
+  await service.cancel(refundRsvp.orderId, refundRegistration.accessKey, null);
+
+  const promoEvent = await makeEvent(true, d => {
+    mixed('rsvp-approval')(d);
+    d.promos = [{ code: 'VIPCOMP', type: 'percent', value: 100, limit: 10, startsAt: d.offers[0].salesStart, endsAt: d.endAt, offerIds: ['vip'] }];
+  });
+  const promoRegistration = freeRequest(promoEvent, buyer), promoRsvp = await service.rsvp(promoRegistration, buyer);
+  await service.reviewRsvp(promoEvent, promoRsvp.orderId, 'approve', '', staff);
+  const promoAccess = await service.rsvpUpgradeAccess({ eventId: promoEvent, email: buyer.email }, buyer);
+  const promoPurchase = vipRequest(promoEvent, { promoCode: 'VIPCOMP', rsvpUpgradeToken: promoAccess.rsvpUpgradeToken }), promoVip = await service.checkout(promoPurchase, buyer);
+  assert.equal(promoVip.status, 'paid'); assert.equal(promoVip.total, 0);
+  await assert.rejects(() => service.cancel(promoRsvp.orderId, promoRegistration.accessKey, null), /close your discounted VIP/);
+  const promoView = await service.view(promoVip.orderId, promoPurchase.accessKey, null);
+  const promoRefund = await service.refund(promoVip.orderId, [promoView.tickets[0].id], newKey(), staff);
+  assert.equal(promoRefund.amount, 0);
+  assert.equal((await service.event(promoEvent).collection('pools').doc('vip').get()).data().sold, 0);
+  await service.cancel(promoRsvp.orderId, promoRegistration.accessKey, null);
+
+  const expiryEvent = await makeEvent(true, mixed('rsvp-approval')), expiryRegistration = freeRequest(expiryEvent, buyer), expiryRsvp = await service.rsvp(expiryRegistration, buyer);
+  await service.reviewRsvp(expiryEvent, expiryRsvp.orderId, 'approve', '', staff);
+  const expired = await service.rsvpUpgradeAccess({ eventId: expiryEvent, email: buyer.email }, buyer);
+  await db.collection('ticketingRsvpUpgradeAccess').doc(hash(expired.rsvpUpgradeToken)).update({ expiresAt: 0 });
+  await assert.rejects(() => service.checkout(vipRequest(expiryEvent, { rsvpUpgradeToken: expired.rsvpUpgradeToken }), buyer), /verification expired/);
+  const withdrawn = await service.rsvpUpgradeAccess({ eventId: expiryEvent, email: buyer.email }, buyer);
+  await service.cancel(expiryRsvp.orderId, expiryRegistration.accessKey, null);
+  await assert.rejects(() => service.checkout(vipRequest(expiryEvent, { rsvpUpgradeToken: withdrawn.rsvpUpgradeToken }), buyer), /approved RSVP is required/);
+  assert.equal((await service.event(expiryEvent).collection('pools').doc('vip').get()).data().held, 0);
+
+  const windowEvent = await makeEvent(true, d => {
+    mixed('rsvp-approval')(d);
+    d.offers[0].validFrom = new Date(Date.now() - 30 * 60000).toISOString();
+    d.offers[0].validUntil = new Date(Date.now() + 86400000).toISOString();
+  });
+  const windowRegistration = freeRequest(windowEvent, buyer), windowRsvp = await service.rsvp(windowRegistration, buyer);
+  await service.reviewRsvp(windowEvent, windowRsvp.orderId, 'approve', '', staff);
+  const windowParent = await service.view(windowRsvp.orderId, windowRegistration.accessKey, null);
+  const windowAccess = await service.rsvpUpgradeAccess({ eventId: windowEvent, email: buyer.email }, buyer);
+  const windowPurchase = vipRequest(windowEvent, { rsvpUpgradeToken: windowAccess.rsvpUpgradeToken }), windowVip = await service.checkout(windowPurchase, buyer);
+  const windowOrder = (await service.order(windowVip.orderId).get()).data();
+  assert.equal(windowOrder.units[0].validFrom, windowParent.tickets[0].validFrom, 'VIP cannot admit before the parent RSVP window');
+  assert.equal(windowOrder.units[0].validUntil, windowParent.tickets[0].validUntil, 'VIP cannot extend the parent RSVP window');
+  // A parent revoked outside the normal withdrawal flow must never mint a VIP
+  // QR when its delayed payment arrives. Keep the hold for operator review.
+  await service.tickets().doc(windowParent.tickets[0].id).update({ status: 'void' });
+  await pay(windowVip);
+  const windowReview = await service.view(windowVip.orderId, windowPurchase.accessKey, null);
+  assert.equal(windowReview.status, 'review'); assert.equal(windowReview.tickets.length, 0);
+  assert.equal((await service.event(windowEvent).collection('pools').doc('vip').get()).data().held, 1);
+  console.log('RSVP VIP checks passed: direct paid admission, free RSVP, email/approval gating, one-use verification, retries, distinct capacity, nontransferable upgrades, parent revocation/version gates, wallet/manifest/admin checks and independent VIP refunds.');
 }
 main().then(() => process.exit(0), error => { console.error(error); process.exit(1); });
