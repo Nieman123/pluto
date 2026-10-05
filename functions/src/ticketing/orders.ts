@@ -11,6 +11,7 @@ import { readOfflineItem, signOfflineItem, type OfflineSubmission } from './offl
 import type { WalletTicket } from './digital-wallet';
 import { waitlistHold, withoutWaitlistHold } from './waitlist-hold';
 import { approvedRsvpParent, assertRsvpPayment } from './rsvp-upgrade';
+import { plutoCheckoutBranding } from './checkout-branding';
 
 export interface Order {
   eventId: string; eventTitle: string; eventSlug: string; ownerUid: string; email: string; name: string; accessHash: string; inputHash: string;
@@ -19,6 +20,7 @@ export interface Order {
   sessionId?: string; clientSecret?: string; paymentIntentId?: string; receiptUrl?: string; stripeFee?: number | null; taxAmount?: number;
   stripeFeeStatus?: 'pending' | 'confirmed'; financialBlocked?: boolean; financialCheckId?: string; financialReviewReason?: string;
   providerState?: string; provisioningLeaseUntil?: number; provisioningAttemptId?: string; expiredAt?: number;
+  checkoutBranding?: Stripe.Checkout.SessionCreateParams.BrandingSettings;
   refundedAmount?: number; refundedTaxAmount?: number; reviewReason?: string;
   transferCutoff?: string;
   rsvpStatus?: 'pending' | 'approved' | 'declined' | 'withdrawn';
@@ -183,6 +185,7 @@ export class Orders extends Catalog {
       }
       tx.create(ref, { eventId, eventTitle: draft.title, eventSlug: draft.slug, ...contact, accessHash: hash(accessKey), inputHash: requestHash,
         ...(rsvpLink || {}),
+        ...(method === 'stripe' && priced.total > 0 ? { checkoutBranding: { ...plutoCheckoutBranding } } : {}),
         ...priced, tax: draft.tax, taxCustomerAddress, currency: 'usd', livemode: isLive(), status: 'provisioning', method, createdAt: now, expiresAt: now + 35 * 60000,
         promoterId, staffUid, transferCutoff: draft.admissionStartsAt, cashReceived: method === 'cash' ? raw.cashReceived : 0, compReason: method === 'comp' ? raw.reason : '', refundedAmount: 0, revision: event.publishedRevision, apiVersion, providerState: method === 'stripe' ? 'not-sent' : 'not-required' });
     });
@@ -204,6 +207,8 @@ export class Orders extends Catalog {
     if (Date.now() - order.createdAt > 23 * 3600000) { await this.order(orderId).update({ reviewReason: 'Unresolved creation exceeded the safe idempotency window.' }); return fail('Checkout needs staff review. Start no further payment attempts for this order.', 409); }
     const parameters: Stripe.Checkout.SessionCreateParams = {
       mode: 'payment', ui_mode: 'embedded_page', customer_email: order.email, client_reference_id: orderId,
+      // Legacy attempts omit this field, retaining their original Stripe request.
+      ...(order.checkoutBranding ? { branding_settings: order.checkoutBranding } : {}),
       return_url: `${appTicketsUrl()}?order=${orderId}&session_id={CHECKOUT_SESSION_ID}`,
       expires_at: Math.floor((order.createdAt + 35 * 60000) / 1000),
       integration_identifier: `pluto_ticketing_${orderId.slice(0, 8).replace(/[0-9]/g, n => String.fromCharCode(97 + Number(n)))}`,

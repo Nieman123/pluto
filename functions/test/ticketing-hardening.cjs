@@ -5,11 +5,52 @@ const { harness } = require('./ticketing-harness.cjs');
 const express = require('express');
 const { ticketingRouter } = require('../lib/ticketing/routes');
 const { configureTrustedProxy } = require('../lib/ticketing/client-identity');
+const { FieldValue } = require('firebase-admin/firestore');
 
 async function inbox(h, oid, type, objectId, extra = {}) {
   const ref = h.db.collection('ticketingWebhookInbox').doc(hash(`${h.prefix}_${objectId}`));
   await ref.set({ orderId: oid, type, objectId, livemode: false, status: 'pending', ...extra }); return ref;
 }
+
+test('Checkout branding is server-controlled and survives an uncertain creation retry without changing the Stripe request', async () => {
+  const h = harness();
+  try {
+    const eid = await h.event(), raw = h.request(eid, { branding_settings: { button_color: '#ffffff', display_name: 'Untrusted name' } }), requests = [];
+    h.hooks.checkoutBefore = p => requests.push(JSON.parse(JSON.stringify(p)));
+    h.hooks.checkoutAfter = () => { if (requests.length === 1) throw new Error('Lost response'); };
+    await assert.rejects(() => h.service.checkout(raw, null), /Lost response/);
+    const ref = h.service.order(hash(raw.accessKey)), snapshot = (await ref.get()).data().checkoutBranding;
+    assert.deepEqual(snapshot, { background_color: '#211a2b', button_color: '#c4a2ff', font_family: 'montserrat', border_style: 'rounded', display_name: 'Pluto Events' });
+    // Public event edits must not alter an already submitted payment attempt.
+    await h.service.event(eid).update({ 'liveDraft.theme.accent': '#ffae45', 'liveDraft.theme.font': 'SourceCodePro' });
+    const result = await h.service.checkout(raw, null);
+    assert.equal(result.status, 'open'); assert.equal(h.sessions.size, 1);
+    assert.deepEqual(requests[0], requests[1], 'Stripe idempotency retry uses identical parameters');
+    assert.deepEqual(requests[1].branding_settings, snapshot);
+    assert.equal((await h.service.event(eid).collection('pools').doc('friday').get()).data().held, 1);
+    await h.pay(result.orderId); assert.equal((await h.service.view(result.orderId, raw.accessKey, null)).tickets.length, 1);
+  } finally { await h.cleanup(); }
+});
+
+test('a legacy uncertain checkout retry omits new branding to preserve the original Stripe idempotency request', async () => {
+  const h = harness();
+  try {
+    const eid = await h.event(), raw = h.request(eid), requests = [], ref = h.service.order(hash(raw.accessKey));
+    h.hooks.checkoutBefore = async p => {
+      if (!requests.length) {
+        // Simulate an attempt submitted by the release before branding existed.
+        await ref.update({ checkoutBranding: FieldValue.delete() }); delete p.branding_settings;
+      }
+      requests.push(JSON.parse(JSON.stringify(p)));
+    };
+    h.hooks.checkoutAfter = () => { if (requests.length === 1) throw new Error('Lost legacy response'); };
+    await assert.rejects(() => h.service.checkout(raw, null), /Lost legacy response/);
+    const result = await h.service.checkout(raw, null);
+    assert.equal(result.status, 'open'); assert.equal(h.sessions.size, 1);
+    assert.deepEqual(requests[0], requests[1]); assert.ok(!('branding_settings' in requests[1]));
+    assert.equal((await ref.get()).data().checkoutBranding, undefined);
+  } finally { await h.cleanup(); }
+});
 
 test('A3: 75 purchasers on one network remain independent while contact/client abuse is limited', async () => {
   const h = harness(), app = express(); configureTrustedProxy(app, 'loopback'); app.use(ticketingRouter(() => ({}), h.service));
