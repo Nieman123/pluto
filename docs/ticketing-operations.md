@@ -2,6 +2,21 @@
 
 Successful door scans show a floating **Ticket scanned** confirmation with the current attendee name and ticket type. It dismisses after two seconds or with the close button; camera scanning can continue with the next QR. Duplicate and rejected scans show separate warnings. Offline acceptance explicitly says it is queued pending server confirmation. Prepare offline admission again after this release to include attendee names in the manifest; older prepared snapshots show **Attendee name unavailable** rather than guessing a name.
 
+## RSVP and VIP options
+
+In the event dashboard, **Ticketing setup → Ticket types & passes → Add paid VIP option** adds a $100 option. Edit its price and capacity, save ticket types, then publish the changes.
+
+- **Open RSVP:** Guests choose one free RSVP or one paid VIP admission ticket. VIP includes event entry and needs no separate RSVP. Both options use the admission capacity pools.
+- **Organizer approval required:** Guests first obtain an approved free RSVP. VIP is an additional upgrade for that named attendee; it uses a separate VIP capacity pool, initially 100 and editable. It does not consume another admission place. Pending, declined and withdrawn RSVPs cannot purchase an upgrade.
+
+The approved RSVP email must be verified before VIP checkout, through a matching verified account or a six-digit email code. VIP inherits the approved attendee's name and admission window and cannot be transferred separately. The approved RSVP order includes **Browse VIP upgrades** when upgrades are available.
+
+Door staff can scan the VIP QR once to check in both VIP access and the underlying approved RSVP. This counts one attendee. Scanning that RSVP's admission QR afterward reports a duplicate. Prepare offline admission again after deployment so the manifest includes the link between VIP and RSVP; offline acceptance remains pending server reconciliation.
+
+Refunds remain organizer-controlled. Refunding VIP leaves the free RSVP valid; unused VIP stock is returned under the existing refund policy, while scanned stock stays consumed. Guests must close an open VIP checkout or contact Pluto about a purchased upgrade before withdrawing the linked RSVP. An already-arrived RSVP cannot be withdrawn. Revoking or reissuing the parent RSVP makes older VIP credentials unavailable.
+
+Local coverage includes payment/order integration tests, approval and email gates, refunds, door scanning, and browser purchase routing. Browser payment sessions are simulated; run a real Stripe sandbox purchase in staging before enabling these options for customers.
+
 ## Health and recovery
 
 Global administrators have **System health** on `/tickets/admin`. The navigation badge refreshes once a minute. The dashboard reports stalled payment events, unresolved refunds, checkout reservations, missing ticket issuance, email failures and the maintenance heartbeat. **Run health check** refreshes diagnostics; it does not issue tickets or release stock.
@@ -66,7 +81,7 @@ The service worker caches the app shell, fonts and public SDK assets. It does no
 
 ## Retention
 
-New private collections are `ticketingHealth`, `ticketingHealthAudit`, `ticketingEmailDelivery` and `ticketingRsvpVerification`. Direct client access is denied, including for admins. Numeric challenge expiry is enforced in the API; it is not a Firestore TTL policy. Include expired challenge cleanup and delivery-event retention in the project's retention job/policy before high-volume use. Email payloads/codes are scrubbed after successful send or cancellation; support audits retain the correction reason and before/after contact for accountability.
+New private collections are `ticketingHealth`, `ticketingHealthAudit`, `ticketingEmailDelivery`, `ticketingRsvpVerification` and `ticketingRsvpUpgradeAccess`. Direct client access is denied, including for admins. Numeric challenge and VIP grant expiry is enforced in the API; it is not a Firestore TTL policy. Include expired challenge/grant cleanup and delivery-event retention in the project's retention job/policy before high-volume use. Email payloads/codes are scrubbed after successful send or cancellation; support audits retain the correction reason and before/after contact for accountability.
 
 ## Event engagement and door tools
 

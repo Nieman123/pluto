@@ -232,10 +232,10 @@ async function offlineScan(qr, scanId) {
   await new Promise((resolve, reject) => {
     const transaction = db.transaction(['state', 'queue'], 'readwrite'), state = transaction.objectStore('state'), queued = transaction.objectStore('queue');
     const request = state.get(`manifest-${eventId()}`);
-    request.onsuccess = () => { const current = request.result, unit = current?.tickets.find(t => t.id === token.id); if (!unit || unit.admitted || current.staffUid !== session.uid || current.leaseToken !== manifest.leaseToken || current.offlineUntil <= recordedTime()) { transaction.abort(); return; } unit.admitted = true; state.put(current, `manifest-${eventId()}`); queued.add({ scanId, eventId: eventId(), qr, ticketId: ticket.id, deviceTime: recordedTime(), leaseToken: manifest.leaseToken, itemProof: ticket.itemProof, staffUid: session.uid }); };
+    request.onsuccess = () => { const current = request.result, unit = current?.tickets.find(t => t.id === token.id); if (!unit || unit.admitted || current.staffUid !== session.uid || current.leaseToken !== manifest.leaseToken || current.offlineUntil <= recordedTime()) { transaction.abort(); return; } unit.admitted = true; const parent = current.tickets.find(t => t.id === unit.rsvpTicketId); if (parent) parent.admitted = true; state.put(current, `manifest-${eventId()}`); queued.add({ scanId, eventId: eventId(), qr, ticketId: ticket.id, deviceTime: recordedTime(), leaseToken: manifest.leaseToken, itemProof: ticket.itemProof, staffUid: session.uid }); };
     transaction.oncomplete = () => { db.close(); resolve(); }; transaction.onabort = () => { db.close(); reject(new Error('This ticket was already admitted locally.')); }; transaction.onerror = () => { db.close(); reject(transaction.error); };
   });
-  ticket.admitted = true; return { result: 'accepted', name: ticket.name, holderName: ticket.holderName, offline: true };
+  ticket.admitted = true; const parent = manifest.tickets.find(t => t.id === ticket.rsvpTicketId); if (parent) parent.admitted = true; return { result: 'accepted', name: ticket.name, holderName: ticket.holderName, offline: true };
 }
 async function scan(qr) {
   if (scanning) return; scanning = true;
@@ -251,7 +251,7 @@ async function scan(qr) {
         result = await api('staff/scan', { eventId: eventId(), qr, scanId });
         if (result.result === 'accepted' || result.result === 'duplicate') {
           const ticket = manifest?.tickets.find(t => t.id === result.ticketId);
-          if (ticket) { ticket.admitted = true; await dbOperation('state', 'readwrite', s => s.put(manifest, `manifest-${eventId()}`)); }
+          if (ticket) { ticket.admitted = true; const parent = manifest.tickets.find(t => t.id === result.rsvpTicketId); if (parent) parent.admitted = true; await dbOperation('state', 'readwrite', s => s.put(manifest, `manifest-${eventId()}`)); }
         }
       }
       catch (error) {

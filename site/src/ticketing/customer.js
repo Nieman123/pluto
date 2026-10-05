@@ -1,4 +1,4 @@
-import { accessKey, action, api, bind, dialog, message, money } from './api.js';
+import { accessKey, action, api, bind, dialog, esc, message, money } from './api.js';
 import { initWaitlist } from './waitlist.js';
 
 export function initCheckout() {
@@ -10,6 +10,28 @@ export function initCheckout() {
   let account = null, profileName = '';
   const contacts = { buyerName: form.elements.buyerName, email: form.elements.email };
   const filledFromAccount = new Map();
+  const selectedItems = () => [...form.querySelectorAll('[data-ticket-quantity]')].filter(s => Number(s.value) > 0).map(s => ({ offerId: s.name, quantity: Number(s.value) }));
+  const freeRsvp = request => request.checkoutKind ? request.checkoutKind === 'rsvp' : rsvp && !request.items.some(item => config.offers.find(o => o.id === item.offerId)?.unitAmount > 0);
+  function cartSummary() {
+    const items = selectedItems(), paid = !!items.some(item => config.offers.find(o => o.id === item.offerId)?.unitAmount > 0);
+    const total = items.reduce((n, item) => n + item.quantity * (config.offers.find(o => o.id === item.offerId)?.unitAmount || 0), 0);
+    document.querySelector('#ticket-total').textContent = rsvp && !paid ? 'Free RSVP · One pass per named person' : `${money(total)} before any promotion${config.registrationMode === 'rsvp-approval' && paid ? ' · Approved RSVP required' : ''}`;
+    form.querySelector('[data-payment-only]')?.toggleAttribute('hidden', rsvp && !paid);
+    form.querySelector('[type=submit]').textContent = frozen ? freeRsvp(frozen) ? 'Resume RSVP request' : 'Resume reserved checkout' : !rsvp || paid ? 'Continue to payment' : config.registrationMode === 'rsvp-approval' ? 'Request RSVP' : 'Confirm RSVP';
+  }
+  async function verifyContact(request, upgrade = false) {
+    const verification = await api(upgrade ? 'rsvp/upgrade/verification' : 'rsvp/verification', { eventId: config.eventId, email: request.email });
+    if (verification.verified) return;
+    const content = dialog(`<h2>${upgrade ? 'Verify your approved RSVP' : 'Verify your RSVP email'}</h2><p>We sent a six-digit code to ${esc(request.email)}. It expires in 15 minutes.</p><form id="rsvp-email-code"><label>Email verification code<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label><p>${upgrade ? 'Use the email from your approved RSVP. VIP is for the same named attendee.' : 'Verifying your email does not grant admission. Organizer approval still applies.'}</p><button class="button button-primary">${upgrade ? 'Verify & continue to VIP' : 'Verify & submit RSVP'}</button></form>`);
+    const code = await new Promise(resolve => {
+      const modal = document.querySelector('#ticketing-dialog');
+      const close = () => { modal.removeEventListener('close', close); resolve(null); };
+      modal.addEventListener('close', close);
+      content.querySelector('form').onsubmit = e => { e.preventDefault(); modal.removeEventListener('close', close); resolve(new FormData(e.target).get('code')); modal.close(); };
+    });
+    if (!code) throw new Error('Nothing was submitted. Verify your RSVP email to continue.');
+    request.verificationToken = verification.verificationToken; request.verificationCode = code;
+  }
   function syncContact() {
     const stored = { buyerName: profileName || account?.displayName || '', email: account?.email || '' };
     for (const [name, input] of Object.entries(contacts)) {
@@ -37,19 +59,24 @@ export function initCheckout() {
     form.querySelectorAll('input,select').forEach(input => { input.disabled = !!frozen; });
     if (frozen) {
       for (const [name, value] of Object.entries({ buyerName: frozen.name, email: frozen.email, promoCode: frozen.promoCode })) if (form.elements[name]) form.elements[name].value = value || '';
+      form.querySelectorAll('[data-ticket-quantity]').forEach(select => { select.value = '0'; });
       for (const item of frozen.items) { const select = form.elements[item.offerId]; if (select) select.value = String(item.quantity); }
     }
     syncContact();
     form.querySelector('[type=submit]').disabled = frozen ? false : initiallyClosed;
-    form.querySelector('[type=submit]').textContent = rsvp ? frozen ? 'Resume RSVP request' : config.registrationMode === 'rsvp-approval' ? 'Request RSVP' : 'Confirm RSVP' : frozen ? 'Resume reserved checkout' : 'Continue to payment';
+    cartSummary();
   }
   const promoter = new URLSearchParams(location.search).get('ref');
   if (promoter && /^[a-zA-Z0-9_-]{1,80}$/.test(promoter)) localStorage.setItem(`pluto-promoter-${config.eventId}`, JSON.stringify({ promoterId: promoter, promoterClickedAt: Date.now() }));
-  form.addEventListener('input', () => { const total = [...form.querySelectorAll('[data-ticket-quantity]')].reduce((n, select) => n + Number(select.value) * Number(select.dataset.price), 0); document.querySelector('#ticket-total').textContent = rsvp ? 'Free RSVP · One pass per named person' : `${money(total)} before any promotion`; });
+  form.addEventListener('input', event => {
+    if (rsvp && event.target.matches('[data-ticket-quantity]') && Number(event.target.value) > 0) form.querySelectorAll('[data-ticket-quantity]').forEach(select => { if (select !== event.target) select.value = '0'; });
+    cartSummary();
+  });
   async function mount(request) {
+    request.checkoutKind ||= freeRsvp(request) ? 'rsvp' : 'payment';
     frozen = request; localStorage.setItem(storageKey, JSON.stringify(frozen));
     lockCart();
-    try { result = await api(rsvp ? 'rsvp' : 'checkout', frozen); }
+    try { result = await api(freeRsvp(frozen) ? 'rsvp' : 'checkout', frozen); }
     catch (error) {
       if ([400, 403, 409].includes(error.status)) {
         const attempt = await api('checkout-attempt', { accessKey: frozen.accessKey }).catch(() => null);
@@ -58,7 +85,7 @@ export function initCheckout() {
       throw error;
     }
     localStorage.setItem(`pluto-order-${result.orderId}`, frozen.accessKey);
-    if (rsvp || result.status === 'paid') { localStorage.removeItem(storageKey); location.href = `/app/tickets?order=${result.orderId}`; return; }
+    if (freeRsvp(frozen) || result.status === 'paid') { localStorage.removeItem(storageKey); location.href = `/app/tickets?order=${result.orderId}`; return; }
     if (['expired', 'cancelled'].includes(result.status)) { localStorage.removeItem(storageKey); frozen = null; lockCart(); throw new Error('The previous reservation has closed. Choose your tickets again.'); }
     document.querySelector('#checkout-cancel').hidden = false;
     if (!result.clientSecret || !result.publishableKey) throw new Error('Payment setup is incomplete. Your cart is saved; retry once checkout is configured.');
@@ -75,27 +102,19 @@ export function initCheckout() {
     action(event.submitter, async () => {
       if (!frozen) {
         const data = new FormData(form), attribution = JSON.parse(localStorage.getItem(`pluto-promoter-${config.eventId}`) || '{}');
-        const items = [...form.querySelectorAll('[data-ticket-quantity]')].filter(s => Number(s.value) > 0).map(s => ({ offerId: s.name, quantity: Number(s.value) }));
-        if (rsvp ? items.length !== 1 || items[0].quantity !== 1 : !items.length) throw new Error(rsvp ? 'Choose one RSVP admission pass. Each person needs their own RSVP.' : 'Choose at least one ticket.');
-        frozen = { eventId: config.eventId, accessKey: accessKey(), items, promoCode: data.get('promoCode'), name: data.get('buyerName'), email: data.get('email'), ...attribution };
-        if (rsvp) {
-          let verification;
-          try { verification = await api('rsvp/verification', { eventId: config.eventId, email: frozen.email }); }
-          catch (error) { frozen = null; lockCart(); throw error; }
-          if (!verification.verified) {
-            const content = dialog(`<h2>Verify your RSVP email</h2><p>We sent a six-digit code to ${String(frozen.email).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))}. It expires in 15 minutes.</p><form id="rsvp-email-code"><label>Email verification code<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label><p>Verifying your email does not grant admission. Organizer approval still applies.</p><button class="button button-primary">Verify & submit RSVP</button></form>`);
-            const code = await new Promise(resolve => {
-              const modal = document.querySelector('#ticketing-dialog');
-              const close = () => { modal.removeEventListener('close', close); resolve(null); };
-              modal.addEventListener('close', close);
-              content.querySelector('form').onsubmit = e => { e.preventDefault(); modal.removeEventListener('close', close); resolve(new FormData(e.target).get('code')); modal.close(); };
-            });
-            if (!code) { frozen = null; lockCart(); throw new Error('RSVP was not submitted. Verify your email to continue.'); }
-            frozen.verificationToken = verification.verificationToken; frozen.verificationCode = code;
-          }
+        const items = selectedItems();
+        if (rsvp ? items.length !== 1 || items[0].quantity !== 1 : !items.length) throw new Error(rsvp ? 'Choose one free RSVP or paid VIP option. Each person registers separately.' : 'Choose at least one ticket.');
+        const request = { eventId: config.eventId, accessKey: accessKey(), items, promoCode: data.get('promoCode'), name: data.get('buyerName'), email: data.get('email'), ...attribution };
+        request.checkoutKind = freeRsvp(request) ? 'rsvp' : 'payment';
+        if (freeRsvp(request)) { request.promoCode = ''; await verifyContact(request); }
+        else if (config.registrationMode === 'rsvp-approval') {
+          await verifyContact(request, true);
+          const access = await api('rsvp/upgrade-access', request);
+          request.name = access.name; request.email = access.email; request.rsvpUpgradeToken = access.rsvpUpgradeToken;
         }
+        frozen = request;
       }
-      lockCart(); message(rsvp ? 'Submitting your RSVP…' : 'Preparing your reserved checkout…'); await mount(frozen);
+      lockCart(); message(freeRsvp(frozen) ? 'Submitting your RSVP…' : 'Preparing your reserved checkout…'); await mount(frozen);
     });
   });
   bind('#checkout-cancel', async () => {

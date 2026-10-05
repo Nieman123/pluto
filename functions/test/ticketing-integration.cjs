@@ -341,6 +341,27 @@ async function rsvpVipChecks() {
   await service.cancel(expiryRsvp.orderId, expiryRegistration.accessKey, null);
   await assert.rejects(() => service.checkout(vipRequest(expiryEvent, { rsvpUpgradeToken: withdrawn.rsvpUpgradeToken }), buyer), /approved RSVP is required/);
   assert.equal((await service.event(expiryEvent).collection('pools').doc('vip').get()).data().held, 0);
+
+  const windowEvent = await makeEvent(true, d => {
+    mixed('rsvp-approval')(d);
+    d.offers[0].validFrom = new Date(Date.now() - 30 * 60000).toISOString();
+    d.offers[0].validUntil = new Date(Date.now() + 86400000).toISOString();
+  });
+  const windowRegistration = freeRequest(windowEvent, buyer), windowRsvp = await service.rsvp(windowRegistration, buyer);
+  await service.reviewRsvp(windowEvent, windowRsvp.orderId, 'approve', '', staff);
+  const windowParent = await service.view(windowRsvp.orderId, windowRegistration.accessKey, null);
+  const windowAccess = await service.rsvpUpgradeAccess({ eventId: windowEvent, email: buyer.email }, buyer);
+  const windowPurchase = vipRequest(windowEvent, { rsvpUpgradeToken: windowAccess.rsvpUpgradeToken }), windowVip = await service.checkout(windowPurchase, buyer);
+  const windowOrder = (await service.order(windowVip.orderId).get()).data();
+  assert.equal(windowOrder.units[0].validFrom, windowParent.tickets[0].validFrom, 'VIP cannot admit before the parent RSVP window');
+  assert.equal(windowOrder.units[0].validUntil, windowParent.tickets[0].validUntil, 'VIP cannot extend the parent RSVP window');
+  // A parent revoked outside the normal withdrawal flow must never mint a VIP
+  // QR when its delayed payment arrives. Keep the hold for operator review.
+  await service.tickets().doc(windowParent.tickets[0].id).update({ status: 'void' });
+  await pay(windowVip);
+  const windowReview = await service.view(windowVip.orderId, windowPurchase.accessKey, null);
+  assert.equal(windowReview.status, 'review'); assert.equal(windowReview.tickets.length, 0);
+  assert.equal((await service.event(windowEvent).collection('pools').doc('vip').get()).data().held, 1);
   console.log('RSVP VIP checks passed: direct paid admission, free RSVP, email/approval gating, one-use verification, retries, distinct capacity, nontransferable upgrades, parent revocation/version gates, wallet/manifest/admin checks and independent VIP refunds.');
 }
 main().then(() => process.exit(0), error => { console.error(error); process.exit(1); });
