@@ -169,6 +169,16 @@ async function surface(page, name) {
     await page.locator('#ticketing-dialog-close').click();
     await page.getByRole('button', { name: 'Publish', exact: true }).click();
     await page.locator('#ticketing-message').filter({ hasText: 'Event published' }).waitFor();
+    const stickyPublish = page.locator('.studio-save-bar [data-studio-publish]');
+    assert.equal(await stickyPublish.innerText(), 'Published'); assert.ok(await stickyPublish.isDisabled());
+    await page.locator('[data-field=subtitle]').fill('An updated introduction published from the save bar');
+    assert.equal(await stickyPublish.innerText(), 'Publish changes', 'editing immediately marks the public page out of date');
+    await page.locator('[data-field=subtitle]').dispatchEvent('change');
+    await page.locator('#ticketing-message-dismiss').click();
+    await stickyPublish.click(); await stickyPublish.filter({ hasText: 'Published' }).waitFor();
+    const updatedPublication = (await db.collection('ticketingEvents').doc(eventId).get()).data();
+    assert.equal(updatedPublication.publishedRevision, updatedPublication.revision);
+    assert.equal(updatedPublication.liveDraft.subtitle, 'An updated introduction published from the save bar', 'publishing saves current edits before updating the live page');
     await page.locator('#event-orders').click(); await page.locator('#event-dashboard > h2').waitFor();
     await surface(page, 'dashboard-desktop');
     await page.setViewportSize({ width: 390, height: 844 }); await surface(page, 'dashboard-mobile');

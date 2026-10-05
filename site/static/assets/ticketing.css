@@ -42,6 +42,8 @@ html{scroll-padding-top:100px}.native-event.checkout-active .native-hero,.native
 @media(prefers-reduced-motion:reduce) { .admission-feedback { animation: none; } }
 
 .native-story .button-quiet { color: inherit; border-color: currentColor; }
+.studio-save-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+@media(max-width:680px) { .studio-save-bar { flex-wrap: wrap; } .studio-save-actions { width: 100%; } .studio-save-actions .button { flex: 1; } }
 
 #ticketing-toast { position: fixed; inset: auto max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) auto; z-index: 110; display: flex; align-items: flex-start; gap: 12px; box-sizing: border-box; width: min(460px, calc(100vw - 32px)); max-height: calc(100dvh - 40px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overflow: auto; margin: 0; padding: 16px; border: 1px solid #aa80c7; border-radius: 16px; color: #f8f1ff; background: #241a2f; box-shadow: 0 12px 45px #0009; font-family: Montserrat, sans-serif; }
 #ticketing-toast[hidden] { display: none; }
