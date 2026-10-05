@@ -30,6 +30,26 @@ for (const lockfile of ["package-lock.json", "functions/package-lock.json"]) {
   });
 }
 
+test("lockfiles exclude vulnerable Busboy versions", async () => {
+  for (const lockfile of ["package-lock.json", "functions/package-lock.json"]) {
+    const lock = JSON.parse(await readFile(lockfile, "utf8"));
+    const busboyPackages = Object.entries(lock.packages).filter(([path]) =>
+      path.endsWith("node_modules/@fastify/busboy"),
+    );
+    if (lockfile.startsWith("functions/")) {
+      assert.ok(busboyPackages.length > 0, "Expected Firebase Admin's Busboy dependency");
+    }
+    for (const [path, { version }] of busboyPackages) {
+      assert.match(version, /^\d+\.\d+\.\d+$/);
+      const [major, minor, patch] = version.split(".").map(Number);
+      // GHSA-xjh9-v7x6-24jw / GHSA-x8mw-p69m-v3mx (3.2.1),
+      // plus GHSA-gxm5-99cw-xjw9 (3.2.2).
+      assert.ok(major > 3 || (major === 3 && (minor > 2 || (minor === 2 && patch >= 2))),
+        `${lockfile}: ${path}@${version} must include all three security fixes`);
+    }
+  }
+});
+
 test("Hosting exposes public SSR routes and Flutter deep links", () => {
   const rewrites = firebase.hosting.rewrites;
   assert.deepEqual(rewrites.slice(0, 2), [
