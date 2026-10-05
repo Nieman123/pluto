@@ -701,6 +701,9 @@ class _ProfilePageState extends State<ProfilePage> {
                   const SizedBox(width: 12),
                   OutlinedButton.icon(
                     onPressed: _isSigningOut ? null : _signOut,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                    ),
                     icon: const Icon(Icons.logout),
                     label: Text(_isSigningOut ? 'Signing out...' : 'Sign Out'),
                   ),
