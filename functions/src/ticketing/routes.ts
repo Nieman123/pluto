@@ -141,6 +141,7 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   const actor = (res: Response): DecodedIdToken => res.locals.actor || fail('Sign in to continue.', 401);
   const admissionIdentity = (req: Request, res: Response) => req.get('x-pluto-scanner') ? { scannerToken: req.get('x-pluto-scanner')! } : actor(res).uid;
   const bodyId = (req: Request, key = 'eventId') => id(req.body?.[key]);
+  router.post('/tickets/api/account/navigation', async (_req, res) => res.json({ admin: (await service.db.collection('adminUsers').doc(actor(res).uid).get()).exists }));
   router.post('/tickets/api/waitlist/verification', async (req, res) => { await service.rateLimit(email(req.body.email), 'waitlist-verification-contact', 5); await service.rateLimit(res.locals.rateIdentity, 'waitlist-verification-client', 20); res.json(await service.requestRsvpVerification(req.body, res.locals.actor, 'waitlist')); });
   router.post('/tickets/api/waitlist/join', async (req, res) => { await service.rateLimit(email(req.body.email), 'waitlist-join-contact', 20); res.json(await service.joinWaitlist(req.body, res.locals.actor)); });
   router.post('/tickets/api/waitlist/view', async (req, res) => res.json(await service.waitlistView(req.body)));
