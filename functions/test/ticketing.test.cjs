@@ -15,14 +15,20 @@ test('rich content drops executable markup and unsafe links', () => {
   assert.match(safe, /<strong>music/); assert.doesNotMatch(safe, /script|onerror|iframe|javascript/);
 });
 
-test('legacy events stay ticketed and RSVP modes only allow free named admission passes', () => {
+test('RSVP events keep free named admission and support paid VIP with mode-specific rules', () => {
   assert.equal(validateDraft(fixture()).registrationMode, 'tickets');
   const draft = fixture(); draft.registrationMode = 'rsvp-approval';
-  assert.throws(() => validateDraft(draft), /Active RSVP passes/);
+  assert.throws(() => validateDraft(draft), /paid VIP upgrades/);
   draft.offers = [{ ...draft.offers[0], unitAmount: 0, maxPerOrder: 1 }];
   assert.equal(validateDraft(draft).registrationMode, 'rsvp-approval');
   draft.registrationMode = 'rsvp'; assert.equal(validateDraft(draft).registrationMode, 'rsvp');
-  draft.offers[0].kind = 'vehicle'; assert.throws(() => validateDraft(draft), /Active RSVP passes/);
+  const vip = { ...draft.offers[0], id: 'vip', name: 'VIP', unitAmount: 10000 };
+  draft.offers.push(vip); assert.equal(validateDraft(draft).offers[1].unitAmount, 10000);
+  draft.registrationMode = 'rsvp-approval'; assert.throws(() => validateDraft(draft), /paid VIP upgrades/);
+  vip.kind = 'upgrade'; assert.throws(() => validateDraft(draft), /separate capacity pool/);
+  vip.pools = { vehicles: 1 }; assert.equal(validateDraft(draft).offers[1].kind, 'upgrade');
+  draft.registrationMode = 'rsvp'; draft.offers = [draft.offers[0]];
+  draft.offers[0].kind = 'vehicle'; assert.throws(() => validateDraft(draft), /paid admission tickets/);
   draft.registrationMode = 'forged'; assert.throws(() => validateDraft(draft), /valid registration type/);
 });
 
