@@ -126,6 +126,7 @@ function commonContext(path: string) {
   };
   return {
     path,
+    assetVersion: deployment.revision,
     meta: Object.fromEntries(Object.entries(pageMeta(path)).map(([key, value]) => [key, typeof value === 'string' ? value.replaceAll('https://pluto.events', deployment.baseUrl) : value])),
     googleAnalyticsId,
     firebaseConfigJson: serializeJsonLd(firebaseConfig),

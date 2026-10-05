@@ -134,6 +134,37 @@ async function enhanceAuth() {
     window.dispatchEvent(new CustomEvent("pluto-auth", { detail: user }));
     if (!user) return;
 
+    const currentAccount = () => revision === authRevision && auth.currentUser?.uid === user.uid;
+    let adminLookup = 0, adminAuthDenied = false;
+    async function confirmAdmin() {
+      const lookup = ++adminLookup;
+      try {
+        const token = await user.getIdToken();
+        if (!currentAccount() || lookup !== adminLookup) return;
+        const response = await fetch('/tickets/api/account/navigation', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: '{}', credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(15000),
+        });
+        if (currentAccount() && [401, 403].includes(response.status)) {
+          adminAuthDenied = true;
+          ++adminLookup;
+          stopAdminWatch?.(); stopAdminWatch = undefined;
+          showAdminState(false);
+          return;
+        }
+        if (!response.ok) throw new Error(`Admin navigation check failed (${response.status}).`);
+        const { admin } = await response.json();
+        if (currentAccount() && !adminAuthDenied && lookup === adminLookup) showAdminState(admin === true);
+      } catch (error) {
+        if (currentAccount() && lookup === adminLookup) {
+          showAdminState(false);
+          console.warn('Admin navigation check unavailable', error);
+        }
+      }
+    }
+    // Same-origin role lookup works even when the Firestore browser connection is blocked.
+    void confirmAdmin();
+
     let avatarUrl = user.photoURL || "/assets/images/pluto-logo.webp";
     let displayName = user.displayName || "";
     try {
@@ -148,10 +179,15 @@ async function enhanceAuth() {
         }
       }
       stopAdminWatch = onSnapshot(doc(profileStore, 'adminUsers', user.uid), snapshot => {
-        if (revision === authRevision && auth.currentUser?.uid === user.uid) showAdminState(snapshot.exists());
+        if (currentAccount() && !adminAuthDenied && !snapshot.metadata.fromCache) {
+          ++adminLookup; // A newer server snapshot supersedes an in-flight lookup.
+          showAdminState(snapshot.exists());
+        }
       }, error => {
-        if (revision === authRevision) showAdminState(false);
-        console.warn('Admin navigation unavailable', error);
+        if (currentAccount() && !adminAuthDenied) {
+          console.warn('Admin navigation unavailable', error);
+          void confirmAdmin();
+        }
       });
       if (document.querySelector('[data-waiver-page], [data-waiver-staff]')) return;
       const snapshot = await getDoc(doc(profileStore, "userProfiles", user.uid));

@@ -37,7 +37,7 @@
       </script>
     {% endif %}
     <script id="firebase-config" type="application/json">{{ firebaseConfigJson | safe }}</script>
-    <script src="/assets/site.js" defer></script>
+    <script src="/assets/site.js?v={{ assetVersion }}" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#main-content">Skip to content</a>
