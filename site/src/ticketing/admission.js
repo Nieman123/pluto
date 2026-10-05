@@ -29,7 +29,7 @@ function showScanFeedback(result) {
   popup.querySelector('[data-scan-note]').textContent = note;
   popup.hidden = false;
   document.querySelector('#admission-feedback-announcement').textContent = [title, holder, result.name, note].filter(Boolean).join('. ');
-  feedbackTimer = setTimeout(clearScanFeedback, 6000);
+  feedbackTimer = setTimeout(clearScanFeedback, 2000);
 }
 function store() {
   return new Promise((resolve, reject) => {

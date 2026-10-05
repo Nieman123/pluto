@@ -77,6 +77,7 @@ async function scan(target, qr, expected) {
     // Door access must work even if Firebase account sign-in cannot load.
     await doorContext.route('https://www.gstatic.com/firebasejs/**', route => route.abort());
     const door = await doorContext.newPage(); page = door;
+    await door.clock.install();
     door.on('request', request => { if (['/staff/scan', '/staff/guestlist', '/staff/guestlist/arrive'].some(path => request.url().endsWith(path))) assert.equal(request.headers().authorization, undefined, 'PIN admission never requires a Firebase account'); });
     await door.goto(`${base}/tickets/staff`); await surface(door, 'scanner-pin-login-desktop');
     await door.setViewportSize({ width: 390, height: 844 }); await surface(door, 'scanner-pin-login-mobile');
@@ -98,6 +99,8 @@ async function scan(target, qr, expected) {
     await admin.locator('#event-guestlist .guest-list-count').filter({ hasText: '1 arrived' }).waitFor(); await admin.locator('#event-scanner-pins').click();
     assert.ok(!(await door.evaluate(() => localStorage.getItem('pluto-scanner-session'))).includes(pin), 'only high-entropy session proof is persisted');
     stage = 'scan confirmation';
+    // Pause page timers to verify the short timeout without depending on wall-clock speed.
+    await door.clock.pauseAt(await door.evaluate(() => Date.now()) + 1000);
     await scan(door, tickets[0].qr, 'ACCEPTED');
     const popup = door.locator('#admission-feedback'); await popup.waitFor();
     assert.equal(await popup.locator('h2').innerText(), 'Ticket scanned');
@@ -105,10 +108,14 @@ async function scan(target, qr, expected) {
     assert.equal(await popup.locator('[data-scan-type]').innerText(), 'Weekend');
     await door.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
     assert.ok(await popup.evaluate(e => { const r = e.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; }), 'confirmation stays in view without scrolling to scan history');
-    await surface(door, 'scanner-confirmation-mobile');
+    await door.screenshot({ path: 'tmp/ticketing-scanner-confirmation-mobile.png', fullPage: true, animations: 'disabled' });
     await door.getByRole('button', { name: 'Dismiss scan feedback' }).click(); assert.equal(await popup.isVisible(), false);
+    await door.clock.runFor(1900);
     await scan(door, tickets[0].qr, 'DUPLICATE');
     assert.equal(await popup.locator('h2').innerText(), 'Already scanned'); assert.equal(await popup.getAttribute('data-state'), 'duplicate');
+    await door.clock.runFor(1999); assert.equal(await popup.isVisible(), true, 'scan feedback remains visible for two seconds');
+    await door.clock.runFor(1); assert.equal(await popup.isVisible(), false, 'scan feedback closes at two seconds');
+    await door.clock.resume();
     await door.waitForTimeout(1900); await door.locator('[name=qr]').fill('not-a-pluto-ticket'); await door.locator('#admission-form button').click();
     await popup.locator('h2').filter({ hasText: 'Scan not confirmed' }).waitFor(); assert.equal(await popup.getAttribute('data-state'), 'error');
     assert.equal(await popup.locator('[data-scan-holder]').innerText(), '', 'a failed scan removes the previous attendee confirmation');
@@ -119,8 +126,18 @@ async function scan(target, qr, expected) {
     const images = await Promise.all(cameraTickets.map(async t => {
       const matrix = new QRCodeWriter().encode(t.qr, BarcodeFormat.QR_CODE, 640, 640, new Map([[EncodeHintType.MARGIN, 5], [EncodeHintType.ERROR_CORRECTION, 'M']])), pixels = Buffer.alloc(640 * 640, 255);
       for (let y = 0; y < 640; y++) for (let x = 0; x < 640; x++) if (matrix.get(x, y)) pixels[y * 640 + x] = 0;
-      assert.equal(new QRCodeReader().decode(new BinaryBitmap(new HybridBinarizer(new RGBLuminanceSource(new Uint8ClampedArray(pixels), 640, 640)))).getText(), t.qr, 'camera fixture decodes before it enters the video stream');
-      return `data:image/png;base64,${(await backend('sharp')(pixels, { raw: { width: 640, height: 640, channels: 1 } }).png().toBuffer()).toString('base64')}`;
+      const png = await backend('sharp')(pixels, { raw: { width: 640, height: 640, channels: 1 } }).png().toBuffer();
+      // Random signed payloads can confuse ZXing's alignment detection at one orientation.
+      // Choose a decodable frame for this UI test; branded QR coverage runs separately.
+      let decodeError;
+      for (const angle of [0, 90, 180, 270]) {
+        const frame = await backend('sharp')(png).rotate(angle).greyscale().raw().toBuffer();
+        try {
+          assert.equal(new QRCodeReader().decode(new BinaryBitmap(new HybridBinarizer(new RGBLuminanceSource(new Uint8ClampedArray(frame), 640, 640)))).getText(), t.qr, 'camera fixture decodes before it enters the video stream');
+          return `data:image/png;base64,${(await backend('sharp')(png).rotate(angle).png().toBuffer()).toString('base64')}`;
+        } catch (error) { decodeError = error; }
+      }
+      throw decodeError;
     }));
     const cameraScans = [];
     door.on('request', request => { if (request.url().endsWith('/staff/scan') && cameraTickets.some(t => request.postDataJSON()?.qr === t.qr)) cameraScans.push(request.postDataJSON().qr); });
@@ -137,12 +154,17 @@ async function scan(target, qr, expected) {
     assert.equal(await door.locator('#ticketing-message').innerText(), '', 'a successful scan clears an older failure message');
     assert.equal(await popup.locator('attendee').count(), 0, 'attendee names remain plain text');
     await popup.waitFor({ state: 'hidden', timeout: 10000 });
+    await door.waitForTimeout(1000);
     assert.equal(cameraScans.length, 1, 'continuous camera frames do not turn a successful confirmation into a duplicate warning');
     await door.evaluate(image => window.drawTestCameraQr(image), images[1]);
     await popup.locator('[data-scan-type]').filter({ hasText: 'Friday' }).waitFor();
     assert.equal(await popup.locator('h2').innerText(), 'Ticket scanned');
-    await door.setViewportSize({ width: 1280, height: 900 }); await surface(door, 'scanner-confirmation-desktop');
+    await door.clock.pauseAt(await door.evaluate(() => Date.now()) + 500);
+    await door.setViewportSize({ width: 1280, height: 900 });
+    assert.ok(await door.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'desktop confirmation fits viewport');
+    await door.screenshot({ path: 'tmp/ticketing-scanner-confirmation-desktop.png', fullPage: true, animations: 'disabled' });
     await door.getByRole('button', { name: 'Stop camera', exact: true }).click(); await door.evaluate(() => clearInterval(window.testCameraTimer));
+    await door.clock.resume();
     await door.reload(); await door.locator('#scanner-session:not([hidden])').waitFor();
     await door.setViewportSize({ width: 1280, height: 900 }); await surface(door, 'scanner-pin-scanning-desktop');
     stage = 'PIN offline admission';
