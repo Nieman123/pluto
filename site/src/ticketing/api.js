@@ -1,3 +1,5 @@
+import { message, syncMessageLayer } from './messages.js';
+export { message, initMessages } from './messages.js';
 export let user = null;
 export let scannerSession = null;
 export function setScannerSession(value) { scannerSession = value; }
@@ -13,10 +15,6 @@ function clientIdentity() {
   return clientId;
 }
 export function setUser(value) { user = value; }
-export function message(value, error = false) {
-  const el = document.querySelector('#ticketing-message') || document.querySelector('#ticket-checkout-message');
-  if (el) { el.textContent = value; el.classList.toggle('error', error); }
-}
 export async function api(path, body = {}, binary = false) {
   const scannerToken = scannerPaths.has(path) ? scannerSession?.token : '', token = !scannerToken && user ? await user.getIdToken() : '';
   const response = await fetch(`/tickets/api/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Pluto-Client': clientIdentity(), ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(scannerToken ? { 'X-Pluto-Scanner': scannerToken } : {}) },
@@ -36,6 +34,6 @@ export function download(blob, filename) {
 }
 export function dialog(html) {
   const node = document.querySelector('#ticketing-dialog-content'); node.innerHTML = html;
-  const modal = document.querySelector('#ticketing-dialog'); if (!modal.open) modal.showModal(); return node;
+  const modal = document.querySelector('#ticketing-dialog'); if (!modal.open) modal.showModal(); syncMessageLayer(); return node;
 }
 export function bind(selector, fn) { document.querySelector(selector)?.addEventListener('click', event => action(event.currentTarget, () => fn(event))); }

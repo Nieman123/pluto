@@ -42,6 +42,17 @@ html{scroll-padding-top:100px}.native-event.checkout-active .native-hero,.native
 @media(prefers-reduced-motion:reduce) { .admission-feedback { animation: none; } }
 
 .native-story .button-quiet { color: inherit; border-color: currentColor; }
+
+#ticketing-toast { position: fixed; inset: auto max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) auto; z-index: 110; display: flex; align-items: flex-start; gap: 12px; box-sizing: border-box; width: min(460px, calc(100vw - 32px)); max-height: calc(100dvh - 40px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overflow: auto; margin: 0; padding: 16px; border: 1px solid #aa80c7; border-radius: 16px; color: #f8f1ff; background: #241a2f; box-shadow: 0 12px 45px #0009; font-family: Montserrat, sans-serif; }
+#ticketing-toast[hidden] { display: none; }
+#ticketing-toast.error { color: #ffe5e1; border-color: #e09a92; background: #351e25; }
+#ticketing-toast #ticketing-message { flex: 1; min-width: 0; min-height: 0; margin: 5px 0; padding: 0; border: 0; border-radius: 0; background: none; color: inherit; font-size: .85rem; line-height: 1.6; overflow-wrap: anywhere; }
+.ticketing-toast-icon { display: grid; place-items: center; flex: 0 0 26px; height: 26px; margin-top: 4px; border: 1px solid #caa0ed; border-radius: 50%; color: #e3c5fa; font-size: .9rem; font-weight: 700; }
+#ticketing-toast.error .ticketing-toast-icon { border-color: #e09a92; color: #ffd3cb; }
+#ticketing-message-dismiss { position: sticky; top: 0; flex: 0 0 36px; width: 36px; min-height: 36px; padding: 0; border: 1px solid #ffffff30; border-radius: 9px; background: #ffffff08; color: inherit; font: inherit; font-size: 1.4rem; line-height: 1; cursor: pointer; }
+#ticketing-message-dismiss:hover { background: #ffffff18; }
+#ticketing-message-dismiss:focus-visible { outline: 2px solid #ffd198; outline-offset: 3px; }
+@media(max-width:680px) { #ticketing-toast { right: max(12px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom)); width: calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)); padding: 14px; gap: 10px; } }
 .theme-light .native-story .button-quiet:hover { background: #21182c0c; }
 
 #ticketing-dialog { max-width: min(1000px, calc(100vw - 20px)); max-height: 90dvh; overflow: auto; padding: 20px; border: 1px solid #655775; border-radius: 20px; background: #211a2b; color: #f7f3fc; }

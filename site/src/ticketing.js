@@ -1,7 +1,8 @@
-import { action, api, message, scannerSession, setUser } from './ticketing/api.js';
+import { action, api, initMessages, message, scannerSession, setUser } from './ticketing/api.js';
 import { initCheckout } from './ticketing/customer.js';
 import { initEditor, loadEvents } from './ticketing/editor.js';
 import { initAdmission, initScanner, restoreManifest, cacheStaffEvents, restoreOfflineAdmission, lockOfflineAdmission } from './ticketing/admission.js';
+initMessages();
 initCheckout();
 const mode = document.querySelector('[data-ticketing-console]')?.dataset.ticketingConsole;
 if (mode === 'admin') initEditor();

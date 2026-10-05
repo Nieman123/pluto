@@ -1,6 +1,6 @@
 {% extends 'base.njk' %}
 {% block content %}
-<link rel="stylesheet" href="/assets/ticketing.css">
+<link rel="stylesheet" href="/assets/ticketing.css?v={{ assetVersion }}">
 <section class="section events-discovery"><div class="discovery-heading"><p class="eyebrow">PLUTO PRESENTS · MUSIC & COMMUNITY</p><h1>Find your<br><span>next night.</span></h1><p>Good sound. Familiar faces. Something worth showing up for.</p></div>
 <div class="discover-grid">{% for event in events %}<article class="discover-card">
 <div class="discover-artwork"><a class="discover-art" href="/events/{{ event.slug }}" tabindex="-1" aria-hidden="true">

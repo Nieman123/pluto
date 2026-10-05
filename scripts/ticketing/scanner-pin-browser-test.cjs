@@ -83,6 +83,13 @@ async function scan(target, qr, expected) {
     await door.setViewportSize({ width: 390, height: 844 }); await surface(door, 'scanner-pin-login-mobile');
     await door.locator('#scanner-pin').fill('invalid'); await door.locator('#scanner-login-form').evaluate(f => { f.noValidate = true; });
     await door.getByRole('button', { name: 'Start scanning', exact: true }).click(); await door.locator('#ticketing-message').filter({ hasText: 'valid 8-digit' }).waitFor();
+    await door.evaluate(() => { document.querySelector('#scanner-login').style.minHeight = '1600px'; scrollTo(0, document.documentElement.scrollHeight); });
+    await door.clock.runFor(9000);
+    const errorBounds = await door.locator('#ticketing-message').boundingBox();
+    assert.ok(errorBounds && errorBounds.x >= 0 && errorBounds.y >= 0 && errorBounds.x + errorBounds.width <= 390 && errorBounds.y + errorBounds.height <= 844, 'scanner errors stay on screen after scrolling and do not time out');
+    await door.getByRole('button', { name: 'Dismiss notification' }).click();
+    assert.equal(await door.locator('#ticketing-message').innerText(), '');
+    await door.evaluate(() => { document.querySelector('#scanner-login').style.minHeight = ''; scrollTo(0, 0); });
     await door.locator('#scanner-pin').fill(`${pin.slice(0, 4)} ${pin.slice(4)}`); await door.getByRole('button', { name: 'Start scanning', exact: true }).click();
     await door.locator('#scanner-session:not([hidden])').waitFor();
     assert.equal(await door.locator('#staff-event').inputValue(), eventId); assert.ok(await door.locator('#staff-event').isDisabled());
