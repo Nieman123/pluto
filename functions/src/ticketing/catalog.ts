@@ -39,7 +39,7 @@ export class Catalog {
     return { admin, events: await Promise.all(events.map(async d => { const e = d.data()!, roles = admin ? ['manager', 'cash', 'refund', 'admission'] : scopes.find(s => s.eventId === d.id)?.roles || [];
       const financial = includeRevenue && roles.some((r: string) => ['manager', 'cash', 'refund'].includes(r));
       const orders = financial ? (await this.db.collection('ticketingOrders').where('eventId', '==', d.id).get()).docs.map(o => o.data()) : [];
-      return { id: d.id, title: e.draft.title, slug: e.draft.slug, publishedSlug: e.status !== 'draft' ? e.publishedSlug || '' : '', startAt: e.draft.startAt, city: e.draft.city, region: e.draft.region, timezone: e.draft.timezone, flyer: !!e.draft.flyer?.assetId,
+      return { id: d.id, title: e.draft.title, slug: e.draft.slug, publishedSlug: e.status !== 'draft' ? e.publishedSlug || '' : '', startAt: e.draft.startAt, endAt: (e.status === 'published' ? e.liveDraft || e.draft : e.draft).endAt, city: e.draft.city, region: e.draft.region, timezone: e.draft.timezone, flyer: !!e.draft.flyer?.assetId,
         ...(financial ? { revenue: revenueSummary(orders, e.draft.timezone) } : {}), registrationMode: (e.liveDraft || e.draft).registrationMode || 'tickets', status: e.status, revision: e.revision, roles }; })) };
   }
   async cardFlyer(eventId: string, uid: string) {
