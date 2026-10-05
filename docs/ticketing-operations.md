@@ -2,6 +2,8 @@
 
 Successful door scans show a floating **Ticket scanned** confirmation with the current attendee name and ticket type. It dismisses after two seconds or with the close button; camera scanning can continue with the next QR. Duplicate and rejected scans show separate warnings. Offline acceptance explicitly says it is queued pending server confirmation. Prepare offline admission again after this release to include attendee names in the manifest; older prepared snapshots show **Attendee name unavailable** rather than guessing a name.
 
+Ticketing console errors and status messages appear in a floating notification at the bottom of the screen, including while scrolling or using an order dialog. Errors stay until dismissed or replaced by the next message. Ordinary status messages dismiss after eight seconds; hovering or keyboard focus pauses that timer. Public event checkout retains its form-specific inline feedback.
+
 ## RSVP and VIP options
 
 In the event dashboard, **Ticketing setup → Ticket types & passes → Add paid VIP option** adds a $100 option. Edit its price and capacity, save ticket types, then publish the changes.
