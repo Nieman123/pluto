@@ -54,8 +54,9 @@ async function fullSignup(page, email) {
     stage = 'email/password signup in sign-on';
     const email = `verify-sign-on-${randomUUID()}@preview.invalid`; emails.push(email);
     await active.goto(`${base}/app/sign-on`); await semantics(active);
-    await fill(active, /Email/, email, false); await active.getByRole('button', { name: 'Create account', exact: true }).click();
-    await fill(active, /Password/i, password, false);
+    await active.getByRole('textbox', { name: /Email/ }).fill(email);
+    await active.getByRole('button', { name: 'Create account', exact: true }).click();
+    await active.getByRole('textbox', { name: /Password/i }).fill(password);
     await active.getByRole('button', { name: 'Create Account', exact: true }).last().click();
     await active.getByText(/Verification email sent/).waitFor();
     const initial = await received(active, email, 1);
