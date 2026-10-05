@@ -103,6 +103,10 @@ async function submit(page, slug, name) {
     const door = await doorContext.newPage(); active = door; await door.goto(`${base}/tickets/staff`); await door.locator('#scanner-pin').fill(pin.pin); await door.locator('#scanner-login-form [type=submit]').click();
     await door.locator('#scanner-session:not([hidden])').waitFor(); await door.locator('[name=qr]').fill(view.tickets[0].qr); await door.locator('#admission-form button').click();
     await door.locator('#admission-results > article').first().filter({ hasText: 'accepted' }).waitFor();
+    const confirmation = door.locator('#admission-feedback'); await confirmation.waitFor();
+    assert.equal(await confirmation.locator('h2').innerText(), 'Ticket scanned');
+    assert.equal(await confirmation.locator('[data-scan-holder]').innerText(), 'Open RSVP Guest');
+    assert.equal(await confirmation.locator('[data-scan-type]').innerText(), view.tickets[0].name);
     assert.equal(stripeRequests, 0, 'RSVP submission never loads Stripe');
     assert.equal((await api(admin, 'order', { orderId: pending.orderId, accessKey: await guest.evaluate(id => localStorage.getItem(`pluto-order-${id}`), pending.orderId) })).rsvpStatus, 'withdrawn');
     assert.equal((await api(admin, 'order', { orderId: declined.orderId, accessKey: await guest.evaluate(id => localStorage.getItem(`pluto-order-${id}`), declined.orderId) })).tickets.length, 0);
