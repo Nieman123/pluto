@@ -3,10 +3,34 @@ import { action, api, bind, esc, message, scannerSession, setScannerSession, use
 import { doorGuestList } from './guestlist.js';
 import { attendancePanel } from './event-tools.js';
 let manifest, verificationKey, cameraControls, scanning = false;
+let feedbackTimer, cameraLastQr = '', cameraLastSeenAt = 0;
 const eventId = () => document.querySelector('#staff-event').value;
 const scannerStorage = 'pluto-scanner-session';
 const admissionUid = () => scannerSession?.uid || user?.uid;
 const recordedTime = () => Date.now() + (manifest?.deviceClockOffsetMs || 0);
+function clearScanFeedback() {
+  clearTimeout(feedbackTimer);
+  const popup = document.querySelector('#admission-feedback');
+  if (popup) { popup.hidden = true; delete popup.dataset.state; popup.querySelectorAll('h2, [data-scan-holder], [data-scan-type], [data-scan-note], .admission-feedback-mark').forEach(node => { node.textContent = ''; }); }
+  const announcement = document.querySelector('#admission-feedback-announcement'); if (announcement) announcement.textContent = '';
+}
+function showScanFeedback(result) {
+  const popup = document.querySelector('#admission-feedback'); if (!popup) return;
+  clearScanFeedback();
+  const accepted = result.result === 'accepted', duplicate = result.result === 'duplicate';
+  const title = accepted ? 'Ticket scanned' : duplicate ? 'Already scanned' : result.result === 'outside-window' ? 'Outside admission window' : result.result === 'error' ? 'Scan not confirmed' : 'Ticket not accepted';
+  const holder = result.holderName || (accepted || duplicate ? 'Attendee name unavailable' : '');
+  const note = accepted ? result.offline ? 'Offline · Queued on this device. Server confirmation pending.' : 'Admission confirmed.' : duplicate ? 'This ticket was already checked in. Do not admit again.' : result.detail || 'No admission recorded.';
+  popup.dataset.state = accepted ? result.offline ? 'offline' : 'accepted' : duplicate ? 'duplicate' : 'error';
+  popup.querySelector('.admission-feedback-mark').textContent = accepted ? '✓' : '!';
+  popup.querySelector('h2').textContent = title;
+  popup.querySelector('[data-scan-holder]').textContent = holder;
+  popup.querySelector('[data-scan-type]').textContent = result.name || '';
+  popup.querySelector('[data-scan-note]').textContent = note;
+  popup.hidden = false;
+  document.querySelector('#admission-feedback-announcement').textContent = [title, holder, result.name, note].filter(Boolean).join('. ');
+  feedbackTimer = setTimeout(clearScanFeedback, 2000);
+}
 function store() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open('pluto-admission', 1);
@@ -27,6 +51,7 @@ export async function cacheStaffEvents(result, uid, expiresAt = Date.now() + 24 
   if (events.some(e => e.id === previous?.selected) && previous.uid === uid) selector.value = previous.selected;
 }
 export async function lockOfflineAdmission(clearCachedSession = true) {
+  clearScanFeedback(); cameraLastQr = ''; cameraLastSeenAt = 0;
   document.querySelector('#ticketing-dialog')?.close(); document.querySelector('#ticketing-dialog-content')?.replaceChildren();
   cameraControls?.stop(); cameraControls = null; manifest = null; verificationKey = null;
   if (clearCachedSession) await dbOperation('state', 'readwrite', s => s.delete('session'));
@@ -100,6 +125,7 @@ async function cacheStatus() {
   document.querySelector('#admission-cache-status').textContent = manifest ? `Manifest age: ${age} minutes · ${queue.length} queued scans · ${navigator.onLine ? 'Online' : 'Offline'} · Offline access until ${new Date(manifest.offlineUntil).toLocaleTimeString()}${age > 15 ? ' · Stale snapshot: transfers, refunds and new sales may be missing.' : ''}. Use one offline admission lane; wristbands handle festival re-entry.${scannerSession ? ' PIN revocation takes effect when this device reconnects.' : ''}` : `Prepare an event manifest while online before using offline admission.${scannerSession ? ' PIN offline access lasts up to 4 hours.' : ''}`;
 }
 export async function restoreManifest(selected = eventId()) {
+  clearScanFeedback();
   const session = await dbOperation('state', 'readonly', s => s.get('session'));
   manifest = await dbOperation('state', 'readonly', s => s.get(`manifest-${selected}`));
   if (manifest?.staffUid !== session?.uid || !manifest?.leaseToken || !manifest?.offlineUntil || manifest.offlineUntil <= recordedTime()) manifest = null;
@@ -201,7 +227,7 @@ async function offlineScan(qr, scanId) {
   const token = JSON.parse(new TextDecoder().decode(bytes(data))), ticket = manifest.tickets.find(t => t.id === token.id);
   if (token.eventId !== eventId() || !ticket?.itemProof || ticket.version !== token.version || ticket.status !== 'valid') throw new Error('Ticket is not valid in the prepared manifest. Refresh it online if the ticket is new or transferred.');
   if (recordedTime() < Date.parse(ticket.validFrom) || recordedTime() > Date.parse(ticket.validUntil)) throw new Error('Ticket is outside its admission window.');
-  if (ticket.admitted) return { result: 'duplicate', name: ticket.name };
+  if (ticket.admitted) return { result: 'duplicate', name: ticket.name, holderName: ticket.holderName };
   const db = await store();
   await new Promise((resolve, reject) => {
     const transaction = db.transaction(['state', 'queue'], 'readwrite'), state = transaction.objectStore('state'), queued = transaction.objectStore('queue');
@@ -209,10 +235,13 @@ async function offlineScan(qr, scanId) {
     request.onsuccess = () => { const current = request.result, unit = current?.tickets.find(t => t.id === token.id); if (!unit || unit.admitted || current.staffUid !== session.uid || current.leaseToken !== manifest.leaseToken || current.offlineUntil <= recordedTime()) { transaction.abort(); return; } unit.admitted = true; state.put(current, `manifest-${eventId()}`); queued.add({ scanId, eventId: eventId(), qr, ticketId: ticket.id, deviceTime: recordedTime(), leaseToken: manifest.leaseToken, itemProof: ticket.itemProof, staffUid: session.uid }); };
     transaction.oncomplete = () => { db.close(); resolve(); }; transaction.onabort = () => { db.close(); reject(new Error('This ticket was already admitted locally.')); }; transaction.onerror = () => { db.close(); reject(transaction.error); };
   });
-  ticket.admitted = true; return { result: 'accepted', name: ticket.name, offline: true };
+  ticket.admitted = true; return { result: 'accepted', name: ticket.name, holderName: ticket.holderName, offline: true };
 }
 async function scan(qr) {
   if (scanning) return; scanning = true;
+  const selected = eventId(), uid = admissionUid();
+  const stillActive = () => eventId() === selected && admissionUid() === uid && !document.querySelector('#staff-controls').hidden;
+  clearScanFeedback();
   try {
     if (!eventId()) throw new Error('Choose an event first.');
     const scanId = crypto.randomUUID(); let result;
@@ -231,9 +260,15 @@ async function scan(qr) {
         result = await offlineScan(qr, scanId);
       }
     }
+    if (!stillActive()) return;
+    message('');
+    showScanFeedback(result);
     const root = document.querySelector('#admission-results'), card = document.createElement('article'); card.className = `ticket-card admission-${result.result}`;
-    card.innerHTML = `<strong>${esc(result.result.toUpperCase())}</strong><p>${esc(result.name)}${result.offline ? ' · Offline: queued for server confirmation' : ''}</p>`; root.prepend(card);
-    if (root.children.length > 30) root.lastElementChild.remove(); await cacheStatus();
+    card.innerHTML = `<strong>${esc(result.result.toUpperCase())}</strong><p>${esc(result.holderName)}${result.holderName ? ' · ' : ''}${esc(result.name)}${result.offline ? ' · Offline: queued for server confirmation' : ''}</p>`; root.prepend(card);
+    if (root.children.length > 30) root.lastElementChild.remove(); await cacheStatus().catch(error => message(error.message, true));
+  } catch (error) {
+    if (stillActive()) showScanFeedback({ result: 'error', detail: error.message });
+    throw error;
   } finally { setTimeout(() => { scanning = false; }, 1800); }
 }
 async function replay() {
@@ -255,6 +290,7 @@ async function replay() {
 }
 export function initAdmission() {
   if (!document.querySelector('#admission-form')) return;
+  bind('#admission-feedback-close', clearScanFeedback);
   bind('#admission-manager-import', async () => {
     if (!navigator.onLine || !user || scannerSession) throw new Error('Sign in as an event manager online to review this device’s queue.');
     const queue = (await dbOperation('queue', 'readonly', s => s.getAll())).filter(item => item.eventId === eventId());
@@ -273,9 +309,18 @@ export function initAdmission() {
   document.querySelector('#staff-event').addEventListener('change', () => action(null, () => restoreManifest()));
   bind('#admission-camera', async () => {
     const video = document.querySelector('#admission-video');
+    cameraLastQr = ''; cameraLastSeenAt = 0;
     if (cameraControls) { cameraControls.stop(); cameraControls = null; video.hidden = true; document.querySelector('#admission-camera').textContent = 'Start camera'; return; }
     video.hidden = false; const reader = new BrowserQRCodeReader();
-    try { cameraControls = await reader.decodeFromConstraints({ video: { facingMode: 'environment' } }, video, result => { if (result) scan(result.getText()).catch(error => message(error.message, true)); }); document.querySelector('#admission-camera').textContent = 'Stop camera'; }
+    try { cameraControls = await reader.decodeFromConstraints({ video: { facingMode: 'environment' } }, video, result => {
+      if (!result) return;
+      const qr = result.getText(), now = Date.now(), sameCodeInView = qr === cameraLastQr && now - cameraLastSeenAt < 2500;
+      if (qr === cameraLastQr) cameraLastSeenAt = now;
+      // Keep continuous frames of one QR from replacing its confirmation with a duplicate warning.
+      if (scanning || sameCodeInView) return;
+      cameraLastQr = qr; cameraLastSeenAt = now;
+      scan(qr).catch(error => message(error.message, true));
+    }); document.querySelector('#admission-camera').textContent = 'Stop camera'; }
     catch (error) { video.hidden = true; throw error; }
   });
   const refreshConnection = () => action(null, async () => { await cacheStatus(); if (!document.querySelector('#staff-controls').hidden) await loadDoorGuests(); });

@@ -1,5 +1,7 @@
 # Ticketing operations and customer support
 
+Successful door scans show a floating **Ticket scanned** confirmation with the current attendee name and ticket type. It dismisses after two seconds or with the close button; camera scanning can continue with the next QR. Duplicate and rejected scans show separate warnings. Offline acceptance explicitly says it is queued pending server confirmation. Prepare offline admission again after this release to include attendee names in the manifest; older prepared snapshots show **Attendee name unavailable** rather than guessing a name.
+
 ## Health and recovery
 
 Global administrators have **System health** on `/tickets/admin`. The navigation badge refreshes once a minute. The dashboard reports stalled payment events, unresolved refunds, checkout reservations, missing ticket issuance, email failures and the maintenance heartbeat. **Run health check** refreshes diagnostics; it does not issue tickets or release stock.

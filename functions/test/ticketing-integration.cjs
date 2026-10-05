@@ -75,7 +75,9 @@ async function main() {
   assert.equal(promoAttempts.filter(r => r.status === 'fulfilled').length, 1, 'promo cap includes concurrent reservations');
   const active = await makeEvent(true); const activeRequest = request(active); const activeOrder = await service.checkout(activeRequest, buyer); await pay(activeOrder);
   const activeView = await service.view(activeOrder.orderId, activeRequest.accessKey, null), ticket = activeView.tickets[0];
-  assert.equal((await service.scan(active, ticket.qr, randomUUID(), staff)).result, 'accepted'); assert.equal((await service.scan(active, ticket.qr, randomUUID(), staff)).result, 'duplicate');
+  const acceptedScan = await service.scan(active, ticket.qr, randomUUID(), staff);
+  assert.equal(acceptedScan.result, 'accepted'); assert.equal(acceptedScan.holderName, 'Test buyer'); assert.equal(acceptedScan.name, 'Weekend');
+  assert.equal((await service.scan(active, ticket.qr, randomUUID(), staff)).result, 'duplicate');
   await service.refund(activeOrder.orderId, [ticket.id], newKey(), staff); assert.equal((await service.event(active).collection('pools').doc('friday').get()).data().sold, 1, 'admitted capacity is not reissued');
   const poorCash = request(active, { cashReceived: 0 }); await assert.rejects(() => service.checkout(poorCash, null, 'cash', staff), /Cash received/); assert.ok(!(await service.order(require('../lib/ticketing/domain').hash(poorCash.accessKey)).get()).exists);
   const comp = await service.checkout(request(active, { reason: 'Artist guest list' }), null, 'comp', staff); assert.equal(comp.total, 0); assert.equal(comp.status, 'paid');

@@ -22,7 +22,9 @@
 {% else %}
 <div class="ticket-toolbar"><button id="admission-sync" class="button button-primary">Prepare offline admission</button><button id="admission-replay" class="button button-quiet">Sync queued scans</button><button id="admission-attendance" class="button button-quiet">Door attendance</button><button id="admission-camera" class="button button-quiet">Start camera</button><button id="admission-manager-import" class="button button-quiet" hidden>Import queued scans for manager review</button></div>
 <p id="admission-cache-status" role="status"></p><video id="admission-video" playsinline muted hidden></video>
-<form id="admission-form"><label>Ticket QR content <textarea name="qr" required placeholder="Scan a ticket or paste its QR content"></textarea></label><button class="button button-primary">Check ticket</button></form><div id="admission-results" aria-live="polite"></div><section id="door-guestlist" aria-label="Event guest list" hidden></section>
+<form id="admission-form"><label>Ticket QR content <textarea name="qr" required placeholder="Scan a ticket or paste its QR content"></textarea></label><button class="button button-primary">Check ticket</button></form><div id="admission-results"></div><section id="door-guestlist" aria-label="Event guest list" hidden></section>
+<aside id="admission-feedback" class="admission-feedback" aria-labelledby="admission-feedback-title" hidden><button id="admission-feedback-close" class="button button-quiet" type="button" aria-label="Dismiss scan feedback">×</button><span class="admission-feedback-mark" aria-hidden="true"></span><h2 id="admission-feedback-title"></h2><p class="admission-feedback-holder" data-scan-holder></p><p class="admission-feedback-type" data-scan-type></p><p class="admission-feedback-note" data-scan-note></p></aside>
+<p id="admission-feedback-announcement" class="admin-sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
 {% endif %}</div>
 {% endif %}
 <dialog id="ticketing-dialog" aria-label="Pluto ticket tools"><button id="ticketing-dialog-close" class="button button-quiet" type="button">Close</button><div id="ticketing-dialog-content"></div></dialog>
