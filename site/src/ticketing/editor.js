@@ -23,7 +23,8 @@ async function healthBadge() {
 }
 const get = (path, object = record?.draft) => path.split('.').reduce((o, key) => o?.[key], object);
 async function loadCardFlyers(cards) {
-  const uid = user?.uid, images = [...cards.querySelectorAll('[data-card-flyer]')];
+  const uid = user?.uid, images = [...cards.querySelectorAll('[data-card-flyer]')].filter(image => !image.hasAttribute('src') && !image.dataset.loading && (!image.closest('#event-history') || image.closest('#event-history').open));
+  images.forEach(image => { image.dataset.loading = 'true'; });
   // Loading every authenticated flyer at once contends with editor requests
   // on the same rate-limit counter. Stop if the list is replaced or hidden.
   async function next() {
@@ -34,6 +35,27 @@ async function loadCardFlyers(cards) {
     }
   }
   await Promise.all([next(), next()]);
+}
+function eventGroup(event, now = Date.now()) {
+  if (['archived', 'cancelled'].includes(event.status)) return event.status;
+  return event.status === 'published' && Date.parse(event.endAt) <= now ? 'completed' : 'current';
+}
+function eventCard(event) {
+  const status = eventGroup(event) === 'completed' ? 'completed' : event.status;
+  return `<button class="admin-event-card ${event.flyer ? 'has-flyer' : ''}" data-open-event="${esc(event.id)}">${event.flyer ? `<img class="admin-card-flyer" data-card-flyer="${esc(event.id)}" alt="Flyer for ${esc(event.title)}">` : ''}<span class="status-pill status-${esc(status)}">${esc(status)}</span><span class="event-card-date">${esc(new Date(event.startAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: event.timezone }))}</span><strong>${esc(event.title)}</strong><span>${esc(event.city || 'Location to be announced')}${event.region ? `, ${esc(event.region)}` : ''}</span>${event.revenue ? `<span class="card-revenue"><span>This week <b>${money(event.revenue.thisWeek)}</b></span><span>Total gross <b>${money(event.revenue.gross)}</b></span></span>` : ''}<span class="card-action">View dashboard <span aria-hidden="true">↗</span></span></button>`;
+}
+function bindEventCards(root) {
+  root.querySelectorAll('[data-open-event]').forEach(button => { button.onclick = () => action(button, () => selectEvent(button.dataset.openEvent)); });
+}
+function renderEventHistory() {
+  const root = document.querySelector('#history-event-list'); if (!root) return;
+  const now = Date.now(), history = events.filter(event => eventGroup(event, now) !== 'current'), filter = document.querySelector('#history-event-filter').value;
+  const visible = history.filter(event => filter === 'all' || eventGroup(event, now) === filter).sort((a, b) => Date.parse(b.endAt || b.startAt) - Date.parse(a.endAt || a.startAt));
+  document.querySelector('#history-events-count').textContent = `${history.length} ${history.length === 1 ? 'event' : 'events'}`;
+  document.querySelector('#history-results-count').textContent = `${visible.length} ${visible.length === 1 ? 'event' : 'events'} shown`;
+  root.innerHTML = visible.length ? visible.map(eventCard).join('') : `<div class="empty-state"><h3>${filter === 'all' ? 'No event history yet.' : `No ${esc(filter)} events.`}</h3><p>Completed, archived and cancelled events stay here with their dashboards and orders.</p></div>`;
+  bindEventCards(root);
+  if (document.querySelector('#event-history').open && !document.querySelector('#events-index').hidden) loadCardFlyers(root);
 }
 function set(path, value) {
   if (!updateEventSchedule(record.draft, path, value)) {
@@ -107,11 +129,14 @@ export async function loadEvents() {
   const roleButton = document.querySelector('#event-roles'); if (roleButton) roleButton.hidden = !result.admin;
   const cards = document.querySelector('#event-list');
   if (cards) {
-    cards.innerHTML = events.length ? events.map(e => `<button class="admin-event-card ${e.flyer ? 'has-flyer' : ''}" data-open-event="${esc(e.id)}">${e.flyer ? `<img class="admin-card-flyer" data-card-flyer="${esc(e.id)}" alt="Flyer for ${esc(e.title)}">` : ''}<span class="status-pill status-${esc(e.status)}">${esc(e.status)}</span><span class="event-card-date">${esc(new Date(e.startAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: e.timezone }))}</span><strong>${esc(e.title)}</strong><span>${esc(e.city || 'Location to be announced')}${e.region ? `, ${esc(e.region)}` : ''}</span>${e.revenue ? `<span class="card-revenue"><span>This week <b>${money(e.revenue.thisWeek)}</b></span><span>Total gross <b>${money(e.revenue.gross)}</b></span></span>` : ''}<span class="card-action">View dashboard <span aria-hidden="true">↗</span></span></button>`).join('') : '<div class="empty-state"><h3>Your next event starts here.</h3><p>Create an event, add the artwork and ticket types, then publish when you’re ready.</p></div>';
+    const now = Date.now(), currentEvents = events.filter(event => eventGroup(event, now) === 'current').sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt));
+    document.querySelector('#current-events-count').textContent = `${currentEvents.length} ${currentEvents.length === 1 ? 'event' : 'events'}`;
+    cards.innerHTML = currentEvents.length ? currentEvents.map(eventCard).join('') : '<div class="empty-state"><h3>Your next event starts here.</h3><p>Create an event, add the artwork and ticket types, then publish when you’re ready.</p></div>';
+    renderEventHistory();
     const weekly = document.querySelector('#weekly-revenue'), financial = events.filter(e => e.revenue);
     weekly.hidden = !financial.length;
     weekly.innerHTML = `<div class="ticket-stat-grid weekly-stat-grid">${[['This week', 'thisWeek'], ['Last week', 'lastWeek'], ['Total gross revenue', 'gross']].map(([label, key]) => `<div class="ticket-stat"><span>${label}</span><strong>${money(financial.reduce((n, e) => n + e.revenue[key], 0))}</strong></div>`).join('')}</div><p class="revenue-note">Paid gross sales · Monday–Sunday in each event’s timezone · before refunds, tax and fees</p>`;
-    cards.querySelectorAll('[data-open-event]').forEach(button => button.onclick = () => action(button, () => selectEvent(button.dataset.openEvent)));
+    bindEventCards(cards);
     const requested = new URLSearchParams(location.search).get('event');
     if (!record && requested && events.some(e => e.id === requested) && document.querySelector('#event-workspace')?.hidden) await selectEvent(requested, new URLSearchParams(location.search).get('view') === 'studio');
     else if (!record && globalAdmin && new URLSearchParams(location.search).get('view') === 'orders') await showAllOrders();
@@ -393,6 +418,8 @@ async function roles() {
   content.querySelector('#promoter-form').onsubmit = e => { e.preventDefault(); action(e.submitter, async () => { const data = new FormData(e.target), promoterId = data.get('promoterId'); await api('staff/promoter', { eventId, promoterId, active: data.has('active') }); const selected = events.find(event => event.id === eventId); content.querySelector('#promoter-link').textContent = `${location.origin}/events/${selected.slug}?ref=${promoterId}`; }); };
 }
 export function initEditor() {
+  document.querySelector('#history-event-filter')?.addEventListener('change', renderEventHistory);
+  document.querySelector('#event-history')?.addEventListener('toggle', event => { if (event.target.open && !document.querySelector('#events-index').hidden) loadCardFlyers(event.target); });
   bind('#event-new', async () => { const eid = crypto.randomUUID(); await api('staff/save', { eventId: eid, draft: defaultDraft(), revision: 0 }); await loadEvents(); document.querySelector('#staff-event').value = eid; await selectEvent(eid, true); });
   document.querySelector('#staff-event')?.addEventListener('change', event => action(null, async () => { if (dirty) { event.target.value = record.id; message('Save your draft before switching events.', true); return; } await selectEvent(event.target.value); }));
   bind('#event-studio', () => selectEvent(document.querySelector('#staff-event').value, true));

@@ -38,6 +38,7 @@ html{scroll-padding-top:100px}.native-event.checkout-active .native-hero,.native
 .admission-feedback[data-state=error] { border-color: #ffb4ab; }
 .admission-feedback[data-state=error] .admission-feedback-mark { background: #ffb4ab; color: #341616; }
 @keyframes scan-feedback-in { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translateX(-50%); } }
+.event-section-count{display:inline-block;margin-left:10px;padding:4px 10px;border:1px solid #a580bc44;border-radius:100px;color:#ddc3ef;font-size:.75rem;font-weight:400;vertical-align:middle}.event-section-note{font-size:.82rem;line-height:1.6}.ticketing-console .admin-event-history{margin-top:36px;padding:24px;background:#1b151f;border-color:#a580bc44}.ticketing-console .admin-event-history>summary{font-size:1.1rem;color:#ffe0b6}.ticketing-console .history-toolbar{align-items:center;justify-content:space-between}.history-toolbar label{min-width:180px;margin:0}.history-toolbar [role=status]{font-size:.8rem;color:#d8c7e4}.status-completed{color:#a4e6c2;border-color:#a4e6c255}.status-archived{color:#ddc3ef;border-color:#a580bc66}@media(max-width:680px){.ticketing-console .admin-event-history{padding:16px}.history-toolbar label{width:100%}.event-section-count{margin-left:6px}}
 @media(prefers-reduced-motion:reduce) { .admission-feedback { animation: none; } }
 
 .native-story .button-quiet { color: inherit; border-color: currentColor; }
