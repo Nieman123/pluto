@@ -262,6 +262,7 @@ async function surface(page, name) {
     await fillFlutterInput(account, 'Password', 'Preview-account-2026!');
     await fillFlutterInput(account, 'Confirm password', 'Preview-account-2026!');
     await account.getByRole('button', { name: 'Create Account', exact: true }).click();
+    await account.waitForURL(`${base}/app/tickets?order=${accountOrder.orderId}`);
     await account.getByRole('button', { name: 'Send verification email', exact: true }).waitFor({ timeout: 30000 });
     assert.ok(account.url().includes(`/app/tickets?order=${accountOrder.orderId}`));
     assert.equal((await db.collection('ticketingOrders').doc(accountOrder.orderId).get()).data().ownerUid, '');
