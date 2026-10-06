@@ -16,6 +16,14 @@ export function id(value: unknown): string {
   if (!/^[a-zA-Z0-9_-]+$/.test(result)) return fail('Invalid identifier.');
   return result;
 }
+export function emailJobId(value: unknown): string {
+  // Campaign jobs combine two SHA-256 hashes. Keep their existing IDs so
+  // queued jobs and retries retain the same provider idempotency key.
+  // The 200-character cap also leaves room for the Resend "pluto-" prefix.
+  const result = text(value, 'email job identifier', 200, true);
+  if (!/^[a-zA-Z0-9_-]+$/.test(result)) return fail('Invalid email job identifier.');
+  return result;
+}
 export function receipt(value: unknown): string {
   if (typeof value !== 'string' || !/^[a-f0-9]{64}$/.test(value)) return fail('Invalid order access key.');
   return value;

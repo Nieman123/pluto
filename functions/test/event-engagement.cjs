@@ -5,6 +5,87 @@ const { hash } = require('../lib/ticketing/domain');
 const verified = email => ({ uid: `verified_${hash(email).slice(0, 20)}`, email, email_verified: true });
 async function offerToken(h, entryId) { return (await h.db.collection('ticketingEmailJobs').where('entryId', '==', entryId).get()).docs.find(d => d.data().type === 'waitlist-offer').data().token; }
 
+async function emailRecoveryTest(run) {
+  // Maintenance scans every queue. Earlier suites intentionally retain fake
+  // payments whose provider instances cannot be shared between test processes.
+  const { initializeApp, deleteApp } = require('firebase-admin/app');
+  const { getFirestore } = require('firebase-admin/firestore');
+  const projectId = `demo-email-${randomUUID()}`, app = initializeApp({ projectId }, projectId);
+  const h = harness(getFirestore(app)), oldFetch = global.fetch, oldKey = process.env.RESEND_API_KEY;
+  const refs = ['maintenance', 'latest', 'issuance-cursor'].map(id => h.db.collection('ticketingHealth').doc(id));
+  const previous = await Promise.all(refs.map(ref => ref.get()));
+  process.env.RESEND_API_KEY = 'fake-provider-key';
+  try { await run(h); }
+  finally {
+    global.fetch = oldFetch;
+    if (oldKey === undefined) delete process.env.RESEND_API_KEY; else process.env.RESEND_API_KEY = oldKey;
+    for (const doc of (await h.db.collection('ticketingHealthAudit').where('uid', '==', h.staff).get()).docs) await doc.ref.delete();
+    await h.cleanup();
+    for (let i = 0; i < refs.length; i++) if (previous[i].exists) await refs[i].set(previous[i].data()); else await refs[i].delete();
+    await deleteApp(app);
+  }
+}
+
+test('maintenance recovers four existing reminder jobs with long IDs and never sends them twice', () => emailRecoveryTest(async h => {
+  let sends = [];
+  global.fetch = async (url, init) => { assert.equal(url, 'https://api.resend.com/emails'); sends.push(init); return { ok: true, json: async () => ({ id: randomUUID() }) }; };
+  const eid = await h.event(d => { d.startAt = new Date(Date.now() + 23 * 3600000).toISOString(); d.admissionStartsAt = d.startAt; d.offers.forEach(o => { o.validFrom = d.startAt; }); });
+  for (let i = 0; i < 4; i++) {
+    const order = await h.service.checkout(h.request(eid, { email: `reminder-${i}-${h.prefix}@example.test` }), null);
+    await h.pay(order.orderId); await h.service.emailJob(`receipt_${order.orderId}`);
+  }
+  sends = [];
+  await h.service.communicationMaintenance();
+  const jobs = (await h.db.collection('ticketingEmailJobs').where('eventId', '==', eid).where('type', '==', 'campaign').get()).docs;
+  assert.equal(jobs.length, 4);
+  for (const job of jobs) { assert.equal(job.id.length, 138); assert.equal(job.data().attempts, 0); }
+  const summary = await h.service.maintenance();
+  assert.equal(summary.errors, 0); assert.equal(sends.length, 4);
+  assert.deepEqual(sends.map(s => s.headers['Idempotency-Key']).sort(), jobs.map(j => `pluto-${j.id}`).sort());
+  for (const job of jobs) assert.equal((await job.ref.get()).data().status, 'sent');
+  const health = await h.service.health(h.staff, true);
+  assert.equal(health.counts.pendingEmails, 0);
+  assert.ok(!health.issues.some(i => i.kind === 'maintenance'));
+  assert.ok(health.maintenance.completedAt >= health.maintenance.startedAt);
+  await h.service.maintenance(); assert.equal(sends.length, 4, 'scheduled retries retain the existing sent jobs');
+}));
+
+test('manual recovery of a long campaign ID preserves its payload and retry safety limits', () => emailRecoveryTest(async h => {
+  const sends = [];
+  global.fetch = async (url, init) => { assert.equal(url, 'https://api.resend.com/emails'); sends.push(init); return { ok: sends.length > 1, json: async () => ({ id: randomUUID() }) }; };
+  const eid = await h.event(), raw = h.request(eid), order = await h.service.checkout(raw, null); await h.pay(order.orderId);
+  const campaign = await h.service.announce(eid, { attempt: h.newKey(), title: 'Door update', body: 'Open My tickets for details.' }, h.staff);
+  await h.service.campaignPage(campaign.campaignId);
+  const job = (await h.db.collection('ticketingEmailJobs').where('campaignId', '==', campaign.campaignId).get()).docs[0];
+  assert.equal(job.id.length, 138);
+  await h.service.emailJob(job.id); assert.equal((await job.ref.get()).data().status, 'pending');
+  await h.db.collection('ticketingCampaigns').doc(campaign.campaignId).update({ body: 'Changed after the uncertain first send.' });
+  await assert.rejects(() => h.service.retryHealth({ kind: 'email', jobId: job.id }, 'non-admin'), /Administrator/);
+  await h.service.retryHealth({ kind: 'email', jobId: job.id }, h.staff);
+  assert.equal((await job.ref.get()).data().status, 'sent'); assert.equal(sends.length, 2);
+  assert.equal(sends[0].body, sends[1].body);
+  assert.equal(sends[0].headers['Idempotency-Key'], `pluto-${job.id}`);
+  assert.equal(sends[0].headers['Idempotency-Key'], sends[1].headers['Idempotency-Key']);
+  await h.service.emailJob(job.id); assert.equal(sends.length, 2);
+  await job.ref.update({ status: 'pending', firstDeliveryAt: Date.now() - 24 * 3600000, leaseUntil: 0, retryAt: 0 });
+  await assert.rejects(() => h.service.retryHealth({ kind: 'email', jobId: job.id }, h.staff), /Do not retry/);
+  await h.service.emailJob(job.id); assert.equal((await job.ref.get()).data().status, 'review'); assert.equal(sends.length, 2);
+}));
+
+test('a malformed queued job is recorded without stopping maintenance or another email', () => emailRecoveryTest(async h => {
+  const invalid = h.db.collection('ticketingEmailJobs').doc(`invalid.${h.prefix}`), sends = [];
+  global.fetch = async (url, init) => { sends.push(init); return { ok: true, json: async () => ({ id: randomUUID() }) }; };
+  try {
+    await invalid.set({ status: 'pending', createdAt: Date.now(), attempts: 0 });
+    const eid = await h.event(), order = await h.service.checkout(h.request(eid), null); await h.pay(order.orderId);
+    const summary = await h.service.maintenance();
+    assert.equal(summary.errors, 1); assert.equal(sends.length, 1);
+    assert.match((await invalid.get()).data().lastWorkerError, /email job identifier/);
+    assert.equal((await h.db.collection('ticketingEmailJobs').doc(`receipt_${order.orderId}`).get()).data().status, 'sent');
+    assert.ok((await h.service.health(h.staff, true)).issues.some(i => i.id === 'maintenance-errors'), 'the bad record remains visible as an operator alert');
+  } finally { await invalid.delete(); }
+}));
+
 test('waitlist FIFO, duplicate workers, claim retries and shared checkout stock never oversell', async () => {
   const h = harness();
   try {
