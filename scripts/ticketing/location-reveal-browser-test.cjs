@@ -9,7 +9,7 @@ process.env.GCLOUD_PROJECT = 'demo-pluto-ticketing'; process.env.FIRESTORE_EMULA
 backend('firebase-admin/app').initializeApp({ projectId: 'demo-pluto-ticketing' });
 const db = backend('firebase-admin/firestore').getFirestore(), eid = randomUUID(), { fixture } = require('../../functions/test/ticketing-fixture.cjs');
 const base = 'http://127.0.0.1:4173';
-const catalogIds = Array.from({ length: 12 }, () => randomUUID());
+const catalogIds = Array.from({ length: 13 }, () => randomUUID());
 async function api(page, path, data) {
   return page.evaluate(async ({ path, data }) => {
     const { getAuth } = await import('https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js');
@@ -30,16 +30,37 @@ async function api(page, path, data) {
     const batch = db.batch();
     for (const id of catalogIds) {
       const ref = db.collection('ticketingEvents').doc(id);
-      batch.set(ref, { draft: { ...draft, title: `Catalog flyer ${id}`, slug: `catalog-${id}`, flyer }, revision: 1, status: 'draft' });
+      batch.set(ref, { draft: { ...draft, title: `Catalog flyer ${id}`, slug: `catalog-${id}`, flyer }, revision: 1, status: id === catalogIds.at(-1) ? 'archived' : 'draft' });
       batch.set(ref.collection('media').doc(flyer.assetId), media);
     }
     await batch.commit();
+    // Force two preparation responses and slow images so revenue polling
+    // overlaps the original flyer queue, even on a fast runner.
+    let catalogReads = 0;
+    await page.route('**/tickets/api/staff/events', async route => {
+      const response = await route.fetch(), data = await response.json(); catalogReads++;
+      if (catalogReads <= 2) for (const event of data.events) if (catalogIds.includes(event.id) && event.revenue) event.revenue.ready = false;
+      await route.fulfill({ response, json: data });
+    });
+    await page.route('**/tickets/api/staff/card-flyer', async route => {
+      const response = await route.fetch(); await new Promise(done => setTimeout(done, 600)); await route.fulfill({ response });
+    });
     const downloads = new Set(); let maxDownloads = 0, flyerRequests = 0;
     page.on('request', request => { if (request.url().endsWith('/tickets/api/staff/card-flyer')) { downloads.add(request); flyerRequests++; maxDownloads = Math.max(maxDownloads, downloads.size); } });
     const finish = request => downloads.delete(request); page.on('requestfinished', finish); page.on('requestfailed', finish);
     await page.goto(`${base}/tickets/admin`);
+    await page.waitForFunction(() => document.querySelectorAll('#event-list [data-card-flyer]').length >= 12);
+    const originalFlyers = await page.locator('#events-index [data-card-flyer]').count();
+    await page.locator('#events-index [data-card-flyer]').evaluateAll(images => images.forEach(image => image.dataset.originalFlyer = 'true'));
+    // Opening history while current flyers are in flight shares the same cap.
+    await page.locator('#event-history > summary').click();
+    await page.locator(`[data-open-event="${catalogIds[0]}"] .card-revenue`).filter({ hasText: 'This week' }).waitFor();
     await page.waitForFunction(() => { const images = [...document.querySelectorAll('[data-card-flyer]')]; return images.length >= 12 && images.every(image => image.naturalWidth > 0); });
     assert.ok(maxDownloads <= 2, 'catalog flyer downloads must not crowd out editor requests');
+    assert.ok(catalogReads >= 3, 'preparing summaries were polled through readiness');
+    assert.equal(await page.locator('#events-index [data-original-flyer]').count(), originalFlyers, 'revenue refresh preserves the original artwork elements');
+    assert.equal(flyerRequests, originalFlyers, 'revenue polling does not re-download catalog flyers');
+    await page.unroute('**/tickets/api/staff/events'); await page.unroute('**/tickets/api/staff/card-flyer');
     const beforeStudio = flyerRequests;
     await page.goto(`${base}/tickets/admin?event=${eid}&view=studio`); await page.locator('#field-venueVisibility').waitFor();
     assert.equal(flyerRequests, beforeStudio, 'a direct Studio visit must not download the hidden catalog flyers');
@@ -78,7 +99,7 @@ async function api(page, path, data) {
     await tickets.getByText(draft.venueName, { exact: true }).scrollIntoViewIfNeeded();
     await tickets.screenshot({ path: 'tmp/holder-location-revealed-phone.png' });
     await customer.close();
-    console.log('Location browser checks passed: Studio schedule/timezone save, public hint/privacy/accessibility and automatic holder reveal.');
+    console.log('Location/flyer browser checks passed: shared two-request queue during revenue polling/history, retained artwork, Studio schedule/timezone save, public hint/privacy/accessibility and automatic holder reveal.');
   } finally {
     for (const id of catalogIds) await db.recursiveDelete(db.collection('ticketingEvents').doc(id));
     await browser.close(); await db.recursiveDelete(db.collection('ticketingEvents').doc(eid)); await db.collection('publishedEvents').doc(eid).delete();

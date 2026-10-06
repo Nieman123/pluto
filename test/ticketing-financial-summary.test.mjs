@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { financialSummary } from '../site/src/ticketing/financial-summary.js';
+import { createRequire } from 'node:module';
+const { financialTotals, orderContribution } = createRequire(import.meta.url)('../functions/lib/ticketing/financial-projection.js');
+const financialSummary = ([order]) => financialTotals(orderContribution(order, 'America/New_York').totals);
 
 test('unknown fees and unmapped refunds keep dashboard proceeds provisional', () => {
   const order = { status: 'paid', method: 'stripe', total: 10000, taxAmount: 500, stripeFee: null, stripeFeeStatus: 'pending', externalRefundAmount: 2000 };

@@ -2,7 +2,6 @@ import { accessKey, action, api, bind, dialog, download, esc, message, money, us
 import { scannerPins } from './scanner-pins.js';
 import { adminGuestList } from './guestlist.js';
 import { adminRsvps } from './rsvps.js';
-import { financialSummary } from './financial-summary.js';
 import { revenueChart } from './revenue-chart.js';
 import { allOrders, eventOrders } from './orders.js';
 import { updateEventSchedule } from './event-schedule.js';
@@ -22,27 +21,74 @@ async function healthBadge() {
   } catch { /* Keep event editing usable while health services are unavailable. */ }
 }
 const get = (path, object = record?.draft) => path.split('.').reduce((o, key) => o?.[key], object);
-async function loadCardFlyers(cards) {
-  const uid = user?.uid, images = [...cards.querySelectorAll('[data-card-flyer]')].filter(image => !image.hasAttribute('src') && !image.dataset.loading && (!image.closest('#event-history') || image.closest('#event-history').open));
-  images.forEach(image => { image.dataset.loading = 'true'; });
-  // Loading every authenticated flyer at once contends with editor requests
-  // on the same rate-limit counter. Stop if the list is replaced or hidden.
-  async function next() {
-    while (images.length && user?.uid === uid && !document.querySelector('#events-index').hidden) {
-      const image = images.shift(); if (!image.isConnected) return;
-      try { const blob = await api('staff/card-flyer', { eventId: image.dataset.cardFlyer }, true), url = URL.createObjectURL(blob); image.onload = image.onerror = () => URL.revokeObjectURL(url); image.src = url; }
-      catch { image.remove(); }
-    }
+let flyerQueue = [], flyerActive = 0, revenueTimer, revenueGeneration = 0, eventLoadGeneration = 0;
+function pumpCardFlyers() {
+  if (document.querySelector('#events-index')?.hidden) return;
+  while (flyerActive < 2 && flyerQueue.length) {
+    const { image, uid } = flyerQueue.shift();
+    if (!image.isConnected || user?.uid !== uid || image.closest('#event-history') && !image.closest('#event-history').open) { delete image.dataset.loading; continue; }
+    flyerActive++;
+    (async () => {
+      try {
+        const blob = await api('staff/card-flyer', { eventId: image.dataset.cardFlyer }, true);
+        if (!image.isConnected || user?.uid !== uid) return;
+        const url = URL.createObjectURL(blob); image.onload = image.onerror = () => URL.revokeObjectURL(url); image.src = url;
+      } catch { if (image.isConnected && user?.uid === uid) image.remove(); }
+      finally { flyerActive--; pumpCardFlyers(); }
+    })();
   }
-  await Promise.all([next(), next()]);
 }
+function loadCardFlyers(cards) {
+  const uid = user?.uid;
+  flyerQueue = flyerQueue.filter(job => job.image.isConnected && job.uid === uid);
+  for (const image of cards.querySelectorAll('[data-card-flyer]')) {
+    if (image.hasAttribute('src') || image.dataset.loading || image.closest('#event-history') && !image.closest('#event-history').open) continue;
+    image.dataset.loading = 'true'; flyerQueue.push({ image, uid });
+  }
+  // One shared queue bounds requests across catalog refreshes and history.
+  pumpCardFlyers();
+}
+function stopRevenueRefresh() { clearTimeout(revenueTimer); return ++revenueGeneration; }
+const revenueViewActive = () => !!user && !record && !allOrdersMode && document.querySelector('#events-index')?.hidden === false;
+const eventScope = list => JSON.stringify(list.map(e => [e.id, e.revision, e.status, e.roles]).sort((a, b) => String(a[0]).localeCompare(String(b[0]))));
+const cardRevenue = revenue => revenue?.ready ? '<span>This week <b>' + money(revenue.thisWeek) + '</b></span><span>Total gross <b>' + money(revenue.gross) + '</b></span>' : revenue ? '<span>Preparing revenue…</span>' : '';
+function renderIndexRevenue() {
+  const weekly = document.querySelector('#weekly-revenue'), financial = events.filter(e => e.revenue?.ready), preparing = events.some(e => e.revenue && !e.revenue.ready);
+  weekly.hidden = !financial.length && !preparing;
+  weekly.innerHTML = '<div class="ticket-stat-grid weekly-stat-grid">' + [['This week', 'thisWeek'], ['Last week', 'lastWeek'], ['Total gross revenue', 'gross']].map(([label, key]) => '<div class="ticket-stat"><span>' + label + '</span><strong>' + money(financial.reduce((n, e) => n + e.revenue[key], 0)) + '</strong></div>').join('') + '</div><p class="revenue-note">Paid gross sales · Monday–Sunday in each event’s timezone · before refunds, tax and fees</p>';
+  weekly.querySelector('.weekly-stat-grid').hidden = preparing;
+  if (preparing) weekly.insertAdjacentHTML('beforeend', '<p role="status">Revenue history is being prepared.</p>');
+  weekly.insertAdjacentHTML('beforeend', '<button class="button button-quiet" data-index-revenue-refresh>Refresh totals</button>');
+  weekly.querySelector('[data-index-revenue-refresh]').onclick = e => action(e.currentTarget, () => refreshIndexRevenue(stopRevenueRefresh(), 2000));
+  const byId = new Map(events.map(e => [e.id, e]));
+  for (const card of document.querySelectorAll('#events-index [data-open-event]')) {
+    const revenue = byId.get(card.dataset.openEvent)?.revenue, slot = card.querySelector('.card-revenue');
+    if (slot) { slot.hidden = !revenue; slot.innerHTML = cardRevenue(revenue); }
+  }
+}
+function scheduleRevenueRefresh(generation = revenueGeneration, delay = 2000) {
+  clearTimeout(revenueTimer);
+  if (!revenueViewActive() || !events.some(e => e.revenue && !e.revenue.ready)) return;
+  revenueTimer = setTimeout(() => action(null, () => refreshIndexRevenue(generation, delay)), delay);
+}
+async function refreshIndexRevenue(generation, delay) {
+  if (generation !== revenueGeneration || !revenueViewActive()) return;
+  const uid = user.uid, result = await api('staff/events', { revenue: true });
+  if (generation !== revenueGeneration || user?.uid !== uid || !revenueViewActive()) return;
+  if (result.admin !== globalAdmin || eventScope(result.events) !== eventScope(events)) { await loadEvents(); return; }
+  events = result.events; renderIndexRevenue();
+  // Revenue updates preserve artwork, card focus and downloads. Back off while
+  // large historical summaries are still being prepared.
+  scheduleRevenueRefresh(generation, Math.min(30000, delay * 2));
+}
+window.addEventListener('pluto-auth', stopRevenueRefresh);
 function eventGroup(event, now = Date.now()) {
   if (['archived', 'cancelled'].includes(event.status)) return event.status;
   return event.status === 'published' && Date.parse(event.endAt) <= now ? 'completed' : 'current';
 }
 function eventCard(event) {
   const status = eventGroup(event) === 'completed' ? 'completed' : event.status;
-  return `<button class="admin-event-card ${event.flyer ? 'has-flyer' : ''}" data-open-event="${esc(event.id)}">${event.flyer ? `<img class="admin-card-flyer" data-card-flyer="${esc(event.id)}" alt="Flyer for ${esc(event.title)}">` : ''}<span class="status-pill status-${esc(status)}">${esc(status)}</span><span class="event-card-date">${esc(new Date(event.startAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: event.timezone }))}</span><strong>${esc(event.title)}</strong><span>${esc(event.city || 'Location to be announced')}${event.region ? `, ${esc(event.region)}` : ''}</span>${event.revenue ? `<span class="card-revenue"><span>This week <b>${money(event.revenue.thisWeek)}</b></span><span>Total gross <b>${money(event.revenue.gross)}</b></span></span>` : ''}<span class="card-action">View dashboard <span aria-hidden="true">↗</span></span></button>`;
+  return `<button class="admin-event-card ${event.flyer ? 'has-flyer' : ''}" data-open-event="${esc(event.id)}">${event.flyer ? `<img class="admin-card-flyer" data-card-flyer="${esc(event.id)}" alt="Flyer for ${esc(event.title)}">` : ''}<span class="status-pill status-${esc(status)}">${esc(status)}</span><span class="event-card-date">${esc(new Date(event.startAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: event.timezone }))}</span><strong>${esc(event.title)}</strong><span>${esc(event.city || 'Location to be announced')}${event.region ? `, ${esc(event.region)}` : ''}</span><span class="card-revenue" ${event.revenue ? '' : 'hidden'}>${cardRevenue(event.revenue)}</span><span class="card-action">View dashboard <span aria-hidden="true">↗</span></span></button>`;
 }
 function bindEventCards(root) {
   root.querySelectorAll('[data-open-event]').forEach(button => { button.onclick = () => action(button, () => selectEvent(button.dataset.openEvent)); });
@@ -123,7 +169,10 @@ function defaultDraft() {
     pools: [{ id: 'admission', name: 'General admission', capacity: 200 }], offers: [{ id: 'general', name: 'General admission', description: '', kind: 'admission', unitAmount: 4000, maxPerOrder: 10, salesStart, salesEnd: endAt, validFrom: startAt, validUntil: endAt, active: true, pools: { admission: 1 }, requiresOfferIds: [], taxCode: '', stripeProductId: '', stripeTaxRateIds: [] }], promos: [], tax: { mode: 'sandbox', confirmed: false, performanceLocationId: '' } };
 }
 export async function loadEvents() {
-  const result = await api('staff/events', { revenue: true }); events = result.events; globalAdmin = result.admin;
+  const uid = user?.uid, generation = ++eventLoadGeneration; stopRevenueRefresh();
+  const result = await api('staff/events', { revenue: true });
+  if (generation !== eventLoadGeneration || user?.uid !== uid) return result;
+  events = result.events; globalAdmin = result.admin;
   document.querySelector('#orders-all').hidden = !globalAdmin || allOrdersMode;
   document.querySelector('#system-health').hidden = !globalAdmin;
   healthBadge();
@@ -139,15 +188,13 @@ export async function loadEvents() {
     document.querySelector('#current-events-count').textContent = `${currentEvents.length} ${currentEvents.length === 1 ? 'event' : 'events'}`;
     cards.innerHTML = currentEvents.length ? currentEvents.map(eventCard).join('') : '<div class="empty-state"><h3>Your next event starts here.</h3><p>Create an event, add the artwork and ticket types, then publish when you’re ready.</p></div>';
     renderEventHistory();
-    const weekly = document.querySelector('#weekly-revenue'), financial = events.filter(e => e.revenue);
-    weekly.hidden = !financial.length;
-    weekly.innerHTML = `<div class="ticket-stat-grid weekly-stat-grid">${[['This week', 'thisWeek'], ['Last week', 'lastWeek'], ['Total gross revenue', 'gross']].map(([label, key]) => `<div class="ticket-stat"><span>${label}</span><strong>${money(financial.reduce((n, e) => n + e.revenue[key], 0))}</strong></div>`).join('')}</div><p class="revenue-note">Paid gross sales · Monday–Sunday in each event’s timezone · before refunds, tax and fees</p>`;
+    renderIndexRevenue();
     bindEventCards(cards);
     const requested = new URLSearchParams(location.search).get('event');
     if (!record && requested && events.some(e => e.id === requested) && document.querySelector('#event-workspace')?.hidden) await selectEvent(requested, new URLSearchParams(location.search).get('view') === 'studio');
     else if (!record && globalAdmin && new URLSearchParams(location.search).get('view') === 'orders') await showAllOrders();
     else if (!record && globalAdmin && new URLSearchParams(location.search).get('view') === 'health') await showHealth();
-    if (!document.querySelector('#events-index').hidden) loadCardFlyers(cards);
+    if (!document.querySelector('#events-index').hidden) { loadCardFlyers(cards); scheduleRevenueRefresh(); }
   }
   message(allOrdersMode ? 'Orders across all events are ready.' : result.admin ? 'Choose an event to open its dashboard.' : 'Your assigned events are ready.');
   return result;
@@ -376,28 +423,36 @@ function render() {
 }
 async function dashboard() {
   const eventId = document.querySelector('#staff-event').value; if (!eventId) throw new Error('Choose an event first.');
-  const data = await api('staff/orders', { eventId }), { paid, gross, tax, refunds, fees, pendingFees, provisional, proceeds, discounts } = financialSummary(data.orders);
+  const data = await api('staff/performance', { eventId }), { gross, tax, refunds, fees, pendingFees, provisional, proceeds, discounts } = data.summary;
   const root = document.querySelector('#event-dashboard');
-  if (record?.draft.registrationMode === 'free' && !data.orders.length) {
+  if (record?.draft.registrationMode === 'free' && !data.summary.orderCount && data.summary.ready) {
     root.innerHTML = '<h2>Event overview</h2><p>Free entry — guests can simply show up. No ticket or RSVP is required.</p><nav class="studio-navigation" aria-label="Event dashboard sections"><a href="#event-guestlist">Guest list</a><a href="#event-ticket-settings">Event setup</a></nav><section id="event-guestlist" aria-label="Event guest list"></section><section id="event-ticket-settings" aria-label="Event setup"></section>';
     render(); await adminGuestList(root.querySelector('#event-guestlist'), eventId); return;
   }
-  root.innerHTML = `<h2>Orders & event performance</h2>${provisional ? `<p role="status">Proceeds are provisional.${pendingFees ? ` Stripe fees are still pending for ${pendingFees} paid order${pendingFees === 1 ? '' : 's'}.` : ''} Payment reviews and unmapped refunds must be resolved before final reconciliation.</p>` : ''}<div class="ticket-stat-grid">${[['Paid orders', paid.length], ['Tickets issued', paid.reduce((n, o) => n + o.units.length, 0)], ['Gross sales', money(gross)], ['Discounts', money(discounts)], ['Inclusive tax', money(tax)], ['Refunds (including unmapped)', money(refunds)], [pendingFees ? 'Confirmed Stripe payment fees' : 'Stripe payment fees', money(fees)], [provisional ? 'Provisional proceeds before operating costs' : 'Proceeds before operating costs', money(proceeds)], ['Cash sales', money(paid.filter(o => o.method === 'cash').reduce((n, o) => n + o.total, 0))], ['Comps', paid.filter(o => o.method === 'comp').length]].map(([label, value]) => `<div class="ticket-stat"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('')}</div>
+  root.innerHTML = `<h2>Orders & event performance</h2>${provisional ? `<p role="status">Proceeds are provisional.${pendingFees ? ` Stripe fees are still pending for ${pendingFees} paid order${pendingFees === 1 ? '' : 's'}.` : ''} Payment reviews and unmapped refunds must be resolved before final reconciliation.</p>` : ''}<div class="ticket-stat-grid">${[['Paid orders', data.summary.paidOrders], ['Tickets issued', data.summary.tickets], ['Gross sales', money(gross)], ['Discounts', money(discounts)], ['Inclusive tax', money(tax)], ['Refunds (including unmapped)', money(refunds)], [pendingFees ? 'Confirmed Stripe payment fees' : 'Stripe payment fees', money(fees)], [provisional ? 'Provisional proceeds before operating costs' : 'Proceeds before operating costs', money(proceeds)], ['Cash sales', money(data.summary.cash)], ['Comps', data.summary.comps]].map(([label, value]) => `<div class="ticket-stat"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('')}</div>
   <h3>Inventory</h3>${data.pools.map(p => `<p>${esc(p.name)}: ${p.sold} sold · ${p.held} reserved · ${p.capacity - p.sold - p.held} available</p>`).join('')}
   ${record ? '<nav class="studio-navigation" aria-label="Event dashboard sections"><a href="#event-rsvps">RSVPs</a><a href="#event-guestlist">Guest list</a><a href="#event-order-list">Orders</a><a href="#event-ticket-settings">Ticketing setup</a></nav><section id="event-rsvps" aria-label="Event RSVPs"></section><section id="event-guestlist" aria-label="Event guest list"></section>' : ''}<section id="event-order-list" aria-label="Event orders"></section>${record ? '<section id="event-ticket-settings" aria-label="Event ticketing setup"></section>' : ''}`;
   const graph = document.createElement('section'); graph.className = 'revenue-panel'; graph.setAttribute('aria-label', 'Revenue tracking'); root.querySelector('.ticket-stat-grid').before(graph);
-  revenueChart(graph, data.orders, record?.draft.timezone || events.find(e => e.id === eventId)?.timezone || 'America/New_York');
-  eventOrders(root.querySelector('#event-order-list'), data.orders, {
+  root.querySelector('h2').insertAdjacentHTML('afterend', `<div class="ticket-toolbar"><button class="button button-quiet" id="performance-refresh">Refresh performance</button><span>${data.summary.updatedAt ? `Summary updated ${esc(new Date(data.summary.updatedAt).toLocaleString())}. Recent payments may take a few seconds to appear.` : 'Waiting for revenue summary.'}</span></div>`);
+  root.querySelector('#performance-refresh').onclick = e => action(e.currentTarget, dashboard);
+  revenueChart(graph, data.summary.revenue, data.summary.revenue.timezone);
+  if (!data.summary.ready) {
+    graph.hidden = true; root.querySelector('.ticket-stat-grid').hidden = true;
+    root.querySelector('h2').insertAdjacentHTML('afterend', '<p role="status">Revenue history is being prepared in the background. <button class="button button-quiet" id="summary-refresh">Refresh totals</button></p>');
+    root.querySelector('#summary-refresh').onclick = e => action(e.currentTarget, dashboard);
+    setTimeout(() => { if (document.querySelector('#staff-event').value === eventId && !studio && root.querySelector('#summary-refresh')?.isConnected) action(null, dashboard); }, 2000);
+  }
+  await eventOrders(root.querySelector('#event-order-list'), eventId, {
     refresh: dashboard, openEvent: selectEvent,
     exportOrders: async () => download(await api('staff/export', { eventId }, true), 'Pluto-orders.csv'),
-    retry: globalAdmin ? async () => { const result = await api('staff/retry', { eventId }); await dashboard(); message(`Retry finished: ${result.orders || 0} orders checked.`); } : undefined,
+    retry: globalAdmin ? async () => { await api('staff/retry', { eventId }); message('Recovery queued. Check System health for progress.'); } : undefined,
   });
   if (record) render();
   if (record) {
-    const showRsvps = ['rsvp', 'rsvp-approval'].includes(record.draft.registrationMode) || data.orders.some(o => o.method === 'rsvp');
+    const showRsvps = ['rsvp', 'rsvp-approval'].includes(record.draft.registrationMode) || data.summary.rsvpTotal > 0;
     root.querySelector('#event-rsvps').hidden = !showRsvps;
     root.querySelector('a[href="#event-rsvps"]').hidden = !showRsvps;
-    adminRsvps(root.querySelector('#event-rsvps'), eventId, data.orders, dashboard);
+    if (showRsvps) await adminRsvps(root.querySelector('#event-rsvps'), eventId, data.summary, dashboard);
   }
   if (record) await adminGuestList(root.querySelector('#event-guestlist'), eventId);
 }

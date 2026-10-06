@@ -3,7 +3,7 @@ import { FieldPath } from 'firebase-admin/firestore';
 import { Rsvps } from './rsvps';
 import { cart, email, fail, hash, id, integer, receipt, secret, text, type EventDraft } from './domain';
 import { currentWaitlistOffer, waitlistEligible } from './waitlist-hold';
-import { rotatingBatch } from './worker-batch';
+import { processBatch, WorkBudget } from './worker-batch';
 
 export class Waitlists extends Rsvps {
   async joinWaitlist(raw: any, actor: DecodedIdToken | null) {
@@ -87,16 +87,19 @@ export class Waitlists extends Rsvps {
       return true;
     });
   }
-  async waitlistMaintenance() {
-    const expired = await this.db.collection('ticketingWaitlist').where('status', '==', 'offered').where('offerExpiresAt', '<=', Date.now()).orderBy('offerExpiresAt').limit(100).get();
-    for (const doc of expired.docs) await this.expireWaitlist(doc.id, false, doc.data().offerAttempt);
-    const offered = await rotatingBatch(this.db, 'ticketingWaitlist', ['offered'], 100);
-    for (const doc of offered.docs) {
+  async waitlistMaintenance(budget = new WorkBudget()) {
+    const offered = processBatch(this.db, 'ticketingWaitlist', ['offered'], 100, async doc => {
       const e = doc.data(), event = (await this.event(e.eventId).get()).data(), draft = event?.liveDraft as EventDraft;
       if (!currentWaitlistOffer(e, draft, event?.status)) await this.expireWaitlist(doc.id, false, e.offerAttempt);
-    }
-    const waiting = await rotatingBatch(this.db, 'ticketingWaitlist', ['waiting', 'approved'], 100);
-    for (const doc of [...waiting.docs].sort((a, b) => a.data().createdAt - b.data().createdAt || a.id.localeCompare(b.id))) await this.offerWaitlist(doc.id);
-    return offered.size + waiting.size;
+    }, budget);
+    // offerWaitlist enforces FIFO inside its capacity transaction. The scan
+    // cursor stays in document order so a partial pass cannot skip recipients.
+    const waiting = processBatch(this.db, 'ticketingWaitlist', ['waiting', 'approved'], 100, async doc => { await this.offerWaitlist(doc.id); }, budget);
+    const results = await Promise.allSettled([offered, waiting]);
+    let processed = 0;
+    for (const result of results) if (result.status === 'fulfilled') processed += result.value.processed;
+    const failure = results.find(result => result.status === 'rejected');
+    if (failure?.status === 'rejected') throw failure.reason;
+    return processed;
   }
 }

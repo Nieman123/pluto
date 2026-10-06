@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { allMedia, fail, hash, id, integer, publicEvent, text, validateDraft, type EventDraft } from './domain';
 import { baseUrl, isLive } from './config';
 import { storageBucket } from '../deployment-config';
-import { revenueSummary } from './revenue';
+import { financialSummary } from './financial-projection';
 import { publicationNotice } from './event-notice';
 
 export class Catalog {
@@ -38,9 +38,9 @@ export class Catalog {
     const events = snapshot ? snapshot.docs : (await Promise.all(scopes.map(s => this.event(s.eventId).get()))).filter(d => d.exists);
     return { admin, events: await Promise.all(events.map(async d => { const e = d.data()!, roles = admin ? ['manager', 'cash', 'refund', 'admission'] : scopes.find(s => s.eventId === d.id)?.roles || [];
       const financial = includeRevenue && roles.some((r: string) => ['manager', 'cash', 'refund'].includes(r));
-      const orders = financial ? (await this.db.collection('ticketingOrders').where('eventId', '==', d.id).get()).docs.map(o => o.data()) : [];
+      const summary = financial ? await financialSummary(this.db, d.id, e.draft.timezone, 14) : null;
       return { id: d.id, title: e.draft.title, slug: e.draft.slug, publishedSlug: e.status !== 'draft' ? e.publishedSlug || '' : '', startAt: e.draft.startAt, endAt: (e.status === 'published' ? e.liveDraft || e.draft : e.draft).endAt, city: e.draft.city, region: e.draft.region, timezone: e.draft.timezone, flyer: !!e.draft.flyer?.assetId,
-        ...(financial ? { revenue: revenueSummary(orders, e.draft.timezone) } : {}), registrationMode: (e.liveDraft || e.draft).registrationMode || 'tickets', status: e.status, revision: e.revision, roles }; })) };
+        ...(financial ? { revenue: { ...summary!.revenue, ready: summary!.ready, updatedAt: summary!.updatedAt } } : {}), registrationMode: (e.liveDraft || e.draft).registrationMode || 'tickets', status: e.status, revision: e.revision, roles }; })) };
   }
   async cardFlyer(eventId: string, uid: string) {
     await this.role(uid, eventId, ['manager', 'cash', 'refund', 'admission', 'promoter']);

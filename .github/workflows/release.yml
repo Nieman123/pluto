@@ -120,7 +120,7 @@ jobs:
       - name: Deploy coordinated backend, workers, client and access rules
         # Acknowledge the webhook/email workers' intentional retry policies in CI.
         # Keep function targets explicit; --force also accepts implicit deletions.
-        run: npx --yes firebase-tools@15.32.1 deploy --config firebase.release.json --only firestore:rules,storage,functions:publicSite,functions:ticketingWebhookWorker,functions:ticketingEmailWorker,functions:ticketingMaintenance,hosting --project "$DEPLOY_PROJECT_ID" --non-interactive --force
+        run: npx --yes firebase-tools@15.32.1 deploy --config firebase.release.json --only firestore:rules,storage,functions:publicSite,functions:ticketingWebhookWorker,functions:ticketingEmailWorker,functions:ticketingFinancialWorker,functions:ticketingFinancialBackfillWorker,functions:ticketingCampaignWorker,functions:ticketingRecoveryWorker,functions:ticketingMaintenance,functions:ticketingCommunicationMaintenance,functions:ticketingEmailMaintenance,hosting --project "$DEPLOY_PROJECT_ID" --non-interactive --force
       - name: Verify deployed identity, pages and environment isolation
         run: node scripts/release/smoke.mjs
       - name: Mark deployment successful

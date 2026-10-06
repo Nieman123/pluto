@@ -91,4 +91,17 @@ test('release adds required indexes without forcing deletion of existing indexes
   const indexDeploys = deployments.filter(command => command.includes('firestore:indexes'));
   assert.equal(indexDeploys.length, 1); assert.match(indexDeploys[0], /--non-interactive/); assert.doesNotMatch(indexDeploys[0], /--force/);
   assert.ok(deployments.some(command => command.includes('functions:ticketingMaintenance') && command.includes('--force')));
+  for (const name of ['ticketingFinancialWorker', 'ticketingFinancialBackfillWorker', 'ticketingCampaignWorker', 'ticketingRecoveryWorker', 'ticketingCommunicationMaintenance', 'ticketingEmailMaintenance']) {
+    assert.ok(deployments.some(command => command.includes(`functions:${name}`)), `Release includes ${name}`);
+  }
+});
+
+test('current and past events reach the server through Firebase Hosting and release probes', async () => {
+  const config = JSON.parse(await readFile('firebase.json', 'utf8'));
+  for (const path of ['/events', '/past-events']) {
+    const rewrite = config.hosting.rewrites.find(rule => rule.source === path);
+    assert.deepEqual(rewrite?.function, { functionId: 'publicSite', region: 'us-central1' }, `${path} must reach publicSite`);
+  }
+  const smoke = await readFile('scripts/release/smoke.mjs', 'utf8');
+  assert.match(smoke, /'\/past-events'/, 'Release must check the deployed archive route');
 });

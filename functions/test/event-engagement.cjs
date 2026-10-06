@@ -4,6 +4,11 @@ const { harness } = require('./ticketing-harness.cjs');
 const { hash } = require('../lib/ticketing/domain');
 const verified = email => ({ uid: `verified_${hash(email).slice(0, 20)}`, email, email_verified: true });
 async function offerToken(h, entryId) { return (await h.db.collection('ticketingEmailJobs').where('entryId', '==', entryId).get()).docs.find(d => d.data().type === 'waitlist-offer').data().token; }
+async function runCampaignWorkers(h, eventId) {
+  for (const doc of (await h.db.collection('ticketingCampaigns').where('eventId', '==', eventId).where('status', '==', 'pending').get()).docs) {
+    while ((await doc.ref.get()).data().status === 'pending') await h.service.campaignPage(doc.id);
+  }
+}
 
 async function emailRecoveryTest(run) {
   // Maintenance scans every queue. Earlier suites intentionally retain fake
@@ -36,11 +41,17 @@ test('maintenance recovers four existing reminder jobs with long IDs and never s
   }
   sends = [];
   await h.service.communicationMaintenance();
+  await runCampaignWorkers(h, eid);
   const jobs = (await h.db.collection('ticketingEmailJobs').where('eventId', '==', eid).where('type', '==', 'campaign').get()).docs;
   assert.equal(jobs.length, 4);
   for (const job of jobs) { assert.equal(job.id.length, 138); assert.equal(job.data().attempts, 0); }
   const summary = await h.service.maintenance();
-  assert.equal(summary.errors, 0); assert.equal(sends.length, 4);
+  assert.equal(summary.errors, 0);
+  // A concurrent payment check may temporarily defer delivery; it must never
+  // cancel an otherwise valid recipient. Recover after that check finishes.
+  for (const job of jobs) if ((await job.ref.get()).data().status === 'pending') await job.ref.update({ retryAt: 0 });
+  await h.service.maintenance('emails');
+  assert.equal(sends.length, 4);
   assert.deepEqual(sends.map(s => s.headers['Idempotency-Key']).sort(), jobs.map(j => `pluto-${j.id}`).sort());
   for (const job of jobs) assert.equal((await job.ref.get()).data().status, 'sent');
   const health = await h.service.health(h.staff, true);
@@ -82,7 +93,7 @@ test('a malformed queued job is recorded without stopping maintenance or another
     assert.equal(summary.errors, 1); assert.equal(sends.length, 1);
     assert.match((await invalid.get()).data().lastWorkerError, /email job identifier/);
     assert.equal((await h.db.collection('ticketingEmailJobs').doc(`receipt_${order.orderId}`).get()).data().status, 'sent');
-    assert.ok((await h.service.health(h.staff, true)).issues.some(i => i.id === 'maintenance-errors'), 'the bad record remains visible as an operator alert');
+    assert.ok((await h.service.health(h.staff, true)).issues.some(i => i.id === 'maintenance-emails-errors'), 'the bad record remains visible as an operator alert');
   } finally { await invalid.delete(); }
 }));
 
@@ -158,6 +169,7 @@ test('scheduled reminders and location notices deduplicate; cancellation reaches
     const eid = await h.event(d => { d.startAt = new Date(Date.now() + 23 * 3600000).toISOString(); d.admissionStartsAt = d.startAt; d.offers.forEach(o => { o.validFrom = d.startAt; }); d.venueRevealScheduled = true; d.venueRevealAt = new Date(Date.now() - 1000).toISOString(); });
     const raw = h.request(eid), order = await h.service.checkout(raw, null); await h.pay(order.orderId);
     await h.service.communicationMaintenance(); await h.service.communicationMaintenance();
+    await runCampaignWorkers(h, eid);
     const notices = (await h.db.collection('ticketingCampaigns').where('eventId', '==', eid).get()).docs;
     assert.deepEqual(notices.map(n => n.data().kind).sort(), ['event-location', 'event-reminder']);
     for (const notice of notices) { const jobs = (await h.db.collection('ticketingEmailJobs').where('campaignId', '==', notice.id).get()).docs; assert.equal(jobs.length, 1); const payload = await h.service.engagementEmail(jobs[0].data()); assert.ok(payload); assert.ok(!payload.text.includes('123 Hidden Lane')); }
