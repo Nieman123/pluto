@@ -1,5 +1,5 @@
 import { signingMaterial, type SigningMaterial } from './config';
-import { readCredential, signCredential } from './signing';
+import { CredentialKeyUnavailable, readCredential, signCredential } from './signing';
 import { fail } from './domain';
 
 export interface OfflineItem {
@@ -16,5 +16,8 @@ export function readOfflineItem(proof: unknown, key?: SigningMaterial): OfflineI
     const item = readCredential('PLUTO-OFFLINE', proof, material) as OfflineItem;
     if (!/^[a-f0-9]{64}$/.test(item.leaseHash) || typeof item.eventId !== 'string' || typeof item.id !== 'string' || !['ticket', 'guest'].includes(item.kind) || !Number.isInteger(item.version) || item.version < 1 || !Number.isFinite(Date.parse(item.validFrom)) || !Number.isFinite(Date.parse(item.validUntil))) throw new Error();
     return item;
-  } catch { return fail('Invalid offline preparation proof.', 400); }
+  } catch (error) {
+    if (error instanceof CredentialKeyUnavailable) return fail('Invalid offline preparation proof. Its signing key is no longer accepted; prepare the scanner again.', 409, 'offline-key-unavailable');
+    return fail('Invalid offline preparation proof.', 400);
+  }
 }

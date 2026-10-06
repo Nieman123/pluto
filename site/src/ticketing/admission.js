@@ -1,8 +1,10 @@
 import { BrowserQRCodeReader } from '@zxing/browser';
-import { action, api, bind, esc, message, scannerSession, setScannerSession, user } from './api.js';
+import { action, api, bind, dialog, download, esc, message, scannerSession, setScannerSession, user } from './api.js';
 import { doorGuestList } from './guestlist.js';
 import { attendancePanel } from './event-tools.js';
 import { importVerificationKeys, verifyTicketQr } from './verification.js';
+import { holdUnresolvedScans, isUnavailableKey } from './rotation-recovery.js';
+import { openOrder } from './orders.js';
 let manifest, verificationKeys, cameraControls, scanning = false;
 let feedbackTimer, cameraLastQr = '', cameraLastSeenAt = 0;
 const eventId = () => document.querySelector('#staff-event').value;
@@ -131,6 +133,7 @@ export async function restoreManifest(selected = eventId()) {
   const session = await dbOperation('state', 'readonly', s => s.get('session'));
   manifest = await dbOperation('state', 'readonly', s => s.get(`manifest-${selected}`));
   if (manifest?.staffUid !== session?.uid || !manifest?.leaseToken || !manifest?.offlineUntil || manifest.offlineUntil <= recordedTime()) manifest = null;
+  if (manifest) manifest = holdUnresolvedScans(manifest, await dbOperation('queue', 'readonly', s => s.getAll()));
   verificationKeys = manifest ? await importVerificationKeys(manifest) : null;
   if (session) await dbOperation('state', 'readwrite', s => s.put({ ...session, selected }, 'session'));
   await showConflicts();
@@ -153,7 +156,7 @@ async function loadDoorGuests() {
     // New or edited guests need a new preparation proof before offline check-in.
     manifest.guests = (manifest.guests || []).flatMap(prepared => {
       const latest = guests.find(g => g.id === prepared.id && g.version === prepared.version);
-      return latest ? [{ ...latest, itemProof: prepared.itemProof }] : [];
+      return latest ? [{ ...latest, itemProof: prepared.itemProof, reviewPending: prepared.reviewPending }] : [];
     }); await dbOperation('state', 'readwrite', s => s.put(manifest, `manifest-${selected}`));
   }
   const pending = (await dbOperation('queue', 'readonly', s => s.getAll())).filter(s => s.eventId === selected && s.kind === 'guest');
@@ -184,6 +187,7 @@ async function offlineGuestArrival(guestId, scanId) {
   guest.arrived = arrival; return { result: 'accepted', name: guest.name, offline: true };
 }
 async function arriveGuest(guestId) {
+  if (manifest?.eventId === eventId() && manifest.guests?.some(g => g.id === guestId && g.reviewPending)) throw new Error('This guest has an unresolved offline arrival. Ask an event manager to review it.');
   const scanId = crypto.randomUUID(); let result;
   if (!navigator.onLine) result = await offlineGuestArrival(guestId, scanId);
   else {
@@ -197,6 +201,8 @@ async function showConflicts() {
   if (!root) { root = Object.assign(document.createElement('div'), { id: 'admission-conflicts' }); document.querySelector('#admission-results').after(root); }
   const session = await dbOperation('state', 'readonly', s => s.get('session')), canManage = !scannerSession && session?.uid === user?.uid && session?.events.some(e => e.id === eventId() && e.canManage);
   document.querySelector('#admission-manager-import').hidden = !canManage;
+  const archiveButton = document.querySelector('#admission-archive-reviewed');
+  if (archiveButton) archiveButton.hidden = !canManage || !(await dbOperation('queue', 'readonly', s => s.getAll())).some(s => s.eventId === eventId() && s.keyRotationBlocked);
   let records = (await dbOperation('state', 'readonly', s => s.getAll())).filter(s => s.scanId && s.eventId === eventId() && s.result);
   if (canManage && navigator.onLine && eventId()) {
     const server = await api('staff/offline-conflicts', { eventId: eventId() });
@@ -224,6 +230,7 @@ async function offlineScan(qr, scanId) {
   const session = await offlineSession();
   if (!manifest || manifest.eventId !== eventId() || !verificationKeys) throw new Error('This event has no prepared offline manifest.');
   const token = await verifyTicketQr(qr, verificationKeys), ticket = manifest.tickets.find(t => t.id === token.id);
+  if (ticket?.reviewPending) throw new Error('This ticket has an unresolved offline admission. Ask an event manager to review it.');
   if (token.eventId !== eventId() || !ticket?.itemProof || ticket.version !== token.version || ticket.status !== 'valid') throw new Error('Ticket is not valid in the prepared manifest. Refresh it online if the ticket is new or transferred.');
   if (recordedTime() < Date.parse(ticket.validFrom) || recordedTime() > Date.parse(ticket.validUntil)) throw new Error('Ticket is outside its admission window.');
   if (ticket.admitted) return { result: 'duplicate', name: ticket.name, holderName: ticket.holderName };
@@ -231,7 +238,7 @@ async function offlineScan(qr, scanId) {
   await new Promise((resolve, reject) => {
     const transaction = db.transaction(['state', 'queue'], 'readwrite'), state = transaction.objectStore('state'), queued = transaction.objectStore('queue');
     const request = state.get(`manifest-${eventId()}`);
-    request.onsuccess = () => { const current = request.result, unit = current?.tickets.find(t => t.id === token.id); if (!unit || unit.admitted || current.staffUid !== session.uid || current.leaseToken !== manifest.leaseToken || current.offlineUntil <= recordedTime()) { transaction.abort(); return; } unit.admitted = true; const parent = current.tickets.find(t => t.id === unit.rsvpTicketId); if (parent) parent.admitted = true; state.put(current, `manifest-${eventId()}`); queued.add({ scanId, eventId: eventId(), qr, ticketId: ticket.id, deviceTime: recordedTime(), leaseToken: manifest.leaseToken, itemProof: ticket.itemProof, staffUid: session.uid }); };
+    request.onsuccess = () => { const current = request.result, unit = current?.tickets.find(t => t.id === token.id); if (!unit || unit.admitted || current.staffUid !== session.uid || current.leaseToken !== manifest.leaseToken || current.offlineUntil <= recordedTime()) { transaction.abort(); return; } unit.admitted = true; const parent = current.tickets.find(t => t.id === unit.rsvpTicketId); if (parent) parent.admitted = true; state.put(current, `manifest-${eventId()}`); queued.add({ scanId, eventId: eventId(), qr, ticketId: ticket.id, orderId: ticket.orderId || '', holderName: ticket.holderName, name: ticket.name, deviceTime: recordedTime(), leaseToken: manifest.leaseToken, itemProof: ticket.itemProof, staffUid: session.uid }); };
     transaction.oncomplete = () => { db.close(); resolve(); }; transaction.onabort = () => { db.close(); reject(new Error('This ticket was already admitted locally.')); }; transaction.onerror = () => { db.close(); reject(transaction.error); };
   });
   ticket.admitted = true; const parent = manifest.tickets.find(t => t.id === ticket.rsvpTicketId); if (parent) parent.admitted = true; return { result: 'accepted', name: ticket.name, holderName: ticket.holderName, offline: true };
@@ -243,6 +250,12 @@ async function scan(qr) {
   clearScanFeedback();
   try {
     if (!eventId()) throw new Error('Choose an event first.');
+    // This is a conservative local hold, never a substitute for signature verification.
+    if (manifest?.eventId === eventId() && typeof qr === 'string' && qr.length <= 3000) {
+      let claimed;
+      try { claimed = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(qr.split('.')[1].replaceAll('-', '+').replaceAll('_', '/')), c => c.charCodeAt(0)))); } catch { /* The server/verifier rejects malformed QRs. */ }
+      if (claimed?.eventId === eventId() && manifest.tickets.some(t => t.id === claimed.id && t.reviewPending)) throw new Error('This ticket has an unresolved offline admission. Ask an event manager to review it.');
+    }
     const scanId = crypto.randomUUID(); let result;
     if (!navigator.onLine) result = await offlineScan(qr, scanId);
     else {
@@ -270,15 +283,24 @@ async function scan(qr) {
     throw error;
   } finally { setTimeout(() => { scanning = false; }, 1800); }
 }
-async function replay() {
+async function replay({ allowKeyRefresh = false } = {}) {
   if (!navigator.onLine) throw new Error('Connect to the internet to replay queued scans.');
   const session = await dbOperation('state', 'readonly', s => s.get('session'));
   const uid = admissionUid();
   if (!uid || session?.uid !== uid) throw new Error('Use the scanner PIN or staff account that prepared these scans.');
-  const queue = await dbOperation('queue', 'readonly', s => s.getAll()); let conflicts = 0, accepted = 0;
+  const queue = await dbOperation('queue', 'readonly', s => s.getAll()); let conflicts = 0, accepted = 0, held = 0;
   for (const item of queue.filter(i => i.eventId === eventId())) {
-    if (item.staffUid !== uid) throw new Error('This queue belongs to another scanner PIN or staff account. Use that access to sync it.');
-    const result = await api(item.kind === 'guest' ? 'staff/guestlist/arrive' : 'staff/scan', { ...item, offline: true });
+    let result;
+    try {
+      if (item.staffUid !== uid) {
+        if (!allowKeyRefresh) throw new Error('This queue belongs to another scanner PIN or staff account. Use that access to sync it.');
+        held++; await dbOperation('queue', 'readwrite', s => s.put({ ...item, keyRotationBlocked: true, reviewReason: 'Scanner access changed; organizer review required.' })); continue;
+      }
+      result = await api(item.kind === 'guest' ? 'staff/guestlist/arrive' : 'staff/scan', { ...item, offline: true });
+    } catch (error) {
+      if (!allowKeyRefresh || !isUnavailableKey(error)) throw error;
+      held++; await dbOperation('queue', 'readwrite', s => s.put({ ...item, keyRotationBlocked: true, reviewReason: error.message })); continue;
+    }
     if (result.result !== 'accepted') {
       conflicts++; const root = document.querySelector('#admission-results'), row = document.createElement('p'); row.textContent = `Review offline conflict ${item.ticketId}: ${result.result}`; root.prepend(row);
       await dbOperation('state', 'readwrite', s => s.put({ ...item, result, reviewed: false }, `conflict-${item.scanId}`));
@@ -286,10 +308,45 @@ async function replay() {
     await dbOperation('queue', 'readwrite', s => s.delete(item.scanId));
   }
   message(`Synced ${accepted} admissions. ${conflicts} conflicts require staff review.`); await showConflicts(); await cacheStatus(); await loadDoorGuests();
+  return { held };
+}
+function reviewRecord(record) {
+  const ticket = manifest?.eventId === record.eventId ? manifest.tickets.find(t => t.id === record.ticketId) : null;
+  return { ...record, ...(ticket ? { orderId: record.orderId || ticket.orderId || '', currentHolderName: ticket.holderName, currentTicketType: ticket.name } : {}) };
 }
 export function initAdmission() {
   if (!document.querySelector('#admission-form')) return;
   bind('#admission-feedback-close', clearScanFeedback);
+  bind('#admission-export', async () => {
+    const session = await dbOperation('state', 'readonly', s => s.get('session'));
+    const manager = !scannerSession && !!user && !!session && session.uid === user.uid && session.events.some(e => e.id === eventId() && e.canManage);
+    const records = [...await dbOperation('queue', 'readonly', s => s.getAll()), ...await dbOperation('state', 'readonly', s => s.getAll())]
+      .filter(s => s.scanId && s.eventId === eventId() && (manager || s.staffUid === admissionUid())).map(reviewRecord);
+    if (!records.length) throw new Error('There are no retained offline scans for this event.');
+    download(new Blob([JSON.stringify({ version: 1, eventId: eventId(), exportedAt: new Date().toISOString(), records }, null, 2)], { type: 'application/json' }), `pluto-offline-review-${eventId()}.json`);
+  });
+  bind('#admission-archive-reviewed', async () => {
+    const selected = eventId(), records = (await dbOperation('queue', 'readonly', s => s.getAll())).filter(s => s.eventId === selected && s.keyRotationBlocked).map(reviewRecord);
+    if (!records.length) return;
+    const content = dialog(`<h2>Archive reviewed offline scans</h2><p>Reconcile these ${records.length} scans in the order dashboard or guest list first. Record who was admitted or rejected, then archive this device's retained records.</p>${records.map(record => `<p>${esc(record.holderName || record.currentHolderName || record.name || record.ticketId)} ${record.orderId ? `<button class="button button-quiet" type="button" data-review-order="${esc(record.orderId)}">Review order</button>` : `<a class="button button-quiet" target="_blank" rel="noopener" href="/tickets/admin?event=${encodeURIComponent(selected)}">Review event dashboard</a>`}</p>`).join('')}<form id="archive-offline-form"><label>Organizer review note<textarea name="note" maxlength="500" required></textarea></label><button class="button button-primary">Archive reviewed scans</button></form>`);
+    content.querySelectorAll('[data-review-order]').forEach(button => button.onclick = () => action(button, () => openOrder(button.dataset.reviewOrder, { refresh: showConflicts })));
+    content.querySelector('form').onsubmit = event => { event.preventDefault(); action(event.submitter, async () => {
+      const note = new FormData(event.target).get('note').trim(); if (!note) throw new Error('Add an organizer review note.');
+      const managerUid = user?.uid; if (!managerUid || scannerSession) throw new Error('Sign in as an event manager to archive reviewed records.');
+      await api('staff/offline-conflicts', { eventId: selected }); // Fresh manager authorization; this grants no admission.
+      if (user?.uid !== managerUid || scannerSession) throw new Error('Manager access changed. Sign in again before recording this review.');
+      const db = await store();
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(['state', 'queue'], 'readwrite');
+        for (const record of records) {
+          tx.objectStore('state').put({ ...record, result: { result: 'organizer-reviewed' }, reviewed: true, note, reviewedBy: managerUid, reviewedAt: Date.now() }, `conflict-${record.scanId}`);
+          tx.objectStore('queue').delete(record.scanId);
+        }
+        tx.oncomplete = () => { db.close(); resolve(); }; tx.onerror = tx.onabort = () => { db.close(); reject(tx.error || new Error('The offline review could not be saved.')); };
+      });
+      document.querySelector('#ticketing-dialog').close(); await restoreManifest(); message('Reviewed device records archived. Admission remains recorded in the order dashboard.');
+    }); };
+  });
   bind('#admission-manager-import', async () => {
     if (!navigator.onLine || !user || scannerSession) throw new Error('Sign in as an event manager online to review this device’s queue.');
     const queue = (await dbOperation('queue', 'readonly', s => s.getAll())).filter(item => item.eventId === eventId());
@@ -300,8 +357,8 @@ export function initAdmission() {
   });
   bind('#admission-sync', async () => {
     if (!eventId()) throw new Error('Choose an event first.');
-    await replay(); const latest = await api('staff/manifest', { eventId: eventId() }); latest.deviceClockOffsetMs = latest.generatedAt - Date.now(); await dbOperation('state', 'readwrite', s => s.put(latest, `manifest-${eventId()}`)); await restoreManifest();
-    await navigator.serviceWorker.register('/tickets/admission-sw.js', { scope: '/tickets/' }); message(`Admission is prepared for offline use${scannerSession ? ' for up to 4 hours' : ''}. Keep this device signed in and use one offline lane.`);
+    const recovery = await replay({ allowKeyRefresh: true }); const latest = await api('staff/manifest', { eventId: eventId() }); latest.deviceClockOffsetMs = latest.generatedAt - Date.now(); await dbOperation('state', 'readwrite', s => s.put(latest, `manifest-${eventId()}`)); await restoreManifest();
+    await navigator.serviceWorker.register('/tickets/admission-sw.js', { scope: '/tickets/' }); message(`Admission is prepared for offline use${scannerSession ? ' for up to 4 hours' : ''}.${recovery.held ? ` ${recovery.held} previous scan${recovery.held === 1 ? ' is' : 's are'} retained for organizer review. Download the records; these attendees remain blocked on this device until reviewed.` : ' Keep this device signed in and use one offline lane.'}`);
   });
   bind('#admission-replay', replay);
   document.querySelector('#admission-form').onsubmit = event => { event.preventDefault(); action(event.submitter, () => scan(new FormData(event.target).get('qr'))); };

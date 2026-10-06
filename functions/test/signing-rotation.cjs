@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const { generateKeyPairSync, randomBytes, randomUUID } = require('node:crypto');
 const { harness } = require('./ticketing-harness.cjs');
 const { keyPair } = require('../lib/ticketing/signing');
-const { readTicket } = require('../lib/ticketing/config');
+const { readTicket, signTicket } = require('../lib/ticketing/config');
 const { Operations } = require('../lib/ticketing/operations');
 
 test('staged rotation keeps paid tickets, legacy PINs, existing sessions and offline replay intact', async () => {
@@ -23,6 +23,8 @@ test('staged rotation keeps paid tickets, legacy PINs, existing sessions and off
     const current = (await rotated.view(result.orderId, raw.accessKey, null)).tickets;
     assert.deepEqual(current.map(t => [t.id, readTicket(t.qr, { privateKey: k2, keyring: ring }).version, t.admission]), oldTickets.map(t => [t.id, readTicket(t.qr, h.signingKey).version, t.admission]));
     assert.ok(current.every(t => t.qr.startsWith('PLUTO2.')));
+    const otherEvent = await h.event(), forged = signTicket({ ...readTicket(current[0].qr, { privateKey: k2, keyring: ring }), eventId: otherEvent }, { privateKey: k2, keyring: ring });
+    assert.equal((await rotated.scan(otherEvent, forged, randomUUID(), h.staff)).result, 'invalid', 'even a cryptographically signed claim must match the ticket and order event in the ledger');
     assert.equal((await rotated.scannerSession(oldLogin.token)).eventId, eid);
     assert.equal((await rotated.scannerLogin(oldPin.pin, `${h.prefix}_rotate`)).eventId, eid);
     assert.equal((await rotated.scannerPins(eid, h.staff)).legacyPinsRemaining, 0);
