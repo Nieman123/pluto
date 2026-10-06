@@ -36,6 +36,8 @@ Flutter push permission prompts/token registration are disabled in staging and d
 
 Optional delivery monitoring: leave `TICKETING_RESEND_WEBHOOK_ENABLED` unset/false until the selected project's `RESEND_WEBHOOK_SECRET` and runtime access are configured. Set it to true only in that GitHub environment, then release. It adds the signing secret solely to `publicSite`; wallet credentials remain separately optional. Follow [ticketing operations setup](ticketing-operations.md) for the endpoint, delivery tests and Cloud Monitoring notification channels.
 
+Optional signing-key rotation: leave `TICKETING_KEY_ROTATION_ENABLED` unset/false for the compatibility release. Enable it separately per environment only after provisioning `TICKETING_VERIFICATION_KEYRING` and `TICKETING_SCANNER_PIN_KEYS`. Follow the [signing-key rotation runbook](ticket-signing-key-rotation.md) to distribute both verifiers before switching the active signer; do not simply replace `TICKETING_SIGNING_KEY`.
+
 Create environments named **`staging`** and **`production`** in repository Settings → Environments. Restrict deployment branches to selected branch **`main` only** for both. Protect production with required reviewers, **prevent self-review**, and disable administrator bypass. The production preflight verifies those settings and fails closed if they are unavailable. GitHub plan/repository visibility affects reviewer protection availability; confirm the repository supports it before a production release. [GitHub environment settings](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments).
 
 Set these values **inside each environment**, not globally:

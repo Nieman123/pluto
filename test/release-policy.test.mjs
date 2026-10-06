@@ -65,11 +65,15 @@ test('production accepts only completed staging release evidence for the exact c
 });
 test('CI browser runner refuses cloud endpoints and discards payment and email credentials', () => {
   const input = { GCLOUD_PROJECT: 'demo-pluto-ticketing', FIRESTORE_EMULATOR_HOST: '127.0.0.1:8185', FIREBASE_AUTH_EMULATOR_HOST: '127.0.0.1:9095', FIREBASE_STORAGE_EMULATOR_HOST: '127.0.0.1:9295',
-    STRIPE_RESTRICTED_KEY: 'sk_live_mustNotBeInherited', RESEND_API_KEY: 'real-key-placeholder' };
+    STRIPE_RESTRICTED_KEY: 'sk_live_mustNotBeInherited', RESEND_API_KEY: 'real-key-placeholder',
+    TICKETING_VERIFICATION_KEYRING: 'real-keyring-placeholder', TICKETING_SCANNER_PIN_KEYS: 'real-pin-key-placeholder' };
   const output = browserEnvironment(input);
   assert.equal(output.STRIPE_RESTRICTED_KEY, ciStripeFixture); assert.equal(output.RESEND_API_KEY, undefined);
   assert.ok(output.TICKETING_SIGNING_KEY); assert.equal(output.TICKETING_MODE, 'test');
   assert.notEqual(browserEnvironment(input).TICKETING_SIGNING_KEY, output.TICKETING_SIGNING_KEY);
+  assert.equal(output.TICKETING_KEY_ROTATION_ENABLED, 'true');
+  assert.notEqual(output.TICKETING_VERIFICATION_KEYRING, input.TICKETING_VERIFICATION_KEYRING);
+  assert.notEqual(output.TICKETING_SCANNER_PIN_KEYS, input.TICKETING_SCANNER_PIN_KEYS);
   for (const change of [{ GCLOUD_PROJECT: projects.production }, { FIREBASE_AUTH_EMULATOR_HOST: 'remote:9095' }, { FIREBASE_STORAGE_EMULATOR_HOST: '' }]) {
     assert.throws(() => browserEnvironment({ ...input, ...change }));
   }

@@ -2,7 +2,8 @@ import { BrowserQRCodeReader } from '@zxing/browser';
 import { action, api, bind, esc, message, scannerSession, setScannerSession, user } from './api.js';
 import { doorGuestList } from './guestlist.js';
 import { attendancePanel } from './event-tools.js';
-let manifest, verificationKey, cameraControls, scanning = false;
+import { importVerificationKeys, verifyTicketQr } from './verification.js';
+let manifest, verificationKeys, cameraControls, scanning = false;
 let feedbackTimer, cameraLastQr = '', cameraLastSeenAt = 0;
 const eventId = () => document.querySelector('#staff-event').value;
 const scannerStorage = 'pluto-scanner-session';
@@ -53,7 +54,7 @@ export async function cacheStaffEvents(result, uid, expiresAt = Date.now() + 24 
 export async function lockOfflineAdmission(clearCachedSession = true) {
   clearScanFeedback(); cameraLastQr = ''; cameraLastSeenAt = 0;
   document.querySelector('#ticketing-dialog')?.close(); document.querySelector('#ticketing-dialog-content')?.replaceChildren();
-  cameraControls?.stop(); cameraControls = null; manifest = null; verificationKey = null;
+  cameraControls?.stop(); cameraControls = null; manifest = null; verificationKeys = null;
   if (clearCachedSession) await dbOperation('state', 'readwrite', s => s.delete('session'));
   document.querySelector('#staff-controls').hidden = true;
   document.querySelector('#admission-video').hidden = true;
@@ -130,7 +131,7 @@ export async function restoreManifest(selected = eventId()) {
   const session = await dbOperation('state', 'readonly', s => s.get('session'));
   manifest = await dbOperation('state', 'readonly', s => s.get(`manifest-${selected}`));
   if (manifest?.staffUid !== session?.uid || !manifest?.leaseToken || !manifest?.offlineUntil || manifest.offlineUntil <= recordedTime()) manifest = null;
-  verificationKey = manifest ? await crypto.subtle.importKey('jwk', manifest.verificationKey, { name: 'Ed25519' }, false, ['verify']) : null;
+  verificationKeys = manifest ? await importVerificationKeys(manifest) : null;
   if (session) await dbOperation('state', 'readwrite', s => s.put({ ...session, selected }, 'session'));
   await showConflicts();
   await cacheStatus();
@@ -219,13 +220,10 @@ async function showConflicts() {
     await api('staff/offline-resolve', { eventId: eventId(), scanId, decision, note }); await showConflicts(); await loadDoorGuests(); message('Recorded admission resolved with an audit record.');
   }
 }
-function bytes(encoded) { return Uint8Array.from(atob(encoded.replaceAll('-', '+').replaceAll('_', '/')), c => c.charCodeAt(0)); }
 async function offlineScan(qr, scanId) {
   const session = await offlineSession();
-  if (!manifest || manifest.eventId !== eventId() || !verificationKey) throw new Error('This event has no prepared offline manifest.');
-  const [prefix, data, signature, extra] = qr.split('.');
-  if (prefix !== 'PLUTO1' || extra || !await crypto.subtle.verify('Ed25519', verificationKey, bytes(signature), new TextEncoder().encode(data))) throw new Error('Invalid ticket signature.');
-  const token = JSON.parse(new TextDecoder().decode(bytes(data))), ticket = manifest.tickets.find(t => t.id === token.id);
+  if (!manifest || manifest.eventId !== eventId() || !verificationKeys) throw new Error('This event has no prepared offline manifest.');
+  const token = await verifyTicketQr(qr, verificationKeys), ticket = manifest.tickets.find(t => t.id === token.id);
   if (token.eventId !== eventId() || !ticket?.itemProof || ticket.version !== token.version || ticket.status !== 'valid') throw new Error('Ticket is not valid in the prepared manifest. Refresh it online if the ticket is new or transferred.');
   if (recordedTime() < Date.parse(ticket.validFrom) || recordedTime() > Date.parse(ticket.validUntil)) throw new Error('Ticket is outside its admission window.');
   if (ticket.admitted) return { result: 'duplicate', name: ticket.name, holderName: ticket.holderName };

@@ -26,6 +26,7 @@ const runtime = {
   TICKETING_WALLETS_ENABLED: 'false', TICKETING_STORAGE_BUCKET: settings.web.storageBucket, WAIVER_STORAGE_BUCKET: settings.web.storageBucket,
   STRIPE_PUBLISHABLE_KEY: process.env.DEPLOY_STRIPE_PUBLISHABLE_KEY,
   TICKETING_RESEND_WEBHOOK_ENABLED: process.env.DEPLOY_RESEND_WEBHOOK_ENABLED === 'true' ? 'true' : 'false',
+  TICKETING_KEY_ROTATION_ENABLED: process.env.DEPLOY_KEY_ROTATION_ENABLED === 'true' ? 'true' : 'false',
 };
 // Non-secret parameters only. Signing/provider secrets stay in this project's Secret Manager.
 await writeFile(resolve('functions', `.env.${settings.projectId}`), dotenvParameters(runtime));

@@ -2,6 +2,8 @@
 
 Current cross-codebase follow-up: [October 6 review](codebase-review-2026-10-06.md). It identifies campaign delivery delays, missing time-based reminder expiry, maintenance budget risks, key rotation, dashboard scaling and the solo-maintainer production approval constraint. The checkpoints below retain their original verification scope.
 
+Signing-key rotation follow-up: source now supports versioned credentials, overlapping public verifiers, independent scanner PIN secrets with legacy migration, and emergency revocation for QR/proof verification and offline conflict confirmation. Compatibility mode preserves the existing deployment without new secrets. Provisioning and staged cloud activation remain pending; follow the [rotation runbook](ticket-signing-key-rotation.md) and rehearse in staging before changing production keys.
+
 The subsequent worker-recovery change implements the first three source remediations, including preservation of recipients during concurrent payment checks. See the [worker deployment and acceptance instructions](ticketing-operations.md). Past public events also move to `/past-events`. These changes require a staging release before cloud behavior can be verified.
 
 ## Staging maintenance incident — October 5, 2026
