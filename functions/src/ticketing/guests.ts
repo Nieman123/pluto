@@ -59,7 +59,7 @@ export class Guests extends Orders {
       else if (guest.arrival) result = 'duplicate';
       else if (evidence?.rejection) result = evidence.rejection;
       const record = { kind: 'guest', guestId, ticketId: `guest_${guestId}`, name: guest?.name || '', ...access, uid: evidence?.originUid || access.uid, at, syncedAt: Date.now(), offline, result,
-        ...(evidence ? { offlineLeaseHash: evidence.leaseHash, offlineVersion: evidence.version, offlineProofVerified: evidence.verified, submittedBy: access.uid } : {}) };
+        ...(evidence ? { offlineLeaseHash: evidence.leaseHash, offlineVersion: evidence.version, offlineProofVerified: evidence.verified, offlineKeyId: evidence.keyId, submittedBy: access.uid } : {}) };
       tx.create(scanRef, record);
       if (result === 'accepted') tx.update(guestRef, { arrival: { ...access, scanId: scanRef.id, at, offline } });
       return record;

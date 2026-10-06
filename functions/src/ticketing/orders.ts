@@ -5,7 +5,9 @@ import { FieldPath, Timestamp, type Firestore, type Transaction } from 'firebase
 import { Catalog } from './catalog';
 import { orderPage } from './order-page';
 import { financialSummary } from './financial-projection';
-import { apiVersion, appTicketsUrl, baseUrl, isLive, keyPair, readTicket, signTicket, stripeClient } from './config';
+import { assertSigningConfigured, apiVersion, appTicketsUrl, baseUrl, isLive, readTicket, signTicket, stripeClient, signingMaterial, verificationKeys, scannerPinKeys, type SigningMaterial } from './config';
+import { validatePinKeys, type ScannerPinKeys } from './pin-keys';
+import { assertVerificationKeyAccepted, credentialKeyId } from './signing';
 import { assertCapacity, cart, email, fail, hash, holderVenue, id, integer, receipt, secret, text, ticketId, type EventDraft, type Unit } from './domain';
 import { scannerAccess, type ScannerProof } from './scanner-access';
 import { guestEntry } from './guest-entry';
@@ -30,11 +32,17 @@ export interface Order {
   rsvpOrderId?: string; rsvpTicketId?: string; rsvpTicketVersion?: number;
   taxTransactionId?: string; taxCustomerAddress?: { country: string; state: string; postal_code: string; line1: string; city: string } | null;
 }
-type Dependencies = { stripe?: Stripe; signingKey?: string };
+type Dependencies = { stripe?: Stripe; signingKey?: SigningMaterial; scannerPinKeys?: ScannerPinKeys };
 export class Orders extends Catalog {
   constructor(db?: Firestore, private dependencies: Dependencies = {}) { super(db); }
   stripe() { return this.dependencies.stripe || stripeClient(); }
   signing() { return this.dependencies.signingKey; }
+  pinKeys(): ScannerPinKeys | undefined {
+    if (this.dependencies.scannerPinKeys) return validatePinKeys(this.dependencies.scannerPinKeys);
+    if (!scannerPinKeys || this.dependencies.signingKey !== undefined) return undefined;
+    try { return validatePinKeys(JSON.parse(scannerPinKeys.value())); }
+    catch { return fail('Scanner PIN keys are not configured correctly.', 503); }
+  }
   order(orderId: string) { return this.db.collection('ticketingOrders').doc(id(orderId)); }
   tickets() { return this.db.collection('ticketingTickets'); }
   protected async validUpgradeParent(tx: Transaction, upgrade: any) {
@@ -114,7 +122,7 @@ export class Orders extends Catalog {
     const requestHash = hash(JSON.stringify({ eventId, items: raw.items, promoCode: raw.promoCode || '', ...contact, method, ...(raw.waitlistToken ? { waitlist: hash(receipt(raw.waitlistToken)) } : {}), ...(raw.rsvpUpgradeToken ? { rsvpUpgrade: hash(receipt(raw.rsvpUpgradeToken)) } : {}),
       ...(method !== 'stripe' ? { cashReceived: raw.cashReceived || 0, reason: raw.reason || '', taxState: raw.taxState || '', taxPostalCode: raw.taxPostalCode || '', taxCity: raw.taxCity || '', taxLine1: raw.taxLine1 || '' } : {}) }));
     // Configuration fails before inventory is reserved or payment is accepted.
-    keyPair(this.signing()); if (method === 'stripe') this.stripe();
+    assertSigningConfigured(this.signing()); if (method === 'stripe') this.stripe();
     if (method !== 'stripe') await this.role(staffUid, eventId, ['cash']);
     const now = Date.now();
     let preflightRevision: number | undefined;
@@ -574,14 +582,14 @@ export class Orders extends Catalog {
     return { uid: identity };
   }
   protected async offlineEvidence(tx: Transaction, eventId: string, uid: string, raw: OfflineSubmission | undefined, kind: 'ticket' | 'guest', itemId: string, version: number, managerReview = false) {
-    if (!raw?.leaseToken || !raw.itemProof) return { at: Date.now(), rejection: 'offline-unverified', verified: false, leaseHash: '', version, originUid: uid };
+    if (!raw?.leaseToken || !raw.itemProof) return { at: Date.now(), rejection: 'offline-unverified', verified: false, leaseHash: '', version, originUid: uid, keyId: null };
     const leaseHash = hash(receipt(raw.leaseToken)), item = readOfflineItem(raw.itemProof, this.signing());
     if (item.leaseHash !== leaseHash || item.eventId !== eventId || item.kind !== kind || item.id !== itemId || item.version !== version) fail('Offline item does not match its prepared manifest.', 409);
     const lease = (await tx.get(this.db.collection('ticketingOfflineLeases').doc(leaseHash))).data();
     if (!lease || lease.eventId !== eventId || (!managerReview && lease.uid !== uid)) fail('Offline preparation belongs to a different scanner or event.', 403);
     const at = integer(raw.deviceTime, 'recorded admission time', 0, Number.MAX_SAFE_INTEGER);
     if (at < lease.generatedAt || at > lease.offlineUntil || at > Date.now() + 120000 || at < Date.parse(item.validFrom) || at > Date.parse(item.validUntil)) fail('Recorded admission is outside the authenticated preparation or admission window.', 409);
-    return { at, rejection: managerReview ? 'offline-manager-review' : Date.now() > lease.replayUntil ? 'offline-replay-expired' : '', verified: true, leaseHash, version, originUid: lease.uid as string };
+    return { at, rejection: managerReview ? 'offline-manager-review' : Date.now() > lease.replayUntil ? 'offline-replay-expired' : '', verified: true, leaseHash, version, originUid: lease.uid as string, keyId: credentialKeyId(signingMaterial(this.signing()), item.kid) };
   }
   async scan(eventId: string, qr: unknown, scanId: unknown, identity: string | ScannerProof, offline = false, details?: OfflineSubmission, managerReview = false, source: 'qr' | 'order-dashboard' = 'qr') {
     if (typeof identity === 'string') await this.role(identity, eventId, managerReview ? ['manager'] : ['manager', 'admission']);
@@ -605,7 +613,7 @@ export class Orders extends Catalog {
       else if (ticket.admission) result = 'duplicate';
       else if (evidence?.rejection) result = evidence.rejection;
       const record = { ticketId: parsed.id, rsvpTicketId: order?.rsvpTicketId || '', ...access, uid: evidence?.originUid || uid, result, at, syncedAt: Date.now(), offline, name: ticket?.name || '', holderName: ticket?.holderName || order?.name || '', source,
-        ...(evidence ? { offlineLeaseHash: evidence.leaseHash, offlineVersion: evidence.version, offlineProofVerified: evidence.verified, submittedBy: uid } : {}) };
+        ...(evidence ? { offlineLeaseHash: evidence.leaseHash, offlineVersion: evidence.version, offlineProofVerified: evidence.verified, offlineKeyId: evidence.keyId, ticketKeyId: credentialKeyId(signingMaterial(this.signing()), parsed.kid), submittedBy: uid } : {}) };
       tx.create(scanRef, record); if (result === 'accepted') tx.update(ticketRef, { admission: { at, ...access, scanId: key, offline } });
       if (result === 'accepted' && parentTicket && !parentTicket.admission) tx.update(this.tickets().doc(order!.rsvpTicketId), { admission: { at, ...access, scanId: key, offline, viaUpgradeTicketId: parsed.id } });
       if (result === 'accepted' && source === 'order-dashboard') tx.create(this.event(eventId).collection('audit').doc(), { action: 'ticket-manually-checked-in', orderId: ticket!.orderId, ticketId: parsed.id, scanId: key, uid, at });
@@ -635,7 +643,7 @@ export class Orders extends Catalog {
       tx.create(this.db.collection('ticketingOfflineLeases').doc(leaseHash), { eventId, uid: current.uid, generatedAt, offlineUntil, replayUntil: offlineUntil + 48 * 3600000, expiresAt: Timestamp.fromMillis(offlineUntil + 7 * 86400000) });
     });
     const guestValidFrom = draft?.admissionStartsAt || '', guestValidUntil = draft ? new Date(Date.parse(draft.endAt) + 6 * 3600000).toISOString() : '';
-    return { eventId, staffUid: access.uid, offlineUntil, generatedAt, leaseToken, verificationKey: keyPair(this.signing()).jwk,
+    return { eventId, staffUid: access.uid, offlineUntil, generatedAt, leaseToken, ...verificationKeys(signingMaterial(this.signing())),
       guests: guests.docs.filter(d => !d.data().deletedAt && !['cancelled', 'archived'].includes(event?.status)).map(d => ({ ...guestEntry(d.id, d.data()), itemProof: signOfflineItem({ leaseHash, eventId, id: d.id, kind: 'guest', version: d.data().version, validFrom: guestValidFrom, validUntil: guestValidUntil }, this.signing()) })), guestValidFrom, guestValidUntil,
       tickets: tickets.docs.map(t => { const d = t.data(), status = ['cancelled', 'archived'].includes(event?.status) || blocked.has(d.orderId) || unavailableUpgrades.has(d.orderId) ? 'invalid' : d.status; return { id: t.id, version: d.version, status, name: d.name, holderName: d.holderName || orderNames.get(d.orderId) || '', rsvpTicketId: d.rsvpTicketId || '', validFrom: d.validFrom, validUntil: d.validUntil, admitted: !!d.admission,
         itemProof: status === 'valid' ? signOfflineItem({ leaseHash, eventId, id: t.id, kind: 'ticket', version: d.version, validFrom: d.validFrom, validUntil: d.validUntil }, this.signing()) : '' }; }) };
@@ -669,6 +677,9 @@ export class Orders extends Catalog {
       if (scan.result === 'accepted') fail('This admission is already recorded.', 409);
       const event = (await tx.get(this.event(eventId))).data(), draft = event?.liveDraft || event?.draft;
       if (decision === 'confirm') {
+        const material = signingMaterial(this.signing());
+        assertVerificationKeyAccepted(material, scan.offlineKeyId);
+        if (scan.kind !== 'guest') assertVerificationKeyAccepted(material, scan.ticketKeyId);
         if (!scan.offlineProofVerified || !draft || ['cancelled', 'archived'].includes(event?.status)) fail('This preparation cannot authorize an admission. Keep the conflict for review or reject it.', 409);
         const admission = { at: scan.at, uid: scan.uid, scanId: key, offline: true, resolvedBy: uid, resolvedAt: Date.now() };
         if (scan.kind === 'guest') {

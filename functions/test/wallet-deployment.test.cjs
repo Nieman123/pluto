@@ -5,7 +5,7 @@ const { resolve } = require('node:path');
 
 const ticketingSecrets = ['RESEND_API_KEY', 'STRIPE_RESTRICTED_KEY', 'STRIPE_WEBHOOK_SECRET', 'TICKETING_SIGNING_KEY'];
 
-function discover(walletFlag, deliveryFlag) {
+function discover(walletFlag, deliveryFlag, rotationFlag) {
   const env = { ...process.env, GCLOUD_PROJECT: 'pluto-staging-92eb7', PLUTO_ENVIRONMENT: 'staging',
     TICKETING_MODE: 'test', TICKETING_LIVE_READY: 'false', PUBLIC_SITE_PREVIEW: 'true',
     PLUTO_FIREBASE_WEB_CONFIG: JSON.stringify({ apiKey: 'staging-public-fixture', appId: '1:987654:web:abcdef123',
@@ -16,6 +16,8 @@ function discover(walletFlag, deliveryFlag) {
     'WAIVER_STORAGE_BUCKET']) delete env[name];
   if (walletFlag !== undefined) env.TICKETING_WALLETS_ENABLED = walletFlag;
   delete env.RESEND_WEBHOOK_SECRET; delete env.TICKETING_RESEND_WEBHOOK_ENABLED;
+  delete env.TICKETING_KEY_ROTATION_ENABLED; delete env.TICKETING_VERIFICATION_KEYRING; delete env.TICKETING_SCANNER_PIN_KEYS;
+  if (rotationFlag !== undefined) env.TICKETING_KEY_ROTATION_ENABLED = rotationFlag;
   if (deliveryFlag !== undefined) env.TICKETING_RESEND_WEBHOOK_ENABLED = deliveryFlag;
   if (walletFlag === 'true') {
     // Staging intentionally prohibits wallet exports. Check opt-in discovery in production.
@@ -46,6 +48,15 @@ test('Firebase discovery does not require wallet credentials when wallet exports
     for (const endpoint of ['publicSite', 'ticketingWebhookWorker', 'ticketingEmailWorker', 'ticketingCampaignWorker', 'ticketingRecoveryWorker', 'ticketingMaintenance', 'ticketingCommunicationMaintenance', 'ticketingEmailMaintenance']) {
       assert.deepEqual(manifest.endpoints[endpoint], ticketingSecrets);
     }
+  }
+});
+
+test('rotation discovery binds both optional migration secrets to every ticketing runtime', () => {
+  const manifest = discover('false', undefined, 'true');
+  const withRotation = [...ticketingSecrets, 'TICKETING_VERIFICATION_KEYRING', 'TICKETING_SCANNER_PIN_KEYS'].sort();
+  assert.deepEqual(manifest.params, withRotation);
+  for (const [endpoint, secrets] of Object.entries(manifest.endpoints)) {
+    if (endpoint === 'publicSite' || endpoint.startsWith('ticketing') && !endpoint.startsWith('ticketingFinancial')) assert.deepEqual(secrets, withRotation, endpoint);
   }
 });
 

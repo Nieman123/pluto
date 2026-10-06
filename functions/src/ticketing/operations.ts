@@ -1,4 +1,4 @@
-import { createHmac, randomInt, randomUUID } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { FieldPath } from 'firebase-admin/firestore';
 import { error as logError, warn as logWarning } from 'firebase-functions/logger';
@@ -6,7 +6,8 @@ import type Stripe from 'stripe';
 import { type Order } from './orders';
 import { Communications } from './communications';
 import { emailJobId, fail, hash, id, integer, receipt, secret, text, ticketId, TicketingError } from './domain';
-import { isLive, keyPair, resendKey } from './config';
+import { isLive, signingMaterial, resendKey } from './config';
+import { pinLookupHashes } from './pin-keys';
 import { scannerAccess } from './scanner-access';
 import { deploymentConfig } from '../deployment-config';
 import { legacyTicketingEmail, renderTicketingEmail, type EmailKind, type TicketingEmailInput } from './email';
@@ -23,9 +24,10 @@ export class Operations extends Communications {
     return raw.kind === 'guest' ? this.arriveGuest(eventId, id(raw.guestId), raw.scanId, uid, true, raw, true) : this.scan(eventId, raw.qr, raw.scanId, uid, true, raw, true);
   }
   scannerPinHash(pin: string) {
-    // A keyed lookup prevents a leaked database from enumerating the short PIN space.
-    const key = keyPair(this.signing()).privateKey.export({ type: 'pkcs8', format: 'der' });
-    return createHmac('sha256', key).update(`pluto-scanner-pin-v1:${pin}`).digest('hex');
+    return this.scannerPinHashes(pin)[0];
+  }
+  scannerPinHashes(pin: string) {
+    return pinLookupHashes(pin, this.pinKeys(), signingMaterial(this.signing()));
   }
   async scannerPins(eventId: string, uid: string) {
     await this.role(uid, eventId);
@@ -44,9 +46,9 @@ export class Operations extends Communications {
     if (!Number.isSafeInteger(expiresAt) || expiresAt <= Date.now() || expiresAt > end + 24 * 3600000 || expiresAt > Date.now() + 366 * 86400000) fail('Choose a future expiry within 24 hours of the event ending and within the next year.');
     const pinId = randomUUID(), ref = this.db.collection('ticketingScannerPins').doc(pinId);
     for (let attempt = 0; attempt < 5; attempt++) {
-      const pin = String(randomInt(100000000)).padStart(8, '0'), lookup = this.db.collection('ticketingScannerPinLookup').doc(this.scannerPinHash(pin));
+      const pin = String(randomInt(100000000)).padStart(8, '0'), lookups = this.scannerPinHashes(pin).map(key => this.db.collection('ticketingScannerPinLookup').doc(key)), lookup = lookups[0];
       const created = await this.db.runTransaction(async tx => {
-        if ((await tx.get(lookup)).exists) return false;
+        if ((await tx.getAll(...lookups)).some(doc => doc.exists)) return false;
         tx.create(lookup, { pinId });
         tx.create(ref, { eventId, label, expiresAt, createdAt: Date.now(), createdBy: uid, loginCount: 0 });
         tx.create(this.event(eventId).collection('audit').doc(), { action: 'scanner-pin-created', pinId, label, expiresAt, uid, at: Date.now() });
@@ -71,15 +73,21 @@ export class Operations extends Communications {
     await this.rateLimit(ip, 'scanner-login-ip', 40, 60000);
     const pin = typeof rawPin === 'string' ? rawPin.replace(/[\s-]/g, '') : '';
     if (!/^\d{8}$/.test(pin)) fail('Enter a valid 8-digit scanner PIN.', 401);
-    const lookupHash = this.scannerPinHash(pin);
+    const lookupHashes = this.scannerPinHashes(pin), lookupHash = lookupHashes[0];
     await this.rateLimit(lookupHash, 'scanner-login-pin', 20);
     const token = secret(), sessionRef = this.db.collection('ticketingScannerSessions').doc(hash(token));
     const result = await this.db.runTransaction(async tx => {
-      const lookup = (await tx.get(this.db.collection('ticketingScannerPinLookup').doc(lookupHash))).data();
+      const lookupRefs = lookupHashes.map(key => this.db.collection('ticketingScannerPinLookup').doc(key));
+      const lookups = await tx.getAll(...lookupRefs), matching = lookups.filter(doc => doc.exists);
+      // Never resolve an ambiguous short code to a different door person's access.
+      if (new Set(matching.map(doc => doc.data()!.pinId)).size > 1) fail('This scanner PIN is ambiguous. Ask your event organizer for a new PIN.', 401);
+      const lookup = matching[0]?.data();
       const pinRef = this.db.collection('ticketingScannerPins').doc(lookup?.pinId || 'missing'), p = (await tx.get(pinRef)).data();
       if (!p || p.revokedAt || p.expiresAt <= Date.now()) fail('This scanner PIN is invalid, expired or revoked. Ask your event organizer for a new PIN.', 401);
       const event = (await tx.get(this.event(p.eventId))).data();
       if (!event || ['cancelled', 'archived'].includes(event.status)) fail('This scanner PIN is invalid, expired or revoked. Ask your event organizer for a new PIN.', 401);
+      // Migrate a legacy PIN on successful use; never store the plaintext PIN.
+      if (!lookups[0].exists) tx.create(lookupRefs[0], { pinId: pinRef.id });
       const expiresAt = Math.min(p.expiresAt, Date.now() + 24 * 3600000);
       tx.create(sessionRef, { pinId: pinRef.id, eventId: p.eventId, expiresAt, createdAt: Date.now() });
       tx.update(pinRef, { loginCount: (p.loginCount || 0) + 1, lastUsedAt: Date.now() });

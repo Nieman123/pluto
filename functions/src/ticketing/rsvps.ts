@@ -3,7 +3,7 @@ import type { DocumentSnapshot, Transaction } from 'firebase-admin/firestore';
 import { Guests } from './guests';
 import type { Order } from './orders';
 import { assertCapacity, cart, email, fail, hash, id, receipt, text, ticketId, type EventDraft } from './domain';
-import { isLive, keyPair } from './config';
+import { isLive, assertSigningConfigured } from './config';
 import { randomInt } from 'node:crypto';
 import { secret } from './domain';
 import { waitlistHold, withoutWaitlistHold } from './waitlist-hold';
@@ -65,7 +65,7 @@ export class Rsvps extends Guests {
     const contact = { email: email(raw.email), name: text(raw.name, 'name', 150, true), ownerUid: actor?.uid || '' };
     if (!Array.isArray(raw.items) || raw.items.length !== 1 || raw.items[0]?.quantity !== 1 || raw.promoCode) fail('RSVP once per person. Choose one admission pass.');
     const inputHash = hash(JSON.stringify({ eventId, ...contact, offerId: id(raw.items[0].offerId), ...(raw.waitlistToken ? { waitlist: hash(receipt(raw.waitlistToken)) } : {}) }));
-    keyPair(this.signing());
+    assertSigningConfigured(this.signing());
     const previousAttempt = (await ref.get()).data();
     if (!previousAttempt) {
       const preflight = (await this.event(eventId).get()).data(), draft = preflight?.liveDraft || preflight?.draft;
@@ -110,7 +110,7 @@ export class Rsvps extends Guests {
     await this.role(uid, eventId);
     if (!['approve', 'decline'].includes(decision as string)) fail('Choose approve or decline.');
     const note = text(rawNote || '', 'decision note', 500), approved = decision === 'approve';
-    keyPair(this.signing());
+    assertSigningConfigured(this.signing());
     await this.db.runTransaction(async tx => {
       const ref = this.order(orderId), order = (await tx.get(ref)).data() as Order | undefined;
       if (!order || order.eventId !== eventId || order.method !== 'rsvp') fail('RSVP not found.', 404);

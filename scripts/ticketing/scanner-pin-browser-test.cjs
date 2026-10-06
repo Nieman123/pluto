@@ -176,9 +176,21 @@ async function scan(target, qr, expected) {
     await door.setViewportSize({ width: 1280, height: 900 }); await surface(door, 'scanner-pin-scanning-desktop');
     stage = 'PIN offline admission';
     await door.locator('#admission-sync').click(); await door.locator('#ticketing-message').filter({ hasText: 'prepared for offline use' }).waitFor();
+    let offlineQr = tickets[1].qr;
+    if (process.env.TICKETING_KEY_ROTATION_ENABLED === 'true') {
+      const payload = JSON.parse(Buffer.from(tickets[1].qr.split('.')[1], 'base64url').toString()); delete payload.kid;
+      offlineQr = backend('./lib/ticketing/config').signTicket(payload, JSON.parse(process.env.TICKETING_SCANNER_PIN_KEYS).legacySigningKey);
+      const preparedKeyCount = await door.evaluate(eventId => new Promise((resolve, reject) => {
+        const open = indexedDB.open('pluto-admission', 1); open.onerror = () => reject(open.error);
+        open.onsuccess = () => { const db = open.result, tx = db.transaction('state'), request = tx.objectStore('state').get(`manifest-${eventId}`);
+          request.onsuccess = () => { resolve(Object.keys(request.result.verificationKeys).length); db.close(); }; request.onerror = () => reject(request.error); };
+      }), eventId);
+      assert.equal(preparedKeyCount, 2, 'scanner caches both public keys for planned rotation');
+      assert.match(offlineQr, /^PLUTO1\./); assert.match(tickets[1].qr, /^PLUTO2\./);
+    }
     await door.evaluate(async () => { await navigator.serviceWorker.ready; }); await door.reload(); await door.locator('#scanner-session:not([hidden])').waitFor();
     await doorContext.setOffline(true); await door.reload(); await door.locator('#staff-controls:not([hidden])').waitFor();
-    await scan(door, tickets[1].qr, 'Offline: queued');
+    await scan(door, offlineQr, 'Offline: queued');
     assert.equal(await popup.locator('[data-scan-holder]').innerText(), 'PIN test guest');
     assert.equal(await popup.locator('[data-scan-type]').innerText(), 'Weekend');
     assert.equal(await popup.getAttribute('data-state'), 'offline');
