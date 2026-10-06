@@ -52,7 +52,10 @@ async function surface(page, name) {
     assert.equal(await guest.getByRole('button', { name: 'Claim reserved spot', exact: true }).count(), 0);
     stage = 'manager waitlist approval'; active = admin;
     await api(admin, 'staff/rsvp/withdraw', { eventId: eid, orderId: original.orderId });
-    await admin.locator('#event-waitlist').click(); await admin.locator('[data-waitlist-approve]').waitFor(); await admin.locator('[data-waitlist-approve] [name=note]').fill('Approved guest'); await admin.getByRole('button', { name: 'Approve for next available spot', exact: true }).click(); await admin.locator('#ticketing-dialog-content').filter({ hasText: 'offered' }).waitFor();
+    await admin.locator('#event-waitlist').click(); await admin.locator('[data-waitlist-approve]').waitFor(); await admin.locator('[data-waitlist-approve] [name=note]').fill('Approved guest');
+    const approved = admin.waitForResponse(r => r.url().endsWith('/tickets/api/staff/waitlist/approve'));
+    await admin.getByRole('button', { name: 'Approve for next available spot', exact: true }).click(); assert.equal((await approved).status(), 200);
+    await admin.locator('#ticketing-dialog-content .order-activity').filter({ hasText: '· offered ·' }).waitFor();
     await surface(admin, 'engagement-waitlist-admin'); await admin.locator('#ticketing-dialog-close').click();
     const entry = (await db.collection('ticketingWaitlist').where('eventId', '==', eid).get()).docs[0], offer = (await db.collection('ticketingEmailJobs').where('entryId', '==', entry.id).get()).docs.find(d => d.data().type === 'waitlist-offer').data();
     stage = 'claim into approved app ticket'; active = guest;

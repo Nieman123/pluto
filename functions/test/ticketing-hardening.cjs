@@ -192,19 +192,16 @@ test('A1: relevant unresolved ownership stays pending; unrelated provider events
 });
 
 test('A1/A7: paid-order reconciliation catches missing webhooks and late provider fees without duplicate issuance', async () => {
-  const h = harness();
+  const { initializeApp, deleteApp } = require('firebase-admin/app');
+  const projectId = `demo-paid-${require('node:crypto').randomUUID()}`, app = initializeApp({ projectId }, projectId);
+  const h = harness(require('firebase-admin/firestore').getFirestore(app));
   try {
     const eid = await h.event(), raw = h.request(eid, { items: [{ offerId: 'weekend', quantity: 2 }] }), result = await h.service.checkout(raw, null); await h.pay(result.orderId, null);
     let order = (await h.service.order(result.orderId).get()).data(); assert.equal(order.stripeFee, null); assert.equal(order.stripeFeeStatus, 'pending');
     const charge = h.charges.get(`ch_${result.orderId}`); charge.balance_transaction = { id: `txn_${h.prefix}`, fee: 660, currency: 'usd', net: order.total - 660 };
     const rid = `re_${h.prefix}`, first = (await h.service.view(result.orderId, raw.accessKey, null)).tickets[0];
     h.refunds.set(rid, { id: rid, payment_intent: order.paymentIntentId, charge: charge.id, metadata: {}, amount: first.amount, status: 'succeeded', currency: 'usd' });
-    const batches = [];
-    h.service.pendingBatch = async (collection, statuses) => {
-      batches.push(`${collection}:${statuses.join(',')}`);
-      return { docs: collection === 'ticketingOrders' && statuses.includes('paid') ? [await h.service.order(result.orderId).get()] : [] };
-    };
-    assert.equal((await h.service.maintenance()).errors, 0); assert.ok(batches.includes('ticketingOrders:paid'));
+    assert.equal((await h.service.maintenance('payments')).errors, 0);
     order = (await h.service.order(result.orderId).get()).data();
     assert.equal(order.stripeFee, 660); assert.equal(order.stripeFeeStatus, 'confirmed'); assert.equal(order.externalRefundAmount, first.amount); assert.equal(order.financialBlocked, true);
     assert.ok((await h.service.view(result.orderId, raw.accessKey, null)).tickets.every(t => !t.qr));
@@ -212,7 +209,7 @@ test('A1/A7: paid-order reconciliation catches missing webhooks and late provide
     assert.equal(order.financialBlocked, false); assert.equal(order.refundedAmount, first.amount); assert.equal(order.externalRefundAmount, 0);
     assert.equal((await h.service.tickets().where('orderId', '==', result.orderId).get()).size, 2); assert.equal((await h.service.event(eid).collection('pools').doc('friday').get()).data().sold, 1);
     charge.balance_transaction = null; await h.service.verifySession(result.orderId); assert.equal((await h.service.order(result.orderId).get()).data().stripeFee, 660, 'an unexpanded response cannot erase a confirmed fee');
-  } finally { await h.cleanup(); }
+  } finally { await h.cleanup(); await deleteApp(app); }
 });
 
 test('A1: an older verifier cannot clear the financial hold owned by a newer webhook', async () => {

@@ -390,7 +390,7 @@ async function dashboard() {
   eventOrders(root.querySelector('#event-order-list'), data.orders, {
     refresh: dashboard, openEvent: selectEvent,
     exportOrders: async () => download(await api('staff/export', { eventId }, true), 'Pluto-orders.csv'),
-    retry: globalAdmin ? async () => { const result = await api('staff/retry', { eventId }); await dashboard(); message(`Retry finished: ${result.orders || 0} orders checked.`); } : undefined,
+    retry: globalAdmin ? async () => { await api('staff/retry', { eventId }); message('Recovery queued. Check System health for progress.'); } : undefined,
   });
   if (record) render();
   if (record) {

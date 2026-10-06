@@ -15,6 +15,7 @@ import { Webhook } from 'svix';
 import { resendWebhookKey } from './config';
 import { recordDelivery } from './delivery';
 import { calendarLinks, eventCalendar } from './calendar';
+import { discoveryEvents } from './event-discovery';
 
 export function ticketingRouter(context: (path: string) => Record<string, unknown>, service = new Operations()) {
   const router = express.Router();
@@ -58,15 +59,16 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   router.get(['/tickets', '/tickets/order'], (req, res) => res.redirect(302, `/app/tickets${req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''}`));
   router.get(['/tickets/admin', '/tickets/staff'], page);
   router.get('/tickets/admission-sw.js', (_req, res) => res.type('application/javascript').set('Service-Worker-Allowed', '/tickets/').send(readFileSync(join(__dirname, 'admission-sw.js'), 'utf8')));
-  router.get('/events', async (_req, res) => {
-    const events = (await service.db.collection('publishedEvents').get()).docs.map(d => d.data()).sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt)).map(e => ({ ...e,
+  router.get(['/events', '/past-events'], async (req, res) => {
+    const past = req.path === '/past-events', path = past ? '/past-events' : '/events';
+    const events = discoveryEvents((await service.db.collection('publishedEvents').get()).docs.map(d => d.data()), past).map(e => ({ ...e,
       dateLabel: new Intl.DateTimeFormat('en-US', { timeZone: e.timezone, month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(e.startAt)),
-      saleLabel: e.status === 'cancelled' ? 'Cancelled' : e.status === 'archived' || Date.parse(e.endAt) < Date.now() ? 'Past event' : e.registrationMode === 'free' ? 'Free entry · Just show up' : e.registrationMode === 'rsvp-approval' ? 'Request RSVP' : e.registrationMode === 'rsvp' ? 'RSVP now' : 'Explore & get tickets' }));
-    res.render('native-events', { ...context('/events'), meta: { title: 'Upcoming events | Pluto Events', description: 'Dance music, community and late nights with Pluto Events.', canonical: `${baseUrl()}/events` }, events });
+      saleLabel: e.status === 'cancelled' ? 'Cancelled' : past ? 'Past event' : e.registrationMode === 'free' ? 'Free entry · Just show up' : e.registrationMode === 'rsvp-approval' ? 'Request RSVP' : e.registrationMode === 'rsvp' ? 'RSVP now' : 'Explore & get tickets' }));
+    res.render('native-events', { ...context(path), meta: { title: `${past ? 'Past' : 'Upcoming'} events | Pluto Events`, description: 'Dance music, community and late nights with Pluto Events.', canonical: `${baseUrl()}${path}` }, events, past });
   });
   router.get('/sitemap.xml', async (_req, res) => {
     const events = (await service.db.collection('publishedEvents').get()).docs.map(d => `/events/${d.data().slug}`);
-    const routes = ['/', '/manafest', '/links', '/rentals', '/events', ...events];
+    const routes = ['/', '/manafest', '/links', '/rentals', '/events', '/past-events', ...events];
     res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${routes.map(path => `<url><loc>${baseUrl()}${path}</loc></url>`).join('')}</urlset>`);
   });
   async function renderEvent(event: any, req: Request, res: Response, preview = false) {
@@ -237,7 +239,7 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   router.post('/tickets/api/staff/export', async (req, res) => { const data = await service.staffOrders(bodyId(req), actor(res).uid); res.type('text/csv').set('Content-Disposition', 'attachment; filename="Pluto-orders.csv"').send(csv([['Order', 'Buyer', 'Email', 'Status', 'Method', 'Gross cents', 'Discount cents', 'Tax cents', 'Refund cents', 'Stripe fee cents', 'Promoter'], ...data.orders.map((o: any) => [o.orderId, o.name, o.email, o.status, o.method, o.total, o.discount, o.taxAmount, o.refundedAmount, o.stripeFee, o.promoterId])])); });
   router.post('/tickets/api/staff/cash', async (req, res) => res.json(await service.checkout(req.body, null, req.body.comp === true ? 'comp' : 'cash', actor(res).uid)));
   router.post('/tickets/api/staff/cash-options', async (req, res) => { const eventId = bodyId(req); await service.role(actor(res).uid, eventId, ['cash']); const event = (await service.event(eventId).get()).data(); if (!event) fail('Event not found.', 404); res.json({ offers: (event.liveDraft || event.draft).offers.filter((o: any) => o.active), taxMode: (event.liveDraft || event.draft).tax.mode }); });
-  router.post('/tickets/api/staff/retry', async (req, res) => { await service.admin(actor(res).uid); res.json(await service.maintenance()); });
+  router.post('/tickets/api/staff/retry', async (req, res) => { await service.admin(actor(res).uid); res.json(await service.requestMaintenance()); });
   router.post('/tickets/api/staff/refund', async (req, res) => res.json(await service.refund(bodyId(req, 'orderId'), req.body.ticketIds, req.body.attempt, actor(res).uid)));
   router.post('/tickets/api/staff/refund-external', async (req, res) => res.json(await service.mapExternalRefund(bodyId(req, 'orderId'), req.body.ticketIds, actor(res).uid)));
   router.post('/tickets/api/staff/checkout-resolve', async (req, res) => res.json(await service.resolveCheckout(bodyId(req, 'orderId'), req.body.sessionId, req.body.note, actor(res).uid)));

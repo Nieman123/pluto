@@ -2,6 +2,8 @@
 
 Current cross-codebase follow-up: [October 6 review](codebase-review-2026-10-06.md). It identifies campaign delivery delays, missing time-based reminder expiry, maintenance budget risks, key rotation, dashboard scaling and the solo-maintainer production approval constraint. The checkpoints below retain their original verification scope.
 
+The subsequent worker-recovery change implements the first three source remediations, including preservation of recipients during concurrent payment checks. See the [worker deployment and acceptance instructions](ticketing-operations.md). Past public events also move to `/past-events`. These changes require a staging release before cloud behavior can be verified.
+
 ## Staging maintenance incident — October 5, 2026
 
 Read-only staging Cloud Logging and queue inspection confirmed repeated `Check identifier.` failures in `ticketingEmailWorker` and `ticketingMaintenance`. The last successful heartbeat was 8:55 PM Eastern; four event-reminder jobs queued at 9:00 PM Eastern had no provider attempts. Campaign jobs use 138-character IDs, while the shared event identifier validator allows only 80. The same validation also rejected the System health retry action. These were reminder emails, not missing receipt or ticket-issuance jobs.

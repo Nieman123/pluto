@@ -1,4 +1,5 @@
 import { createHmac, randomInt, randomUUID } from 'node:crypto';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { FieldPath } from 'firebase-admin/firestore';
 import { error as logError, warn as logWarning } from 'firebase-functions/logger';
 import type Stripe from 'stripe';
@@ -11,6 +12,9 @@ import { deploymentConfig } from '../deployment-config';
 import { legacyTicketingEmail, renderTicketingEmail, type EmailKind, type TicketingEmailInput } from './email';
 import { collectHealth } from './health';
 import { applyDelivery } from './delivery';
+import { processBatch, WorkBudget } from './worker-batch';
+
+export type MaintenanceLane = 'payments' | 'communications' | 'emails';
 
 export class Operations extends Communications {
   async submitOfflineReview(eventId: string, raw: any, uid: string) {
@@ -320,7 +324,16 @@ export class Operations extends Communications {
       tx.update(ref, { leaseUntil: Date.now() + 120000, attempts: (d.attempts || 0) + 1 }); return d;
     });
     if (!job) return;
+    const stopExpired = async () => {
+      if (!await this.campaignDeadlinePassed(job)) return false;
+      await ref.update({ status: job.firstDeliveryAt ? 'review' : 'cancelled', leaseUntil: 0,
+        ...(job.firstDeliveryAt ? {} : { emailPayload: null }),
+        lastError: job.firstDeliveryAt ? 'Notice expired after an uncertain provider attempt. Check its original provider outcome; do not resend.' : 'Notice expired before delivery.' });
+      return true;
+    };
+    let providerRetryAt = 0;
     try {
+      if (await stopExpired()) return;
       const currentOrder = job.orderId ? (await this.order(job.orderId).get()).data() : null;
       if (currentOrder && job.type !== 'transfer' && job.to !== currentOrder.email) {
         await ref.update({ status: 'cancelled', leaseUntil: 0, token: null, emailPayload: null, lastError: 'Recipient was corrected. Send a new access link to the current contact.' }); return;
@@ -329,7 +342,7 @@ export class Operations extends Communications {
       if (['campaign', 'waitlist-offer', 'checkout-expired'].includes(job.type)) {
         const eligible = await this.engagementEmail(job);
         if (!eligible) { await ref.update({ status: 'cancelled', leaseUntil: 0, token: null, emailPayload: null }); return; }
-        if (!payload) { payload = eligible; await ref.update({ emailPayload: payload }); }
+        if (!payload || !job.firstDeliveryAt) { payload = eligible; await ref.update({ emailPayload: payload }); }
       }
       if (['rsvp-verification', 'waitlist-verification'].includes(job.type)) {
         const proof = (await this.db.collection('ticketingRsvpVerification').doc(job.verificationId).get()).data();
@@ -368,9 +381,24 @@ export class Operations extends Communications {
         await ref.update({ emailPayload: payload });
       }
       const key = resendKey.value(); if (!key) fail('Email delivery is not configured yet.', 503);
+      // Coordinate triggers, scheduled recovery and manual retries. A modest
+      // two-per-second ceiling also leaves room for other Resend account use.
+      const slotRef = this.db.collection('ticketingWorkerCursors').doc('email-provider');
+      const slot = await this.db.runTransaction(async tx => {
+        const nextAt = Math.max(Date.now(), (await tx.get(slotRef)).data()?.nextAt || 0);
+        if (nextAt > Date.now() + 5000) return null;
+        tx.set(slotRef, { nextAt: nextAt + 500 }); return nextAt;
+      });
+      if (slot === null) { await ref.update({ leaseUntil: 0, retryAt: Date.now() + 10000 }); return; }
+      if (slot > Date.now()) await sleep(slot - Date.now());
+      if (await stopExpired()) return;
       if (!job.firstDeliveryAt) await ref.update({ firstDeliveryAt: Date.now() });
       const result = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', 'Idempotency-Key': `pluto-${jobId}` }, body: JSON.stringify({ from: payload.from, to: payload.to, subject: payload.subject, text: payload.text, ...(payload.html ? { html: payload.html } : {}) }), signal: AbortSignal.timeout(20000) });
-      if (!result.ok) fail('Email provider could not confirm delivery.', 503);
+      if (!result.ok) {
+        const retryAfter = Number(result.headers?.get('retry-after'));
+        if (Number.isFinite(retryAfter) && retryAfter > 0) providerRetryAt = Date.now() + Math.min(86400, retryAfter) * 1000;
+        fail('Email provider could not confirm delivery.', 503);
+      }
       const delivered = await result.json() as { id?: string };
       if (!delivered.id) fail('Email provider returned no message reference.', 503);
       await this.db.runTransaction(async tx => {
@@ -382,57 +410,83 @@ export class Operations extends Communications {
       await this.db.runTransaction(async tx => {
         const latest = (await tx.get(ref)).data();
         if (!latest || ['sent', 'cancelled', 'review'].includes(latest.status)) return;
-        tx.update(ref, { leaseUntil: 0, status: 'pending', retryAt: Date.now() + Math.min(3600000, 1000 * 2 ** Math.min(job.attempts || 0, 12)), lastError: error instanceof TicketingError ? error.message : error.name || 'unavailable' });
+        tx.update(ref, { leaseUntil: 0, status: 'pending', retryAt: Math.max(providerRetryAt, Date.now() + Math.min(3600000, 1000 * 2 ** Math.min(job.attempts || 0, 12))), lastError: error instanceof TicketingError ? error.message : error.name || 'unavailable' });
       });
     }
   }
-  async maintenance() {
-    const heartbeat = this.db.collection('ticketingHealth').doc('maintenance');
-    await heartbeat.set({ startedAt: Date.now() }, { merge: true });
+  async requestMaintenance() {
+    const batch = this.db.batch(), requestId = randomUUID();
+    for (const name of ['maintenance', 'maintenance-communications', 'maintenance-emails'])
+      batch.set(this.db.collection('ticketingHealth').doc(name), { requestId, requestedAt: Date.now() }, { merge: true });
+    await batch.commit();
+    return { queued: true };
+  }
+  async maintenance(lane?: MaintenanceLane) {
+    if (!lane) {
+      // Manual recovery retains one entry point, but no slow dependency holds
+      // another lane hostage. Each lane has its own lease and health record.
+      const results = await Promise.allSettled((['payments', 'communications', 'emails'] as const).map(value => this.maintenance(value)));
+      const summary: Record<string, number> = { errors: 0 };
+      for (const result of results) if (result.status === 'fulfilled') for (const [key, value] of Object.entries(result.value)) summary[key] = (summary[key] || 0) + value;
+      else summary.errors++;
+      await this.refreshHealth();
+      return summary;
+    }
+    const heartbeat = this.db.collection('ticketingHealth').doc(lane === 'payments' ? 'maintenance' : `maintenance-${lane}`), leaseId = randomUUID();
+    const claimed = await this.db.runTransaction(async tx => {
+      const state = (await tx.get(heartbeat)).data();
+      if (state?.leaseUntil > Date.now()) return false;
+      tx.set(heartbeat, { startedAt: Date.now(), leaseId, leaseUntil: Date.now() + 600000, splitWorkers: true }, { merge: true }); return true;
+    });
+    if (!claimed) return { errors: 0, busy: 1 };
     try {
-      const summary = await this.maintenancePass();
-      await heartbeat.set({ completedAt: Date.now(), summary, failedAt: null }, { merge: true });
+      const summary = await this.maintenancePass(lane);
+      await this.db.runTransaction(async tx => { if ((await tx.get(heartbeat)).data()?.leaseId === leaseId) tx.set(heartbeat, { completedAt: Date.now(), summary, failedAt: null, leaseUntil: 0 }, { merge: true }); });
       await this.refreshHealth(); return summary;
     } catch (error) {
-      await heartbeat.set({ failedAt: Date.now() }, { merge: true });
-      logError('Ticketing maintenance failed', { event: 'ticketing-maintenance-failed' }); throw error;
+      await this.db.runTransaction(async tx => { if ((await tx.get(heartbeat)).data()?.leaseId === leaseId) tx.set(heartbeat, { failedAt: Date.now(), leaseUntil: 0 }, { merge: true }); });
+      logError('Ticketing maintenance failed', { event: 'ticketing-maintenance-failed', lane }); throw error;
     }
   }
-  private async maintenancePass() {
-    const now = Date.now(), summary: Record<string, number> = { orders: 0, refunds: 0, webhooks: 0, emails: 0, errors: 0 };
-    const unsettled = await this.pendingBatch('ticketingOrders', ['provisioning', 'open', 'processing'], 200);
-    for (const doc of unsettled.docs) {
-      try {
+  workBudget() { return new WorkBudget(); }
+  private async maintenancePass(lane: MaintenanceLane) {
+    const summary: Record<string, number> = { orders: 0, refunds: 0, webhooks: 0, emails: 0, errors: 0, deferred: 0 };
+    const batch = async (collection: string, statuses: string[], size: number, kind: string, key: string, action: (doc: FirebaseFirestore.QueryDocumentSnapshot) => Promise<void>) => {
+      const result = await processBatch(this.db, collection, statuses, size, async doc => {
+        try { await action(doc); summary[key]++; }
+        catch (error) { summary.errors++; await this.workerFailure(doc.ref, kind, error); }
+      }, this.workBudget());
+      if (result.deferred) summary.deferred++;
+    };
+    const phases: (() => Promise<unknown>)[] = lane === 'payments' ? [
+      () => batch('ticketingOrders', ['provisioning', 'open', 'processing'], 200, 'order', 'orders', async doc => {
         const order = doc.data() as Order;
         if (order.method !== 'stripe' || order.total === 0) { await this.fulfillNonCard(doc.id, order); }
         else {
           if (!order.sessionId) await this.provision(doc.id, order);
           const session = await this.verifySession(doc.id);
           const event = (await this.event(order.eventId).get()).data();
-          if (session?.status === 'open' && (order.expiresAt <= now || event?.status !== 'published')) {
+          if (session?.status === 'open' && (order.expiresAt <= Date.now() || event?.status !== 'published')) {
             try { await this.stripe().checkout.sessions.expire(session.id); } catch { /* A concurrent successful payment can win; retrieve before releasing. */ }
             await this.verifySession(doc.id);
           }
         }
-        summary.orders++;
-      } catch (error) { summary.errors++; await this.workerFailure(doc.ref, 'order', error); }
-    }
-    const paid = await this.pendingBatch('ticketingOrders', ['paid'], 100);
-    for (const doc of paid.docs) if (doc.data().method === 'stripe' && doc.data().total > 0) {
-      try { await this.verifySession(doc.id); summary.orders++; } catch (error) { summary.errors++; await this.workerFailure(doc.ref, 'order', error); }
-    }
-    const refunds = await this.pendingBatch('ticketingRefunds', ['pending', 'processing'], 100);
-    for (const doc of refunds.docs) { try { if (doc.data().external) await this.finishRefund(doc.id, 'succeeded'); else await this.processRefund(doc.id); summary.refunds++; } catch (error) { summary.errors++; await this.workerFailure(doc.ref, 'refund', error); } }
-    const inbox = await this.pendingBatch('ticketingWebhookInbox', ['pending'], 100);
-    for (const doc of inbox.docs) if ((doc.data().retryAt || 0) <= now) { try { await this.processWebhook(doc.id); summary.webhooks++; } catch { summary.errors++; } }
-    summary.waitlists = await this.waitlistMaintenance();
-    summary.campaigns = await this.communicationMaintenance();
-    summary.checkoutFollowups = await this.checkoutFollowupMaintenance();
-    const jobs = await this.pendingBatch('ticketingEmailJobs', ['pending'], 100);
-    for (const doc of jobs.docs) {
-      try { await this.emailJob(doc.id); summary.emails++; }
-      catch (error) { summary.errors++; await this.workerFailure(doc.ref, 'email', error); }
-    }
+      }),
+      () => batch('ticketingOrders', ['paid'], 100, 'order', 'orders', async doc => { if (doc.data().method === 'stripe' && doc.data().total > 0) await this.verifySession(doc.id); }),
+      () => batch('ticketingRefunds', ['pending', 'processing'], 100, 'refund', 'refunds', async doc => { if (doc.data().external) await this.finishRefund(doc.id, 'succeeded'); else await this.processRefund(doc.id); }),
+      () => batch('ticketingWebhookInbox', ['pending'], 100, 'webhook', 'webhooks', async doc => { if ((doc.data().retryAt || 0) <= Date.now()) await this.processWebhook(doc.id); }),
+    ] : lane === 'emails' ? [
+      () => batch('ticketingEmailJobs', ['pending'], 100, 'email', 'emails', doc => this.emailJob(doc.id)),
+    ] : [
+      async () => { summary.waitlists = await this.waitlistMaintenance(this.workBudget()); },
+      async () => { summary.campaigns = await this.communicationMaintenance(this.workBudget()); },
+      async () => { const result = await this.campaignRecovery(this.workBudget()); summary.campaignRecoveries = result.processed; if (result.deferred) summary.deferred++; },
+      async () => { summary.checkoutFollowups = await this.checkoutFollowupMaintenance(this.workBudget()); },
+    ];
+    // Budgets are independent and concurrent, not cumulative. Leave ample room
+    // in the 540-second function for an in-flight SDK call to finish safely.
+    const results = await Promise.allSettled(phases.map(phase => phase()));
+    for (const result of results) if (result.status === 'rejected') { summary.errors++; logWarning('Ticketing recovery phase failed', { event: 'ticketing-worker-failed', lane, error: result.reason instanceof Error ? result.reason.name : 'Unavailable' }); }
     return summary;
   }
   private async workerFailure(ref: FirebaseFirestore.DocumentReference, kind: string, error: unknown) {

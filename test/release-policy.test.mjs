@@ -91,4 +91,7 @@ test('release adds required indexes without forcing deletion of existing indexes
   const indexDeploys = deployments.filter(command => command.includes('firestore:indexes'));
   assert.equal(indexDeploys.length, 1); assert.match(indexDeploys[0], /--non-interactive/); assert.doesNotMatch(indexDeploys[0], /--force/);
   assert.ok(deployments.some(command => command.includes('functions:ticketingMaintenance') && command.includes('--force')));
+  for (const name of ['ticketingCampaignWorker', 'ticketingRecoveryWorker', 'ticketingCommunicationMaintenance', 'ticketingEmailMaintenance']) {
+    assert.ok(deployments.some(command => command.includes(`functions:${name}`)), `Release includes ${name}`);
+  }
 });

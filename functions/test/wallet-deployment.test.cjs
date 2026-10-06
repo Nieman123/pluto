@@ -42,7 +42,7 @@ test('Firebase discovery does not require wallet credentials when wallet exports
   for (const flag of ['false', undefined]) {
     const manifest = discover(flag);
     assert.deepEqual(manifest.params, ticketingSecrets);
-    for (const endpoint of ['publicSite', 'ticketingWebhookWorker', 'ticketingEmailWorker', 'ticketingMaintenance']) {
+    for (const endpoint of ['publicSite', 'ticketingWebhookWorker', 'ticketingEmailWorker', 'ticketingCampaignWorker', 'ticketingRecoveryWorker', 'ticketingMaintenance', 'ticketingCommunicationMaintenance', 'ticketingEmailMaintenance']) {
       assert.deepEqual(manifest.endpoints[endpoint], ticketingSecrets);
     }
   }
@@ -53,12 +53,12 @@ test('Firebase discovery requires enabled wallet credentials only on the public 
   const withWallet = [...ticketingSecrets, 'TICKETING_WALLET_CREDENTIALS'].sort();
   assert.deepEqual(manifest.params, withWallet);
   assert.deepEqual(manifest.endpoints.publicSite, withWallet);
-  for (const endpoint of ['ticketingWebhookWorker', 'ticketingEmailWorker', 'ticketingMaintenance']) {
+  for (const endpoint of ['ticketingWebhookWorker', 'ticketingEmailWorker', 'ticketingCampaignWorker', 'ticketingRecoveryWorker', 'ticketingMaintenance', 'ticketingCommunicationMaintenance', 'ticketingEmailMaintenance']) {
     assert.deepEqual(manifest.endpoints[endpoint], ticketingSecrets);
   }
 });
 test('Resend webhook secret is declared only when delivery tracking is enabled', () => {
   const manifest = discover('false', 'true'), withDelivery = [...ticketingSecrets, 'RESEND_WEBHOOK_SECRET'].sort();
   assert.deepEqual(manifest.params, withDelivery); assert.deepEqual(manifest.endpoints.publicSite, withDelivery);
-  for (const endpoint of ['ticketingWebhookWorker', 'ticketingEmailWorker', 'ticketingMaintenance']) assert.deepEqual(manifest.endpoints[endpoint], ticketingSecrets);
+  for (const endpoint of ['ticketingWebhookWorker', 'ticketingEmailWorker', 'ticketingCampaignWorker', 'ticketingRecoveryWorker', 'ticketingMaintenance', 'ticketingCommunicationMaintenance', 'ticketingEmailMaintenance']) assert.deepEqual(manifest.endpoints[endpoint], ticketingSecrets);
 });

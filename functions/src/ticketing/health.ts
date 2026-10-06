@@ -1,5 +1,6 @@
 import type { Firestore } from 'firebase-admin/firestore';
 import { FieldPath } from 'firebase-admin/firestore';
+import { reconciliationPending } from './reconciliation-state';
 
 export interface HealthIssue { id: string; kind: string; severity: 'warning' | 'critical'; title: string; orderId: string; jobId?: string; at: number; detail: string; }
 const age = (now: number, at: number, minutes: number) => now - at >= minutes * 60000;
@@ -26,7 +27,8 @@ export async function collectHealth(db: Firestore, now = Date.now()) {
   const orderDocs = [...new Map([...orders.docs.slice(0, 500), ...blocked.docs.slice(0, 500), ...paid.docs.slice(0, 50)].map(d => [d.id, d])).values()];
   for (const doc of orderDocs) {
     const o = doc.data(), at = o.createdAt || now;
-    if (o.financialBlocked || o.financialReviewReason || o.reviewReason) add(`order_${doc.id}`, 'order-review', 'Order needs review', doc.id, at, o.financialReviewReason || o.reviewReason || 'Admission is held pending payment reconciliation.', 'critical');
+    const checkingPayment = reconciliationPending(o) && o.financialCheckStartedAt && !age(now, o.financialCheckStartedAt, 10);
+    if (!checkingPayment && (o.financialBlocked || o.financialReviewReason || o.reviewReason)) add(`order_${doc.id}`, 'order-review', 'Order needs review', doc.id, at, o.financialReviewReason || o.reviewReason || 'Admission is held pending payment reconciliation.', 'critical');
     else if (['provisioning', 'processing', 'open'].includes(o.status) && age(now, o.expiresAt || at, 10)) add(`order_${doc.id}`, 'checkout', 'Checkout reservation is stalled', doc.id, at, 'Verify the provider outcome before releasing inventory.');
     if (o.status === 'paid' && paidIds.has(doc.id)) {
       checkedPaidOrders++;
@@ -44,9 +46,17 @@ export async function collectHealth(db: Firestore, now = Date.now()) {
     if (e.status === 'review' || ['bounced', 'failed', 'complained', 'suppressed'].includes(e.deliveryStatus)) add(`email_${doc.id}`, 'email-review', 'Email needs attention', e.orderId || '', e.createdAt || now, e.deliveryStatus ? `Delivery status: ${e.deliveryStatus}. Check the contact before sending a new access link.` : e.lastError || 'Sending outcome requires review.', 'warning', doc.id);
     else if (e.status === 'pending' && age(now, e.createdAt || now, 10)) add(`email_${doc.id}`, 'email', 'Email is waiting to send', e.orderId || '', e.createdAt || now, e.lastError || 'Background delivery has not completed.', 'warning', doc.id);
   }
-  for (const doc of campaigns.docs.slice(0, 500)) { const c = doc.data(); if (age(now, c.createdAt || now, 15)) add(`campaign_${doc.id}`, 'announcement', 'Attendee email queue is delayed', '', c.createdAt, 'Check maintenance logs and the event announcements panel. Large audiences require several bounded worker passes.'); }
+  for (const doc of campaigns.docs.slice(0, 500)) { const c = doc.data(); if (age(now, c.createdAt || now, 15)) add(`campaign_${doc.id}`, 'announcement', 'Attendee email queue is delayed', '', c.createdAt, 'Check the campaign worker and communication recovery logs. Campaign pages should continue automatically.'); }
   for (const doc of offers.docs.slice(0, 500)) { const o = doc.data(); if (age(now, o.offerExpiresAt || now, 10)) add(`offer_${doc.id}`, 'waitlist', 'Expired waitlist reservation needs release', '', o.offerExpiresAt, 'Check maintenance logs before changing capacity. The expired offer cannot be claimed.'); }
   const maintenance = heartbeat.data() || {};
+  const laneDocs = await db.getAll(db.collection('ticketingHealth').doc('maintenance-communications'), db.collection('ticketingHealth').doc('maintenance-emails'));
+  // Enable independent liveness checks when the split deployment first runs.
+  // Legacy deployments/tests can still read their single heartbeat.
+  if (maintenance.splitWorkers || laneDocs.some(d => d.exists)) for (const doc of laneDocs) {
+    const lane = doc.id === 'maintenance-emails' ? 'Email recovery' : 'Attendee updates', state = doc.data() || {};
+    if (!state.completedAt || age(now, state.completedAt, 15)) add(doc.id, 'maintenance', `${lane} heartbeat is overdue`, '', state.startedAt || now, 'Check this worker and its Cloud Scheduler job independently of payment recovery.', 'critical');
+    else if (state.failedAt > state.completedAt || state.summary?.errors > 0) add(`${doc.id}-errors`, 'maintenance', `${lane} needs attention`, '', state.failedAt || state.completedAt, 'Review this recovery worker’s logs and queued records.', 'critical');
+  }
   if (!maintenance.completedAt || age(now, maintenance.completedAt, 15)) add('maintenance', 'maintenance', 'Maintenance heartbeat is overdue', '', maintenance.startedAt || now, maintenance.failedAt ? 'The most recent run failed. Check the function logs.' : 'No successful run has been recorded in the last 15 minutes.', 'critical');
   else if (maintenance.failedAt > maintenance.completedAt || maintenance.summary?.errors > 0) add('maintenance-errors', 'maintenance', 'Background operations need attention', '', maintenance.failedAt || maintenance.completedAt, maintenance.failedAt > maintenance.completedAt ? 'The latest maintenance run failed. Check its function logs.' : `${maintenance.summary.errors} operations failed during the last pass. Review the function logs and affected provider outcomes.`, 'critical');
   const truncated = [orders, refunds, webhooks, emails, delivery, blocked, campaigns, offers].some(q => q.size > 500) || paid.size > 50 || !!cursor?.after;

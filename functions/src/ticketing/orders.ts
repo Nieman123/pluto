@@ -333,7 +333,7 @@ export class Orders extends Catalog {
       const checkId = randomUUID();
       // Fail closed while the provider's financial state is checked, including before first issuance.
       // A newer verifier owns the fence; a delayed worker cannot clear its hold.
-      await this.order(orderId).update({ financialCheckId: checkId, financialBlocked: true });
+      await this.order(orderId).update({ financialCheckId: checkId, financialCheckStartedAt: Date.now(), financialBlocked: true });
       const refunds = await this.stripe().refunds.list({ payment_intent: paymentIntentId, limit: 100 });
       const disputes = await this.stripe().disputes.list({ payment_intent: paymentIntentId, limit: 100 });
       const feeKnown = !!balance && Number.isSafeInteger(balance.fee) && balance.fee >= 0 && balance.currency === 'usd';
