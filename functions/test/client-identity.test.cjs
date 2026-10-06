@@ -17,3 +17,9 @@ test('proxy identity ignores spoofed prefixes and stops at the nearest untrusted
   assert.equal(await address('loopback,10.0.0.5/32', '203.0.113.66,10.0.0.8'), '10.0.0.8');
   for (const value of ['true', '2', '0.0.0.0/0', '::/0', 'invalid']) assert.throws(() => configureTrustedProxy(express(), value), /explicit proxy/);
 });
+
+test('IPv4 forwarding cannot cross short IPv4-mapped or zero-prefixed IPv6 trust subnets', async () => {
+  for (const subnet of ['::ffff:10.0.0.0/8', '::/1'])
+    assert.equal(await address(`loopback,${subnet}`, '203.0.113.66,198.51.100.20'), '198.51.100.20', `${subnet} must not trust an unrelated IPv4 proxy`);
+  assert.equal(await address('loopback,::ffff:10.0.0.0/104', '203.0.113.66,198.51.100.20,10.0.0.5'), '198.51.100.20', 'a correctly spelled mapped private subnet still works');
+});
