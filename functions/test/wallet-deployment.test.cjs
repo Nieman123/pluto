@@ -42,6 +42,7 @@ test('Firebase discovery does not require wallet credentials when wallet exports
   for (const flag of ['false', undefined]) {
     const manifest = discover(flag);
     assert.deepEqual(manifest.params, ticketingSecrets);
+    for (const endpoint of ['ticketingFinancialWorker', 'ticketingFinancialBackfillWorker']) assert.deepEqual(manifest.endpoints[endpoint], [], `${endpoint} requires no payment/email credentials`);
     for (const endpoint of ['publicSite', 'ticketingWebhookWorker', 'ticketingEmailWorker', 'ticketingCampaignWorker', 'ticketingRecoveryWorker', 'ticketingMaintenance', 'ticketingCommunicationMaintenance', 'ticketingEmailMaintenance']) {
       assert.deepEqual(manifest.endpoints[endpoint], ticketingSecrets);
     }

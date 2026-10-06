@@ -4,6 +4,10 @@ import express from "express";
 
 const require = createRequire(import.meta.url);
 const { app: publicSite } = require("../lib/index.js");
+if (process.env.PUBLIC_SITE_PREVIEW === 'true' && process.env.GCLOUD_PROJECT?.startsWith('demo-') && process.env.FIRESTORE_EMULATOR_HOST) {
+  const { previewFinancialWorkers } = await import('./preview-financial-workers.mjs');
+  previewFinancialWorkers();
+}
 const preview = express();
 const dist = resolve(import.meta.dirname, "../../dist");
 

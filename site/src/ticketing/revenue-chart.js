@@ -1,10 +1,9 @@
-import { revenueSummary } from '../../../functions/src/ticketing/revenue.ts';
 import { esc, money } from './api.js';
 
-export function revenueChart(root, orders, timezone) {
+export function revenueChart(root, summary, timezone) {
   let days = 28;
   const render = () => {
-    const data = revenueSummary(orders, timezone, Date.now(), days), series = data.daily, max = Math.max(100, ...series.map(d => d.gross));
+    const data = summary, series = data.daily.slice(-days), max = Math.max(100, ...series.map(d => d.gross));
     const left = 65, right = 880, top = 24, bottom = 204, x = i => left + i * (right - left) / (series.length - 1), y = value => bottom - value / max * (bottom - top);
     const points = series.map((d, i) => `${x(i)},${y(d.gross)}`).join(' '), total = series.reduce((n, d) => n + d.gross, 0);
     const dateLabel = date => new Date(`${date}T12:00:00Z`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' });

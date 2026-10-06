@@ -1,5 +1,15 @@
 # Ticketing operations and customer support
 
+## Paged orders and server revenue summaries
+
+Event orders and RSVP queues load 50 records at a time. **Load more** continues through older orders; searches run on the server and can continue across pages. Each request scans at most 500 indexed candidates, so a sparse search can show no matches on one page while still offering **Load more**. Event/status predicates use Firestore indexes. Order cursors belong to their filter/event scope; changing filters restarts the list. Event order tables hide expired checkouts, while All Orders and full CSV exports retain that history. CSV export streams pages independently of the current search or loaded table rows.
+
+Revenue and RSVP counts come from API-only `ticketingFinancialSummaries`, rather than the browser's current order page. `ticketingFinancialWorker` reads the current order ledger and transactionally replaces its previous contribution in `ticketingOrderSummaries`. Duplicate/out-of-order triggers therefore cannot count a payment or refund twice. Updates include paid orders, issued units, cash/comps, discounts, tax/refund adjustments, confirmed/pending Stripe fees and payment reviews. The order ledger remains authoritative; summaries do not authorize payments or admission.
+
+Historical orders and timezone edits use `ticketingFinancialBackfillWorker`, processing up to 100 orders per continuation with a lease and a 90-second soft budget. Communications recovery wakes abandoned pending backfills. Initial summaries are marked **being prepared** until history is complete; the UI refreshes while waiting. New payments/refunds are reflected asynchronously, and dashboards show the summary's update time plus **Refresh performance**. Lifetime totals are retained; daily gross chart buckets retain the last 90 event-local calendar days for the 7/28/90-day chart and Monday-based weekly totals. A missing summary or schema upgrade starts a new generation and replays the ledger, so cached per-order contributions cannot suppress rebuilding or double-count it.
+
+Release must include both new financial workers and the added `ticketingOrders` indexes. These workers need no payment or email secrets. Existing history backfills automatically when an event's revenue is first requested. After staging deployment, check an event with more than 50 orders, a cross-page buyer search, an RSVP queue, a full CSV export, and a refunded/fee-pending order. Confirm totals do not change when loading another table page and that the initial preparation status clears.
+
 ## Campaign delivery and recovery workers
 
 Campaign creation and committed page progress trigger `ticketingCampaignWorker` immediately. Each page handles up to 100 ticket/order records; stable recipient job IDs deduplicate holders across pages, duplicate triggers and retries. Lease tokens fence stale workers. Communication maintenance wakes pending campaigns whose leases expired, including jobs created before this release. Normal pagination does not wait for a scheduled tick.

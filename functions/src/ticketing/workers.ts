@@ -4,6 +4,15 @@ import { ticketingSecrets } from './config';
 import { Operations } from './operations';
 import { deploymentConfig } from '../deployment-config';
 import { campaignNeedsWork } from './campaign-policy';
+import { getFirestore } from 'firebase-admin/firestore';
+import { financialBackfillNeedsWork, financialBackfillPage, syncFinancialOrder } from './financial-projection';
+
+export const ticketingFinancialWorker = onDocumentWritten({ document: 'ticketingOrders/{orderId}', region: 'us-central1', retry: true, timeoutSeconds: 120, maxInstances: 3, concurrency: 1 }, async event => {
+  await syncFinancialOrder(getFirestore(), event.params.orderId);
+});
+export const ticketingFinancialBackfillWorker = onDocumentWritten({ document: 'ticketingFinancialBackfills/{eventId}', region: 'us-central1', retry: true, timeoutSeconds: 120, maxInstances: 2, concurrency: 1 }, async event => {
+  if (financialBackfillNeedsWork(event.data?.before.data(), event.data?.after.data())) await financialBackfillPage(getFirestore(), event.params.eventId);
+});
 
 export const ticketingWebhookWorker = onDocumentCreated({ document: 'ticketingWebhookInbox/{inboxId}', region: 'us-central1', secrets: ticketingSecrets, retry: true }, async event => {
   deploymentConfig();

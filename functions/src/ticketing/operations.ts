@@ -13,6 +13,7 @@ import { legacyTicketingEmail, renderTicketingEmail, type EmailKind, type Ticket
 import { collectHealth } from './health';
 import { applyDelivery } from './delivery';
 import { processBatch, WorkBudget } from './worker-batch';
+import { financialRecovery } from './financial-projection';
 
 export type MaintenanceLane = 'payments' | 'communications' | 'emails';
 
@@ -478,6 +479,7 @@ export class Operations extends Communications {
     ] : lane === 'emails' ? [
       () => batch('ticketingEmailJobs', ['pending'], 100, 'email', 'emails', doc => this.emailJob(doc.id)),
     ] : [
+      async () => { const result = await financialRecovery(this.db, this.workBudget()); summary.financialRecoveries = result.processed; },
       async () => { summary.waitlists = await this.waitlistMaintenance(this.workBudget()); },
       async () => { summary.campaigns = await this.communicationMaintenance(this.workBudget()); },
       async () => { const result = await this.campaignRecovery(this.workBudget()); summary.campaignRecoveries = result.processed; if (result.deferred) summary.deferred++; },

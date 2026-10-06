@@ -57,10 +57,12 @@ async function accessible(page, screenshot) {
     await page.reload();
     await page.locator(`[data-open-event="${eids[0]}"]`).click();
     await page.locator('#event-order-list').getByRole('heading', { name: 'Orders', exact: true }).waitFor();
+    await page.locator('#event-order-count').filter({ hasText: 'End of results.' }).waitFor();
     assert.equal(await page.locator('#order-rows [data-open-order]').count(), 1, 'event dashboard lists only its own orders');
     assert.equal((await api(page, 'staff/orders', { eventId: eids[0] })).orders.length, 2, 'API retains expired history for reporting and CSV');
     assert.match(await page.locator('#event-order-list').innerText(), /Expired checkouts are hidden/);
     await page.locator('#order-filter').fill('Expired checkout buyer');
+    await page.locator('#event-order-count').filter({ hasText: '0 orders shown. End of results.' }).waitFor();
     assert.equal(await page.locator('#order-rows [data-open-order]').count(), 0, 'search cannot bring back an expired checkout');
     await page.locator('#order-filter').fill('');
     await page.locator(`[data-open-order="${oids[0]}"]`).click();

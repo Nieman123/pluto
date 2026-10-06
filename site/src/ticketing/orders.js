@@ -12,13 +12,26 @@ function orderRows(root, orders, { includeEvent = false, refresh, openEvent } = 
 function table(includeEvent = false, id = 'order-rows') {
   return `<div class="table-scroll" tabindex="0" role="region" aria-label="${includeEvent ? 'All event orders' : 'Event orders'}"><table class="ticket-table orders-table"><thead><tr>${includeEvent ? '<th>Event</th>' : ''}<th>Buyer</th><th>Ordered</th><th>Status</th><th>Method</th><th>Total</th><th>Promoter</th><th>Review</th><th>Actions</th></tr></thead><tbody id="${id}"></tbody></table></div>`;
 }
-export function eventOrders(root, orders, { refresh, openEvent, exportOrders, retry } = {}) {
-  const visibleOrders = orders.filter(o => o.status !== 'expired');
-  root.innerHTML = `<h3>Orders</h3><p>Open an order to see buyer details, individual tickets and check-in status.${visibleOrders.length < orders.length ? ' Expired checkouts are hidden from this list.' : ''}</p><div class="ticket-toolbar"><input id="order-filter" type="search" aria-label="Search orders" placeholder="Search buyer, email or order"><button class="button button-quiet" id="order-export">Export CSV</button>${retry ? '<button class="button button-quiet" id="order-reconcile">Retry pending jobs</button>' : ''}</div>${table()}`;
-  const rows = query => orderRows(root.querySelector('#order-rows'), visibleOrders.filter(o => `${o.name} ${o.email} ${o.orderId}`.toLowerCase().includes(query.toLowerCase())), { refresh, openEvent });
-  rows(''); root.querySelector('#order-filter').oninput = e => rows(e.target.value);
+export async function eventOrders(root, eventId, { refresh, openEvent, exportOrders, retry } = {}) {
+  root.innerHTML = '<h3>Orders</h3><p>Open an order to see buyer details, individual tickets and check-in status. Expired checkouts are hidden from this list.</p><div class="ticket-toolbar"><input id="order-filter" type="search" aria-label="Search orders" placeholder="Search buyer, email or order"><button class="button button-quiet" id="order-export">Export CSV</button>' + (retry ? '<button class="button button-quiet" id="order-reconcile">Retry pending jobs</button>' : '') + '</div><p id="event-order-count" role="status"></p>' + table() + '<button class="button button-quiet" id="event-order-more" hidden>Load more orders</button>';
+  let orders = [], cursor = null, search = '', generation = 0, timer;
+  const input = root.querySelector('#order-filter'), more = root.querySelector('#event-order-more'), count = root.querySelector('#event-order-count');
+  async function load(reset = false) {
+    const version = ++generation;
+    if (reset) { cursor = null; orders = []; search = input.value; }
+    count.textContent = 'Loading orders…'; more.hidden = true;
+    const result = await api('staff/orders', { eventId, search, cursor, limit: 50, excludeExpired: true });
+    if (version !== generation || !input.isConnected) return;
+    orders.push(...result.orders); cursor = result.cursor;
+    orderRows(root.querySelector('#order-rows'), orders, { refresh, openEvent });
+    count.textContent = orders.length + ' orders shown.' + (result.hasMore ? ' Load more to continue searching older orders.' : ' End of results.');
+    more.hidden = !result.hasMore;
+  }
+  input.oninput = () => { clearTimeout(timer); generation++; more.hidden = true; timer = setTimeout(() => action(null, () => load(true)), 250); };
+  more.onclick = e => action(e.currentTarget, () => load());
   root.querySelector('#order-export').onclick = e => action(e.currentTarget, exportOrders);
   if (retry) root.querySelector('#order-reconcile').onclick = e => action(e.currentTarget, retry);
+  await load(true);
 }
 export async function allOrders(root, events, openEvent) {
   root.innerHTML = `<h2>All Orders</h2><p>Manage purchases and RSVPs across every event.</p><form id="all-order-filters"><div class="form-grid"><label>Search orders<input name="search" type="search" maxlength="254" placeholder="Buyer, email, order ID or event"></label><label>Event<select name="eventId"><option value="">All events</option>${events.map(e => `<option value="${esc(e.id)}">${esc(e.title)}</option>`).join('')}</select></label><label>Order status<select name="status"><option value="">All statuses</option>${['paid', 'pending-approval', 'declined', 'withdrawn', 'open', 'provisioning', 'expired', 'cancelled'].map(s => `<option value="${s}">${esc(label(s))}</option>`).join('')}</select></label></div><div class="ticket-toolbar"><button class="button button-primary" type="submit">Apply filters</button><button class="button button-quiet" id="all-order-refresh" type="button">Refresh orders</button></div></form><p id="all-order-count" role="status"></p>${table(true, 'all-order-rows')}<button class="button button-quiet" id="all-order-more" hidden>Load more orders</button>`;

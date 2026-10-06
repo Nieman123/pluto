@@ -227,7 +227,8 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   router.post('/tickets/api/staff/roles', async (req, res) => res.json(await service.setStaff(bodyId(req), bodyId(req, 'uid'), req.body.roles, actor(res).uid, req.body.promoterId || '')));
   router.post('/tickets/api/staff/promoter', async (req, res) => { await service.role(actor(res).uid, bodyId(req)); await service.event(bodyId(req)).collection('promoters').doc(bodyId(req, 'promoterId')).set({ active: req.body.active === true }); res.json({ saved: true }); });
   router.post('/tickets/api/staff/promoter-stats', async (req, res) => res.json(await service.promoterStats(bodyId(req), actor(res).uid)));
-  router.post('/tickets/api/staff/orders', async (req, res) => res.json(await service.staffOrders(bodyId(req), actor(res).uid)));
+  router.post('/tickets/api/staff/orders', async (req, res) => res.json(await service.staffOrders(bodyId(req), actor(res).uid, req.body)));
+  router.post('/tickets/api/staff/performance', async (req, res) => res.json(await service.staffPerformance(bodyId(req), actor(res).uid)));
   router.post('/tickets/api/staff/all-orders', async (req, res) => res.json(await service.allOrders(req.body, actor(res).uid)));
   router.post('/tickets/api/staff/order', async (req, res) => res.json(await service.staffOrder(bodyId(req, 'orderId'), actor(res).uid)));
   router.post('/tickets/api/staff/order/correct', async (req, res) => res.json(await service.correctOrder(bodyId(req, 'orderId'), req.body, actor(res).uid)));
@@ -236,7 +237,34 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   router.post('/tickets/api/staff/health', async (req, res) => res.json(await service.health(actor(res).uid, req.body.refresh === true)));
   router.post('/tickets/api/staff/health/retry', async (req, res) => res.json(await service.retryHealth(req.body, actor(res).uid)));
   router.post('/tickets/api/staff/order/check-in', async (req, res) => res.json(await service.checkInOrderTicket(bodyId(req, 'orderId'), bodyId(req, 'ticketId'), req.body.scanId, actor(res).uid)));
-  router.post('/tickets/api/staff/export', async (req, res) => { const data = await service.staffOrders(bodyId(req), actor(res).uid); res.type('text/csv').set('Content-Disposition', 'attachment; filename="Pluto-orders.csv"').send(csv([['Order', 'Buyer', 'Email', 'Status', 'Method', 'Gross cents', 'Discount cents', 'Tax cents', 'Refund cents', 'Stripe fee cents', 'Promoter'], ...data.orders.map((o: any) => [o.orderId, o.name, o.email, o.status, o.method, o.total, o.discount, o.taxAmount, o.refundedAmount, o.stripeFee, o.promoterId])])); });
+  router.post('/tickets/api/staff/export', async (req, res) => {
+    const eventId = bodyId(req), uid = actor(res).uid;
+    await service.role(uid, eventId, ['manager', 'refund', 'cash']);
+    res.type('text/csv').set('Content-Disposition', 'attachment; filename="Pluto-orders.csv"');
+    const write = async (chunk: string) => {
+      if (res.write(chunk)) return;
+      await new Promise<void>((resolve, reject) => {
+        // compression forwards drain listeners to its transform stream.
+        const cleanup = () => { source.removeListener('drain', drained); res.removeListener('close', closed); res.removeListener('error', failed); };
+        const drained = () => { cleanup(); resolve(); }, failed = (error: Error) => { cleanup(); reject(error); };
+        const closed = () => failed(new Error('CSV connection closed.'));
+        const source = res.on('drain', drained);
+        res.once('close', closed); res.once('error', failed);
+        if (res.destroyed) closed();
+      });
+    };
+    try {
+      await write(csv([['Order', 'Buyer', 'Email', 'Status', 'Method', 'Gross cents', 'Discount cents', 'Tax cents', 'Refund cents', 'Stripe fee cents', 'Promoter']]) + '\r\n');
+      let cursor: any = null;
+      do {
+        const page = await service.staffOrders(eventId, uid, { cursor, limit: 100 });
+        if (res.destroyed) return;
+        await write(csv(page.orders.map((o: any) => [o.orderId, o.name, o.email, o.status, o.method, o.total, o.discount, o.taxAmount, o.refundedAmount, o.stripeFee, o.promoterId])) + '\r\n');
+        cursor = page.cursor;
+      } while (cursor);
+      res.end();
+    } catch (error) { res.destroy(error instanceof Error ? error : undefined); }
+  });
   router.post('/tickets/api/staff/cash', async (req, res) => res.json(await service.checkout(req.body, null, req.body.comp === true ? 'comp' : 'cash', actor(res).uid)));
   router.post('/tickets/api/staff/cash-options', async (req, res) => { const eventId = bodyId(req); await service.role(actor(res).uid, eventId, ['cash']); const event = (await service.event(eventId).get()).data(); if (!event) fail('Event not found.', 404); res.json({ offers: (event.liveDraft || event.draft).offers.filter((o: any) => o.active), taxMode: (event.liveDraft || event.draft).tax.mode }); });
   router.post('/tickets/api/staff/retry', async (req, res) => { await service.admin(actor(res).uid); res.json(await service.requestMaintenance()); });

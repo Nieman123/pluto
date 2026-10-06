@@ -3,6 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { type DecodedIdToken } from 'firebase-admin/auth';
 import { FieldPath, Timestamp, type Firestore, type Transaction } from 'firebase-admin/firestore';
 import { Catalog } from './catalog';
+import { orderPage } from './order-page';
+import { financialSummary } from './financial-projection';
 import { apiVersion, appTicketsUrl, baseUrl, isLive, keyPair, readTicket, signTicket, stripeClient } from './config';
 import { assertCapacity, cart, email, fail, hash, holderVenue, id, integer, receipt, secret, text, ticketId, type EventDraft, type Unit } from './domain';
 import { scannerAccess, type ScannerProof } from './scanner-access';
@@ -685,35 +687,20 @@ export class Orders extends Catalog {
       return { resolved: true, result: decision === 'confirm' ? 'accepted' : scan.result };
     });
   }
-  async staffOrders(eventId: string, uid: string) {
+  async staffOrders(eventId: string, uid: string, raw: any = {}) {
     await this.role(uid, eventId, ['manager', 'refund', 'cash']);
-    const orders = await this.db.collection('ticketingOrders').where('eventId', '==', eventId).get();
-    const pools = await this.event(eventId).collection('pools').get();
-    return { orders: orders.docs.map(d => { const { accessHash, clientSecret, inputHash, ...safe } = d.data(); return { orderId: d.id, ...safe }; }).sort((a: any, b: any) => b.createdAt - a.createdAt),
-      pools: pools.docs.map(d => d.data()) };
+    return orderPage(this.db, { ...raw, eventId });
+  }
+  async staffPerformance(eventId: string, uid: string) {
+    await this.role(uid, eventId, ['manager', 'refund', 'cash']);
+    const event = (await this.event(eventId).get()).data();
+    if (!event) fail('Event not found.', 404);
+    const [summary, pools] = await Promise.all([financialSummary(this.db, eventId, event.draft.timezone), this.event(eventId).collection('pools').get()]);
+    return { summary, pools: pools.docs.map(d => d.data()) };
   }
   async allOrders(raw: any, uid: string) {
     await this.admin(uid);
-    const limit = integer(raw.limit ?? 50, 'page size', 1, 100), search = text(raw.search || '', 'order search', 254).toLowerCase();
-    const eventId = raw.eventId ? id(raw.eventId) : '', status = text(raw.status || '', 'order status', 40);
-    let cursor = raw.cursor ? { createdAt: integer(raw.cursor.createdAt, 'order cursor', 0, Number.MAX_SAFE_INTEGER), orderId: id(raw.cursor.orderId) } : null;
-    const orders: any[] = []; let scanned = 0, hasMore = false;
-    // Bound reads per request; filtered searches can continue through older pages.
-    while (scanned < 500 && orders.length < limit) {
-      const size = Math.min(search || eventId || status ? 100 : limit, 500 - scanned);
-      let query = this.db.collection('ticketingOrders').orderBy('createdAt', 'desc').orderBy(FieldPath.documentId(), 'desc').limit(size);
-      if (cursor) query = query.startAfter(cursor.createdAt, cursor.orderId);
-      const page = await query.get(); hasMore = page.size === size;
-      for (let i = 0; i < page.docs.length; i++) {
-        const doc = page.docs[i], o = doc.data(); scanned++; cursor = { createdAt: o.createdAt, orderId: doc.id };
-        if ((!eventId || o.eventId === eventId) && (!status || o.status === status) && (!search || `${o.name} ${o.email} ${doc.id} ${o.eventTitle}`.toLowerCase().includes(search))) {
-          orders.push({ orderId: doc.id, eventId: o.eventId, eventTitle: o.eventTitle, name: o.name, email: o.email, status: o.status, method: o.method, rsvpStatus: o.rsvpStatus || '', total: o.total, refundedAmount: o.refundedAmount || 0, createdAt: o.createdAt, promoterId: o.promoterId || '', reviewReason: o.financialReviewReason || o.reviewReason || '' });
-        }
-        if (orders.length === limit) { hasMore = i < page.docs.length - 1 || hasMore; break; }
-      }
-      if (!hasMore) break;
-    }
-    return { orders, cursor: hasMore ? cursor : null, hasMore, scanned };
+    return orderPage(this.db, raw);
   }
   async staffOrder(orderId: string, uid: string) {
     let order = (await this.order(orderId).get()).data(); if (!order) fail('Order not found.', 404);
