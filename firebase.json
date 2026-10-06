@@ -77,6 +77,7 @@
       { "source": "/rentals", "function": { "functionId": "publicSite", "region": "us-central1" } },
       { "source": "/__deployment", "function": { "functionId": "publicSite", "region": "us-central1" } },
       { "source": "/events", "function": { "functionId": "publicSite", "region": "us-central1" } },
+      { "source": "/past-events", "function": { "functionId": "publicSite", "region": "us-central1" } },
       { "source": "/events/**", "function": { "functionId": "publicSite", "region": "us-central1" } },
       { "source": "/tickets", "function": { "functionId": "publicSite", "region": "us-central1" } },
       { "source": "/tickets/**", "function": { "functionId": "publicSite", "region": "us-central1" } },
