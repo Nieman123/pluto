@@ -1,7 +1,7 @@
 import type { EventDraft } from './domain';
 import type { Order } from './orders';
 
-export type EmailKind = 'receipt' | 'recovery' | 'transfer' | 'refund' | 'rsvp-pending' | 'rsvp-declined' | 'rsvp-confirmed' | 'rsvp-verification' | 'waitlist-verification' | 'waitlist-offer' | 'announcement' | 'event-reminder' | 'event-location' | 'event-rescheduled' | 'event-cancelled';
+export type EmailKind = 'receipt' | 'recovery' | 'transfer' | 'refund' | 'checkout-expired' | 'rsvp-pending' | 'rsvp-declined' | 'rsvp-confirmed' | 'rsvp-verification' | 'waitlist-verification' | 'waitlist-offer' | 'announcement' | 'event-reminder' | 'event-location' | 'event-rescheduled' | 'event-cancelled';
 export interface TicketingEmailInput {
   kind: EmailKind;
   order: Pick<Order, 'eventTitle' | 'total' | 'currency' | 'units' | 'taxAmount'>;
@@ -30,6 +30,13 @@ function content(input: TicketingEmailInput) {
   const title = order.eventTitle;
   const linkHelp = 'Keep this link private. It can be opened once within 30 days. You can request another link from My tickets.';
   switch (kind) {
+    case 'checkout-expired': return {
+      subject: `Your checkout for ${title} expired`, label: 'CHECKOUT EXPIRED', heading: 'Still joining us?',
+      preview: 'Your ticket reservation expired. Start a fresh checkout if you would still like to attend.',
+      paragraphs: ["Your checkout wasn't completed before the ticket reservation expired. Those tickets are no longer held for you.", 'If you would still like to join us, open the event page and choose your tickets again.'],
+      button: 'View event & tickets', help: 'If you have already completed another purchase, you can ignore this email.',
+      notice: 'A fresh checkout uses current ticket availability and pricing. This email is not an admission pass.',
+    };
     case 'waitlist-verification': return {
       subject: `${title} waitlist email code`, label: 'VERIFY YOUR EMAIL', heading: 'One more step to join.', preview: 'Confirm your email address to join the waitlist.',
       paragraphs: [`Your verification code is ${note}. Enter it on the event page within 15 minutes.`], button: 'Open event page', help: 'Ignore this email if you did not request it.', notice: 'Joining the waitlist does not grant admission or reserve a spot.',

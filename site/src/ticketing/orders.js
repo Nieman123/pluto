@@ -13,8 +13,9 @@ function table(includeEvent = false, id = 'order-rows') {
   return `<div class="table-scroll" tabindex="0" role="region" aria-label="${includeEvent ? 'All event orders' : 'Event orders'}"><table class="ticket-table orders-table"><thead><tr>${includeEvent ? '<th>Event</th>' : ''}<th>Buyer</th><th>Ordered</th><th>Status</th><th>Method</th><th>Total</th><th>Promoter</th><th>Review</th><th>Actions</th></tr></thead><tbody id="${id}"></tbody></table></div>`;
 }
 export function eventOrders(root, orders, { refresh, openEvent, exportOrders, retry } = {}) {
-  root.innerHTML = `<h3>Orders</h3><p>Open an order to see buyer details, individual tickets and check-in status.</p><div class="ticket-toolbar"><input id="order-filter" type="search" aria-label="Search orders" placeholder="Search buyer, email or order"><button class="button button-quiet" id="order-export">Export CSV</button>${retry ? '<button class="button button-quiet" id="order-reconcile">Retry pending jobs</button>' : ''}</div>${table()}`;
-  const rows = query => orderRows(root.querySelector('#order-rows'), orders.filter(o => `${o.name} ${o.email} ${o.orderId}`.toLowerCase().includes(query.toLowerCase())), { refresh, openEvent });
+  const visibleOrders = orders.filter(o => o.status !== 'expired');
+  root.innerHTML = `<h3>Orders</h3><p>Open an order to see buyer details, individual tickets and check-in status.${visibleOrders.length < orders.length ? ' Expired checkouts are hidden from this list.' : ''}</p><div class="ticket-toolbar"><input id="order-filter" type="search" aria-label="Search orders" placeholder="Search buyer, email or order"><button class="button button-quiet" id="order-export">Export CSV</button>${retry ? '<button class="button button-quiet" id="order-reconcile">Retry pending jobs</button>' : ''}</div>${table()}`;
+  const rows = query => orderRows(root.querySelector('#order-rows'), visibleOrders.filter(o => `${o.name} ${o.email} ${o.orderId}`.toLowerCase().includes(query.toLowerCase())), { refresh, openEvent });
   rows(''); root.querySelector('#order-filter').oninput = e => rows(e.target.value);
   root.querySelector('#order-export').onclick = e => action(e.currentTarget, exportOrders);
   if (retry) root.querySelector('#order-reconcile').onclick = e => action(e.currentTarget, retry);

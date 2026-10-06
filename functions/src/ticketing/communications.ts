@@ -1,4 +1,4 @@
-import { FieldPath } from 'firebase-admin/firestore';
+import { FieldPath, type Transaction } from 'firebase-admin/firestore';
 import { Door } from './door';
 import { fail, hash, id, receipt, text, type EventDraft } from './domain';
 import { noticeVersion } from './event-notice';
@@ -6,8 +6,52 @@ import { deploymentConfig } from '../deployment-config';
 import { renderTicketingEmail, type EmailKind } from './email';
 import { rotatingBatch } from './worker-batch';
 import { currentWaitlistOffer } from './waitlist-hold';
+import type { Order } from './orders';
+import { expiredCheckoutDue, followupBuyerEligible, followupEventSelling } from './checkout-followup';
 
 export class Communications extends Door {
+  private async checkoutFollowupState(tx: Transaction, orderId: string, now: number, to?: string) {
+    const order = (await tx.get(this.order(orderId))).data() as Order | undefined;
+    if (!order || !expiredCheckoutDue(order, now) || to && order.email !== to) return null;
+    const event = (await tx.get(this.event(order.eventId))).data(), draft = event?.liveDraft as EventDraft | undefined;
+    if (!draft || event?.status !== 'published') return null;
+    const peers = await tx.get(this.db.collection('ticketingOrders').where('eventId', '==', order.eventId).where('email', '==', order.email).limit(101));
+    if (!followupBuyerEligible(orderId, order, peers.docs.map(doc => ({ id: doc.id, order: doc.data() as Order })))) return null;
+    if (!await this.validUpgradeParent(tx, order)) return null;
+    const poolDocs = await tx.get(this.event(order.eventId).collection('pools'));
+    const pools = Object.fromEntries(poolDocs.docs.map(doc => [doc.id, doc.data() as { held: number; sold: number }]));
+    return followupEventSelling(draft, event.status, pools, now) ? { order, draft } : null;
+  }
+  async checkoutFollowupMaintenance() {
+    const expired = await rotatingBatch(this.db, 'ticketingOrders', ['expired'], 100);
+    let queued = 0;
+    for (const doc of expired.docs) {
+      const order = doc.data() as Order, now = Date.now();
+      if (!expiredCheckoutDue(order, now)) continue;
+      // One reminder per event + buyer, even across duplicate expiries or worker retries.
+      const ref = this.db.collection('ticketingEmailJobs').doc(`expired_${hash(JSON.stringify([order.eventId, order.email]))}`);
+      const created = await this.db.runTransaction(async tx => {
+        if ((await tx.get(ref)).exists) return false;
+        const state = await this.checkoutFollowupState(tx, doc.id, now, order.email);
+        if (!state || state.order.eventId !== order.eventId) return false;
+        tx.create(ref, { type: 'checkout-expired', eventId: order.eventId, orderId: doc.id, to: order.email, status: 'pending', attempts: 0, createdAt: now });
+        return true;
+      });
+      if (created) queued++;
+    }
+    return queued;
+  }
+  private async checkoutExpiredEmail(job: any) {
+    // Reconcile Stripe again before delivery: never ask someone with a late payment to pay twice.
+    const session = await this.verifySession(job.orderId);
+    if (session?.status !== 'expired' || session.payment_status !== 'unpaid') return null;
+    const state = await this.db.runTransaction(tx => this.checkoutFollowupState(tx, job.orderId, Date.now(), job.to));
+    if (!state || state.order.eventId !== job.eventId) return null;
+    const config = deploymentConfig();
+    return { from: process.env.TICKETING_EMAIL_FROM || 'Pluto Events <tickets@pluto.events>', to: [job.to],
+      ...renderTicketingEmail({ kind: 'checkout-expired', order: state.order, event: state.draft, orderId: job.orderId,
+        actionUrl: `${config.baseUrl}/events/${encodeURIComponent(state.draft.slug)}`, baseUrl: config.baseUrl, staging: config.environment === 'staging' }) };
+  }
   async communications(eventId: string, uid: string) {
     await this.role(uid, eventId);
     const campaigns = await this.db.collection('ticketingCampaigns').where('eventId', '==', eventId).orderBy('createdAt', 'desc').limit(20).get();
@@ -76,6 +120,7 @@ export class Communications extends Door {
     } catch (error) { await ref.update({ leaseUntil: 0, lastErrorAt: Date.now() }); throw error; }
   }
   async engagementEmail(job: any) {
+    if (job.type === 'checkout-expired') return this.checkoutExpiredEmail(job);
     const event = (await this.event(job.eventId).get()).data(), draft = event?.liveDraft as EventDraft;
     if (!event || !draft) return null;
     let kind: EmailKind, note: string, title = draft.title, actionUrl = `${deploymentConfig().baseUrl}/app/tickets`;

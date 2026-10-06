@@ -28,7 +28,7 @@ test('receipt has grouped purchases, accurate totals, Eastern schedule, app CTA 
 });
 
 test('HTML escapes organizer-controlled text and never exposes exact venue data or QR credentials', () => {
-  for (const kind of ['receipt', 'recovery', 'transfer', 'refund', 'rsvp-pending', 'rsvp-confirmed', 'rsvp-declined']) {
+  for (const kind of ['receipt', 'recovery', 'transfer', 'refund', 'checkout-expired', 'rsvp-pending', 'rsvp-confirmed', 'rsvp-declined']) {
     const i = input(kind, { note: '<img src=x onerror="alert(1)"> & stay safe',
       order: { ...input().order, eventTitle: '<script>bad()</script> & Friends', units: [{ offerId: 'ga', name: '<b>VIP</b>', amount: 8500 }], qr: 'PLUTO1.private-credential' } });
     const mail = renderTicketingEmail(i);
@@ -39,6 +39,17 @@ test('HTML escapes organizer-controlled text and never exposes exact venue data 
     assert.match(mail.text, /Exact location is shared with ticket holders in the app from .*4:00 PM EDT/);
     assert.ok(!('attachments' in mail));
   }
+});
+
+test('expired checkout email offers a fresh event checkout without implying payment or admission', () => {
+  const i = input('checkout-expired', { actionUrl: `${input().baseUrl}/events/a-night-in-orbit` }), mail = renderTicketingEmail(i);
+  assert.equal(mail.subject, 'Your checkout for A Night in Orbit expired');
+  assert.match(mail.text, /tickets are no longer held for you/);
+  assert.match(mail.text, /current ticket availability and pricing/);
+  assert.match(mail.text, /not an admission pass/);
+  assert.match(mail.html, /View event &amp; tickets/);
+  assert.ok(mail.html.includes(i.actionUrl) && mail.text.includes(i.actionUrl));
+  for (const forbidden of ['#recovery=', 'client_secret', 'PLUTO1.', 'Order total:', '$85.00', 'ORDER CONFIRMED']) assert.ok(!JSON.stringify(mail).includes(forbidden));
 });
 
 test('transfer invitations omit the original purchaser financial details and order reference', () => {

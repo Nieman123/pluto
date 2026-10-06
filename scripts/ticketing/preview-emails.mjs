@@ -15,9 +15,9 @@ const fixture = {
   event: { startAt: '2027-10-09T23:00:00.000Z', timezone: 'America/New_York', city: 'Asheville', region: 'NC', venueVisibility: 'holders',
     venueRevealScheduled: true, venueRevealAt: '2027-10-09T20:00:00.000Z' },
 };
-const kinds = ['receipt', 'transfer', 'recovery', 'refund', 'rsvp-confirmed', 'rsvp-pending', 'rsvp-declined'];
+const kinds = ['receipt', 'transfer', 'recovery', 'refund', 'checkout-expired', 'rsvp-confirmed', 'rsvp-pending', 'rsvp-declined'];
 for (const kind of kinds) {
-  const actionUrl = `${baseUrl}/app/tickets${kind === 'refund' ? '' : `#${kind === 'transfer' ? 'transfer' : 'recovery'}=${'0'.repeat(64)}`}`;
+  const actionUrl = kind === 'checkout-expired' ? `${baseUrl}/events/a-night-in-orbit` : `${baseUrl}/app/tickets${kind === 'refund' ? '' : `#${kind === 'transfer' ? 'transfer' : 'recovery'}=${'0'.repeat(64)}`}`;
   const email = renderTicketingEmail({ ...fixture, kind, actionUrl, amount: 2500, note: kind === 'rsvp-declined' ? 'We have reached capacity for this event. Thank you for your interest — we hope to see you at the next one.' : undefined });
   await writeFile(resolve(directory, `${kind}.html`), email.html);
   await writeFile(resolve(directory, `${kind}.txt`), email.text);
