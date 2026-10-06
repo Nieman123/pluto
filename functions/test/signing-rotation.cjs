@@ -19,11 +19,13 @@ test('staged rotation keeps paid tickets, legacy PINs, existing sessions and off
     const ring = { version: 1, activeKeyId: 'k2', legacyKeyId: 'k1', keys: { k1: keyPair(h.signingKey).jwk, k2: keyPair(k2).jwk }, revokedKeyIds: [] };
     const pins = { version: 1, activeKeyId: 'pin1', keys: { pin1: randomBytes(32).toString('base64') }, legacySigningKey: h.signingKey };
     const rotated = new Operations(h.db, { stripe: h.fake, signingKey: { privateKey: k2, keyring: ring }, scannerPinKeys: pins });
+    assert.equal((await rotated.scannerPins(eid, h.staff)).legacyPinsRemaining, 1);
     const current = (await rotated.view(result.orderId, raw.accessKey, null)).tickets;
     assert.deepEqual(current.map(t => [t.id, readTicket(t.qr, { privateKey: k2, keyring: ring }).version, t.admission]), oldTickets.map(t => [t.id, readTicket(t.qr, h.signingKey).version, t.admission]));
     assert.ok(current.every(t => t.qr.startsWith('PLUTO2.')));
     assert.equal((await rotated.scannerSession(oldLogin.token)).eventId, eid);
     assert.equal((await rotated.scannerLogin(oldPin.pin, `${h.prefix}_rotate`)).eventId, eid);
+    assert.equal((await rotated.scannerPins(eid, h.staff)).legacyPinsRemaining, 0);
     // Successful legacy login has created the independent lookup; remove the migration secret.
     delete pins.legacySigningKey;
     assert.equal((await rotated.scannerLogin(oldPin.pin, `${h.prefix}_retire`)).eventId, eid);

@@ -60,7 +60,20 @@ async function scan(target, qr, expected) {
     await admin.reload(); await admin.locator('#event-guestlist').getByText('Guest Alex Updated', { exact: true }).waitFor();
     const guestRecords = (await db.collection('ticketingEvents').doc(eventId).collection('guests').get()).docs;
     const guestId = name => guestRecords.find(d => d.data().name === name).id;
+    let legacyPin;
+    if (process.env.TICKETING_KEY_ROTATION_ENABLED === 'true') {
+      const { Operations } = backend('./lib/ticketing/operations');
+      const legacyService = new Operations(db, { signingKey: JSON.parse(process.env.TICKETING_SCANNER_PIN_KEYS).legacySigningKey });
+      legacyPin = await legacyService.createScannerPin(eventId, 'Legacy migration rehearsal', null, 'ticketing-preview-admin');
+    }
     await admin.locator('#event-scanner-pins').click();
+    if (legacyPin) {
+      await admin.locator('#scanner-pin-list').getByText(/1 active PIN still needs migration/).waitFor();
+      await api(admin, 'scanner/login', { pin: legacyPin.pin });
+      await admin.locator('#ticketing-dialog-close').click(); await admin.locator('#event-scanner-pins').click();
+      assert.equal(await admin.locator('#scanner-pin-list').getByText('Needs migration', { exact: false }).count(), 0, 'legacy migration clears its retirement warning');
+      await api(admin, 'staff/scanner-pins/revoke', { eventId, pinId: legacyPin.id });
+    }
     await admin.locator('#scanner-pin-create [name=label]').fill('Sam · Main door');
     await admin.getByRole('button', { name: 'Generate scanner PIN' }).click(); await admin.locator('#new-scanner-pin').waitFor();
     const pin = (await admin.locator('#new-scanner-pin').inputValue()).replaceAll(' ', ''); assert.match(pin, /^\d{8}$/);

@@ -33,9 +33,11 @@ export class Operations extends Communications {
     await this.role(uid, eventId);
     const event = (await this.event(eventId).get()).data(); if (!event) fail('Event not found.', 404);
     const pins = await this.db.collection('ticketingScannerPins').where('eventId', '==', eventId).get();
+    const migrationEnabled = !!this.pinKeys();
     return { defaultExpiresAt: Date.parse((event.liveDraft || event.draft).endAt) + 6 * 3600000,
+      migrationEnabled, legacyPinsRemaining: migrationEnabled ? pins.docs.filter(d => { const p = d.data(); return !p.revokedAt && p.expiresAt > Date.now() && !p.lookupKeyId; }).length : 0,
       pins: pins.docs.map(d => { const p = d.data(); return { id: d.id, label: p.label, expiresAt: p.expiresAt, createdAt: p.createdAt,
-        revokedAt: p.revokedAt || null, loginCount: p.loginCount || 0, lastUsedAt: p.lastUsedAt || null }; }).sort((a, b) => b.createdAt - a.createdAt) };
+        lookupKeyId: p.lookupKeyId || null, revokedAt: p.revokedAt || null, loginCount: p.loginCount || 0, lastUsedAt: p.lastUsedAt || null }; }).sort((a, b) => b.createdAt - a.createdAt) };
   }
   async createScannerPin(eventId: string, rawLabel: unknown, rawExpiry: unknown, uid: string) {
     await this.role(uid, eventId);
@@ -45,12 +47,13 @@ export class Operations extends Communications {
     const expiresAt = rawExpiry == null ? end + 6 * 3600000 : Number(rawExpiry);
     if (!Number.isSafeInteger(expiresAt) || expiresAt <= Date.now() || expiresAt > end + 24 * 3600000 || expiresAt > Date.now() + 366 * 86400000) fail('Choose a future expiry within 24 hours of the event ending and within the next year.');
     const pinId = randomUUID(), ref = this.db.collection('ticketingScannerPins').doc(pinId);
+    const lookupKeyId = this.pinKeys()?.activeKeyId || null;
     for (let attempt = 0; attempt < 5; attempt++) {
       const pin = String(randomInt(100000000)).padStart(8, '0'), lookups = this.scannerPinHashes(pin).map(key => this.db.collection('ticketingScannerPinLookup').doc(key)), lookup = lookups[0];
       const created = await this.db.runTransaction(async tx => {
         if ((await tx.getAll(...lookups)).some(doc => doc.exists)) return false;
         tx.create(lookup, { pinId });
-        tx.create(ref, { eventId, label, expiresAt, createdAt: Date.now(), createdBy: uid, loginCount: 0 });
+        tx.create(ref, { eventId, label, expiresAt, lookupKeyId, createdAt: Date.now(), createdBy: uid, loginCount: 0 });
         tx.create(this.event(eventId).collection('audit').doc(), { action: 'scanner-pin-created', pinId, label, expiresAt, uid, at: Date.now() });
         return true;
       });
@@ -74,6 +77,7 @@ export class Operations extends Communications {
     const pin = typeof rawPin === 'string' ? rawPin.replace(/[\s-]/g, '') : '';
     if (!/^\d{8}$/.test(pin)) fail('Enter a valid 8-digit scanner PIN.', 401);
     const lookupHashes = this.scannerPinHashes(pin), lookupHash = lookupHashes[0];
+    const lookupKeyId = this.pinKeys()?.activeKeyId || null;
     await this.rateLimit(lookupHash, 'scanner-login-pin', 20);
     const token = secret(), sessionRef = this.db.collection('ticketingScannerSessions').doc(hash(token));
     const result = await this.db.runTransaction(async tx => {
@@ -90,7 +94,7 @@ export class Operations extends Communications {
       if (!lookups[0].exists) tx.create(lookupRefs[0], { pinId: pinRef.id });
       const expiresAt = Math.min(p.expiresAt, Date.now() + 24 * 3600000);
       tx.create(sessionRef, { pinId: pinRef.id, eventId: p.eventId, expiresAt, createdAt: Date.now() });
-      tx.update(pinRef, { loginCount: (p.loginCount || 0) + 1, lastUsedAt: Date.now() });
+      tx.update(pinRef, { loginCount: (p.loginCount || 0) + 1, lastUsedAt: Date.now(), ...(lookupKeyId ? { lookupKeyId, lookupMigratedAt: Date.now() } : {}) });
       tx.create(this.event(p.eventId).collection('audit').doc(), { action: 'scanner-pin-login', pinId: pinRef.id, sessionId: sessionRef.id, label: p.label, at: Date.now() });
       return { uid: `scanner_${pinRef.id}`, eventId: p.eventId, eventTitle: (event.liveDraft || event.draft).title, label: p.label, expiresAt };
     });
