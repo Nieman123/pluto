@@ -1,5 +1,13 @@
 # Pluto readiness audit — October 3, 2026
 
+## HTTP dependency security checkpoint — October 5, 2026
+
+The current Functions lockfile contained `proxy-addr@2.0.7` and `compression@1.8.1`. The critical [proxy trust advisory](https://github.com/jshttp/proxy-addr/security/advisories/GHSA-jqcg-44mw-7w3h) affects short IPv4-mapped or zero-prefixed IPv6 trust subnets: an unrelated IPv4 proxy can be trusted, allowing a spoofed forwarded client IP. Pluto rejects blanket trust/hop counts and defaults to ignoring forwarding headers; the deployed `TICKETING_TRUSTED_PROXIES` values have not been inspected in this checkpoint. The high-severity [compression advisory](https://github.com/expressjs/compression/security/advisories/GHSA-vc2v-76pw-4v95) affects the middleware used by the public Functions app: interrupted compressed responses retain native zlib memory.
+
+Upgrade compression to the exact patched release `1.8.2`, override Express's transitive proxy-addr to `2.0.8`, and retain the existing gRPC override. Bounded local HTTP regressions reproduced both failures with the old versions; after patching, spoofed forwarding stops at the correct peer, valid mapped proxy subnets still work, normal gzip responses decode correctly and interrupted responses destroy their compression stream. Both regressions run in the existing PR unit-test step. A dependency upgrade alone does not establish whether either issue was exploited on a deployed site.
+
+The patched Functions production audit reports **zero high/critical** findings. Eight moderate dependency entries remain, all tracing to the existing [uuid buffer-bounds advisory](https://github.com/advisories/GHSA-w5hq-g745-h8pq) through the Google/Firebase SDK dependency graph; these are not eight independent flaws. Keep that separate SDK compatibility item open. The earlier dependency table below is historical evidence. The fixes need the protected PR merge and a staging release before cloud Functions use the patched versions.
+
 ## Event engagement and door checkpoint — October 4, 2026
 
 Recommendations 4–7 now include email announcements/reminders, schedule/cancellation/location notices, unified door arrivals and audited exits/re-entry, free-event walk-up counts, public/app/email calendar links, and verified waitlists with expiring capacity reservations and approval-aware RSVP claims. This extends the earlier checkpoints; the original audit below remains historical evidence.
