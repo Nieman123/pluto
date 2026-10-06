@@ -6,8 +6,8 @@ const { fixture } = require('./ticketing-fixture.cjs');
 if (!process.env.FIRESTORE_EMULATOR_HOST?.startsWith('127.0.0.1:') || !process.env.GCLOUD_PROJECT?.startsWith('demo-')) throw new Error('Isolated demo emulators required.');
 if (!getApps().length) initializeApp({ projectId: process.env.GCLOUD_PROJECT });
 
-function harness() {
-  const db = getFirestore(), prefix = `hardening_${randomUUID()}`, staff = `${prefix}_admin`, events = new Set(), orders = new Set();
+function harness(database = getFirestore()) {
+  const db = database, prefix = `hardening_${randomUUID()}`, staff = `${prefix}_admin`, events = new Set(), orders = new Set();
   const sessions = new Map(), intents = new Map(), charges = new Map(), refunds = new Map(), disputes = new Map(), idempotency = new Map(), hooks = {};
   const fake = {
     checkout: { sessions: {

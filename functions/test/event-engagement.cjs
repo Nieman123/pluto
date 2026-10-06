@@ -6,7 +6,12 @@ const verified = email => ({ uid: `verified_${hash(email).slice(0, 20)}`, email,
 async function offerToken(h, entryId) { return (await h.db.collection('ticketingEmailJobs').where('entryId', '==', entryId).get()).docs.find(d => d.data().type === 'waitlist-offer').data().token; }
 
 async function emailRecoveryTest(run) {
-  const h = harness(), oldFetch = global.fetch, oldKey = process.env.RESEND_API_KEY;
+  // Maintenance scans every queue. Earlier suites intentionally retain fake
+  // payments whose provider instances cannot be shared between test processes.
+  const { initializeApp, deleteApp } = require('firebase-admin/app');
+  const { getFirestore } = require('firebase-admin/firestore');
+  const projectId = `demo-email-${randomUUID()}`, app = initializeApp({ projectId }, projectId);
+  const h = harness(getFirestore(app)), oldFetch = global.fetch, oldKey = process.env.RESEND_API_KEY;
   const refs = ['maintenance', 'latest', 'issuance-cursor'].map(id => h.db.collection('ticketingHealth').doc(id));
   const previous = await Promise.all(refs.map(ref => ref.get()));
   process.env.RESEND_API_KEY = 'fake-provider-key';
@@ -17,6 +22,7 @@ async function emailRecoveryTest(run) {
     for (const doc of (await h.db.collection('ticketingHealthAudit').where('uid', '==', h.staff).get()).docs) await doc.ref.delete();
     await h.cleanup();
     for (let i = 0; i < refs.length; i++) if (previous[i].exists) await refs[i].set(previous[i].data()); else await refs[i].delete();
+    await deleteApp(app);
   }
 }
 
