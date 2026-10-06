@@ -1,5 +1,15 @@
 # Pluto readiness audit — October 3, 2026
 
+## Staging maintenance incident — October 5, 2026
+
+Read-only staging Cloud Logging and queue inspection confirmed repeated `Check identifier.` failures in `ticketingEmailWorker` and `ticketingMaintenance`. The last successful heartbeat was 8:55 PM Eastern; four event-reminder jobs queued at 9:00 PM Eastern had no provider attempts. Campaign jobs use 138-character IDs, while the shared event identifier validator allows only 80. The same validation also rejected the System health retry action. These were reminder emails, not missing receipt or ticket-issuance jobs.
+
+Use a separate, bounded email job validator in the worker and administrator retry action. Keep existing document IDs, provider idempotency keys, saved payloads, leases and the 23-hour uncertain-delivery review guard. Isolate unexpected email job failures per maintenance record, retaining the operator alert while allowing other work and the heartbeat to complete. The event/order identifier limit remains unchanged.
+
+Recovery requires a staging Functions release containing this fix. Leave the existing queue intact: workers and the five-minute maintenance pass can resume eligible reminders using their original jobs; stale or ineligible notices are cancelled by the existing delivery checks. Verify a new completed heartbeat, zero pending reminder jobs, and provider message references after deployment. Do not recreate jobs or bypass the uncertain-delivery review guard. Resend supports keys up to 256 characters and retains them for 24 hours; the email job limit leaves room for Pluto's prefix. See [Resend idempotency documentation](https://resend.com/docs/dashboard/emails/idempotency-keys).
+
+Regression coverage includes four real campaign jobs passing through maintenance and duplicate retries, administrator permission checks and stable payload/key reuse after an uncertain send, the delivery review cutoff, and a malformed record that cannot block a healthy receipt. Unit and isolated-emulator checks pass; cloud recovery remains pending deployment.
+
 ## HTTP dependency security checkpoint — October 5, 2026
 
 The current Functions lockfile contained `proxy-addr@2.0.7` and `compression@1.8.1`. The critical [proxy trust advisory](https://github.com/jshttp/proxy-addr/security/advisories/GHSA-jqcg-44mw-7w3h) affects short IPv4-mapped or zero-prefixed IPv6 trust subnets: an unrelated IPv4 proxy can be trusted, allowing a spoofed forwarded client IP. Pluto rejects blanket trust/hop counts and defaults to ignoring forwarding headers; the deployed `TICKETING_TRUSTED_PROXIES` values have not been inspected in this checkpoint. The high-severity [compression advisory](https://github.com/expressjs/compression/security/advisories/GHSA-vc2v-76pw-4v95) affects the middleware used by the public Functions app: interrupted compressed responses retain native zlib memory.

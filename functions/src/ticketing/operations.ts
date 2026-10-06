@@ -4,7 +4,7 @@ import { error as logError, warn as logWarning } from 'firebase-functions/logger
 import type Stripe from 'stripe';
 import { type Order } from './orders';
 import { Communications } from './communications';
-import { fail, hash, id, integer, receipt, secret, text, ticketId, TicketingError } from './domain';
+import { emailJobId, fail, hash, id, integer, receipt, secret, text, ticketId, TicketingError } from './domain';
 import { isLive, keyPair, resendKey } from './config';
 import { scannerAccess } from './scanner-access';
 import { deploymentConfig } from '../deployment-config';
@@ -311,7 +311,8 @@ export class Operations extends Communications {
     } catch (error: any) { await ref.update({ status: 'pending', attempts: (entry.attempts || 0) + 1, lastError: error instanceof Error ? error.name : 'unavailable', retryAt: Date.now() + Math.min(3600000, 1000 * 2 ** Math.min(entry.attempts || 0, 12)) }); throw error; }
   }
   async emailJob(jobId: string) {
-    const ref = this.db.collection('ticketingEmailJobs').doc(id(jobId));
+    jobId = emailJobId(jobId);
+    const ref = this.db.collection('ticketingEmailJobs').doc(jobId);
     const job = await this.db.runTransaction(async tx => {
       const d = (await tx.get(ref)).data();
       if (!d || ['sent', 'review', 'cancelled'].includes(d.status) || (d.leaseUntil || 0) > Date.now() || (d.retryAt || 0) > Date.now()) return null;
@@ -428,7 +429,10 @@ export class Operations extends Communications {
     summary.campaigns = await this.communicationMaintenance();
     summary.checkoutFollowups = await this.checkoutFollowupMaintenance();
     const jobs = await this.pendingBatch('ticketingEmailJobs', ['pending'], 100);
-    for (const doc of jobs.docs) { await this.emailJob(doc.id); summary.emails++; }
+    for (const doc of jobs.docs) {
+      try { await this.emailJob(doc.id); summary.emails++; }
+      catch (error) { summary.errors++; await this.workerFailure(doc.ref, 'email', error); }
+    }
     return summary;
   }
   private async workerFailure(ref: FirebaseFirestore.DocumentReference, kind: string, error: unknown) {
@@ -453,7 +457,7 @@ export class Operations extends Communications {
   }
   async retryHealth(raw: any, uid: string) {
     await this.admin(uid);
-    const key = id(raw.jobId), kind = text(raw.kind, 'job type', 30);
+    const kind = text(raw.kind, 'job type', 30), key = kind === 'email' ? emailJobId(raw.jobId) : id(raw.jobId);
     if (kind === 'webhook') await this.processWebhook(key);
     else if (kind === 'refund') {
       const refund = (await this.db.collection('ticketingRefunds').doc(key).get()).data();
