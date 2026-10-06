@@ -21,27 +21,74 @@ async function healthBadge() {
   } catch { /* Keep event editing usable while health services are unavailable. */ }
 }
 const get = (path, object = record?.draft) => path.split('.').reduce((o, key) => o?.[key], object);
-async function loadCardFlyers(cards) {
-  const uid = user?.uid, images = [...cards.querySelectorAll('[data-card-flyer]')].filter(image => !image.hasAttribute('src') && !image.dataset.loading && (!image.closest('#event-history') || image.closest('#event-history').open));
-  images.forEach(image => { image.dataset.loading = 'true'; });
-  // Loading every authenticated flyer at once contends with editor requests
-  // on the same rate-limit counter. Stop if the list is replaced or hidden.
-  async function next() {
-    while (images.length && user?.uid === uid && !document.querySelector('#events-index').hidden) {
-      const image = images.shift(); if (!image.isConnected) return;
-      try { const blob = await api('staff/card-flyer', { eventId: image.dataset.cardFlyer }, true), url = URL.createObjectURL(blob); image.onload = image.onerror = () => URL.revokeObjectURL(url); image.src = url; }
-      catch { image.remove(); }
-    }
+let flyerQueue = [], flyerActive = 0, revenueTimer, revenueGeneration = 0, eventLoadGeneration = 0;
+function pumpCardFlyers() {
+  if (document.querySelector('#events-index')?.hidden) return;
+  while (flyerActive < 2 && flyerQueue.length) {
+    const { image, uid } = flyerQueue.shift();
+    if (!image.isConnected || user?.uid !== uid || image.closest('#event-history') && !image.closest('#event-history').open) { delete image.dataset.loading; continue; }
+    flyerActive++;
+    (async () => {
+      try {
+        const blob = await api('staff/card-flyer', { eventId: image.dataset.cardFlyer }, true);
+        if (!image.isConnected || user?.uid !== uid) return;
+        const url = URL.createObjectURL(blob); image.onload = image.onerror = () => URL.revokeObjectURL(url); image.src = url;
+      } catch { if (image.isConnected && user?.uid === uid) image.remove(); }
+      finally { flyerActive--; pumpCardFlyers(); }
+    })();
   }
-  await Promise.all([next(), next()]);
 }
+function loadCardFlyers(cards) {
+  const uid = user?.uid;
+  flyerQueue = flyerQueue.filter(job => job.image.isConnected && job.uid === uid);
+  for (const image of cards.querySelectorAll('[data-card-flyer]')) {
+    if (image.hasAttribute('src') || image.dataset.loading || image.closest('#event-history') && !image.closest('#event-history').open) continue;
+    image.dataset.loading = 'true'; flyerQueue.push({ image, uid });
+  }
+  // One shared queue bounds requests across catalog refreshes and history.
+  pumpCardFlyers();
+}
+function stopRevenueRefresh() { clearTimeout(revenueTimer); return ++revenueGeneration; }
+const revenueViewActive = () => !!user && !record && !allOrdersMode && document.querySelector('#events-index')?.hidden === false;
+const eventScope = list => JSON.stringify(list.map(e => [e.id, e.revision, e.status, e.roles]).sort((a, b) => String(a[0]).localeCompare(String(b[0]))));
+const cardRevenue = revenue => revenue?.ready ? '<span>This week <b>' + money(revenue.thisWeek) + '</b></span><span>Total gross <b>' + money(revenue.gross) + '</b></span>' : revenue ? '<span>Preparing revenue…</span>' : '';
+function renderIndexRevenue() {
+  const weekly = document.querySelector('#weekly-revenue'), financial = events.filter(e => e.revenue?.ready), preparing = events.some(e => e.revenue && !e.revenue.ready);
+  weekly.hidden = !financial.length && !preparing;
+  weekly.innerHTML = '<div class="ticket-stat-grid weekly-stat-grid">' + [['This week', 'thisWeek'], ['Last week', 'lastWeek'], ['Total gross revenue', 'gross']].map(([label, key]) => '<div class="ticket-stat"><span>' + label + '</span><strong>' + money(financial.reduce((n, e) => n + e.revenue[key], 0)) + '</strong></div>').join('') + '</div><p class="revenue-note">Paid gross sales · Monday–Sunday in each event’s timezone · before refunds, tax and fees</p>';
+  weekly.querySelector('.weekly-stat-grid').hidden = preparing;
+  if (preparing) weekly.insertAdjacentHTML('beforeend', '<p role="status">Revenue history is being prepared.</p>');
+  weekly.insertAdjacentHTML('beforeend', '<button class="button button-quiet" data-index-revenue-refresh>Refresh totals</button>');
+  weekly.querySelector('[data-index-revenue-refresh]').onclick = e => action(e.currentTarget, () => refreshIndexRevenue(stopRevenueRefresh(), 2000));
+  const byId = new Map(events.map(e => [e.id, e]));
+  for (const card of document.querySelectorAll('#events-index [data-open-event]')) {
+    const revenue = byId.get(card.dataset.openEvent)?.revenue, slot = card.querySelector('.card-revenue');
+    if (slot) { slot.hidden = !revenue; slot.innerHTML = cardRevenue(revenue); }
+  }
+}
+function scheduleRevenueRefresh(generation = revenueGeneration, delay = 2000) {
+  clearTimeout(revenueTimer);
+  if (!revenueViewActive() || !events.some(e => e.revenue && !e.revenue.ready)) return;
+  revenueTimer = setTimeout(() => action(null, () => refreshIndexRevenue(generation, delay)), delay);
+}
+async function refreshIndexRevenue(generation, delay) {
+  if (generation !== revenueGeneration || !revenueViewActive()) return;
+  const uid = user.uid, result = await api('staff/events', { revenue: true });
+  if (generation !== revenueGeneration || user?.uid !== uid || !revenueViewActive()) return;
+  if (result.admin !== globalAdmin || eventScope(result.events) !== eventScope(events)) { await loadEvents(); return; }
+  events = result.events; renderIndexRevenue();
+  // Revenue updates preserve artwork, card focus and downloads. Back off while
+  // large historical summaries are still being prepared.
+  scheduleRevenueRefresh(generation, Math.min(30000, delay * 2));
+}
+window.addEventListener('pluto-auth', stopRevenueRefresh);
 function eventGroup(event, now = Date.now()) {
   if (['archived', 'cancelled'].includes(event.status)) return event.status;
   return event.status === 'published' && Date.parse(event.endAt) <= now ? 'completed' : 'current';
 }
 function eventCard(event) {
   const status = eventGroup(event) === 'completed' ? 'completed' : event.status;
-  return `<button class="admin-event-card ${event.flyer ? 'has-flyer' : ''}" data-open-event="${esc(event.id)}">${event.flyer ? `<img class="admin-card-flyer" data-card-flyer="${esc(event.id)}" alt="Flyer for ${esc(event.title)}">` : ''}<span class="status-pill status-${esc(status)}">${esc(status)}</span><span class="event-card-date">${esc(new Date(event.startAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: event.timezone }))}</span><strong>${esc(event.title)}</strong><span>${esc(event.city || 'Location to be announced')}${event.region ? `, ${esc(event.region)}` : ''}</span>${event.revenue?.ready ? `<span class="card-revenue"><span>This week <b>${money(event.revenue.thisWeek)}</b></span><span>Total gross <b>${money(event.revenue.gross)}</b></span></span>` : ''}<span class="card-action">View dashboard <span aria-hidden="true">↗</span></span></button>`;
+  return `<button class="admin-event-card ${event.flyer ? 'has-flyer' : ''}" data-open-event="${esc(event.id)}">${event.flyer ? `<img class="admin-card-flyer" data-card-flyer="${esc(event.id)}" alt="Flyer for ${esc(event.title)}">` : ''}<span class="status-pill status-${esc(status)}">${esc(status)}</span><span class="event-card-date">${esc(new Date(event.startAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: event.timezone }))}</span><strong>${esc(event.title)}</strong><span>${esc(event.city || 'Location to be announced')}${event.region ? `, ${esc(event.region)}` : ''}</span><span class="card-revenue" ${event.revenue ? '' : 'hidden'}>${cardRevenue(event.revenue)}</span><span class="card-action">View dashboard <span aria-hidden="true">↗</span></span></button>`;
 }
 function bindEventCards(root) {
   root.querySelectorAll('[data-open-event]').forEach(button => { button.onclick = () => action(button, () => selectEvent(button.dataset.openEvent)); });
@@ -122,7 +169,10 @@ function defaultDraft() {
     pools: [{ id: 'admission', name: 'General admission', capacity: 200 }], offers: [{ id: 'general', name: 'General admission', description: '', kind: 'admission', unitAmount: 4000, maxPerOrder: 10, salesStart, salesEnd: endAt, validFrom: startAt, validUntil: endAt, active: true, pools: { admission: 1 }, requiresOfferIds: [], taxCode: '', stripeProductId: '', stripeTaxRateIds: [] }], promos: [], tax: { mode: 'sandbox', confirmed: false, performanceLocationId: '' } };
 }
 export async function loadEvents() {
-  const result = await api('staff/events', { revenue: true }); events = result.events; globalAdmin = result.admin;
+  const uid = user?.uid, generation = ++eventLoadGeneration; stopRevenueRefresh();
+  const result = await api('staff/events', { revenue: true });
+  if (generation !== eventLoadGeneration || user?.uid !== uid) return result;
+  events = result.events; globalAdmin = result.admin;
   document.querySelector('#orders-all').hidden = !globalAdmin || allOrdersMode;
   document.querySelector('#system-health').hidden = !globalAdmin;
   healthBadge();
@@ -138,19 +188,13 @@ export async function loadEvents() {
     document.querySelector('#current-events-count').textContent = `${currentEvents.length} ${currentEvents.length === 1 ? 'event' : 'events'}`;
     cards.innerHTML = currentEvents.length ? currentEvents.map(eventCard).join('') : '<div class="empty-state"><h3>Your next event starts here.</h3><p>Create an event, add the artwork and ticket types, then publish when you’re ready.</p></div>';
     renderEventHistory();
-    const weekly = document.querySelector('#weekly-revenue'), financial = events.filter(e => e.revenue?.ready);
-    const preparing = events.some(e => e.revenue && !e.revenue.ready);
-    weekly.hidden = !financial.length && !preparing;
-    if (preparing && document.querySelector('#events-index')?.hidden === false) setTimeout(() => { if (!record && !allOrdersMode && !document.querySelector('#events-index').hidden) action(null, loadEvents); }, 2000);
-    weekly.innerHTML = `<div class="ticket-stat-grid weekly-stat-grid">${[['This week', 'thisWeek'], ['Last week', 'lastWeek'], ['Total gross revenue', 'gross']].map(([label, key]) => `<div class="ticket-stat"><span>${label}</span><strong>${money(financial.reduce((n, e) => n + e.revenue[key], 0))}</strong></div>`).join('')}</div><p class="revenue-note">Paid gross sales · Monday–Sunday in each event’s timezone · before refunds, tax and fees</p>`;
-    weekly.querySelector('.weekly-stat-grid').hidden = preparing;
-    if (preparing) weekly.insertAdjacentHTML('beforeend', '<p role="status">Revenue history is being prepared. Totals above include only events whose summaries are ready.</p>');
+    renderIndexRevenue();
     bindEventCards(cards);
     const requested = new URLSearchParams(location.search).get('event');
     if (!record && requested && events.some(e => e.id === requested) && document.querySelector('#event-workspace')?.hidden) await selectEvent(requested, new URLSearchParams(location.search).get('view') === 'studio');
     else if (!record && globalAdmin && new URLSearchParams(location.search).get('view') === 'orders') await showAllOrders();
     else if (!record && globalAdmin && new URLSearchParams(location.search).get('view') === 'health') await showHealth();
-    if (!document.querySelector('#events-index').hidden) loadCardFlyers(cards);
+    if (!document.querySelector('#events-index').hidden) { loadCardFlyers(cards); scheduleRevenueRefresh(); }
   }
   message(allOrdersMode ? 'Orders across all events are ready.' : result.admin ? 'Choose an event to open its dashboard.' : 'Your assigned events are ready.');
   return result;

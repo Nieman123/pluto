@@ -10,6 +10,8 @@ Historical orders and timezone edits use `ticketingFinancialBackfillWorker`, pro
 
 Release must include both new financial workers and the added `ticketingOrders` indexes. These workers need no payment or email secrets. Existing history backfills automatically when an event's revenue is first requested. After staging deployment, check an event with more than 50 orders, a cross-page buyer search, an RSVP queue, a full CSV export, and a refunded/fee-pending order. Confirm totals do not change when loading another table page and that the initial preparation status clears.
 
+Revenue preparation refreshes the index's figures in place, preserving loaded flyers and card focus. Polling backs off from two seconds to a maximum thirty seconds while history is still being prepared, and stops when summaries are ready or the user leaves the index. **Refresh totals** requests an immediate update. Current/history flyer downloads share one queue with at most two requests in flight, including during catalog changes; visiting Studio directly does not load hidden catalog artwork.
+
 ## Campaign delivery and recovery workers
 
 Campaign creation and committed page progress trigger `ticketingCampaignWorker` immediately. Each page handles up to 100 ticket/order records; stable recipient job IDs deduplicate holders across pages, duplicate triggers and retries. Lease tokens fence stale workers. Communication maintenance wakes pending campaigns whose leases expired, including jobs created before this release. Normal pagination does not wait for a scheduled tick.
