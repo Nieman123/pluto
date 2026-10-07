@@ -54,6 +54,18 @@ gcloud secrets versions access latest --secret=TICKETING_SIGNING_KEY --project=p
 npm run ticketing:rotation:prepare -- --environment staging --current-key-file tmp/key-input-staging/current-key.txt
 ```
 
+If your installed Google Cloud CLI rejects `--out-file`, use this PowerShell alternative from the repository root. It captures the base64 text secret without printing it, checks that access succeeded, and writes ASCII without a byte-order mark. This alternative is for this base64 signing key, not arbitrary binary secrets.
+
+```powershell
+New-Item -ItemType Directory -Force tmp/key-input-staging | Out-Null
+$ticketSigningExport = gcloud secrets versions access latest --secret=TICKETING_SIGNING_KEY --project=pluto-staging-92eb7
+if ($LASTEXITCODE -ne 0) { throw 'Signing-key export failed; do not run the generator.' }
+if ([string]::IsNullOrWhiteSpace(($ticketSigningExport -join ''))) { throw 'Signing-key export was empty.' }
+Set-Content -LiteralPath tmp/key-input-staging/current-key.txt -Value (($ticketSigningExport -join '').Trim()) -Encoding Ascii -NoNewline
+Remove-Variable ticketSigningExport
+npm run ticketing:rotation:prepare -- --environment staging --current-key-file tmp/key-input-staging/current-key.txt
+```
+
 For subsequent rotations, also export the current keyring and PIN configuration from the **same project**, and supply `--keyring-file PATH --pin-keys-file PATH`. This preserves all still-trusted historical public keys and independent PIN keys. The generator checks the current private key against the existing active key ID. Use the actual production project ID when preparing production; never copy staging key files to production.
 
 The generator creates a unique ignored folder under `tmp/ticket-key-rotation/` containing:
