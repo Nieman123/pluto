@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'src/calendar_picker.dart';
 import 'src/email_verification.dart';
 import 'src/html_open_link.dart';
 import 'src/offline_ticket_cache.dart';
@@ -476,6 +477,19 @@ class _TicketsPageState extends State<TicketsPage> {
     ]);
   }
 
+  Future<void> _addToCalendar(Map<String, dynamic> ticket) async {
+    final dynamic links = ticket['calendarLinks'];
+    if (links is Map && links['google'] is String && links['apple'] is String) {
+      await showCalendarPicker(context,
+          google: links['google'] as String,
+          apple: links['apple'] as String,
+          theme: _walletTheme);
+    } else {
+      // Older offline ticket snapshots only have the original calendar URL.
+      await htmlOpenLink(calendarPickerUrl(ticket['calendarUrl'] as String));
+    }
+  }
+
   Widget _ticket(Map<String, dynamic> ticket) => _panel(children: <Widget>[
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
           const Padding(
@@ -535,9 +549,7 @@ class _TicketsPageState extends State<TicketsPage> {
           SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                  onPressed: _busy
-                      ? null
-                      : () => htmlOpenLink(ticket['calendarUrl'] as String),
+                  onPressed: _busy ? null : () => _addToCalendar(ticket),
                   icon: const Icon(Icons.event_outlined, size: 18),
                   label: const Text('Add to Calendar'))),
         ],

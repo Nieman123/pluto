@@ -13,7 +13,7 @@ function input(kind = 'receipt', overrides = {}) {
 }
 
 test('receipt has grouped purchases, accurate totals, Eastern schedule, app CTA and plain-text alternative', () => {
-  const i = input(), mail = renderTicketingEmail(i);
+  const i = input(); i.event.slug = 'a-night-in-orbit'; const mail = renderTicketingEmail(i);
   assert.equal(mail.subject, 'Your A Night in Orbit tickets');
   assert.match(mail.text, /General admission × 2: \$50\.00/);
   assert.match(mail.text, /VIP × 1: \$35\.00/);
@@ -25,6 +25,9 @@ test('receipt has grouped purchases, accurate totals, Eastern schedule, app CTA 
   assert.ok(mail.html.includes(i.actionUrl));
   assert.ok(mail.text.includes(i.actionUrl));
   assert.match(mail.html, /max-width:600px/);
+  assert.ok(mail.html.includes('/events/a-night-in-orbit?calendar=1'));
+  assert.ok(mail.text.includes('/events/a-night-in-orbit?calendar=1'));
+  assert.ok(!mail.html.includes('/calendar.ics'));
 });
 
 test('HTML escapes organizer-controlled text and never exposes exact venue data or QR credentials', () => {

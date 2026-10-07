@@ -14,7 +14,8 @@ export function calendarLinks(event: CalendarEvent, base: string) {
   const location = event.venueVisibility === 'public' ? [event.venueName, event.address, event.city, event.region].filter(Boolean).join(', ') : [event.city, event.region].filter(Boolean).join(', ');
   const details = `Event details and updates: ${url}${event.venueVisibility === 'holders' ? '\nExact venue and directions are available to confirmed attendees in the Pluto app.' : ''}`;
   const query = new URLSearchParams({ action: 'TEMPLATE', text: event.title, dates: `${stamp(event.startAt)}/${stamp(event.endAt)}`, ctz: event.timezone, details, location });
-  return { ics: `${url}/calendar.ics`, google: `https://calendar.google.com/calendar/render?${query}`, url, location, details };
+  const ics = `${url}/calendar.ics`;
+  return { ics, apple: ics.replace(/^https?:/, 'webcal:'), picker: `${url}?calendar=1`, google: `https://calendar.google.com/calendar/render?${query}`, url, location, details };
 }
 export function eventCalendar(event: CalendarEvent, base: string, now = new Date().toISOString()) {
   const links = calendarLinks(event, base);

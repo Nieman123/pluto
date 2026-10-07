@@ -42,7 +42,38 @@ async function surface(page, name) {
     const guestContext = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 390, height: 844 } }), guest = await guestContext.newPage(); active = guest;
     await guest.goto(`${base}/events/${draft.slug}`); await guest.getByRole('button', { name: 'Join RSVP admission waitlist', exact: true }).waitFor();
     const calendar = await guest.request.get(`${base}/events/${draft.slug}/calendar.ics`), ics = await calendar.text(); assert.equal(calendar.status(), 200); assert.match(ics, /BEGIN:VCALENDAR/); assert.ok(!ics.includes(draft.address)); assert.ok(!ics.includes(draft.venueName));
-    assert.ok((await guest.getByRole('link', { name: 'Google Calendar ↗', exact: true }).getAttribute('href')).includes('ctz=America%2FNew_York'));
+    assert.match(calendar.headers()['content-disposition'], /^inline;/);
+    const calendarButton = guest.getByRole('button', { name: 'Add to Calendar', exact: true }), picker = guest.locator('.calendar-picker');
+    let downloads = 0; guest.on('download', () => downloads++);
+    await guestContext.route('https://calendar.google.com/**', route => route.fulfill({ contentType: 'text/html', body: '<title>Calendar handoff fixture</title>' }));
+    for (const width of [390, 1280]) {
+      await guest.setViewportSize({ width, height: 844 });
+      await calendarButton.click(); await picker.waitFor();
+      const googleLink = picker.locator('[data-calendar-provider=google]'), appleLink = picker.locator('[data-calendar-provider=apple]');
+      const googleUrl = new URL(await googleLink.getAttribute('href'));
+      assert.equal(googleUrl.searchParams.get('ctz'), 'America/New_York');
+      assert.ok(!googleUrl.searchParams.get('location').includes(draft.address));
+      assert.equal(await appleLink.getAttribute('href'), `webcal://127.0.0.1:4173/events/${draft.slug}/calendar.ics`);
+      await surface(guest, `calendar-picker-${width}`);
+      await guest.keyboard.press('Escape'); assert.equal(await picker.evaluate(node => node.open), false);
+      assert.equal(await calendarButton.evaluate(node => node === document.activeElement), true);
+    }
+    await calendarButton.click();
+    const googlePopup = guest.waitForEvent('popup'); await picker.locator('[data-calendar-provider=google]').click();
+    const googlePage = await googlePopup; await googlePage.waitForLoadState(); assert.equal(new URL(googlePage.url()).hostname, 'calendar.google.com'); await googlePage.close();
+    assert.equal(await picker.evaluate(node => node.open), false);
+    await guest.goto(`${base}/events/${draft.slug}?calendar=1&ref=email#tickets`); await picker.waitFor();
+    assert.equal(new URL(guest.url()).searchParams.has('calendar'), false); assert.equal(new URL(guest.url()).searchParams.get('ref'), 'email');
+    assert.equal(new URL(guest.url()).hash, '#tickets');
+    // Chromium on CI has no Apple Calendar app. Verify the protocol handoff
+    // without invoking an OS handler or saving a calendar entry during tests.
+    await guest.evaluate(() => document.addEventListener('click', event => {
+      const link = event.target.closest('[data-calendar-provider=apple]'); if (link) { event.preventDefault(); window.appleCalendarHandoff = link.href; }
+    }, { capture: true }));
+    await picker.locator('[data-calendar-provider=apple]').click();
+    assert.equal(await guest.evaluate(() => window.appleCalendarHandoff), `webcal://127.0.0.1:4173/events/${draft.slug}/calendar.ics`);
+    assert.equal(await picker.evaluate(node => node.open), false); assert.equal(downloads, 0);
+    await guest.setViewportSize({ width: 390, height: 844 });
     await surface(guest, 'engagement-sold-out-mobile');
     await guest.getByRole('button', { name: 'Join RSVP admission waitlist', exact: true }).click(); await guest.locator('[data-waitlist-join] [name=name]').fill('Waitlist Guest'); await guest.locator('[data-waitlist-join] [name=email]').fill('waitlist-browser@preview.invalid');
     const verifying = guest.waitForResponse(r => r.url().endsWith('/tickets/api/waitlist/verification')); await guest.locator('[data-waitlist-join] button').click(); const verification = await (await verifying).json();
@@ -62,9 +93,15 @@ async function surface(page, name) {
     await guest.goto(`${base}/events/${draft.slug}#waitlist=${offer.token}`); await guest.getByRole('button', { name: 'Claim reserved spot', exact: true }).waitFor(); assert.equal(new URL(guest.url()).hash, '');
     const claimed = guest.waitForURL('**/app/tickets?order=*'); await guest.getByRole('button', { name: 'Claim reserved spot', exact: true }).click(); await claimed;
     const orderId = new URL(guest.url()).searchParams.get('order'); await guest.locator('flt-semantics-placeholder').evaluate(e => e.click(), { timeout: 20000 }).catch(() => {}); await guest.getByText('Show this code at the door · Tap to enlarge', { exact: true }).waitFor({ timeout: 30000 }); await guest.getByText('Add to Calendar', { exact: true }).waitFor();
+    await guest.getByText('Add to Calendar', { exact: true }).click(); await guest.getByText('Apple Calendar', { exact: false }).waitFor(); await guest.getByText('Google Calendar', { exact: false }).waitFor();
+    await guest.screenshot({ path: 'tmp/ticketing-calendar-picker-app.png', fullPage: true });
+    const appCalendarPopup = guest.waitForEvent('popup'); await guest.getByText('Google Calendar', { exact: false }).click();
+    const appCalendar = await appCalendarPopup; await appCalendar.waitForLoadState(); assert.equal(new URL(appCalendar.url()).hostname, 'calendar.google.com'); await appCalendar.close();
     assert.equal((await db.collection('ticketingOrders').doc(orderId).get()).data().rsvpStatus, 'approved');
     await guest.screenshot({ path: 'tmp/ticketing-engagement-approved-app.png', fullPage: true });
     const accessKey = await guest.evaluate(oid => localStorage.getItem(`pluto-order-${oid}`), orderId), view = await api(guest, 'order', { orderId, accessKey });
+    assert.ok(view.tickets[0].calendarLinks.google.startsWith('https://calendar.google.com/')); assert.ok(view.tickets[0].calendarLinks.apple.startsWith('webcal://'));
+    assert.ok(!decodeURIComponent(view.tickets[0].calendarLinks.google).includes(draft.address)); assert.ok(view.tickets[0].calendarUrl.endsWith('?calendar=1'));
     stage = 'announcements and scanner attendance'; active = admin;
     await admin.locator('#event-communications').click(); await admin.locator('[data-announcement] [name=title]').fill('Doors are ready'); await admin.locator('[data-announcement] [name=body]').fill('Open Pluto for your arrival details.'); await surface(admin, 'engagement-announcement-preview'); await admin.getByRole('button', { name: 'Queue announcement emails', exact: true }).click(); await admin.locator('#ticketing-dialog-content .order-activity').filter({ hasText: 'Doors are ready' }).waitFor(); await admin.locator('#ticketing-dialog-close').click();
     await api(admin, 'staff/scan', { eventId: eid, qr: view.tickets[0].qr, scanId: randomUUID() });
@@ -74,6 +111,9 @@ async function surface(page, name) {
     stage = 'free event walk-up count'; active = admin;
     const fid = randomUUID(), free = fixture(true); free.slug += `-${fid}`; free.registrationMode = 'free'; free.venueVisibility = 'public'; free.offers.forEach(o => { o.active = false; });
     await api(admin, 'staff/save', { eventId: fid, draft: free, revision: 0 }); await api(admin, 'staff/publish', { eventId: fid, revision: 1, action: 'publish' }); await admin.goto(`${base}/tickets/admin?event=${fid}`); await admin.locator('#event-attendance').click(); await admin.locator('[data-walkup] [name=quantity]').fill('4'); await admin.getByRole('button', { name: 'Record walk-up count', exact: true }).click(); await admin.locator('[data-walkup]').filter({ hasText: '4 inside' }).waitFor(); await surface(admin, 'engagement-free-walkups');
+    await guest.goto(`${base}/events/${free.slug}?calendar=1`); await picker.waitFor();
+    assert.equal(await guest.locator('#native-checkout-config').count(), 0, 'free page picker works without the ticketing bundle');
+    await picker.getByRole('button', { name: 'Close calendar picker' }).click();
     await admin.locator('[data-walkup] [name=action]').selectOption('exit'); await admin.locator('[data-walkup] [name=quantity]').fill('5'); await admin.getByRole('button', { name: 'Record walk-up count', exact: true }).click(); await admin.locator('[data-panel-error]').filter({ hasText: 'exceed' }).waitFor(); assert.equal(await admin.locator('[data-walkup] [name=quantity]').isEnabled(), true); assert.equal((await db.collection('ticketingEvents').doc(fid).collection('door').doc('walkups').get()).data().inside, 4);
     console.log('Calendar privacy, waitlist verification/approval/claim, app calendar, announcements, PIN re-entry and free walk-up browser checks passed.');
     await guestContext.close(); await doorContext.close(); await adminContext.close();
