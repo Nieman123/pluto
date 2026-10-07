@@ -4,16 +4,21 @@ import 'package:qr_flutter/qr_flutter.dart';
 /// Pluto styling stays outside the QR quiet zone. Square finder patterns,
 /// opaque light background and dark modules preserve contrast at the door.
 class TicketQr extends StatelessWidget {
-  const TicketQr({super.key, required this.data, required this.label});
+  const TicketQr(
+      {super.key,
+      required this.data,
+      required this.label,
+      this.maxWidth = 340});
   final String data;
   final String label;
+  final double maxWidth;
   @override
   Widget build(BuildContext context) =>
       LayoutBuilder(builder: (context, constraints) {
-        final width = constraints.maxWidth.clamp(0.0, 340.0);
+        final width = constraints.maxWidth.clamp(0.0, maxWidth);
         final validation = QrValidator.validate(
             data: data, errorCorrectionLevel: QrErrorCorrectLevel.M);
-        final codeWidth = (width - 18).clamp(0.0, 322.0);
+        final codeWidth = (width - 18).clamp(0.0, maxWidth - 18);
         return Center(
             child: SizedBox(
                 width: width,
@@ -54,6 +59,76 @@ class TicketQr extends StatelessWidget {
                   ]),
                 )));
       });
+}
+
+class ZoomableTicketQr extends StatelessWidget {
+  const ZoomableTicketQr({super.key, required this.data, required this.label});
+  final String data;
+  final String label;
+
+  void _open(BuildContext context) {
+    final reducedMotion = MediaQuery.disableAnimationsOf(context);
+    showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+      barrierColor: Colors.black87,
+      transitionDuration:
+          reducedMotion ? Duration.zero : const Duration(milliseconds: 240),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        final screen = MediaQuery.sizeOf(context);
+        final width = (screen.width - 48).clamp(80.0, 640.0);
+        final maxWidth =
+            width.clamp(80.0, (screen.height - 160).clamp(80.0, 640.0));
+        return SafeArea(
+          child: Center(
+            child: Material(
+              color: Colors.transparent,
+              child: SizedBox(
+                width: maxWidth,
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: IconButton(
+                      autofocus: true,
+                      tooltip: 'Close enlarged QR',
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close, color: Colors.white),
+                    ),
+                  ),
+                  TicketQr(
+                      data: data, label: 'Enlarged $label', maxWidth: maxWidth),
+                ]),
+              ),
+            ),
+          ),
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final eased = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+            reverseCurve: Curves.easeInCubic);
+        return FadeTransition(
+          opacity: eased,
+          child: ScaleTransition(
+              scale: Tween<double>(begin: .85, end: 1).animate(eased),
+              child: child),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        hint: 'Tap to enlarge the QR code',
+        child: InkWell(
+          onTap: () => _open(context),
+          borderRadius: BorderRadius.circular(18),
+          child: TicketQr(data: data, label: label),
+        ),
+      );
 }
 
 class _TicketQrPainter extends CustomPainter {

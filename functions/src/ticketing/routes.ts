@@ -217,6 +217,7 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   router.post('/tickets/api/scanner/logout', async (req, res) => res.json(await service.scannerLogout(req.get('x-pluto-scanner') || '')));
   router.post('/tickets/api/staff/get', async (req, res) => res.json(await service.get(bodyId(req), actor(res).uid)));
   router.post('/tickets/api/staff/save', async (req, res) => res.json(await service.save(bodyId(req), req.body.draft, req.body.revision, actor(res).uid)));
+  router.post('/tickets/api/staff/ticket-settings', async (req, res) => res.json(await service.save(bodyId(req), req.body.draft, req.body.revision, actor(res).uid, true)));
   router.post('/tickets/api/staff/publish', async (req, res) => res.json(await service.publish(bodyId(req), req.body.action, integer(req.body.revision, 'revision'), actor(res).uid)));
   router.post('/tickets/api/staff/duplicate', async (req, res) => res.json(await service.duplicate(bodyId(req), actor(res).uid)));
   router.post('/tickets/api/staff/revisions', async (req, res) => res.json(await service.revisions(bodyId(req), actor(res).uid)));

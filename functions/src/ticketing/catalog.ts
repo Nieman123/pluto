@@ -51,12 +51,27 @@ export class Catalog {
     return (await getStorage().bucket(storageBucket('ticketing')).file(media.path).download())[0];
   }
   async get(eventId: string, uid: string) { await this.role(uid, eventId); const s = await this.event(eventId).get(); if (!s.exists) fail('Event not found.', 404); return { id: s.id, ...s.data() }; }
-  async save(eventId: string, raw: any, expectedRevision: unknown, uid: string) {
-    const draft = validateDraft(raw), ref = this.event(eventId), revision = integer(expectedRevision, 'revision');
-    if (!(await ref.get()).exists) await this.admin(uid); else await this.role(uid, eventId);
+  async preparePublication(_eventId: string, draft: EventDraft): Promise<EventDraft> { return draft; }
+  async save(eventId: string, raw: any, expectedRevision: unknown, uid: string, ticketingOnly = false) {
+    const ref = this.event(eventId), revision = integer(expectedRevision, 'revision'), before = (await ref.get()).data();
+    if (!before) await this.admin(uid); else await this.role(uid, eventId);
+    if ((before?.revision || 0) !== revision) fail('Another editor saved this event. Reload before saving.', 409);
+    if (ticketingOnly && !before) fail('Create the event in Event Studio first.', 404);
+    if (!raw || typeof raw !== 'object') fail('Missing event settings.');
+    const fields = ['registrationMode', 'offers', 'pools', 'promos', 'tax', 'remindersEnabled', 'waitlistEnabled', 'waitlistOfferMinutes'];
+    const settings = Object.fromEntries(fields.filter(key => Object.prototype.hasOwnProperty.call(raw, key)).map(key => [key, raw[key]]));
+    const mergeSettings = (source: EventDraft) => validateDraft({ ...source, ...settings,
+      ...(settings.registrationMode === 'free' ? { venueVisibility: 'public', venueRevealScheduled: false, venueRevealAt: null } : {}) });
+    let draft = ticketingOnly ? mergeSettings(before!.draft) : validateDraft(raw);
+    const liveDraft = ticketingOnly && before?.status === 'published' ? await this.preparePublication(eventId, mergeSettings(before.liveDraft || before.draft)) : null;
+    if (liveDraft) draft = validateDraft({ ...draft, tax: liveDraft.tax, offers: liveDraft.offers });
+    if (liveDraft) await this.validatePublication(eventId, liveDraft, revision + 1);
+    const published = liveDraft || before?.liveDraft;
+    const hasUnpublishedChanges = !published || JSON.stringify(draft) !== JSON.stringify(validateDraft(published));
     await this.db.runTransaction(async tx => {
       const old = (await tx.get(ref)).data();
       if ((old?.revision || 0) !== revision) fail('Another editor saved this event. Reload before saving.', 409);
+      if (ticketingOnly && (old?.status !== before?.status || JSON.stringify(old?.liveDraft) !== JSON.stringify(before?.liveDraft))) fail('Publication changed. Reload before saving ticket settings.', 409);
       const poolSnapshots = await Promise.all(draft.pools.map(p => tx.get(ref.collection('pools').doc(p.id))));
       const promoSnapshots = await Promise.all(draft.promos.map(p => tx.get(ref.collection('promos').doc(p.code))));
       draft.pools.forEach((p, i) => { const counts = poolSnapshots[i].data() || { held: 0, sold: 0 }; if (p.capacity < counts.held + counts.sold) fail('Capacity cannot be below sold and reserved inventory.', 409); });
@@ -65,9 +80,18 @@ export class Catalog {
       draft.pools.forEach((p, i) => { if (!poolSnapshots[i].exists) tx.create(ref.collection('pools').doc(p.id), { ...p, held: 0, sold: 0 }); });
       draft.promos.forEach((p, i) => { if (!promoSnapshots[i].exists) tx.create(ref.collection('promos').doc(p.code), { ...p, held: 0, used: 0 }); });
       tx.set(ref.collection('revisions').doc(String(revision + 1)), { draft, savedAt: Date.now(), savedBy: uid });
-      tx.set(ref, { draft, revision: revision + 1, status: old?.status || 'draft', updatedAt: Date.now(), updatedBy: uid, createdAt: old?.createdAt || Date.now() }, { merge: true });
+      tx.set(ref, { draft, revision: revision + 1, hasUnpublishedChanges, status: old?.status || 'draft', updatedAt: Date.now(), updatedBy: uid, createdAt: old?.createdAt || Date.now(),
+        ...(liveDraft ? { liveDraft, publishedRevision: revision + 1 } : {}) }, { merge: true });
+      if (liveDraft) {
+        // Apply only the dashboard settings; Studio content remains a draft.
+        draft.pools.forEach((p, i) => tx.set(ref.collection('pools').doc(p.id), { ...p, held: poolSnapshots[i].data()?.held || 0, sold: poolSnapshots[i].data()?.sold || 0 }));
+        draft.promos.forEach((p, i) => tx.set(ref.collection('promos').doc(p.code), { ...p, held: promoSnapshots[i].data()?.held || 0, used: promoSnapshots[i].data()?.used || 0 }));
+        tx.set(this.db.collection('publishedEvents').doc(eventId), { ...publicEvent(eventId, liveDraft, 'published', revision + 1), calendarSequence: old!.calendarSequence || old!.publishedRevision || 0 });
+        tx.set(this.db.collection('currentEvents').doc(`native-${eventId}`), { title: liveDraft.title, details: `${liveDraft.subtitle}\n${liveDraft.city}, ${liveDraft.region}`, ticketUrl: `${baseUrl()}/events/${liveDraft.slug}`, registrationMode: liveDraft.registrationMode,
+          flyerImageUrl: liveDraft.flyer || liveDraft.hero ? `${baseUrl()}/events/${liveDraft.slug}/media/${(liveDraft.flyer || liveDraft.hero)!.assetId}` : '', isActive: true, isManaFest: false, sortOrder: 0, updatedAt: new Date() });
+      }
     });
-    return { id: eventId, revision: revision + 1 };
+    return { id: eventId, revision: revision + 1, draft, hasUnpublishedChanges, appliedToPublicPage: !!liveDraft, publishedRevision: liveDraft ? revision + 1 : before?.publishedRevision };
   }
   async revisions(eventId: string, uid: string) { await this.role(uid, eventId); return (await this.event(eventId).collection('revisions').get()).docs.map(d => ({ revision: Number(d.id), savedAt: d.data().savedAt, savedBy: d.data().savedBy })).sort((a, b) => b.revision - a.revision); }
   async restore(eventId: string, revision: number, expected: number, uid: string) {
@@ -96,32 +120,34 @@ export class Catalog {
     }
     return result;
   }
+  async validatePublication(eventId: string, draft: EventDraft, revision: number) {
+    const ref = this.event(eventId);
+    if (!draft.city || !draft.region || !draft.descriptionHtml) fail('Add location and description before publishing.');
+    if (draft.registrationMode !== 'free' && !draft.offers.length) fail('Add tickets or an RSVP pass before publishing.');
+    if (['rsvp', 'rsvp-approval'].includes(draft.registrationMode) && !draft.offers.some(o => o.active && o.kind === 'admission' && o.unitAmount === 0)) fail('RSVP events need an active free admission pass. Add paid VIP options alongside it.');
+    const earlyTicket = draft.registrationMode === 'free' ? undefined : draft.offers.find(o => Date.parse(o.validFrom) < Date.parse(draft.admissionStartsAt));
+    if (earlyTicket) {
+      const format = (value: string) => new Intl.DateTimeFormat('en-US', { timeZone: draft.timezone, dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+      fail(`"${earlyTicket.name}" admits guests from ${format(earlyTicket.validFrom)}, before First admission (${format(draft.admissionStartsAt)}; ${draft.timezone}). In Event dashboard → Ticket types & passes, update this ticket's Admission valid from, or move First admission earlier.`);
+    }
+    if (draft.registrationMode === 'tickets' || draft.offers.some(o => o.active && o.unitAmount > 0)) {
+      if (isLive() && (!draft.tax.confirmed || draft.tax.mode === 'sandbox')) fail('Confirm the event tax configuration before live sales.');
+      const taxedOffers = draft.offers.filter(o => o.active && o.unitAmount > 0);
+      if (draft.tax.mode === 'automatic' && (!draft.tax.confirmed || !draft.tax.performanceLocationId || taxedOffers.some(o => !o.taxCode || !o.stripeProductId))) fail('Automatic tax needs confirmed venue, registration and product configuration.');
+      if (draft.tax.mode === 'manual' && (!draft.tax.confirmed || taxedOffers.some(o => !o.stripeTaxRateIds.length))) fail('Manual tax needs confirmed inclusive rates for every paid offer.');
+    }
+    for (const m of allMedia(draft)) if (!(await ref.collection('media').doc(m.assetId).get()).exists) fail('An image is missing. Upload it again.');
+    if (draft.venueVisibility === 'holders') {
+      const visible = JSON.stringify(publicEvent(eventId, draft, 'published', revision));
+      if ([draft.address, draft.venueName].some(v => v.length > 5 && visible.toLowerCase().includes(v.toLowerCase()))) fail('Private venue details appear in public content. Remove them before publishing.');
+    }
+  }
   async publish(eventId: string, action: string, expected: number, uid: string) {
     await this.role(uid, eventId);
     if (!['publish', 'unpublish', 'archive', 'cancel'].includes(action)) fail('Invalid publication action.');
     const ref = this.event(eventId), before = (await ref.get()).data(); if (!before) fail('Event not found.', 404);
-    const draft = validateDraft(before.draft);
-    if (action === 'publish') {
-      if (!draft.city || !draft.region || !draft.descriptionHtml) fail('Add location and description before publishing.');
-      if (draft.registrationMode !== 'free' && !draft.offers.length) fail('Add tickets or an RSVP pass before publishing.');
-      if (['rsvp', 'rsvp-approval'].includes(draft.registrationMode) && !draft.offers.some(o => o.active && o.kind === 'admission' && o.unitAmount === 0)) fail('RSVP events need an active free admission pass. Add paid VIP options alongside it.');
-      const earlyTicket = draft.registrationMode === 'free' ? undefined : draft.offers.find(o => Date.parse(o.validFrom) < Date.parse(draft.admissionStartsAt));
-      if (earlyTicket) {
-        const format = (value: string) => new Intl.DateTimeFormat('en-US', { timeZone: draft.timezone, dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
-        fail(`"${earlyTicket.name}" admits guests from ${format(earlyTicket.validFrom)}, before First admission (${format(draft.admissionStartsAt)}; ${draft.timezone}). In Event dashboard → Ticket types & passes, update this ticket's Admission valid from, or move First admission earlier.`);
-      }
-      if (draft.registrationMode === 'tickets' || draft.offers.some(o => o.active && o.unitAmount > 0)) {
-        if (isLive() && (!draft.tax.confirmed || draft.tax.mode === 'sandbox')) fail('Confirm the event tax configuration before live sales.');
-        const taxedOffers = draft.registrationMode === 'tickets' ? draft.offers : draft.offers.filter(o => o.active && o.unitAmount > 0);
-        if (draft.tax.mode === 'automatic' && (!draft.tax.confirmed || !draft.tax.performanceLocationId || taxedOffers.some(o => !o.taxCode || !o.stripeProductId))) fail('Automatic tax needs confirmed venue, registration and product configuration.');
-        if (draft.tax.mode === 'manual' && (!draft.tax.confirmed || taxedOffers.some(o => !o.stripeTaxRateIds.length))) fail('Manual tax needs confirmed inclusive rates for every paid offer.');
-      }
-      for (const m of allMedia(draft)) if (!(await ref.collection('media').doc(m.assetId).get()).exists) fail('An image is missing. Upload it again.');
-      if (draft.venueVisibility === 'holders') {
-        const visible = JSON.stringify(publicEvent(eventId, draft, 'published', expected));
-        if ([draft.address, draft.venueName].some(v => v.length > 5 && visible.toLowerCase().includes(v.toLowerCase()))) fail('Private venue details appear in public content. Remove them before publishing.');
-      }
-    }
+    const draft = action === 'publish' ? await this.preparePublication(eventId, validateDraft(before.draft)) : validateDraft(before.draft);
+    if (action === 'publish') await this.validatePublication(eventId, draft, expected);
     await this.db.runTransaction(async tx => {
       const current = (await tx.get(ref)).data();
       if (current?.revision !== expected || current?.revision !== before.revision) fail('Event changed. Reload before publishing.', 409);
@@ -137,7 +163,7 @@ export class Catalog {
       const status = action === 'publish' ? 'published' : action === 'unpublish' ? 'draft' : action === 'cancel' ? 'cancelled' : 'archived';
       const published = publicEvent(eventId, releasedDraft, status, action === 'publish' ? expected : current!.publishedRevision || expected);
       const calendarSequence = (current!.calendarSequence || current!.publishedRevision || 0) + 1;
-      tx.update(ref, { status, calendarSequence, publishedSlug: releasedDraft.slug, ...(action === 'publish' ? { publishedRevision: expected, liveDraft: draft } : {}), updatedAt: Date.now() });
+      tx.update(ref, { status, calendarSequence, publishedSlug: releasedDraft.slug, ...(action === 'publish' ? { draft, publishedRevision: expected, liveDraft: draft, hasUnpublishedChanges: false } : {}), updatedAt: Date.now() });
       if (action === 'publish') {
         draft.pools.forEach((p, i) => tx.set(ref.collection('pools').doc(p.id), { ...p, held: poolSnapshots[i].data()?.held || 0, sold: poolSnapshots[i].data()?.sold || 0 }));
         draft.promos.forEach((p, i) => tx.set(ref.collection('promos').doc(p.code), { ...p, held: promoSnapshots[i].data()?.held || 0, used: promoSnapshots[i].data()?.used || 0 }));

@@ -16,6 +16,7 @@ import type { WalletTicket } from './digital-wallet';
 import { waitlistHold, withoutWaitlistHold } from './waitlist-hold';
 import { approvedRsvpParent, assertRsvpPayment } from './rsvp-upgrade';
 import { plutoCheckoutBranding } from './checkout-branding';
+import { assertVenueRegistration, prepareVenueTax } from './venue-tax';
 
 export interface Order {
   eventId: string; eventTitle: string; eventSlug: string; ownerUid: string; email: string; name: string; accessHash: string; inputHash: string;
@@ -36,6 +37,10 @@ type Dependencies = { stripe?: Stripe; signingKey?: SigningMaterial; scannerPinK
 export class Orders extends Catalog {
   constructor(db?: Firestore, private dependencies: Dependencies = {}) { super(db); }
   stripe() { return this.dependencies.stripe || stripeClient(); }
+  override async preparePublication(eventId: string, draft: EventDraft) {
+    if (draft.tax.mode !== 'automatic' || !draft.tax.autoConfigure || draft.registrationMode === 'free' || !draft.offers.some(o => o.active && o.unitAmount > 0)) return draft;
+    return prepareVenueTax(this.db, this.stripe(), eventId, draft, isLive());
+  }
   signing() { return this.dependencies.signingKey; }
   pinKeys(): ScannerPinKeys | undefined {
     if (this.dependencies.scannerPinKeys) return validatePinKeys(this.dependencies.scannerPinKeys);
@@ -282,10 +287,15 @@ export class Orders extends Catalog {
     if (order.tax.mode === 'automatic') await this.checkAutomaticTax(order);
   }
   async checkAutomaticTax(order: Pick<Order, 'tax' | 'units' | 'livemode'>) {
+    if (order.tax.autoConfigure) {
+      const location = await this.stripe().tax.locations.retrieve(order.tax.performanceLocationId);
+      if (location.type !== 'performance' || location.livemode !== order.livemode || location.address.country !== 'US' || !location.address.state) fail('The order tax location does not match its payment environment.', 503);
+      await assertVenueRegistration(this.stripe(), location.address.state, order.livemode);
+    }
     const settings = await this.stripe().tax.settings.retrieve();
     const registrations = await this.stripe().tax.registrations.list({ status: 'active', limit: 100 });
     if (settings.status !== 'active' || !registrations.data.length) fail('Stripe Tax requires active settings and registrations.', 503);
-    for (const unit of order.units) {
+    for (const unit of order.units.filter(unit => unit.amount > 0)) {
       const product = await this.stripe().products.retrieve(unit.stripeProductId);
       if (product.deleted || !product.active || product.livemode !== order.livemode || product.tax_details?.performance_location !== order.tax.performanceLocationId || (typeof product.tax_code === 'string' ? product.tax_code : product.tax_code?.id) !== unit.taxCode) fail('A ticket product does not match the configured venue, tax classification or environment.', 503);
     }

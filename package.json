@@ -16,6 +16,7 @@
     "test:ticketing:integration": "node functions/test/ticketing-integration.cjs",
     "test:ticketing:hardening": "node --test functions/test/ticketing-hardening.cjs functions/test/offline-hardening.cjs",
     "test:ticketing:rotation": "node --test functions/test/signing-rotation.cjs",
+    "test:ticketing:settings": "node --test functions/test/ticket-settings.cjs",
     "test:ticketing:rsvp": "node functions/test/rsvp-integration.cjs",
     "test:ticketing:free": "node --test functions/test/free-events.cjs",
     "test:ticketing:rules": "node --test test/ticketing-rules.test.mjs",
