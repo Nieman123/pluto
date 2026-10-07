@@ -51,6 +51,7 @@ async function field(page, path, value) {
     await admin.locator('#workspace-status').filter({ hasText: 'published' }).waitFor();
     await admin.locator('#event-orders').click(); await admin.getByRole('heading', { name: 'Event overview', exact: true }).waitFor();
     assert.equal(await admin.locator('#event-cash').isVisible(), false);
+    assert.equal(await admin.locator('#event-scanner-pins').isVisible(), false);
     assert.equal(await admin.locator('#event-ticket-settings fieldset').count(), 0);
     assert.equal(await admin.locator('#setup-rsvp-pass').count(), 0);
     await surface(admin, 'free-event-dashboard');
@@ -72,8 +73,30 @@ async function field(page, path, value) {
     assert.equal((await card.locator('.discover-status').textContent()).trim(), 'Free entry · Just show up');
     assert.equal(await card.getByRole('link', { name: /View event & tickets|View event & RSVP/ }).count(), 0);
     assert.equal(await card.locator('.discover-flyer img').count(), 1);
-    // The CI preview serves a static homepage fixture. Its card template is
-    // covered with the actual published projection in free-events.cjs.
+    // Render the real home template with this published event, since preview
+    // intentionally uses a static catalog instead of live Firestore home data.
+    const nunjucks = backend('nunjucks');
+    const template = nunjucks.configure(resolve(__dirname, '../../functions/lib/templates'), { autoescape: true });
+    const { normalizeEvent } = backend('./lib/public-data');
+    const cardRecord = (await db.collection('currentEvents').doc(`native-${eventId}`).get()).data();
+    const homeResponse = await guest.request.get(base);
+    const homeSource = await homeResponse.text();
+    const firebaseConfigJson = homeSource.match(/<script[^>]*id="firebase-config"[^>]*>([\s\S]*?)<\/script>/)[1];
+    const homeHtml = template.render('home.njk', { path: '/', meta: { title: 'Home card check', description: 'Pluto events', canonical: base }, firebaseConfigJson, events: [normalizeEvent(`native-${eventId}`, cardRecord)] });
+    await guest.route(`${base}/`, route => route.fulfill({ status: 200, contentType: 'text/html', body: homeHtml }));
+    for (const width of [1280, 390]) {
+      await guest.setViewportSize({ width, height: 900 });
+      await guest.goto(base);
+      const homeCard = guest.locator('.event-card').filter({ hasText: title });
+      await homeCard.scrollIntoViewIfNeeded();
+      assert.equal(await homeCard.locator('a a').count(), 0, 'card links are not nested');
+      const image = await homeCard.locator('img').boundingBox();
+      await guest.mouse.click(image.x + image.width / 2, image.y + image.height / 2);
+      await guest.waitForURL(`${base}/events/${slug}`);
+      await guest.goto(base);
+      await guest.locator('.event-card-link').focus();
+      await guest.keyboard.press('Enter'); await guest.waitForURL(`${base}/events/${slug}`);
+    }
     await guestContext.close();
 
     stage = 'Flutter navigation and old editor removal';
@@ -94,6 +117,9 @@ async function field(page, path, value) {
     await app.screenshot({ path: 'tmp/ticketing-flutter-event-studio-link.png', fullPage: true });
     await app.getByRole('button', { name: 'Open Event Studio', exact: true }).click();
     await app.waitForURL(`${base}/tickets/admin`);
+    await app.goto(`${base}/app/tickets`); await semantics(app);
+    await app.getByText('My tickets', { exact: true }).first().waitFor();
+    assert.equal(await app.getByText('YOUR NEXT NIGHT STARTS HERE', { exact: true }).count(), 0);
     await appContext.close(); await context.close();
     console.log('Free-event browser checks passed: Studio creation/publishing, public venue, no registration or payment form, discovery/app labels, flyer, desktop/mobile accessibility and Flutter Studio navigation without the old editor.');
   } catch (error) { console.error('Free-event browser phase:', stage); if (active) await active.screenshot({ path: 'tmp/ticketing-free-event-failure.png' }).catch(() => {}); throw error; }

@@ -769,13 +769,6 @@ class _TicketsPageState extends State<TicketsPage> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: <Widget>[
                                     const SizedBox(height: 12),
-                                    const Text('YOUR NEXT NIGHT STARTS HERE',
-                                        style: TextStyle(
-                                            color: _accent,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w800,
-                                            letterSpacing: 1.5)),
-                                    const SizedBox(height: 10),
                                     Row(children: <Widget>[
                                       const Expanded(
                                           child: Text('My tickets',

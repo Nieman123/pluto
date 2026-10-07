@@ -97,7 +97,7 @@ export async function financialSummary(db: Firestore, eventId: string, timezone:
   const sum = (from: string, until: string) => Object.entries(state.daily || {}).reduce((n, [date, value]: any) => n + (date >= from && date < until ? value.gross : 0), 0);
   return { ...financialTotals(totals),
     ready: !!state.ready && state.timezone === timezone, updatedAt: state.updatedAt || null,
-    revenue: { gross: totals.revenueGross, thisWeek: sum(weekStart, shiftRevenueDay(today, 1)), lastWeek: sum(previousWeekStart, weekStart), daily, timezone, legacyDates: totals.legacyDates, missingDates: totals.missingDates } };
+    revenue: { gross: totals.revenueGross, refunds: totals.refunds, salesAfterRefunds: totals.gross - totals.refunds, thisWeek: sum(weekStart, shiftRevenueDay(today, 1)), lastWeek: sum(previousWeekStart, weekStart), daily, timezone, legacyDates: totals.legacyDates, missingDates: totals.missingDates } };
 }
 
 export const financialBackfillNeedsWork = campaignNeedsWork;

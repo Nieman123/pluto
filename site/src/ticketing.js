@@ -1,11 +1,12 @@
 import { action, api, initMessages, message, scannerSession, setUser } from './ticketing/api.js';
 import { initCheckout } from './ticketing/customer.js';
 import { initEditor, loadEvents } from './ticketing/editor.js';
+import { initToolbarIcons } from './ticketing/toolbar-icons.js';
 import { initAdmission, initScanner, restoreManifest, cacheStaffEvents, restoreOfflineAdmission, lockOfflineAdmission } from './ticketing/admission.js';
 initMessages();
 initCheckout();
 const mode = document.querySelector('[data-ticketing-console]')?.dataset.ticketingConsole;
-if (mode === 'admin') initEditor();
+if (mode === 'admin') { initToolbarIcons(document.querySelector('[data-ticketing-console]')); initEditor(); }
 if (mode === 'staff') initAdmission();
 const scannerReady = mode === 'staff' ? initScanner() : Promise.resolve(false);
 if (mode === 'staff' && !navigator.onLine) scannerReady.then(active => { if (!active) action(null, restoreOfflineAdmission); });
