@@ -9,7 +9,7 @@
 </section>
 <div class="native-layout"><div class="native-story">
 {% if not preview %}<nav class="ticket-toolbar event-calendar" aria-label="Add event to calendar"><a class="button button-quiet" href="{{ event.calendar.ics }}">Add to Calendar</a><a class="button button-quiet" href="{{ event.calendar.google }}" target="_blank" rel="noopener">Google Calendar ↗</a></nav>{% endif %}
-<section class="native-section"><p class="eyebrow">THE EXPERIENCE</p><h2>A night worth being there for.</h2><div class="rich-content">{{ event.descriptionHtml | safe }}</div>
+<section class="native-section"><p class="eyebrow">THE EXPERIENCE</p><div class="rich-content">{{ event.descriptionHtml | safe }}</div>
 {% if event.flyer %}<figure><img class="native-flyer" src="{{ event.flyer.url }}" alt="{{ event.flyer.alt }}" loading="lazy"><figcaption>{{ event.flyer.caption }}</figcaption></figure>{% endif %}</section>
 {% if event.lineup.length %}<section class="native-section"><p class="eyebrow">THE SOUND</p><h2>On the lineup.</h2><div class="native-lineup">{% for artist in event.lineup %}<article>{% if artist.image %}<img src="{{ artist.image.url }}" alt="{{ artist.image.alt }}" loading="lazy">{% endif %}<h3>{{ artist.name }}</h3><p>{{ artist.genre }}</p><p>{{ artist.time }}</p></article>{% endfor %}</div></section>{% endif %}
 {% for section in event.sections %}{% if section.visible %}<section class="native-section" id="section-{{ section.id }}"><h2>{{ section.title }}</h2><div class="rich-content">{{ section.bodyHtml | safe }}</div></section>{% endif %}{% endfor %}
