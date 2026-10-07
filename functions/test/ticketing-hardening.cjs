@@ -52,7 +52,10 @@ test('a legacy uncertain checkout retry omits new branding to preserve the origi
   } finally { await h.cleanup(); }
 });
 
-test('A3: 75 purchasers on one network remain independent while contact/client abuse is limited', async () => {
+test('A3: 75 purchasers on one network remain independent while contact/client abuse is limited', async t => {
+  // Keep this fixed-window abuse scenario in one bucket even when its HTTP
+  // requests and cleanup span a wall-clock hour boundary on a CI runner.
+  const now = Date.now(); t.mock.method(Date, 'now', () => now);
   const h = harness(), app = express(); configureTrustedProxy(app, 'loopback'); app.use(ticketingRouter(() => ({}), h.service));
   const server = app.listen(0, '127.0.0.1'); await new Promise(resolve => server.once('listening', resolve));
   try {
@@ -84,6 +87,27 @@ test('A3: 75 purchasers on one network remain independent while contact/client a
     const counter = (await h.db.collection('ticketingRateLimits').doc(hash(`${3600000}:${Math.floor(Date.now() / 3600000)}:checkout-client:${eid}:client:${hash(client)}:0`)).get()).data();
     assert.ok(counter.expiresAt.toMillis() > Date.now(), 'TTL uses a Firestore Timestamp');
   } finally { await new Promise(resolve => server.close(resolve)); await h.cleanup(); }
+});
+
+test('hourly rate limits reset at the boundary while each bucket retains its Timestamp TTL', async t => {
+  const h = harness(), windowMs = 3600000, bucket = Math.floor(Date.now() / windowMs);
+  let now = (bucket + 1) * windowMs - 1;
+  t.mock.method(Date, 'now', () => now);
+  const identity = h.newKey(), lane = `boundary:${h.prefix}`;
+  const counter = hour => h.db.collection('ticketingRateLimits').doc(hash(`${windowMs}:${hour}:${lane}:${identity}:0`));
+  try {
+    await h.service.rateLimit(identity, lane, 1);
+    await assert.rejects(() => h.service.rateLimit(identity, lane, 1), error => error.status === 429);
+    now++;
+    await h.service.rateLimit(identity, lane, 1);
+    await assert.rejects(() => h.service.rateLimit(identity, lane, 1), error => error.status === 429);
+    for (const hour of [bucket, bucket + 1]) {
+      const value = (await counter(hour).get()).data();
+      assert.equal(value.count, 1);
+      assert.equal(value.expiresAt.toMillis(), (hour + 2) * windowMs);
+      assert.ok(value.expiresAt.toMillis() > now);
+    }
+  } finally { await Promise.all([counter(bucket).delete(), counter(bucket + 1).delete()]); await h.cleanup(); }
 });
 
 test('A2: inactive provider taxes fail before reservation and the same attempt works after repair', async () => {
