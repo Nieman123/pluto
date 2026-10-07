@@ -150,7 +150,7 @@ test("homepage prioritizes its hero without embedding event media", () => {
     html,
     /<article class="event-card" aria-labelledby="event-1-title">/,
   );
-  assert.match(html, /<h3 id="event-1-title">Subterranea<\/h3>/);
+  assert.match(html, /<h3 id="event-1-title"><a class="event-card-link" href="https:\/\/tickets\.example\.com">Subterranea<\/a><\/h3>/);
   assert.match(
     html,
     /class="brand footer-brand" href="\/" aria-label="Pluto Events home"/,

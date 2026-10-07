@@ -10,7 +10,7 @@ const { getFirestore } = backend('firebase-admin/firestore');
 process.env.GCLOUD_PROJECT = 'demo-pluto-ticketing';
 process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8185';
 initializeApp({ projectId: process.env.GCLOUD_PROJECT });
-const db = getFirestore(), eid = randomUUID(), oid = randomUUID(), extra = [];
+const db = getFirestore(), eid = randomUUID(), oid = randomUUID(), otherEventId = randomUUID(), otherOrderId = randomUUID(), extra = [];
 async function api(page, path, data) {
   return page.evaluate(async ({ path, data }) => {
     const { getAuth } = await import('https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js');
@@ -32,26 +32,60 @@ async function api(page, path, data) {
     draft.flyer = { assetId: media.assetId, alt: 'Test artist flyer', focalX: 50, focalY: 50, caption: '' };
     await api(page, 'staff/save', { eventId: eid, draft, revision: 1 });
     await api(page, 'staff/publish', { eventId: eid, revision: 2, action: 'publish' });
-    await db.collection('ticketingOrders').doc(oid).set({ eventId: eid, status: 'paid', total: 470000, paidAt: Date.now(), createdAt: Date.now(), units: [], method: 'cash', taxAmount: 0, refundedAmount: 0, stripeFee: 0, name: 'Test', email: 'browser@example.test' });
+    // The index includes every accessible event, including fixtures left by
+    // earlier CI suites. Keep another refunded event even in standalone runs.
+    const otherDraft = fixture(); otherDraft.slug = `revenue-${otherEventId}`; otherDraft.title = 'Other event revenue';
+    await api(page, 'staff/save', { eventId: otherEventId, draft: otherDraft, revision: 0 });
+    await api(page, 'staff/publish', { eventId: otherEventId, revision: 1, action: 'publish' });
+    await db.collection('ticketingOrders').doc(otherOrderId).set({ eventId: otherEventId, status: 'paid', total: 10000, paidAt: Date.now(), createdAt: Date.now(), units: [], method: 'cash', taxAmount: 0, refundedAmount: 1500, stripeFee: 0 });
+    await db.collection('ticketingOrders').doc(oid).set({ eventId: eid, status: 'paid', total: 470000, paidAt: Date.now(), createdAt: Date.now(), units: [], method: 'cash', taxAmount: 0, refundedAmount: 50000, externalRefundAmount: 10000, stripeFee: 0, name: 'Test', email: 'browser@example.test' });
+    // Derive the expected global totals independently from the raw test ledger,
+    // rather than assuming this event is the only one in the shared emulator.
+    const eventIds = new Set((await db.collection('ticketingEvents').get()).docs.map(doc => doc.id));
+    const paid = (await db.collection('ticketingOrders').get()).docs.map(doc => doc.data()).filter(order => eventIds.has(order.eventId) && order.status === 'paid');
+    const gross = paid.reduce((sum, order) => sum + (order.total || 0), 0);
+    const refunds = paid.reduce((sum, order) => sum + (order.refundedAmount || 0) + (order.externalRefundAmount || 0), 0);
+    const usd = cents => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
     await page.reload();
     const card = page.locator(`[data-open-event="${eid}"]`); await card.waitFor();
     await page.waitForFunction(id => document.querySelector(`[data-card-flyer="${id}"]`)?.naturalWidth > 0, eid);
     await card.filter({ hasText: '$4,700' }).waitFor();
     assert.match(await card.innerText(), /This week[\s\S]*\$4,700/);
+    await page.waitForFunction(expected => {
+      const stats = [...document.querySelectorAll('#weekly-revenue .ticket-stat')];
+      return Object.entries(expected).every(([label, amount]) => stats.find(stat => stat.querySelector('span')?.textContent === label)?.querySelector('strong')?.textContent === amount);
+    }, { 'Total gross sales': usd(gross), 'Total refunds': usd(refunds), 'Sales after refunds': usd(gross - refunds) });
+    await page.locator('#weekly-revenue .weekly-stat-grid').waitFor();
+    await page.locator('#system-health .toolbar-icon').waitFor();
+    assert.equal(await page.locator('#orders-all .toolbar-icon[aria-hidden="true"]').count(), 1);
     assert.equal(await page.locator('#events-back').isVisible(), false);
     assert.equal(await page.getByRole('link', { name: 'Explore events', exact: true }).count(), 0);
     assert.equal(await page.getByRole('link', { name: 'My tickets', exact: true }).count(), 0);
     await card.click(); await page.locator('.revenue-chart').waitFor();
     assert.match(await page.locator('.revenue-heading').innerText(), /\$4,700/);
+    assert.match(await page.locator('#event-dashboard .ticket-stat').filter({ hasText: 'Total refunds' }).innerText(), /\$600/);
+    assert.match(await page.locator('#event-dashboard .ticket-stat').filter({ hasText: 'Sales after refunds' }).innerText(), /\$4,100/);
+    assert.equal(await page.locator('#event-scanner-pins').isVisible(), true);
+    await page.locator('#performance-refresh .toolbar-icon').waitFor();
     assert.equal(await page.locator('#event-public-page').getAttribute('href'), `/events/${draft.slug}`);
     await page.locator('#revenue-period').selectOption('7');
     assert.equal(await page.locator('.revenue-values tbody tr').count(), 7);
     for (const width of [1280, 390]) {
       await page.setViewportSize({ width, height: 900 });
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `dashboard fits ${width}`);
+      assert.ok(await page.evaluate(() => {
+        const pairs = [['#events-back', '#orders-all'], ['#event-public-page', '#event-studio'], ['#event-waitlist', '#event-attendance'], ['#event-cash', '#event-scanner-pins']];
+        return pairs.every(pair => {
+          const [a, b] = pair.map(selector => document.querySelector(selector).getBoundingClientRect());
+          return a.width > 0 && b.width > 0 && Math.abs(a.width - b.width) < 1 && Math.abs(a.height - b.height) < 1 && Math.abs(a.top - b.top) < 1;
+        });
+      }), `toolbar buttons align in equal-sized rows at ${width}`);
       const violations = (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations;
       assert.deepEqual(violations.map(v => ({ id: v.id, nodes: v.nodes.map(n => n.target) })), []);
+      await page.evaluate(() => scrollTo(0, 0));
       await page.screenshot({ path: `tmp/admin-revenue-${width}.png`, fullPage: true });
+      await page.locator('.admin-navigation').screenshot({ path: `tmp/admin-navigation-${width}.png` });
+      await page.locator('.workspace-action-groups').screenshot({ path: `tmp/admin-event-tools-${width}.png` });
     }
     await page.locator('#events-back').click(); await card.waitFor();
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
@@ -104,9 +138,11 @@ async function api(page, path, data) {
     assert.equal(await page.locator('#event-rsvps .guest-row').count(), 55);
     console.log('Admin revenue, pagination beyond 50 orders/RSVPs, cross-page search, full CSV, flyer and accessibility checks passed.');
   } finally {
-    await browser.close(); await db.collection('ticketingOrders').doc(oid).delete(); await Promise.all(extra.map(id => db.collection('ticketingOrders').doc(id).delete()));
-    await db.recursiveDelete(db.collection('ticketingEvents').doc(eid));
-    await db.collection('publishedEvents').doc(eid).delete(); await db.collection('eventSlugs').doc(`revenue-${eid}`).delete();
-    await db.collection('events').doc(eid).delete();
+    await browser.close(); await Promise.all([oid, otherOrderId, ...extra].map(id => db.collection('ticketingOrders').doc(id).delete()));
+    for (const eventId of [eid, otherEventId]) {
+      await db.recursiveDelete(db.collection('ticketingEvents').doc(eventId));
+      await db.collection('publishedEvents').doc(eventId).delete(); await db.collection('eventSlugs').doc(`revenue-${eventId}`).delete();
+      await db.collection('events').doc(eventId).delete();
+    }
   }
 })().catch(error => { console.error(error); process.exitCode = 1; });

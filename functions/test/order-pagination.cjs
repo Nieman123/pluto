@@ -35,6 +35,8 @@ test('stored totals handle duplicate deliveries, fees, refunds, RSVP changes and
   assert.equal(p.gross, 10000); assert.equal(p.refunds, 2000); assert.equal(p.tax, 400); assert.equal(p.fees, 320); assert.equal(p.pendingFees, 0); assert.equal(p.proceeds, 7280);
   await ref.update({ externalRefundAmount: 500, financialBlocked: true }); await syncFinancialOrder(h.db, ref.id);
   p = (await h.service.staffPerformance(eid, h.staff)).summary; assert.equal(p.refunds, 2500); assert.equal(p.provisional, true);
+  const revenue = (await h.service.list(h.staff, true)).events.find(e => e.id === eid).revenue;
+  assert.equal(revenue.gross, 10000); assert.equal(revenue.refunds, 2500); assert.equal(revenue.salesAfterRefunds, 7500);
   const rsvp = h.db.collection('ticketingOrders').doc('rsvp'); await rsvp.set(order({ eventId: eid, total: 0, method: 'rsvp', status: 'pending-approval', rsvpStatus: 'pending' })); await syncFinancialOrder(h.db, rsvp.id);
   p = (await h.service.staffPerformance(eid, h.staff)).summary; assert.equal(p.rsvpPending, 1); assert.equal(p.paidOrders, 1);
   await rsvp.update({ status: 'paid', rsvpStatus: 'approved' }); await syncFinancialOrder(h.db, rsvp.id);
