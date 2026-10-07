@@ -29,6 +29,7 @@ test('emergency revocation rejects legacy and tagged old signatures while preser
   const revoked = { ...rotated, keyring: { ...ring, revokedKeyIds: ['k1'] } };
   const oldTagged = signTicket(ticket, { privateKey: k1, keyring: { ...ring, activeKeyId: 'k1' } });
   for (const qr of [signTicket(ticket, k1), oldTagged]) assert.throws(() => readTicket(qr, revoked), /Invalid ticket/);
+  assert.throws(() => readTicket(signTicket(ticket, k1), revoked), error => error.status === 409 && error.code === 'ticket-key-unavailable');
   assert.equal(readTicket(signTicket(ticket, revoked), revoked).id, ticket.id);
   assert.equal(verificationKeys(revoked).legacyKeyId, null);
   assert.deepEqual(Object.keys(verificationKeys(revoked).verificationKeys), ['k2']);
@@ -59,6 +60,7 @@ test('offline proofs survive planned overlap and fail after revocation', () => {
   assert.equal(readOfflineItem(old, rotated).leaseHash, item.leaseHash);
   assert.equal(readOfflineItem(current, rotated).kid, 'k2');
   assert.throws(() => readOfflineItem(old, { ...rotated, keyring: { ...ring, revokedKeyIds: ['k1'] } }), /Invalid offline/);
+  assert.throws(() => readOfflineItem(old, { ...rotated, keyring: { ...ring, revokedKeyIds: ['k1'] } }), error => error.status === 409 && error.code === 'offline-key-unavailable');
 });
 
 test('keyring configuration fails closed for private material, wrong algorithm, revoked active signer and missing IDs', () => {

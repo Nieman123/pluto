@@ -608,7 +608,7 @@ export class Orders extends Catalog {
       const parentTicket = order?.rsvpTicketId ? (await tx.get(this.tickets().doc(order.rsvpTicketId))).data() : null;
       const at = evidence?.at || Date.now();
       let result = 'accepted';
-      if (!ticket || !event || order?.status !== 'paid' || order.financialBlocked || !upgradeValid || ticket.rsvp && order.rsvpStatus !== 'approved' || ticket.version !== parsed.version || ticket.status !== 'valid' || ['cancelled', 'archived'].includes(event.status)) result = 'invalid';
+      if (!ticket || ticket.eventId !== eventId || order?.eventId !== eventId || !event || order?.status !== 'paid' || order.financialBlocked || !upgradeValid || ticket.rsvp && order.rsvpStatus !== 'approved' || ticket.version !== parsed.version || ticket.status !== 'valid' || ['cancelled', 'archived'].includes(event.status)) result = 'invalid';
       else if (!Number.isFinite(Date.parse(ticket.validFrom)) || !Number.isFinite(Date.parse(ticket.validUntil)) || at < Date.parse(ticket.validFrom) || at > Date.parse(ticket.validUntil)) result = 'outside-window';
       else if (ticket.admission) result = 'duplicate';
       else if (evidence?.rejection) result = evidence.rejection;
@@ -645,7 +645,7 @@ export class Orders extends Catalog {
     const guestValidFrom = draft?.admissionStartsAt || '', guestValidUntil = draft ? new Date(Date.parse(draft.endAt) + 6 * 3600000).toISOString() : '';
     return { eventId, staffUid: access.uid, offlineUntil, generatedAt, leaseToken, ...verificationKeys(signingMaterial(this.signing())),
       guests: guests.docs.filter(d => !d.data().deletedAt && !['cancelled', 'archived'].includes(event?.status)).map(d => ({ ...guestEntry(d.id, d.data()), itemProof: signOfflineItem({ leaseHash, eventId, id: d.id, kind: 'guest', version: d.data().version, validFrom: guestValidFrom, validUntil: guestValidUntil }, this.signing()) })), guestValidFrom, guestValidUntil,
-      tickets: tickets.docs.map(t => { const d = t.data(), status = ['cancelled', 'archived'].includes(event?.status) || blocked.has(d.orderId) || unavailableUpgrades.has(d.orderId) ? 'invalid' : d.status; return { id: t.id, version: d.version, status, name: d.name, holderName: d.holderName || orderNames.get(d.orderId) || '', rsvpTicketId: d.rsvpTicketId || '', validFrom: d.validFrom, validUntil: d.validUntil, admitted: !!d.admission,
+      tickets: tickets.docs.map(t => { const d = t.data(), status = ['cancelled', 'archived'].includes(event?.status) || blocked.has(d.orderId) || unavailableUpgrades.has(d.orderId) ? 'invalid' : d.status; return { id: t.id, orderId: d.orderId, version: d.version, status, name: d.name, holderName: d.holderName || orderNames.get(d.orderId) || '', rsvpTicketId: d.rsvpTicketId || '', validFrom: d.validFrom, validUntil: d.validUntil, admitted: !!d.admission,
         itemProof: status === 'valid' ? signOfflineItem({ leaseHash, eventId, id: t.id, kind: 'ticket', version: d.version, validFrom: d.validFrom, validUntil: d.validUntil }, this.signing()) : '' }; }) };
   }
   async reviewScan(eventId: string, scanId: unknown, rawNote: unknown, identity: string | ScannerProof) {

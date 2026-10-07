@@ -19,7 +19,7 @@ export async function api(path, body = {}, binary = false) {
   const scannerToken = scannerPaths.has(path) ? scannerSession?.token : '', token = !scannerToken && user ? await user.getIdToken() : '';
   const response = await fetch(`/tickets/api/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Pluto-Client': clientIdentity(), ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(scannerToken ? { 'X-Pluto-Scanner': scannerToken } : {}) },
     body: JSON.stringify(body), credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(45000) });
-  if (!response.ok) { const detail = await response.json().catch(() => ({})); const error = new Error(detail.error || 'The request could not be confirmed. Please retry.'); error.status = response.status;
+  if (!response.ok) { const detail = await response.json().catch(() => ({})); const error = new Error(detail.error || 'The request could not be confirmed. Please retry.'); error.status = response.status; error.code = detail.code || '';
     if (scannerToken && [401, 403].includes(response.status)) window.dispatchEvent(new Event('pluto-scanner-denied'));
     throw error; }
   return binary ? response.blob() : response.json();

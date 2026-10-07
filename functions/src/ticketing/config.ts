@@ -1,6 +1,6 @@
 import Stripe from 'stripe';
 import { defineSecret } from 'firebase-functions/params';
-import { assertSigner, keyPair as pair, readCredential, signCredential, validateKeyring, type SigningMaterial } from './signing';
+import { assertSigner, CredentialKeyUnavailable, keyPair as pair, readCredential, signCredential, validateKeyring, type SigningMaterial } from './signing';
 export { verificationKeys } from './signing';
 export type { SigningMaterial } from './signing';
 import { fail } from './domain';
@@ -47,5 +47,8 @@ export function readTicket(qr: unknown, material?: SigningMaterial): { id: strin
     const parsed = readCredential('PLUTO', qr, signing);
     if (typeof parsed.id !== 'string' || typeof parsed.eventId !== 'string' || !Number.isInteger(parsed.version) || Object.hasOwn(parsed, 'leaseHash') || Object.hasOwn(parsed, 'kind')) throw new Error();
     return parsed;
-  } catch { return fail('Invalid ticket.'); }
+  } catch (error) {
+    if (error instanceof CredentialKeyUnavailable) return fail('Invalid ticket. Its signing key is no longer accepted; refresh this ticket in the app.', 409, 'ticket-key-unavailable');
+    return fail('Invalid ticket.');
+  }
 }

@@ -10,6 +10,7 @@ export interface VerificationKeyring {
 }
 export type SigningMaterial = string | { privateKey: string; keyring: VerificationKeyring };
 const keyId = (value: unknown): value is string => typeof value === 'string' && /^[a-zA-Z0-9_-]{1,64}$/.test(value);
+export class CredentialKeyUnavailable extends Error {}
 export function keyPair(encoded: string) {
   try {
     const privateKey = createPrivateKey({ key: Buffer.from(encoded, 'base64'), type: 'pkcs8', format: 'der' });
@@ -74,11 +75,11 @@ export function readCredential(prefix: 'PLUTO' | 'PLUTO-OFFLINE', raw: unknown, 
   if (legacy ? Object.hasOwn(parsed, 'kid') : !keyId(parsed.kid)) throw new Error('Invalid credential key');
   let publicKey;
   if (typeof material === 'string') {
-    if (!legacy) throw new Error('Unknown credential key');
+    if (!legacy) throw new CredentialKeyUnavailable('Unknown credential key');
     publicKey = keyPair(material).publicKey;
   } else {
     const ring = validateKeyring(material.keyring), id = legacy ? ring.legacyKeyId : parsed.kid;
-    if (!id || !Object.hasOwn(ring.keys, id) || ring.revokedKeyIds.includes(id)) throw new Error('Unknown or revoked credential key');
+    if (!id || !Object.hasOwn(ring.keys, id) || ring.revokedKeyIds.includes(id)) throw new CredentialKeyUnavailable('Unknown or revoked credential key');
     publicKey = createPublicKey({ key: ring.keys[id], format: 'jwk' });
   }
   if (!verify(null, Buffer.from(legacy ? data : `${marker}.${data}`), publicKey, Buffer.from(signature, 'base64url'))) throw new Error('Invalid credential signature');

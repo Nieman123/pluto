@@ -54,6 +54,18 @@ gcloud secrets versions access latest --secret=TICKETING_SIGNING_KEY --project=p
 npm run ticketing:rotation:prepare -- --environment staging --current-key-file tmp/key-input-staging/current-key.txt
 ```
 
+If your installed Google Cloud CLI rejects `--out-file`, use this PowerShell alternative from the repository root. It captures the base64 text secret without printing it, checks that access succeeded, and writes ASCII without a byte-order mark. This alternative is for this base64 signing key, not arbitrary binary secrets.
+
+```powershell
+New-Item -ItemType Directory -Force tmp/key-input-staging | Out-Null
+$ticketSigningExport = gcloud secrets versions access latest --secret=TICKETING_SIGNING_KEY --project=pluto-staging-92eb7
+if ($LASTEXITCODE -ne 0) { throw 'Signing-key export failed; do not run the generator.' }
+if ([string]::IsNullOrWhiteSpace(($ticketSigningExport -join ''))) { throw 'Signing-key export was empty.' }
+Set-Content -LiteralPath tmp/key-input-staging/current-key.txt -Value (($ticketSigningExport -join '').Trim()) -Encoding Ascii -NoNewline
+Remove-Variable ticketSigningExport
+npm run ticketing:rotation:prepare -- --environment staging --current-key-file tmp/key-input-staging/current-key.txt
+```
+
 For subsequent rotations, also export the current keyring and PIN configuration from the **same project**, and supply `--keyring-file PATH --pin-keys-file PATH`. This preserves all still-trusted historical public keys and independent PIN keys. The generator checks the current private key against the existing active key ID. Use the actual production project ID when preparing production; never copy staging key files to production.
 
 The generator creates a unique ignored folder under `tmp/ticket-key-rotation/` containing:
@@ -82,6 +94,10 @@ Never switch the flag back to false after changing the signer: that would map al
 Run the generator with `--emergency` plus the current keyring/PIN files when available. It creates only activation files, revokes the current active signing ID, and removes a legacy PIN fallback that uses that same compromised key. If other keys are affected, add those IDs to `revokedKeyIds` too; they must remain in `keys` while listed as revoked. If the current private key is unavailable, generate a new signer on a trusted machine and construct its matching keyring using the stored public verifiers; the old private key is not needed to preserve ticket records.
 
 Deploy the new signer and revoked keyring to all ticketing runtimes promptly. Confirm the previous revision no longer serves requests, and do not restore revoked keys to resolve customer or door issues. Customers reconnect/reload their ticket in the app. Regenerate unmigrated legacy PINs when their migration material was compromised; independent PIN secrets only need replacement if they were also exposed.
+
+On each door device, reload the scanner page online and choose **Prepare offline admission**. Explicit retired/unknown-key failures leave their original scans in the device queue while the scanner fetches fresh public keys. Queues belonging to prior scanner access are also retained for manager review, never replayed under a different identity. Unresolved ticket/guest records remain blocked on that device across reloads, without granting admission in the server ledger. Authentication, permission, network and unrelated validation failures still stop preparation.
+
+Use **Download offline records** to preserve the queue/proofs for organizer investigation; exports include admission credentials and are for authorized staff. A manager signed in on that same device can reconcile each record in the order dashboard, then use **Archive reviewed scans** with a review note. That action verifies current manager access, saves the original records and note locally, and clears their device holds atomically. It never grants server admission. Archived records remain downloadable from that browser's storage; export them before clearing browser data. Holds are device-local, so other lanes must be coordinated by the organizer during the incident.
 
 **A disconnected scanner cannot receive revocation.** Pause offline admission, reconnect every door device and prepare again before resuming. If reconnection is impossible, use organizer-controlled manual admission rather than claiming the old offline scanner is safe. Already-recorded admissions are not undone. Old offline proofs are rejected on replay, and manager confirmation of unresolved conflicts also checks current key trust, including conflicts created before this deployment. Rejected queues remain available for investigation; staff may manually check in a legitimate ticket from the authoritative order dashboard after verifying the attendee.
 
