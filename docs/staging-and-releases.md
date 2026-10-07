@@ -38,7 +38,19 @@ Optional delivery monitoring: leave `TICKETING_RESEND_WEBHOOK_ENABLED` unset/fal
 
 Optional signing-key rotation: leave `TICKETING_KEY_ROTATION_ENABLED` unset/false for the compatibility release. Enable it separately per environment only after provisioning `TICKETING_VERIFICATION_KEYRING` and `TICKETING_SCANNER_PIN_KEYS`. Follow the [signing-key rotation runbook](ticket-signing-key-rotation.md) to distribute both verifiers before switching the active signer; do not simply replace `TICKETING_SIGNING_KEY`.
 
-Create environments named **`staging`** and **`production`** in repository Settings → Environments. Restrict deployment branches to selected branch **`main` only** for both. Protect production with required reviewers, **prevent self-review**, and disable administrator bypass. The production preflight verifies those settings and fails closed if they are unavailable. GitHub plan/repository visibility affects reviewer protection availability; confirm the repository supports it before a production release. [GitHub environment settings](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments).
+Create environments named **`staging`** and **`production`** in repository Settings → Environments. Restrict deployment branches to selected branch **`main` only** for both. The default production policy requires reviewers, **prevent self-review**, and disabled administrator bypass. The production preflight verifies those settings and fails closed if they are unavailable. GitHub plan/repository visibility affects reviewer protection availability; confirm the repository supports it before a production release. [GitHub environment settings](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments).
+
+### Approved solo-maintainer production policy
+
+For this repository's approved solo-maintainer setup, configure **production** as follows:
+
+1. Keep **Required reviewers** enabled and list **Nieman123** as the only reviewer (an individual user, not a team).
+2. Uncheck **Prevent self-review**, so the same maintainer can manually approve their release.
+3. Keep **Allow administrators to bypass configured protection rules** disabled.
+4. Keep deployment branches restricted to the single branch **main**.
+5. Add the production environment **variable** `PRODUCTION_APPROVAL_POLICY=solo-maintainer`.
+
+The workflow still waits for manual environment approval. Preflight requires the triggering GitHub user ID to match the sole reviewer, rejects unknown policy values, and retains exact successful staging evidence, selected SHA, environment/project isolation, CI and live-payment confirmation. This change does not grant another person or application access and does not enable automatic production releases. The chosen policy is recorded in the release manifest. To return to two-person approval, remove the variable or set it to `two-person`, enable **Prevent self-review**, and arrange a different eligible reviewer. Staging needs no approval-policy variable.
 
 Set these values **inside each environment**, not globally:
 

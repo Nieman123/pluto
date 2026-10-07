@@ -11,7 +11,7 @@ verifyServiceAccount(process.env.DEPLOY_SERVICE_ACCOUNT, settings.projectId);
 const api = githubApi(process.env);
 let stagingDeployment;
 if (settings.environment === 'production') {
-  verifyProductionProtection(await api('/environments/production'));
+  verifyProductionProtection(await api('/environments/production'), settings.approvalPolicy, process.env.GITHUB_ACTOR_ID);
   const policies = await api('/environments/production/deployment-branch-policies?per_page=100');
   if (policies.branch_policies?.length !== 1 || policies.branch_policies[0].name !== 'main' || policies.branch_policies[0].type !== 'branch') {
     throw new Error('Production deployment branches must be restricted to main only.');

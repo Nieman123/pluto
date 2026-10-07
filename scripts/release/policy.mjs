@@ -18,7 +18,9 @@ export function releaseSettings(env) {
   if (!new RegExp(`^pk_${mode}_[A-Za-z0-9]+$`).test(env.DEPLOY_STRIPE_PUBLISHABLE_KEY || '')) throw new Error('Stripe publishable key must match the payment mode.');
   if (environment === 'production' && env.RELEASE_CONFIRMATION !== `deploy ${projects.production}`) throw new Error('Production requires the exact deployment confirmation.');
   if (mode === 'live' && env.RELEASE_LIVE_APPROVED !== 'true') throw new Error('Live payments require explicit approval after launch acceptance.');
-  return { environment, projectId, web, mode, revision: env.RELEASE_SHA,
+  const approvalPolicy = env.DEPLOY_APPROVAL_POLICY || 'two-person';
+  if (!['two-person', 'solo-maintainer'].includes(approvalPolicy)) throw new Error('Unknown production approval policy.');
+  return { environment, projectId, web, mode, approvalPolicy, revision: env.RELEASE_SHA,
     baseUrl: environment === 'staging' ? projects.stagingBaseUrl : projects.productionBaseUrl };
 }
 
@@ -39,10 +41,19 @@ export function dotenvParameters(values) {
   }).join('\n') + '\n';
 }
 
-export function verifyProductionProtection(environment) {
+export function verifyProductionProtection(environment, approvalPolicy = 'two-person', actorId = '') {
+  if (!['two-person', 'solo-maintainer'].includes(approvalPolicy)) throw new Error('Unknown production approval policy.');
   const reviewers = environment.protection_rules?.find(rule => rule.type === 'required_reviewers');
-  if (!reviewers?.reviewers?.length || reviewers.prevent_self_review !== true || environment.can_admins_bypass !== false) {
-    throw new Error('Production requires reviewers, prevention of self-review, and disabled administrator bypass in GitHub environment settings.');
+  if (!reviewers?.reviewers?.length || environment.can_admins_bypass !== false) {
+    throw new Error('Production requires reviewers and disabled administrator bypass in GitHub environment settings.');
+  }
+  if (approvalPolicy === 'solo-maintainer') {
+    const sole = reviewers.reviewers[0];
+    if (!actorId || reviewers.reviewers.length !== 1 || sole.type !== 'User' || String(sole.reviewer?.id) !== String(actorId) || reviewers.prevent_self_review !== false) {
+      throw new Error('Solo-maintainer production requires the triggering user as its only reviewer and self-review allowed. Manual environment approval is still required.');
+    }
+  } else if (reviewers.prevent_self_review !== true) {
+    throw new Error('Two-person production requires prevention of self-review.');
   }
   if (!environment.deployment_branch_policy?.custom_branch_policies) throw new Error('Production requires a selected main deployment branch policy.');
 }
