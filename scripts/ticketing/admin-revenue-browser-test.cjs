@@ -10,7 +10,7 @@ const { getFirestore } = backend('firebase-admin/firestore');
 process.env.GCLOUD_PROJECT = 'demo-pluto-ticketing';
 process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8185';
 initializeApp({ projectId: process.env.GCLOUD_PROJECT });
-const db = getFirestore(), eid = randomUUID(), oid = randomUUID(), extra = [];
+const db = getFirestore(), eid = randomUUID(), oid = randomUUID(), otherEventId = randomUUID(), otherOrderId = randomUUID(), extra = [];
 async function api(page, path, data) {
   return page.evaluate(async ({ path, data }) => {
     const { getAuth } = await import('https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js');
@@ -32,14 +32,30 @@ async function api(page, path, data) {
     draft.flyer = { assetId: media.assetId, alt: 'Test artist flyer', focalX: 50, focalY: 50, caption: '' };
     await api(page, 'staff/save', { eventId: eid, draft, revision: 1 });
     await api(page, 'staff/publish', { eventId: eid, revision: 2, action: 'publish' });
+    // The index includes every accessible event, including fixtures left by
+    // earlier CI suites. Keep another refunded event even in standalone runs.
+    const otherDraft = fixture(); otherDraft.slug = `revenue-${otherEventId}`; otherDraft.title = 'Other event revenue';
+    await api(page, 'staff/save', { eventId: otherEventId, draft: otherDraft, revision: 0 });
+    await api(page, 'staff/publish', { eventId: otherEventId, revision: 1, action: 'publish' });
+    await db.collection('ticketingOrders').doc(otherOrderId).set({ eventId: otherEventId, status: 'paid', total: 10000, paidAt: Date.now(), createdAt: Date.now(), units: [], method: 'cash', taxAmount: 0, refundedAmount: 1500, stripeFee: 0 });
     await db.collection('ticketingOrders').doc(oid).set({ eventId: eid, status: 'paid', total: 470000, paidAt: Date.now(), createdAt: Date.now(), units: [], method: 'cash', taxAmount: 0, refundedAmount: 50000, externalRefundAmount: 10000, stripeFee: 0, name: 'Test', email: 'browser@example.test' });
+    // Derive the expected global totals independently from the raw test ledger,
+    // rather than assuming this event is the only one in the shared emulator.
+    const eventIds = new Set((await db.collection('ticketingEvents').get()).docs.map(doc => doc.id));
+    const paid = (await db.collection('ticketingOrders').get()).docs.map(doc => doc.data()).filter(order => eventIds.has(order.eventId) && order.status === 'paid');
+    const gross = paid.reduce((sum, order) => sum + (order.total || 0), 0);
+    const refunds = paid.reduce((sum, order) => sum + (order.refundedAmount || 0) + (order.externalRefundAmount || 0), 0);
+    const usd = cents => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
     await page.reload();
     const card = page.locator(`[data-open-event="${eid}"]`); await card.waitFor();
     await page.waitForFunction(id => document.querySelector(`[data-card-flyer="${id}"]`)?.naturalWidth > 0, eid);
     await card.filter({ hasText: '$4,700' }).waitFor();
     assert.match(await card.innerText(), /This week[\s\S]*\$4,700/);
-    await page.locator('#weekly-revenue .ticket-stat').filter({ hasText: 'Total refunds' }).filter({ hasText: '$600' }).waitFor();
-    assert.match(await page.locator('#weekly-revenue .ticket-stat').filter({ hasText: 'Sales after refunds' }).innerText(), /\$4,100/);
+    await page.waitForFunction(expected => {
+      const stats = [...document.querySelectorAll('#weekly-revenue .ticket-stat')];
+      return Object.entries(expected).every(([label, amount]) => stats.find(stat => stat.querySelector('span')?.textContent === label)?.querySelector('strong')?.textContent === amount);
+    }, { 'Total gross sales': usd(gross), 'Total refunds': usd(refunds), 'Sales after refunds': usd(gross - refunds) });
+    await page.locator('#weekly-revenue .weekly-stat-grid').waitFor();
     await page.locator('#system-health .toolbar-icon').waitFor();
     assert.equal(await page.locator('#orders-all .toolbar-icon[aria-hidden="true"]').count(), 1);
     assert.equal(await page.locator('#events-back').isVisible(), false);
@@ -122,9 +138,11 @@ async function api(page, path, data) {
     assert.equal(await page.locator('#event-rsvps .guest-row').count(), 55);
     console.log('Admin revenue, pagination beyond 50 orders/RSVPs, cross-page search, full CSV, flyer and accessibility checks passed.');
   } finally {
-    await browser.close(); await db.collection('ticketingOrders').doc(oid).delete(); await Promise.all(extra.map(id => db.collection('ticketingOrders').doc(id).delete()));
-    await db.recursiveDelete(db.collection('ticketingEvents').doc(eid));
-    await db.collection('publishedEvents').doc(eid).delete(); await db.collection('eventSlugs').doc(`revenue-${eid}`).delete();
-    await db.collection('events').doc(eid).delete();
+    await browser.close(); await Promise.all([oid, otherOrderId, ...extra].map(id => db.collection('ticketingOrders').doc(id).delete()));
+    for (const eventId of [eid, otherEventId]) {
+      await db.recursiveDelete(db.collection('ticketingEvents').doc(eventId));
+      await db.collection('publishedEvents').doc(eventId).delete(); await db.collection('eventSlugs').doc(`revenue-${eventId}`).delete();
+      await db.collection('events').doc(eventId).delete();
+    }
   }
 })().catch(error => { console.error(error); process.exitCode = 1; });
