@@ -23,6 +23,29 @@ async function queue(page) {
     open.onsuccess = () => { const db = open.result, request = db.transaction('queue').objectStore('queue').getAll(); request.onsuccess = () => { resolve(request.result); db.close(); }; request.onerror = () => reject(request.error); };
   }));
 }
+// Keep the real admission service worker enabled: it is part of the offline
+// scenario. Inject HTTP failures at fetch rather than routing below its network
+// layer, and assert consumption so a missed mock cannot admit the fixture.
+async function mockApiError(page, path, error) {
+  await page.evaluate(({ path, error }) => {
+    if (!window.rotationApiMocks) {
+      window.rotationApiMocks = new Map();
+      const original = window.fetch.bind(window);
+      window.fetch = async (input, init) => {
+        const request = new Request(input, init);
+        const mock = window.rotationApiMocks.get(new URL(request.url).pathname);
+        if (!mock || request.method !== 'POST') return original(input, init);
+        mock.requests.push(await request.clone().json());
+        return new Response(JSON.stringify(mock.body), { status: mock.status, headers: { 'Content-Type': 'application/json' } });
+      };
+    }
+    if (error) window.rotationApiMocks.set(`/tickets/api/${path}`, { ...error, requests: [] });
+    else window.rotationApiMocks.delete(`/tickets/api/${path}`);
+  }, { path, error });
+}
+async function mockedRequests(page, path) {
+  return page.evaluate(path => window.rotationApiMocks.get(`/tickets/api/${path}`).requests, path);
+}
 (async () => {
   const browser = await chromium.launch(); let page;
   try {
@@ -40,11 +63,15 @@ async function queue(page) {
     await context.setOffline(true); await page.locator('[name=qr]').fill(ticket.qr); await page.locator('#admission-form button').click();
     await page.locator('#admission-results > article').filter({ hasText: 'Offline: queued' }).waitFor();
     assert.equal((await queue(page)).length, 1);
-    await context.setOffline(false);
     // The backend tests verify actual revocation. This exercises its HTTP error contract and device recovery.
-    await context.route('**/tickets/api/staff/scan', route => route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ error: 'Invalid ticket. Its signing key is no longer accepted.', code: 'ticket-key-unavailable' }) }));
+    await mockApiError(page, 'staff/scan', { status: 409, body: { error: 'Invalid ticket. Its signing key is no longer accepted.', code: 'ticket-key-unavailable' } });
+    await context.setOffline(false);
     await page.locator('#admission-sync').click(); await page.locator('#ticketing-message').filter({ hasText: '1 previous scan is retained' }).waitFor();
+    const revokedRequests = await mockedRequests(page, 'staff/scan');
+    assert.equal(revokedRequests.length, 1, 'the simulated revoked-key response must be consumed');
+    assert.equal(revokedRequests[0].offline, true); assert.equal(revokedRequests[0].qr, ticket.qr);
     const retained = await queue(page); assert.equal(retained.length, 1); assert.equal(retained[0].keyRotationBlocked, true); assert.equal(retained[0].qr, ticket.qr);
+    assert.equal((await db.collection('ticketingTickets').doc(ticket.id).get()).data().admission, null, 'the revoked-key simulation cannot record real admission');
     await page.reload(); await page.locator('#scanner-session:not([hidden])').waitFor();
     await page.locator('[name=qr]').fill(ticket.qr); await page.locator('#admission-form button').click(); await page.locator('#ticketing-message').filter({ hasText: 'unresolved offline admission' }).waitFor();
     assert.equal((await db.collection('ticketingTickets').doc(ticket.id).get()).data().admission, null);
@@ -53,7 +80,6 @@ async function queue(page) {
     assert.equal(report.eventId, eventId); assert.equal(report.records[0].qr, ticket.qr); assert.equal(report.records[0].keyRotationBlocked, true);
     assert.equal(report.records[0].orderId, order.orderId);
     assert.equal(await page.locator('#admission-archive-reviewed').isVisible(), false, 'PIN staff cannot archive organizer reviews');
-    await context.unroute('**/tickets/api/staff/scan');
     await page.getByRole('button', { name: 'End scanner session' }).click(); await page.locator('#scanner-login:not([hidden])').waitFor();
     await page.locator('#preview-staff-sign-in').click(); await page.locator('#staff-controls:not([hidden])').waitFor(); await page.locator('#staff-event').selectOption(eventId);
     await page.locator('#admission-sync').click(); await page.locator('#admission-archive-reviewed:not([hidden])').waitFor();
@@ -61,10 +87,11 @@ async function queue(page) {
     await page.getByRole('button', { name: 'Review order', exact: true }).click(); await page.locator('#ticketing-dialog').getByText('Recovery attendee', { exact: true }).first().waitFor();
     await page.locator('#ticketing-dialog-close').click(); await page.locator('#admission-archive-reviewed').click();
     await page.locator('#archive-offline-form [name=note]').fill('Organizer verified no admission in the order dashboard; rejected this retained record.');
-    await context.route('**/tickets/api/staff/offline-conflicts', route => route.fulfill({ status: 403, contentType: 'application/json', body: JSON.stringify({ error: 'Manager access was revoked.' }) }));
+    await mockApiError(page, 'staff/offline-conflicts', { status: 403, body: { error: 'Manager access was revoked.' } });
     await page.locator('#archive-offline-form button').click(); await page.locator('#ticketing-message').filter({ hasText: 'Manager access was revoked' }).waitFor();
+    assert.equal((await mockedRequests(page, 'staff/offline-conflicts')).length, 1, 'the manager denial must be consumed');
     assert.equal((await queue(page)).length, 1, 'failed current manager authorization cannot discard retained evidence');
-    await context.unroute('**/tickets/api/staff/offline-conflicts');
+    await mockApiError(page, 'staff/offline-conflicts', null);
     await page.locator('#archive-offline-form button').click(); await page.locator('#ticketing-message').filter({ hasText: 'records archived' }).waitFor();
     assert.equal((await queue(page)).length, 0); assert.equal((await db.collection('ticketingTickets').doc(ticket.id).get()).data().admission, null, 'archiving a device record never grants admission');
     const archivedDownload = page.waitForEvent('download'); await page.locator('#admission-export').click();
