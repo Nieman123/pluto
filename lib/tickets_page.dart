@@ -519,37 +519,12 @@ class _TicketsPageState extends State<TicketsPage> {
         const Padding(
             padding: EdgeInsets.symmetric(vertical: 20), child: Divider()),
         if (ticket['qr'] != null) ...<Widget>[
-          TicketQr(
+          ZoomableTicketQr(
               data: ticket['qr'] as String,
               label: 'Admission QR for ${ticket['name']}'),
-          SizedBox(
-              width: double.infinity,
-              child: TextButton.icon(
-                  onPressed: () => showDialog<void>(
-                      context: context,
-                      builder: (context) => Theme(
-                          data: _walletTheme,
-                          child: Dialog(
-                            insetPadding: const EdgeInsets.all(12),
-                            child: Padding(
-                                padding: const EdgeInsets.all(12),
-                                child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: <Widget>[
-                                      TicketQr(
-                                          data: ticket['qr'] as String,
-                                          label: 'Enlarged admission QR'),
-                                      TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(context),
-                                          child: const Text('Close')),
-                                    ])),
-                          ))),
-                  icon: const Icon(Icons.zoom_in, size: 18),
-                  label: const Text('Enlarge QR'))),
           const SizedBox(height: 16),
           const Center(
-              child: Text('Show this code at the door',
+              child: Text('Show this code at the door · Tap to enlarge',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: _muted, fontSize: 13))),
         ] else

@@ -37,7 +37,7 @@ async function surface(page, name) {
     await api(admin, 'staff/rsvp/review', { eventId: eid, orderId: original.orderId, decision: 'approve', note: 'Fixture approval' });
     await admin.goto(`${base}/tickets/admin?event=${eid}`); await admin.locator('[data-field=waitlistEnabled]').waitFor({ state: 'attached' }); await admin.locator('.ticket-settings-group').filter({ hasText: 'Reminders & waitlist' }).locator('summary').click(); assert.equal(await admin.locator('[data-field=waitlistEnabled]').isChecked(), true);
     await admin.locator('[data-field=remindersEnabled]').uncheck(); await admin.getByRole('button', { name: 'Save ticketing settings', exact: true }).first().click(); await admin.locator('#ticketing-message').filter({ hasText: 'Ticketing settings saved' }).waitFor();
-    await admin.getByRole('button', { name: 'Publish ticketing changes', exact: true }).click(); await admin.locator('#ticketing-message').filter({ hasText: 'Event published' }).waitFor(); assert.equal((await db.collection('publishedEvents').doc(eid).get()).data().remindersEnabled, false);
+    assert.equal(await admin.locator('#event-ticket-settings [data-event-action=publish]').count(), 0); assert.equal((await db.collection('publishedEvents').doc(eid).get()).data().remindersEnabled, false);
     stage = 'mobile calendar and join';
     const guestContext = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 390, height: 844 } }), guest = await guestContext.newPage(); active = guest;
     await guest.goto(`${base}/events/${draft.slug}`); await guest.getByRole('button', { name: 'Join RSVP admission waitlist', exact: true }).waitFor();
@@ -61,7 +61,7 @@ async function surface(page, name) {
     stage = 'claim into approved app ticket'; active = guest;
     await guest.goto(`${base}/events/${draft.slug}#waitlist=${offer.token}`); await guest.getByRole('button', { name: 'Claim reserved spot', exact: true }).waitFor(); assert.equal(new URL(guest.url()).hash, '');
     const claimed = guest.waitForURL('**/app/tickets?order=*'); await guest.getByRole('button', { name: 'Claim reserved spot', exact: true }).click(); await claimed;
-    const orderId = new URL(guest.url()).searchParams.get('order'); await guest.locator('flt-semantics-placeholder').evaluate(e => e.click(), { timeout: 20000 }).catch(() => {}); await guest.getByText('Show this code at the door', { exact: true }).waitFor({ timeout: 30000 }); await guest.getByText('Add to Calendar', { exact: true }).waitFor();
+    const orderId = new URL(guest.url()).searchParams.get('order'); await guest.locator('flt-semantics-placeholder').evaluate(e => e.click(), { timeout: 20000 }).catch(() => {}); await guest.getByText('Show this code at the door · Tap to enlarge', { exact: true }).waitFor({ timeout: 30000 }); await guest.getByText('Add to Calendar', { exact: true }).waitFor();
     assert.equal((await db.collection('ticketingOrders').doc(orderId).get()).data().rsvpStatus, 'approved');
     await guest.screenshot({ path: 'tmp/ticketing-engagement-approved-app.png', fullPage: true });
     const accessKey = await guest.evaluate(oid => localStorage.getItem(`pluto-order-${oid}`), orderId), view = await api(guest, 'order', { orderId, accessKey });

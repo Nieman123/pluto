@@ -63,8 +63,8 @@ async function makeRsvp(page, draft, name, email) {
       assert.equal(await admin.locator('[data-field="offers.1.kind"]').inputValue(), mode === 'rsvp' ? 'admission' : 'upgrade');
       await admin.getByRole('button', { name: 'Save ticket types', exact: true }).first().click();
       await admin.locator('#ticketing-message').filter({ hasText: 'Ticket types saved' }).waitFor();
-      await admin.getByRole('button', { name: 'Publish ticketing changes', exact: true }).click();
-      await admin.locator('#workspace-status').filter({ hasText: 'published' }).waitFor();
+      await admin.locator('#event-studio').click(); await admin.locator('#event-editor-form').waitFor(); await admin.getByRole('button', { name: 'Publish', exact: true }).click();
+      await admin.locator('#workspace-status').filter({ hasText: 'published' }).waitFor(); await admin.locator('#event-orders').click(); await admin.locator('#event-ticket-settings-form').waitFor();
       const saved = await api(admin, 'staff/get', { eventId });
       const vip = saved.draft.offers.find(o => o.unitAmount > 0);
       if (mode === 'rsvp-approval') assert.ok(Object.keys(vip.pools).every(pool => !Object.hasOwn(saved.draft.offers[0].pools, pool)), 'VIP stock is separate from RSVP admission');

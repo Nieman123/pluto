@@ -70,14 +70,14 @@ export interface EventDraft {
   registrationMode: 'tickets' | 'rsvp' | 'rsvp-approval' | 'free';
   remindersEnabled?: boolean; waitlistEnabled?: boolean; waitlistOfferMinutes?: number;
   title: string; slug: string; subtitle: string; descriptionHtml: string; startAt: string; endAt: string; admissionStartsAt: string;
-  timezone: string; city: string; region: string; venueName: string; address: string; directions: string; venueVisibility: 'public' | 'holders';
+  timezone: string; city: string; region: string; venueName: string; address: string; postalCode?: string; directions: string; venueVisibility: 'public' | 'holders';
   venueRevealScheduled: boolean; venueRevealAt: string | null;
   hero: Media | null; flyer: Media | null; gallery: Media[];
   lineup: { name: string; genre: string; time: string; image: Media | null }[];
   sections: { id: string; type: string; title: string; bodyHtml: string; visible: boolean }[];
   theme: { preset: string; accent: string; font: string };
   offers: Offer[]; pools: { id: string; name: string; capacity: number }[]; promos: Promotion[];
-  tax: { mode: 'sandbox' | 'manual' | 'automatic'; confirmed: boolean; performanceLocationId: string };
+  tax: { mode: 'sandbox' | 'manual' | 'automatic'; confirmed: boolean; performanceLocationId: string; autoConfigure?: boolean };
 }
 export function validateDraft(raw: any): EventDraft {
   if (!raw || typeof raw !== 'object') return fail('Missing event.');
@@ -144,22 +144,22 @@ export function validateDraft(raw: any): EventDraft {
   if (venueRevealAt && venueRevealAt >= endAt) fail('Location reveal must be before the event ends.');
   return { registrationMode, remindersEnabled: raw.remindersEnabled !== false, waitlistEnabled: raw.waitlistEnabled === true && registrationMode !== 'free', waitlistOfferMinutes: integer(raw.waitlistOfferMinutes ?? 30, 'waitlist offer minutes', 15, 120), title: text(raw.title, 'title', 200, true), slug, subtitle: text(raw.subtitle || '', 'subtitle', 400), descriptionHtml: html(raw.descriptionHtml || ''),
     startAt, endAt, admissionStartsAt, timezone, city: text(raw.city || '', 'city', 100), region: text(raw.region || '', 'state', 100),
-    venueName: text(raw.venueName || '', 'venue', 200), address: text(raw.address || '', 'address', 500), directions: text(raw.directions || '', 'directions', 3000),
+    venueName: text(raw.venueName || '', 'venue', 200), address: text(raw.address || '', 'address', 500), postalCode: text(raw.postalCode || '', 'venue ZIP code', 10), directions: text(raw.directions || '', 'directions', 3000),
     venueVisibility: raw.venueVisibility === 'holders' ? 'holders' : 'public', venueRevealScheduled, venueRevealAt, hero: media(raw.hero), flyer: media(raw.flyer),
     gallery: list(raw.gallery || [], 'gallery', 30).map(media).filter((v): v is Media => !!v),
     lineup: list(raw.lineup || [], 'lineup', 100).map(a => ({ name: text(a.name, 'artist', 150, true), genre: text(a.genre || '', 'genre', 100), time: text(a.time || '', 'set time', 150), image: media(a.image) })),
     sections, theme: { preset: ['pluto', 'artwork-dark', 'light'].includes(raw.theme?.preset) ? raw.theme.preset : 'pluto', accent,
       font: ['Montserrat', 'SourceCodePro'].includes(raw.theme?.font) ? raw.theme.font : 'Montserrat' }, offers, pools, promos,
-    tax: { mode: taxMode, confirmed: raw.tax?.confirmed === true, performanceLocationId: text(raw.tax?.performanceLocationId || '', 'performance location', 100) } };
+    tax: { mode: taxMode, confirmed: raw.tax?.confirmed === true, performanceLocationId: text(raw.tax?.performanceLocationId || '', 'performance location', 100), autoConfigure: raw.tax?.autoConfigure === true } };
 }
 export function allMedia(draft: EventDraft): Media[] {
   return [draft.hero, draft.flyer, ...draft.gallery, ...draft.lineup.map(a => a.image)].filter((m): m is Media => !!m);
 }
 export function publicEvent(eventId: string, draft: EventDraft, status: string, revision: number) {
-  const { pools, promos, tax, address, venueName, directions, ...content } = draft;
+  const { pools, promos, tax, address, postalCode, venueName, directions, ...content } = draft;
   return { ...content, id: eventId, status, revision,
     offers: (draft.registrationMode === 'free' ? [] : draft.offers.filter(o => o.active)).map(({ stripeProductId, stripeTaxRateIds, taxCode, pools, ...offer }) => offer),
-    ...(draft.venueVisibility === 'public' ? { venueName, address, directions } : {}),
+    ...(draft.venueVisibility === 'public' ? { venueName, address, postalCode: postalCode || '', directions } : {}),
   };
 }
 // Location timing is enforced here on the server, never by hiding a sent address.
