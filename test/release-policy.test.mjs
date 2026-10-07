@@ -47,6 +47,25 @@ test('production fails closed when GitHub reviewer protections are missing or by
   }
 });
 
+test('solo-maintainer production requires explicit selection and the triggering user as sole manual reviewer', () => {
+  const actorId = '11031044';
+  const reviewers = { type: 'required_reviewers', prevent_self_review: false, reviewers: [{ type: 'User', reviewer: { id: Number(actorId) } }] };
+  const protection = { protection_rules: [reviewers], can_admins_bypass: false, deployment_branch_policy: { custom_branch_policies: true } };
+  verifyProductionProtection(protection, 'solo-maintainer', actorId);
+  assert.throws(() => verifyProductionProtection(protection));
+  for (const change of [{ can_admins_bypass: true }, { deployment_branch_policy: null }, { protection_rules: [] },
+    { protection_rules: [{ ...reviewers, prevent_self_review: true }] },
+    { protection_rules: [{ ...reviewers, reviewers: [...reviewers.reviewers, reviewers.reviewers[0]] }] },
+    { protection_rules: [{ ...reviewers, reviewers: [{ type: 'Team', reviewer: { id: Number(actorId) } }] }] }]) {
+    assert.throws(() => verifyProductionProtection({ ...protection, ...change }, 'solo-maintainer', actorId));
+  }
+  for (const id of ['', '999999']) assert.throws(() => verifyProductionProtection(protection, 'solo-maintainer', id));
+  assert.throws(() => verifyProductionProtection(protection, 'anything-else', actorId));
+  assert.equal(releaseSettings(env).approvalPolicy, 'two-person');
+  assert.equal(releaseSettings({ ...env, DEPLOY_APPROVAL_POLICY: 'solo-maintainer' }).approvalPolicy, 'solo-maintainer');
+  assert.throws(() => releaseSettings({ ...env, DEPLOY_APPROVAL_POLICY: 'anything-else' }));
+});
+
 const deployment = { id: 42, sha, environment: 'staging', creator: { login: 'github-actions[bot]' }, payload: {
   kind: 'pluto-validated-release', projectId: projects.staging, revision: sha, runId: '1234', runAttempt: '1' } };
 const completed = { path: '.github/workflows/release.yml', event: 'workflow_dispatch', head_branch: 'main', status: 'completed', conclusion: 'success' };
