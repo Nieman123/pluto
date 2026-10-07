@@ -57,9 +57,19 @@ async function api(page, path, data) {
     for (const width of [1280, 390]) {
       await page.setViewportSize({ width, height: 900 });
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `dashboard fits ${width}`);
+      assert.ok(await page.evaluate(() => {
+        const pairs = [['#events-back', '#orders-all'], ['#event-public-page', '#event-studio'], ['#event-waitlist', '#event-attendance'], ['#event-cash', '#event-scanner-pins']];
+        return pairs.every(pair => {
+          const [a, b] = pair.map(selector => document.querySelector(selector).getBoundingClientRect());
+          return a.width > 0 && b.width > 0 && Math.abs(a.width - b.width) < 1 && Math.abs(a.height - b.height) < 1 && Math.abs(a.top - b.top) < 1;
+        });
+      }), `toolbar buttons align in equal-sized rows at ${width}`);
       const violations = (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations;
       assert.deepEqual(violations.map(v => ({ id: v.id, nodes: v.nodes.map(n => n.target) })), []);
+      await page.evaluate(() => scrollTo(0, 0));
       await page.screenshot({ path: `tmp/admin-revenue-${width}.png`, fullPage: true });
+      await page.locator('.admin-navigation').screenshot({ path: `tmp/admin-navigation-${width}.png` });
+      await page.locator('.workspace-action-groups').screenshot({ path: `tmp/admin-event-tools-${width}.png` });
     }
     await page.locator('#events-back').click(); await card.waitFor();
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
