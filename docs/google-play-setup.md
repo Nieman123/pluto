@@ -127,5 +127,8 @@ after the Android milestones; no iOS project is included here yet.
 - Disconnect and confirm saved attendee tickets still display while scheduled
   private venue information remains private until its reveal time.
 - Check small screens, font scaling, camera permissions and Android back behavior.
+- Confirm the header stays below the status bar in portrait and outside cutouts
+  in landscape. Back should dismiss dialogs first, pop pushed screens, and return
+  a directly opened section/tab to the dashboard before exiting from the root.
 
 Record physical-device results before advancing the foundation gate.

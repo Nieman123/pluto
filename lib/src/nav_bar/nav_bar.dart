@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import '../html_open_link.dart';
 import '../ticket_account_flow.dart';
+import 'pluto_app_bar.dart';
 
 //The top Nav Bar
 class NavBar extends StatelessWidget implements PreferredSizeWidget {
@@ -56,47 +57,42 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
   ];
 
   @override
-  Size get preferredSize => const Size.fromHeight(64);
+  Size get preferredSize => const Size.fromHeight(PlutoAppBar.toolbarHeight);
 
   @override
   Widget build(BuildContext context) {
-    final Color backgroundColor = Theme.of(context).scaffoldBackgroundColor;
     final String currentPath = GoRouterState.of(context).uri.path;
 
-    return Material(
-      color: backgroundColor,
-      child: SizedBox(
-        height: preferredSize.height,
-        child: Row(
-          children: <Widget>[
-            const SizedBox(width: 12),
-            Tooltip(
-              message: 'Dashboard',
-              child: InkWell(
-                borderRadius: BorderRadius.circular(8),
-                onTap: () => GoRouter.of(context).go('/'),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  child: SizedBox(
-                    height: 38,
-                    width: 58,
-                    child: Image.asset(
-                      'assets/experience/pluto-logo-small.webp',
-                      fit: BoxFit.contain,
-                    ),
+    return PlutoAppBar(
+      child: Row(
+        children: <Widget>[
+          const SizedBox(width: 12),
+          Tooltip(
+            message: 'Dashboard',
+            child: InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: () => GoRouter.of(context).go('/'),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: SizedBox(
+                  height: 38,
+                  width: 58,
+                  child: Image.asset(
+                    'assets/experience/pluto-logo-small.webp',
+                    fit: BoxFit.contain,
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 8),
-            const Spacer(),
-            const SizedBox(width: 8),
-            _AuthNavActions(
-              currentPath: currentPath,
-            ),
-            const SizedBox(width: 12),
-          ],
-        ),
+          ),
+          const SizedBox(width: 8),
+          const Spacer(),
+          const SizedBox(width: 8),
+          _AuthNavActions(
+            currentPath: currentPath,
+          ),
+          const SizedBox(width: 12),
+        ],
       ),
     );
   }
