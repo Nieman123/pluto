@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 
 import 'src/background/pluto_background.dart';
 import 'src/email_verification.dart';
+import 'src/google_auth.dart';
 import 'src/nav_bar/nav_bar.dart';
 import 'user_profile_repository.dart';
 
@@ -185,7 +186,7 @@ class _ProfilePageState extends State<ProfilePage> {
     final GoRouter router = GoRouter.of(context);
     setState(() => _isSigningOut = true);
     try {
-      await FirebaseAuth.instance.signOut();
+      await signOutOfPluto();
       router.go('/sign-on');
     } catch (_) {
       if (mounted) {

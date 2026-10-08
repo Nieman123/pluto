@@ -63,7 +63,7 @@
           <a class="avatar-link" href="/app/profile" aria-label="Open profile">
             <img data-auth-avatar src="/assets/images/pluto-logo.webp" width="40" height="40" alt="Profile">
           </a>
-          <a class="button button-primary" href="/app/">Open App</a>
+          <a class="button button-primary" href="/app/" data-open-app>Open App</a>
         </div>
         <button class="menu-button" type="button" data-menu-button aria-expanded="false" aria-controls="mobile-menu" aria-label="Open menu">
           <span></span><span></span><span></span>
@@ -78,7 +78,7 @@
         <a href="/tickets/admin" data-auth-admin hidden {% if path == '/tickets/admin' %}aria-current="page"{% endif %}>Ticket Admin</a>
         <a href="/app/sign-up" data-auth-signed-out>Create Account</a>
         <a href="/app/sign-on" data-auth-signed-out>Sign In</a>
-        <a href="/app/" data-auth-signed-in hidden>Open App</a>
+        <a href="/app/" data-open-app data-auth-signed-in hidden>Open App</a>
         <a href="/app/profile" data-auth-signed-in hidden>Profile</a>
       </nav>
     </header>

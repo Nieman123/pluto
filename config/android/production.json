@@ -1,0 +1,6 @@
+{
+  "PLUTO_ENVIRONMENT": "production",
+  "PLUTO_FIREBASE_ANDROID_CONFIG": "{\"apiKey\":\"AIzaSyAZ9xxBTWLs-JBYkovjiOlwrs-XQnP4iqY\",\"appId\":\"1:763906028056:android:3d0aba18263ad96c92896d\",\"messagingSenderId\":\"763906028056\",\"projectId\":\"pluto-9b6ca\",\"storageBucket\":\"pluto-9b6ca.appspot.com\"}",
+  "PLUTO_API_BASE_URL": "https://pluto.events",
+  "PLUTO_GOOGLE_SERVER_CLIENT_ID": "763906028056-lfief07v2pnbhj39e974crv721etefrs.apps.googleusercontent.com"
+}

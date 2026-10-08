@@ -48,6 +48,7 @@ void main() {
     final List<String> attempts = <String>[];
     final List<int> statuses = <int>[503, 401, 429, 200];
     final TicketingRepository api = TicketingRepository(
+        baseUri: Uri.parse('http://localhost:4173'),
         tokenProvider: () async => 'proof',
         client: MockClient((http.Request request) async {
           attempts.add((jsonDecode(request.body) as Map)['attempt'] as String);
@@ -72,6 +73,7 @@ void main() {
       () async {
     final List<Map<String, dynamic>> requests = <Map<String, dynamic>>[];
     final TicketingRepository api = TicketingRepository(
+        baseUri: Uri.parse('http://localhost:4173'),
         tokenProvider: () async => 'proof',
         client: MockClient((http.Request request) async {
           expect(request.url.path, '/tickets/api/rewards/claim');

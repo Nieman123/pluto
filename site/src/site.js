@@ -1,5 +1,7 @@
 import { initWaiver, initStaff } from './waiver.js';
 import { initCalendarPicker } from './calendar.js';
+import { initAppLinks } from './app-links.mjs';
+initAppLinks();
 initCalendarPicker();
 initWaiver();
 initStaff();
