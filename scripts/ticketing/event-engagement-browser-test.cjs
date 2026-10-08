@@ -93,8 +93,9 @@ async function surface(page, name) {
     stage = 'claim into approved app ticket'; active = guest;
     await guest.goto(`${base}/events/${draft.slug}#waitlist=${offer.token}`); await guest.getByRole('button', { name: 'Claim reserved spot', exact: true }).waitFor(); assert.equal(new URL(guest.url()).hash, '');
     const claimed = guest.waitForURL('**/app/tickets?order=*'); await guest.getByRole('button', { name: 'Claim reserved spot', exact: true }).click(); await claimed;
-    const orderId = new URL(guest.url()).searchParams.get('order'); await guest.locator('flt-semantics-placeholder').evaluate(e => e.click(), { timeout: 20000 }).catch(() => {}); await revealText(guest, guest.getByRole('button', { name: /Admission QR for/ })); await guest.getByText('Add to Calendar', { exact: true }).waitFor();
-    await guest.getByText('Add to Calendar', { exact: true }).click(); await guest.getByText('Apple Calendar', { exact: false }).waitFor(); await guest.getByText('Google Calendar', { exact: false }).waitFor();
+    const orderId = new URL(guest.url()).searchParams.get('order'); await guest.locator('flt-semantics-placeholder').evaluate(e => e.click(), { timeout: 20000 }).catch(() => {}); await revealText(guest, guest.getByRole('button', { name: /Admission QR for/ }));
+    const appCalendarButton = guest.getByRole('button', { name: 'Add to Calendar', exact: true });
+    await revealText(guest, appCalendarButton); await appCalendarButton.click(); await guest.getByText('Apple Calendar', { exact: false }).waitFor(); await guest.getByText('Google Calendar', { exact: false }).waitFor();
     await guest.screenshot({ path: 'tmp/ticketing-calendar-picker-app.png', fullPage: true });
     const appCalendarPopup = guest.waitForEvent('popup'); await guest.getByText('Google Calendar', { exact: false }).click();
     const appCalendar = await appCalendarPopup; await appCalendar.waitForLoadState(); assert.equal(new URL(appCalendar.url()).hostname, 'calendar.google.com'); await appCalendar.close();

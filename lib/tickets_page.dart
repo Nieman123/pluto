@@ -832,6 +832,10 @@ class _TicketsPageState extends State<TicketsPage> with WidgetsBindingObserver {
             onPressed: () => htmlNavigateTo('/events'),
             icon: const Icon(Icons.explore_outlined),
             label: const Text('Explore events')),
+        OutlinedButton.icon(
+            onPressed: () => context.go('/'),
+            icon: const Icon(Icons.dashboard_outlined),
+            label: const Text('Open Pluto app')),
       ]),
       const SizedBox(height: 24),
       if (_busy)
