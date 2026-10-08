@@ -1,4 +1,6 @@
 import { initWaiver, initStaff } from './waiver.js';
+import { initCalendarPicker } from './calendar.js';
+initCalendarPicker();
 initWaiver();
 initStaff();
 

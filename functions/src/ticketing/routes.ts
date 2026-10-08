@@ -112,7 +112,7 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
     const slug = (await service.db.collection('eventSlugs').doc(id(req.params.slug)).get()).data();
     const event = slug ? (await service.db.collection('publishedEvents').doc(slug.eventId).get()).data() : null;
     if (!event) fail('Event not found.', 404);
-    res.type('text/calendar; charset=utf-8').set('Content-Disposition', 'attachment; filename="pluto-event.ics"').send(eventCalendar(event as any, baseUrl()));
+    res.type('text/calendar; charset=utf-8').set('Content-Disposition', 'inline; filename="pluto-event.ics"').send(eventCalendar(event as any, baseUrl()));
   });
   router.get('/events/:slug', async (req, res) => {
     const slug = (await service.db.collection('eventSlugs').doc(id(req.params.slug)).get()).data(); if (!slug) fail('Event not found.', 404);

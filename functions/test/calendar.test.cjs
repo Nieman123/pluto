@@ -14,3 +14,9 @@ test('calendar text cannot inject properties and Unicode lines fold within RFC o
   assert.ok(!ics.includes('\r\nBEGIN:VALARM')); assert.ok(ics.split('\r\n').every(line => Buffer.byteLength(line) <= 75));
   const unfolded = ics.replace(/\r\n /g, ''); assert.ok(unfolded.includes('🎶'.repeat(80))); assert.ok(!unfolded.includes('�'));
 });
+test('calendar choices hand Apple the public feed and email links open the provider picker', () => {
+  const links = calendarLinks({ ...event, slug: 'dance-music' }, 'https://pluto.events');
+  assert.equal(links.apple, 'webcal://pluto.events/events/dance-music/calendar.ics');
+  assert.equal(links.picker, 'https://pluto.events/events/dance-music?calendar=1');
+  assert.equal(new URL(links.google).searchParams.get('location'), 'Asheville, NC');
+});

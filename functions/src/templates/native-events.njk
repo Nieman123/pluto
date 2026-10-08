@@ -1,7 +1,7 @@
 {% extends 'base.njk' %}
 {% block content %}
 <link rel="stylesheet" href="/assets/ticketing.css?v={{ assetVersion }}">
-<section class="section events-discovery"><div class="discovery-heading"><p class="eyebrow">PLUTO EVENTS · MUSIC & COMMUNITY</p>{% if past %}<h1>Nights<br><span>we’ve shared.</span></h1><p>A look back at past Pluto gatherings.</p>{% else %}<h1>Find your<br><span>next night.</span></h1><p>Good sound. Familiar faces. Something worth showing up for.</p>{% endif %}</div>
+<section class="section events-discovery"><div class="discovery-heading"><p class="eyebrow">PLUTO EVENTS · MUSIC & COMMUNITY</p>{% if past %}<h1>Nights<br><span>we’ve shared.</span></h1><p>A look back at past Pluto gatherings.</p>{% else %}<h1>Upcoming events</h1>{% endif %}</div>
 <div class="discover-grid">{% for event in events %}<article class="discover-card">
 <div class="discover-artwork"><a class="discover-art" href="/events/{{ event.slug }}" tabindex="-1" aria-hidden="true">
 {% if event.hero %}<img src="/events/{{ event.slug }}/media/{{ event.hero.assetId }}" alt="" loading="lazy" style="object-position:{{ event.hero.focalX }}% {{ event.hero.focalY }}%">{% elif event.flyer %}<img src="/events/{{ event.slug }}/media/{{ event.flyer.assetId }}" alt="" loading="lazy">{% else %}<div class="discover-placeholder"><span aria-hidden="true">✦</span><span>PLUTO EVENTS</span></div>{% endif %}

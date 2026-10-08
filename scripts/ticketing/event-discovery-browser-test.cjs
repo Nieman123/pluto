@@ -19,6 +19,7 @@ const db = backend('firebase-admin/firestore').getFirestore(), base = 'http://12
     for (const width of [1280, 390]) {
       const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width, height: 900 } }), page = await context.newPage();
       await page.goto(`${base}/events`);
+      assert.equal(await page.locator('.discovery-heading h1').innerText(), 'Upcoming events');
       assert.equal(await page.locator(`h2 a[href="/events/${records[0].slug}"]`).count(), 0);
       for (const record of records.slice(1)) assert.equal(await page.locator(`h2 a[href="/events/${record.slug}"]`).count(), 1);
       await page.getByRole('link', { name: 'View past events' }).click();

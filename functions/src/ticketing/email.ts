@@ -126,7 +126,7 @@ export function renderTicketingEmail(input: TicketingEmailInput) {
   const total = kind === 'refund' ? input.amount || 0 : order.total;
   const showTotal = kind === 'receipt' || kind === 'refund';
   const showReference = kind !== 'transfer' && !!input.orderId;
-  const calendarUrl = event?.slug ? `${input.baseUrl}/events/${encodeURIComponent(event.slug)}/calendar.ics` : '';
+  const calendarUrl = event?.slug ? `${input.baseUrl}/events/${encodeURIComponent(event.slug)}?calendar=1` : '';
   const reference = input.orderId.slice(0, 12).toUpperCase();
   const paragraph = (value: string, style = '') => `<p style="margin:0 0 16px;color:#ddd5e6;font-size:16px;line-height:1.65;${style}">${escape(value)}</p>`;
   const meta = (label: string, value: string) => `<tr><td style="padding:0 0 18px"><p style="margin:0 0 5px;color:#b7a5c5;font-size:11px;font-weight:700;letter-spacing:1.5px">${label}</p><p style="margin:0;color:#f7f3fc;font-size:15px;line-height:1.6;overflow-wrap:anywhere;word-break:break-word">${escape(value)}</p></td></tr>`;
