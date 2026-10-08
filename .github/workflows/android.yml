@@ -1,0 +1,60 @@
+name: Android validation
+on:
+  pull_request:
+    paths:
+      - 'android/**'
+      - 'config/android/**'
+      - 'lib/**'
+      - 'pubspec.*'
+      - 'test/**'
+      - 'scripts/android/**'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: android-validation-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  compilation:
+    name: Staging Android bundle and native library checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      PLUTO_UNSIGNED_VALIDATION: 'true'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - name: Configure native toolchain and locked packages
+        run: |
+          flutter config --jdk-dir="$JAVA_HOME"
+          sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+          flutter pub get --enforce-lockfile
+      - name: Flutter validation
+        run: |
+          flutter analyze .
+          flutter test
+      - name: Compile unsigned staging bundle
+        run: flutter build appbundle --release --flavor staging --dart-define-from-file=config/android/staging.json
+      - name: Check 16 KB native library compatibility
+        run: |
+          python3 -m unittest discover -s scripts/android -p 'test_*.py'
+          python3 scripts/android/verify_bundle.py build/app/outputs/bundle/stagingRelease/app-staging-release.aab
+      - name: Keep validation bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: android-unsigned-validation-${{ github.sha }}
+          path: build/app/outputs/bundle/stagingRelease/app-staging-release.aab
+          if-no-files-found: error
+          retention-days: 7

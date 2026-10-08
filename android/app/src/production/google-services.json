@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "763906028056",
+    "project_id": "pluto-9b6ca",
+    "storage_bucket": "pluto-9b6ca.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:763906028056:android:3d0aba18263ad96c92896d",
+        "android_client_info": {
+          "package_name": "events.pluto.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "763906028056-lfief07v2pnbhj39e974crv721etefrs.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAZ9xxBTWLs-JBYkovjiOlwrs-XQnP4iqY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "763906028056-lfief07v2pnbhj39e974crv721etefrs.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

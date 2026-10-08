@@ -1,0 +1,10 @@
+{
+  "staging": {
+    "packageName": "events.pluto.app.staging",
+    "sha256": ["85:54:E0:5A:9F:FB:A3:ED:29:42:67:1D:DC:6E:84:C8:A2:7A:F5:1C:B9:1F:3C:32:B9:F4:B3:28:D3:AF:72:9E"]
+  },
+  "production": {
+    "packageName": "events.pluto.app",
+    "sha256": []
+  }
+}

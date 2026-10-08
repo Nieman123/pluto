@@ -12,6 +12,7 @@ import { ticketingSecrets, resendWebhookSecrets } from './ticketing/config';
 import { walletSecrets } from './ticketing/digital-wallet';
 import { configureTrustedProxy } from './ticketing/client-identity';
 import { deploymentConfig } from './deployment-config';
+import { androidLinkStatements } from './android-links';
 export { ticketingFinancialWorker, ticketingFinancialBackfillWorker, ticketingMaintenance, ticketingWebhookWorker, ticketingEmailWorker, ticketingCampaignWorker, ticketingRecoveryWorker, ticketingCommunicationMaintenance, ticketingEmailMaintenance } from './ticketing/workers';
 import { normalizeRental, groupRentals, rentalContactEmail, type PublicRental } from './rentals-data';
 import { seedRentals } from './rentals-seed';
@@ -142,6 +143,11 @@ app.use((request, response, next) => {
 
 app.use("/manafest-waiver", waiverRouter(commonContext));
 app.use(ticketingRouter(commonContext));
+
+app.get('/.well-known/assetlinks.json', (_request, response) => {
+  response.type('application/json').set('Cache-Control', 'public, max-age=300')
+    .json(androidLinkStatements(deploymentConfig().environment));
+});
 
 app.get("/", async (_request: Request, response: Response) => {
   const events = (await loadEvents()).filter((event) => manaFest.status !== "archived" || !event.isManaFest);

@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
+import 'src/native_environment.dart';
 
 /// Default [FirebaseOptions] for use with your Firebase apps.
 ///
@@ -23,10 +24,11 @@ class DefaultFirebaseOptions {
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for android - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return resolveAndroid(
+            environment: plutoEnvironment,
+            flavor: plutoFlavor,
+            configJson:
+                const String.fromEnvironment('PLUTO_FIREBASE_ANDROID_CONFIG'));
       case TargetPlatform.iOS:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for ios - '
@@ -52,6 +54,52 @@ class DefaultFirebaseOptions {
           'DefaultFirebaseOptions are not supported for this platform.',
         );
     }
+  }
+
+  static FirebaseOptions resolveAndroid(
+      {required String environment,
+      required String flavor,
+      required String configJson}) {
+    validateNativeEnvironment(environment, flavor);
+    if (configJson.isEmpty)
+      throw StateError('Android Firebase configuration is required.');
+    final config = Map<String, dynamic>.from(jsonDecode(configJson) as Map);
+    final project =
+        environment == 'staging' ? 'pluto-staging-92eb7' : 'pluto-9b6ca';
+    final sender = environment == 'staging' ? '702489323300' : '763906028056';
+    const fields = [
+      'apiKey',
+      'appId',
+      'messagingSenderId',
+      'projectId',
+      'storageBucket'
+    ];
+    if (config.keys.any((key) => !fields.contains(key))) {
+      throw StateError('Only public Android Firebase fields are allowed.');
+    }
+    for (final field in fields) {
+      if (config[field] is! String || (config[field] as String).isEmpty) {
+        throw StateError('Incomplete Android Firebase configuration.');
+      }
+    }
+    if (config['projectId'] != project ||
+        config['messagingSenderId'] != sender ||
+        !RegExp('^1:$sender:android:[a-f0-9]+\$')
+            .hasMatch(config['appId'] as String) ||
+        !['$project.appspot.com', '$project.firebasestorage.app']
+            .contains(config['storageBucket']) ||
+        config['measurementId'] != null ||
+        (environment == 'staging' &&
+            config['apiKey'] == productionWeb.apiKey)) {
+      throw StateError(
+          'Android Firebase configuration does not match its flavor.');
+    }
+    return FirebaseOptions(
+        apiKey: config['apiKey'],
+        appId: config['appId'],
+        messagingSenderId: sender,
+        projectId: project,
+        storageBucket: config['storageBucket']);
   }
 
   static FirebaseOptions get web => resolveWeb(

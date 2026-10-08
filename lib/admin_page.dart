@@ -18,6 +18,7 @@ import 'public_media_repository.dart';
 import 'rentals_admin_panel.dart';
 import 'src/background/pluto_background.dart';
 import 'src/html_open_link.dart';
+import 'src/native_environment.dart';
 import 'src/nav_bar/nav_bar.dart';
 import 'user_profile_repository.dart';
 
@@ -1411,13 +1412,7 @@ class _AdminPageState extends State<AdminPage> {
   }
 
   String _eventManagementUrl(String path) {
-    final Uri origin = <String>['http', 'https'].contains(Uri.base.scheme)
-        ? Uri.base
-        : Uri.parse(
-            const String.fromEnvironment('PLUTO_ENVIRONMENT') == 'staging'
-                ? 'https://pluto-staging-92eb7.web.app'
-                : 'https://pluto.events');
-    return origin.resolve(path).toString();
+    return ticketingBaseUri().resolve(path).toString();
   }
 
   Widget _buildAuthorizedAdminContent(User user) {

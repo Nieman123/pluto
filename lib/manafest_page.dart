@@ -1,11 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher_string.dart';
 
 import 'manafest_content.dart';
 import 'manafest_repository.dart';
 import 'src/background/pluto_background.dart';
+import 'src/html_open_link.dart';
 import 'src/nav_bar/nav_bar.dart';
 
 class ManaFestPage extends StatefulWidget {
@@ -49,12 +49,7 @@ class _ManaFestPageState extends State<ManaFestPage> {
       return;
     }
 
-    final Uri? parsedUrl = Uri.tryParse(normalizedUrl);
-    final String targetUrl = parsedUrl?.hasScheme ?? false
-        ? normalizedUrl
-        : Uri.base.resolve(normalizedUrl).toString();
-
-    await launchUrlString(targetUrl, webOnlyWindowName: '_blank');
+    await htmlOpenLink(normalizedUrl);
   }
 
   String _fallbackDisplayNameForUser(User user) {
