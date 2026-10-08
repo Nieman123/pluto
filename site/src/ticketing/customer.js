@@ -6,7 +6,7 @@ export function initCheckout() {
   const config = JSON.parse(document.querySelector('#native-checkout-config').textContent), storageKey = `pluto-checkout-${config.eventId}`;
   const rsvp = ['rsvp', 'rsvp-approval'].includes(config.registrationMode);
   const initiallyClosed = form.querySelector('[type=submit]').disabled;
-  let checkout, result, frozen, countdown;
+  let checkout, result, frozen, countdown, checkingSaved = false;
   let account = null, profileName = '';
   const contacts = { buyerName: form.elements.buyerName, email: form.elements.email };
   const filledFromAccount = new Map();
@@ -17,7 +17,7 @@ export function initCheckout() {
     const total = items.reduce((n, item) => n + item.quantity * (config.offers.find(o => o.id === item.offerId)?.unitAmount || 0), 0);
     document.querySelector('#ticket-total').textContent = rsvp && !paid ? 'Free RSVP · One pass per named person' : `${money(total)} before any promotion${config.registrationMode === 'rsvp-approval' && paid ? ' · Approved RSVP required' : ''}`;
     form.querySelector('[data-payment-only]')?.toggleAttribute('hidden', rsvp && !paid);
-    form.querySelector('[type=submit]').textContent = frozen ? freeRsvp(frozen) ? 'Resume RSVP request' : 'Resume reserved checkout' : !rsvp || paid ? 'Continue to payment' : config.registrationMode === 'rsvp-approval' ? 'Request RSVP' : 'Confirm RSVP';
+    form.querySelector('[type=submit]').textContent = checkingSaved ? 'Checking previous checkout…' : frozen ? freeRsvp(frozen) ? 'Resume RSVP request' : 'Resume reserved checkout' : !rsvp || paid ? 'Continue to payment' : config.registrationMode === 'rsvp-approval' ? 'Request RSVP' : 'Confirm RSVP';
   }
   async function verifyContact(request, upgrade = false) {
     const verification = await api(upgrade ? 'rsvp/upgrade/verification' : 'rsvp/verification', { eventId: config.eventId, email: request.email });
@@ -63,7 +63,7 @@ export function initCheckout() {
       for (const item of frozen.items) { const select = form.elements[item.offerId]; if (select) select.value = String(item.quantity); }
     }
     syncContact();
-    form.querySelector('[type=submit]').disabled = frozen ? false : initiallyClosed;
+    form.querySelector('[type=submit]').disabled = checkingSaved || (frozen ? false : initiallyClosed);
     cartSummary();
   }
   const promoter = new URLSearchParams(location.search).get('ref');
@@ -79,11 +79,14 @@ export function initCheckout() {
     try { result = await api(freeRsvp(frozen) ? 'rsvp' : 'checkout', frozen); }
     catch (error) {
       if ([400, 403, 409].includes(error.status)) {
-        const attempt = await api('checkout-attempt', { accessKey: frozen.accessKey }).catch(() => null);
-        if (attempt?.exists === false) { localStorage.removeItem(storageKey); frozen = null; lockCart(); }
+        const attempt = await api('checkout-attempt', { accessKey: request.accessKey }).catch(() => null);
+        if (frozen === request && attempt?.exists === false) { localStorage.removeItem(storageKey); frozen = null; lockCart(); }
       }
       throw error;
     }
+    // A tab-return check may have already closed this attempt while the
+    // original checkout request was in flight.
+    if (frozen !== request) return;
     localStorage.setItem(`pluto-order-${result.orderId}`, frozen.accessKey);
     if (freeRsvp(frozen) || result.status === 'paid') { localStorage.removeItem(storageKey); location.href = `/app/tickets?order=${result.orderId}`; return; }
     if (['expired', 'cancelled'].includes(result.status)) { localStorage.removeItem(storageKey); frozen = null; lockCart(); throw new Error('The previous reservation has closed. Choose your tickets again.'); }
@@ -91,7 +94,7 @@ export function initCheckout() {
     if (!result.clientSecret || !result.publishableKey) throw new Error('Payment setup is incomplete. Your cart is saved; retry once checkout is configured.');
     if (!window.Stripe) await new Promise((resolve, reject) => { const script = document.createElement('script'); script.src = 'https://js.stripe.com/endive/stripe.js'; script.onload = resolve; script.onerror = () => reject(new Error('The payment form could not load. Check your connection and retry.')); document.head.append(script); });
     checkout = await window.Stripe(result.publishableKey).createEmbeddedCheckoutPage({ fetchClientSecret: async () => result.clientSecret,
-      onComplete: () => { localStorage.removeItem(storageKey); location.href = `/app/tickets?order=${result.orderId}`; } });
+      onComplete: () => { clearSavedCart(); location.href = `/app/tickets?order=${result.orderId}`; } });
     checkout.mount('#stripe-checkout'); form.hidden = true; document.querySelector('#checkout-cancel').hidden = false;
     document.querySelector('.native-event').classList.add('checkout-active'); document.querySelector('.native-layout').classList.add('checkout-active');
     document.querySelector('#tickets').scrollIntoView({ block: 'start' }); message('Complete your payment below. Your tickets will appear in the Pluto app.');
@@ -122,7 +125,45 @@ export function initCheckout() {
     if (closed.status === 'paid') { localStorage.removeItem(storageKey); location.href = `/app/tickets?order=${result.orderId}`; return; }
     checkout?.destroy(); clearInterval(countdown); localStorage.removeItem(storageKey); frozen = null; result = null; lockCart(); form.hidden = false; document.querySelector('#checkout-cancel').hidden = true; document.querySelector('#checkout-countdown').textContent = ''; document.querySelector('.native-event').classList.remove('checkout-active'); document.querySelector('.native-layout').classList.remove('checkout-active'); message('Your reservation is closed. You can choose another cart.');
   });
+  function clearSavedCart() {
+    checkout?.destroy(); checkout = null; clearInterval(countdown);
+    localStorage.removeItem(storageKey); frozen = null; checkingSaved = false;
+    form.querySelectorAll('[data-ticket-quantity]').forEach(select => { select.value = '0'; });
+    if (form.elements.promoCode) form.elements.promoCode.value = '';
+    form.hidden = false;
+    document.querySelector('#checkout-cancel').hidden = true;
+    document.querySelector('#checkout-countdown').textContent = '';
+    document.querySelector('.native-event').classList.remove('checkout-active');
+    document.querySelector('.native-layout').classList.remove('checkout-active');
+    lockCart();
+  }
+  async function reconcileSavedCart() {
+    if (!frozen || checkingSaved) return;
+    const previous = frozen;
+    checkingSaved = true; lockCart();
+    try {
+      const attempt = await api('checkout-attempt', { accessKey: previous.accessKey });
+      if (frozen !== previous) return;
+      if (attempt.eventId && attempt.eventId !== config.eventId) return;
+      if (['paid', 'refunded', 'partially-refunded', 'pending-approval', 'declined', 'withdrawn', 'expired', 'cancelled'].includes(attempt.status)) {
+        if (attempt.orderId) localStorage.setItem(`pluto-order-${attempt.orderId}`, previous.accessKey);
+        clearSavedCart();
+        message(['expired', 'cancelled'].includes(attempt.status) ? 'Your previous reservation closed. Choose tickets for a new checkout.' : 'Your previous checkout is complete. Your tickets and order are in the Pluto app.');
+      } else message('Your previous cart is saved. Continue to resume the same payment attempt.');
+    } catch { message('Your saved checkout could not be checked. Resume the same attempt to avoid a duplicate purchase.'); }
+    finally { checkingSaved = false; lockCart(); }
+  }
   const saved = localStorage.getItem(storageKey);
-  if (saved && !config.preview) { try { frozen = JSON.parse(saved); lockCart(); message('Your previous cart is saved. Continue to resume the same payment attempt.'); } catch { frozen = null; localStorage.removeItem(storageKey); } }
+  if (saved && !config.preview) { try {
+    const parsed = JSON.parse(saved);
+    if (parsed.eventId !== config.eventId || !/^[a-f0-9]{64}$/.test(parsed.accessKey) || !Array.isArray(parsed.items)) throw new Error('Invalid saved checkout');
+    frozen = parsed; lockCart(); reconcileSavedCart();
+  } catch { clearSavedCart(); } }
+  // Browser Back may restore this page from bfcache without rerunning init.
+  window.addEventListener('pageshow', event => { if (event.persisted) reconcileSavedCart(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) reconcileSavedCart(); });
+  window.addEventListener('storage', event => {
+    if (event.key === storageKey && event.newValue === null && frozen && !checkout) clearSavedCart();
+  });
   initWaitlist(config, request => { if (frozen) throw new Error('Resume or close your saved checkout before claiming another offer.'); return mount(request); });
 }

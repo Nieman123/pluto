@@ -191,9 +191,12 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   router.post('/tickets/api/staff/rsvp/withdraw', async (req, res) => res.json(await service.withdrawRsvp(bodyId(req), bodyId(req, 'orderId'), actor(res).uid)));
   router.post('/tickets/api/checkout-attempt', async (req, res) => res.json(await service.checkoutAttempt(req.body.accessKey)));
   router.post('/tickets/api/cancel', async (req, res) => res.json(await service.cancel(bodyId(req, 'orderId'), req.body.accessKey, res.locals.actor)));
-  router.post('/tickets/api/order', async (req, res) => res.json(await service.view(bodyId(req, 'orderId'), req.body.accessKey, res.locals.actor, true)));
+  router.post('/tickets/api/order', async (req, res) => {
+    if (req.body.claimPurchases === true && res.locals.actor?.email_verified) await service.claim(res.locals.actor, true);
+    res.json(await service.view(bodyId(req, 'orderId'), req.body.accessKey, res.locals.actor, true));
+  });
   router.post('/tickets/api/download', async (req, res) => res.type('pdf').set('Content-Disposition', 'attachment; filename="Pluto-payment-receipt.pdf"').send(await orderPdf(await service.view(bodyId(req, 'orderId'), req.body.accessKey, res.locals.actor))));
-  router.post('/tickets/api/mine', async (_req, res) => res.json(await service.mine(actor(res))));
+  router.post('/tickets/api/mine', async (req, res) => res.json(await service.mine(actor(res), req.body.claimPurchases === true)));
   router.post('/tickets/api/claim', async (_req, res) => res.json(await service.claim(actor(res))));
   router.post('/tickets/api/recover', async (req, res) => { await service.rateLimit(res.locals.rateIdentity, 'recovery-client', 10); await service.rateLimit(email(req.body.email), 'recovery-contact', 3); res.json(await service.recover(req.body.email)); });
   router.post('/tickets/api/recover/accept', async (req, res) => res.json(await service.acceptRecovery(req.body.token)));

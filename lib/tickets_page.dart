@@ -9,8 +9,10 @@ import 'src/email_verification.dart';
 import 'src/html_open_link.dart';
 import 'src/offline_ticket_cache.dart';
 import 'src/ticket_access_store.dart';
+import 'src/ticket_checkout_cleanup.dart';
 import 'src/ticket_qr.dart';
 import 'src/ticket_wallet.dart';
+import 'src/ticket_wallet_browser.dart';
 import 'ticketing_repository.dart';
 
 class TicketsPage extends StatefulWidget {
@@ -83,6 +85,12 @@ class _TicketsPageState extends State<TicketsPage> with WidgetsBindingObserver {
   void didUpdateWidget(TicketsPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.uri != widget.uri) {
+      if (oldWidget.uri.queryParameters['order'] ==
+              widget.uri.queryParameters['order'] &&
+          oldWidget.uri.fragment == widget.uri.fragment) {
+        setState(() {});
+        return;
+      }
       _orderId = widget.uri.queryParameters['order'];
       _holderToken = null;
       _transferToken = null;
@@ -141,24 +149,6 @@ class _TicketsPageState extends State<TicketsPage> with WidgetsBindingObserver {
         await _load();
       });
   Future<void> _load() async {
-    if (!kIsWeb) {
-      // Browser checkout has its own auth/storage. Link only through the
-      // server's verified-email claim flow; an order ID grants no access.
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        try {
-          await user.reload();
-          if (FirebaseAuth.instance.currentUser?.emailVerified == true) {
-            await FirebaseAuth.instance.currentUser!.getIdToken(true);
-            await _repository.request('claim');
-          }
-        } catch (_) {
-          // A network outage must still allow the existing offline wallet to load.
-          _notice =
-              'New purchases could not sync. Reconnect and refresh your tickets.';
-        }
-      }
-    }
     // Provider setup is optional and must not prevent access to in-app tickets.
     if (_showAddToWallet) {
       try {
@@ -173,6 +163,8 @@ class _TicketsPageState extends State<TicketsPage> with WidgetsBindingObserver {
     else if (_orderId != null)
       _data = await _cachedRequest('order', <String, dynamic>{
         'orderId': _orderId,
+        if (!kIsWeb && FirebaseAuth.instance.currentUser?.emailVerified == true)
+          'claimPurchases': true,
         'accessKey': ticketAccessRead('pluto-order-$_orderId')
       });
     else
@@ -215,6 +207,8 @@ class _TicketsPageState extends State<TicketsPage> with WidgetsBindingObserver {
   Future<Map<String, dynamic>> _wallet() => loadTicketWallet(
       request: _cachedRequest,
       signedIn: FirebaseAuth.instance.currentUser != null,
+      claimPurchases:
+          !kIsWeb && FirebaseAuth.instance.currentUser?.emailVerified == true,
       savedKeys: ticketAccessKeys(),
       readAccess: ticketAccessRead,
       removeAccess: ticketAccessRemove);
@@ -234,6 +228,9 @@ class _TicketsPageState extends State<TicketsPage> with WidgetsBindingObserver {
       await _cache.clear(scope);
       throw const TicketingException(
           401, 'Your account changed. Refresh your tickets.');
+    }
+    for (final key in completedCheckoutKeys(result, ticketAccessRead)) {
+      await ticketAccessRemove(key);
     }
     return result;
   }
@@ -602,20 +599,6 @@ class _TicketsPageState extends State<TicketsPage> with WidgetsBindingObserver {
         ],
       ]);
 
-  Widget _ticketGrid(List<dynamic> tickets) =>
-      LayoutBuilder(builder: (context, constraints) {
-        final double width = constraints.maxWidth >= 700
-            ? (constraints.maxWidth - 18) / 2
-            : constraints.maxWidth;
-        return Wrap(
-            spacing: 18,
-            children: tickets
-                .map((dynamic ticket) => SizedBox(
-                    width: width,
-                    child: _ticket(Map<String, dynamic>.from(ticket as Map))))
-                .toList());
-      });
-
   Widget _venue(Map? venue) => venue == null
       ? const SizedBox.shrink()
       : _panel(children: <Widget>[
@@ -770,233 +753,190 @@ class _TicketsPageState extends State<TicketsPage> with WidgetsBindingObserver {
             child: const Text('Email me a secure app link')),
       ]);
 
+  void _showWalletView({bool orders = false, String? eventId}) {
+    context.go(Uri(path: '/tickets', queryParameters: <String, String>{
+      if (orders) 'view': 'orders',
+      if (eventId != null) 'event': eventId,
+    }).toString());
+  }
+
+  Future<void> _acceptTransfer() => _run(() async {
+        _data = await _repository.request(
+            'transfer/accept', <String, dynamic>{'token': _transferToken});
+        _holderToken = _transferToken;
+        await ticketAccessWrite('pluto-holder-$_holderToken', _holderToken!);
+        _transferToken = null;
+        if (mounted) setState(() {});
+      });
+
+  Widget _orderRow(Map<String, dynamic> order) => Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
+          color: _panelColor,
+          borderRadius: BorderRadius.circular(16),
+          child: ListTile(
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            leading: const Icon(Icons.receipt_long_outlined, color: _accent),
+            title: Text(order['eventTitle'] as String? ?? 'Pluto event'),
+            subtitle:
+                Text(_orderLabel(order), style: const TextStyle(color: _muted)),
+            trailing: const Icon(Icons.chevron_right, color: _accent),
+            onTap: () => context
+                .go(Uri(path: '/tickets', queryParameters: <String, String>{
+              'view': 'orders',
+              'order': order['orderId'] as String,
+            }).toString()),
+          )));
+
   @override
   Widget build(BuildContext context) {
-    final Map<String, dynamic>? data = _data;
-    final List<dynamic> orders =
-        data?['orders'] as List<dynamic>? ?? <dynamic>[];
-    final List<dynamic> tickets =
-        data?['tickets'] as List<dynamic>? ?? <dynamic>[];
-    final bool wallet =
+    final data = _data;
+    final orders = data?['orders'] as List<dynamic>? ?? <dynamic>[];
+    final tickets = _holderToken != null && data != null
+        ? <dynamic>[data]
+        : data?['tickets'] as List<dynamic>? ?? <dynamic>[];
+    final wallet =
         _orderId == null && _holderToken == null && _transferToken == null;
-    final bool hasTickets = tickets.isNotEmpty ||
-        _holderToken != null ||
+    final showOrders = widget.uri.queryParameters['view'] == 'orders';
+    final hasTickets = tickets.isNotEmpty ||
         (_orderId != null &&
             (data?['status'] == 'paid' || data?['method'] == 'rsvp'));
+    final header = <Widget>[
+      const SizedBox(height: 12),
+      Row(children: <Widget>[
+        Expanded(
+            child: Text(showOrders ? 'Orders' : 'My tickets',
+                style: const TextStyle(
+                    fontSize: 34, fontWeight: FontWeight.w900, height: 1.15))),
+        IconButton(
+            onPressed: _busy ? null : _refresh,
+            tooltip: 'Refresh tickets',
+            icon: const Icon(Icons.refresh)),
+      ]),
+      const SizedBox(height: 10),
+      _body(showOrders
+          ? 'Your purchases, receipts and RSVP requests.'
+          : 'Your admission tickets and RSVPs stay here in the Pluto app.'),
+      const SizedBox(height: 18),
+      Wrap(spacing: 12, runSpacing: 10, children: <Widget>[
+        OutlinedButton.icon(
+            onPressed: () => _showWalletView(),
+            icon: const Icon(Icons.confirmation_number_outlined),
+            label: const Text('Tickets')),
+        OutlinedButton.icon(
+            onPressed: () => _showWalletView(orders: true),
+            icon: const Icon(Icons.receipt_long_outlined),
+            label: const Text('Orders')),
+        OutlinedButton.icon(
+            onPressed: () => htmlNavigateTo('/events'),
+            icon: const Icon(Icons.explore_outlined),
+            label: const Text('Explore events')),
+      ]),
+      const SizedBox(height: 24),
+      if (_busy)
+        const Padding(
+            padding: EdgeInsets.only(bottom: 18),
+            child: LinearProgressIndicator()),
+      if (_error != null)
+        _panel(border: const Color(0xFFFFB4AB), children: <Widget>[
+          Text(_error!,
+              style: const TextStyle(color: Color(0xFFFFB4AB), height: 1.6)),
+        ]),
+      if (_notice != null)
+        _panel(children: <Widget>[
+          Text(_notice!, style: const TextStyle(color: _accent, height: 1.6))
+        ]),
+      if (data?['offline'] == true)
+        _panel(children: <Widget>[
+          _title('Saved tickets · Offline'),
+          _body(
+              'Last synced ${DateFormat.yMMMd().add_jm().format(DateTime.fromMillisecondsSinceEpoch(data!['savedAt'] as int))}. Admission status and venue details may have changed. Reconnect to refresh before arrival.'),
+        ]),
+      for (final warning in data?['warnings'] as List? ?? <dynamic>[])
+        _panel(children: <Widget>[_body(warning as String)]),
+      if (hasTickets) _accountPrompt(),
+      if (_transferToken != null)
+        _panel(children: <Widget>[
+          _title('A ticket is waiting for you'),
+          _body(
+              'Accepting moves its admission credential to you and invalidates the previous QR.'),
+          const SizedBox(height: 16),
+          FilledButton(
+              onPressed: _busy ? null : _acceptTransfer,
+              child: const Text('Accept ticket')),
+        ]),
+      if (_orderId != null && data != null) ...<Widget>[
+        if (showOrders)
+          _orderSummary(data)
+        else ...<Widget>[
+          _title(data['eventTitle'] as String? ?? 'Your tickets'),
+          if (data['method'] == 'rsvp') _body(_orderLabel(data)),
+          if ((data['upgradeUrl'] as String? ?? '').isNotEmpty)
+            TextButton(
+                onPressed: data['offline'] == true
+                    ? null
+                    : () => htmlOpenLink(data['upgradeUrl'] as String),
+                child: const Text('Browse VIP upgrades')),
+          if (tickets.isEmpty)
+            _body(data['rsvpStatus'] == 'pending'
+                ? 'Your RSVP is awaiting organizer approval. Admission tickets appear after approval.'
+                : 'No admission tickets are available for this order. Open Orders for its current status.'),
+        ],
+      ],
+      if (wallet && showOrders && orders.isEmpty && !_busy)
+        _panel(children: <Widget>[_title('No orders yet')]),
+      if (wallet && !showOrders && tickets.isEmpty && orders.isEmpty && !_busy)
+        _panel(children: <Widget>[
+          const Icon(Icons.confirmation_number_outlined,
+              color: _accent, size: 38),
+          const SizedBox(height: 16),
+          _title('Something to look forward to.'),
+          _body(
+              'No tickets are linked here yet. Explore the next event, open your secure confirmation link or recover a purchase below.'),
+          if (FirebaseAuth.instance.currentUser == null)
+            TextButton(
+                onPressed: () => _startAccount('/sign-on'),
+                child: const Text('Sign in to see linked tickets')),
+        ]),
+    ];
+    final footer = <Widget>[
+      if (_orderId != null && !showOrders && data?['venue'] != null)
+        _venue(data!['venue'] as Map?),
+      if (_holderToken != null)
+        TextButton(onPressed: _allTickets, child: const Text('All my tickets')),
+      if (wallet) _recovery(),
+      if (FirebaseAuth.instance.currentUser?.emailVerified == true)
+        Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: TextButton.icon(
+                onPressed: _busy || data?['offline'] == true ? null : _claim,
+                icon: const Icon(Icons.sync),
+                label: const Text('Link purchases with my verified email'))),
+      const Padding(
+          padding: EdgeInsets.symmetric(vertical: 12),
+          child: Text('PLUTO · MUSIC BRINGS US TOGETHER',
+              style:
+                  TextStyle(color: _muted, fontSize: 11, letterSpacing: 1.3))),
+    ];
     return Theme(
         data: _walletTheme,
-        child: Builder(
-            builder: (BuildContext context) => Material(
-                  color: Colors.transparent,
-                  child: SafeArea(
-                      top: false,
-                      child: SingleChildScrollView(
-                        padding: EdgeInsets.all(
-                            MediaQuery.sizeOf(context).width < 600 ? 16 : 32),
-                        child: Center(
-                            child: ConstrainedBox(
-                                constraints:
-                                    const BoxConstraints(maxWidth: 960),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: <Widget>[
-                                    const SizedBox(height: 12),
-                                    Row(children: <Widget>[
-                                      const Expanded(
-                                          child: Text('My tickets',
-                                              style: TextStyle(
-                                                  fontSize: 34,
-                                                  fontWeight: FontWeight.w900,
-                                                  height: 1.15))),
-                                      IconButton(
-                                          onPressed: _busy ? null : _refresh,
-                                          tooltip: 'Refresh tickets',
-                                          icon: const Icon(Icons.refresh)),
-                                    ]),
-                                    const SizedBox(height: 10),
-                                    _body(
-                                        'Your admission tickets and RSVPs stay here in the Pluto app.'),
-                                    const SizedBox(height: 18),
-                                    Wrap(
-                                        spacing: 12,
-                                        runSpacing: 10,
-                                        children: <Widget>[
-                                          OutlinedButton.icon(
-                                              onPressed: () =>
-                                                  htmlNavigateTo('/events'),
-                                              icon: const Icon(
-                                                  Icons.explore_outlined),
-                                              label:
-                                                  const Text('Explore events')),
-                                          OutlinedButton.icon(
-                                              onPressed: () => context.go('/'),
-                                              icon: const Icon(
-                                                  Icons.dashboard_outlined),
-                                              label:
-                                                  const Text('Open Pluto app')),
-                                        ]),
-                                    const SizedBox(height: 24),
-                                    if (_busy)
-                                      const Padding(
-                                          padding: EdgeInsets.only(bottom: 18),
-                                          child: LinearProgressIndicator()),
-                                    if (_error != null)
-                                      _panel(
-                                          border: const Color(0xFFFFB4AB),
-                                          children: <Widget>[
-                                            Text(_error!,
-                                                style: const TextStyle(
-                                                    color: Color(0xFFFFB4AB),
-                                                    height: 1.6))
-                                          ]),
-                                    if (_notice != null)
-                                      _panel(children: <Widget>[
-                                        Text(_notice!,
-                                            style: const TextStyle(
-                                                color: _accent, height: 1.6))
-                                      ]),
-                                    if (data?['offline'] == true)
-                                      _panel(children: <Widget>[
-                                        _title('Saved tickets · Offline'),
-                                        _body(
-                                            'Last synced ${DateFormat.yMMMd().add_jm().format(DateTime.fromMillisecondsSinceEpoch(data!['savedAt'] as int))}. Admission status and venue details may have changed. Reconnect to refresh before arrival.')
-                                      ]),
-                                    for (final dynamic warning
-                                        in data?['warnings'] as List? ??
-                                            <dynamic>[])
-                                      _panel(children: <Widget>[
-                                        _body(warning as String)
-                                      ]),
-                                    if (hasTickets) _accountPrompt(),
-                                    if (_transferToken != null)
-                                      _panel(children: <Widget>[
-                                        _title('A ticket is waiting for you'),
-                                        _body(
-                                            'Accepting moves its admission credential to you and invalidates the previous QR.'),
-                                        const SizedBox(height: 16),
-                                        FilledButton(
-                                            onPressed: _busy
-                                                ? null
-                                                : () => _run(() async {
-                                                      _data = await _repository
-                                                          .request(
-                                                              'transfer/accept',
-                                                              <String, dynamic>{
-                                                            'token':
-                                                                _transferToken
-                                                          });
-                                                      _holderToken =
-                                                          _transferToken;
-                                                      await ticketAccessWrite(
-                                                          'pluto-holder-$_holderToken',
-                                                          _holderToken!);
-                                                      _transferToken = null;
-                                                      if (mounted)
-                                                        setState(() {});
-                                                    }),
-                                            child: const Text('Accept ticket')),
-                                      ]),
-                                    if (_holderToken != null &&
-                                        data != null) ...<Widget>[
-                                      _ticket(data),
-                                      _venue(data['venue'] as Map?),
-                                      TextButton(
-                                          onPressed: _allTickets,
-                                          child: const Text('All my tickets')),
-                                    ],
-                                    if (_orderId != null &&
-                                        data != null) ...<Widget>[
-                                      _orderSummary(data),
-                                      _ticketGrid(tickets),
-                                      _venue(data['venue'] as Map?),
-                                    ],
-                                    if (wallet) ...<Widget>[
-                                      if (orders.isNotEmpty) ...<Widget>[
-                                        _title('Your orders'),
-                                        ...orders.map((dynamic o) => Padding(
-                                            padding: const EdgeInsets.only(
-                                                bottom: 12),
-                                            child: Material(
-                                              color: _panelColor,
-                                              borderRadius:
-                                                  BorderRadius.circular(16),
-                                              child: ListTile(
-                                                contentPadding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 20,
-                                                        vertical: 8),
-                                                leading: const Icon(
-                                                    Icons.receipt_long_outlined,
-                                                    color: _accent),
-                                                title: Text(
-                                                    o['eventTitle'] as String),
-                                                subtitle: Text(
-                                                    _orderLabel(o as Map),
-                                                    style: const TextStyle(
-                                                        color: _muted)),
-                                                trailing: const Icon(
-                                                    Icons.chevron_right,
-                                                    color: _accent),
-                                                onTap: () => context.replace(
-                                                    '/tickets?order=${o['orderId']}'),
-                                              ),
-                                            ))),
-                                        const SizedBox(height: 12),
-                                      ],
-                                      if (tickets.isNotEmpty)
-                                        _ticketGrid(tickets),
-                                      if (orders.isEmpty &&
-                                          tickets.isEmpty &&
-                                          !_busy)
-                                        _panel(children: <Widget>[
-                                          const Icon(
-                                              Icons
-                                                  .confirmation_number_outlined,
-                                              color: _accent,
-                                              size: 38),
-                                          const SizedBox(height: 16),
-                                          _title(
-                                              'Something to look forward to.'),
-                                          _body(
-                                              'No tickets are linked here yet. Explore the next event, open your secure confirmation link or recover a purchase below.'),
-                                          if (FirebaseAuth
-                                                  .instance.currentUser ==
-                                              null)
-                                            TextButton(
-                                                onPressed: () =>
-                                                    _startAccount('/sign-on'),
-                                                child: const Text(
-                                                    'Sign in to see linked tickets')),
-                                        ]),
-                                      _recovery(),
-                                    ],
-                                    if (FirebaseAuth.instance.currentUser
-                                            ?.emailVerified ==
-                                        true)
-                                      Padding(
-                                          padding:
-                                              const EdgeInsets.only(bottom: 14),
-                                          child: TextButton.icon(
-                                              onPressed: _busy ||
-                                                      data?['offline'] == true
-                                                  ? null
-                                                  : _claim,
-                                              icon: const Icon(Icons.sync),
-                                              label: const Text(
-                                                  'Link purchases with my verified email'))),
-                                    const Padding(
-                                        padding:
-                                            EdgeInsets.symmetric(vertical: 12),
-                                        child: Text(
-                                            'PLUTO · MUSIC BRINGS US TOGETHER',
-                                            style: TextStyle(
-                                                color: _muted,
-                                                fontSize: 11,
-                                                letterSpacing: 1.3))),
-                                  ],
-                                ))),
-                      )),
-                )));
+        child: Material(
+            color: Colors.transparent,
+            child: SafeArea(
+                top: false,
+                child: TicketWalletBrowser(
+                  header: header,
+                  footer: footer,
+                  tickets: tickets,
+                  orders: orders,
+                  wallet: wallet,
+                  showOrders: showOrders,
+                  eventId: widget.uri.queryParameters['event'],
+                  ticketBuilder: _ticket,
+                  orderBuilder: _orderRow,
+                  onEvent: (id) => _showWalletView(eventId: id),
+                ))));
   }
 
   @override

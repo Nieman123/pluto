@@ -79,15 +79,18 @@ The app accepts `/app`, `/app/`, `/app/tickets` and `/app/profile` on its own
 environment's host. The website's Open App buttons open the native dashboard.
 Android Chrome uses a user-tapped intent with a same-environment web fallback
 when the matching app is absent. Other browsers retain the HTTPS link and use
-their supported-link preferences. Desktop and iPhone continue to open the web app.
+their supported-link preferences. In Firefox for Android, set Settings > Open
+links in apps to Always or Ask before opening. Hosting must keep
+`appAssociation: NONE` so its automatic association file does not override the
+function's configured certificate list. Desktop and iPhone continue to open the web app.
 This requires the updated APK; the earlier ticket/profile-only APK cannot handle
 the dashboard link. After deploying the association, reinstall/update the APK
 or re-verify it with the commands below; confirm Android's Open supported links
 setting is enabled for Pluto Events Staging.
 Public event checkout stays in the browser. Recovery and transfer capabilities
 remain in fragments and are not logged by the app. A browser checkout order ID
-alone never grants access: native resume uses the existing verified-email claim
-endpoint before loading the wallet. Guests retain secure recovery links.
+alone never grants access: native wallet/order requests claim unowned purchases
+only after the backend verifies the signed-in account's email. Guests retain secure recovery links.
 
 For a connected staging phone:
 

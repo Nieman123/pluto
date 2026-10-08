@@ -9,21 +9,32 @@ Future<Map<String, dynamic>> loadTicketWallet({
   required Iterable<String> savedKeys,
   required String? Function(String) readAccess,
   required void Function(String) removeAccess,
+  bool claimPurchases = false,
 }) async {
   final Map<String, dynamic> orders = <String, dynamic>{};
   final Map<String, dynamic> tickets = <String, dynamic>{};
+  final ranks = <String, int>{};
+  void mergeTicket(Map<String, dynamic> ticket, int rank) {
+    final id = ticket['id'] as String;
+    if (rank >= (ranks[id] ?? -1)) {
+      tickets[id] = ticket;
+      ranks[id] = rank;
+    }
+  }
+
   final Set<String> warnings = <String>{};
   final List<int> savedTimes = <int>[];
   if (signedIn) {
     try {
-      final Map<String, dynamic> linked =
-          await request('mine', <String, dynamic>{});
+      final Map<String, dynamic> linked = await request('mine',
+          <String, dynamic>{if (claimPurchases) 'claimPurchases': true});
       if (linked['offline'] == true) savedTimes.add(linked['savedAt'] as int);
       for (final dynamic order in linked['orders'] as List) {
         orders[order['orderId'] as String] = order;
       }
       for (final dynamic ticket in linked['tickets'] as List) {
-        tickets[ticket['id'] as String] = ticket;
+        mergeTicket(Map<String, dynamic>.from(ticket as Map),
+            linked['offline'] == true ? 3 : 13);
       }
     } catch (_) {
       warnings.add('Account tickets could not be loaded. Refresh to retry. '
@@ -37,7 +48,14 @@ Future<Map<String, dynamic>> loadTicketWallet({
       .reversed
       .take(30)
       .toList();
-  for (final String key in saved) {
+  // Account results already contain these orders and their current tickets.
+  // Refreshing their saved receipts again adds latency and stale overwrite risk.
+  final pending = saved
+      .where((key) =>
+          !key.startsWith('pluto-order-') ||
+          !orders.containsKey(key.substring('pluto-order-'.length)))
+      .toList();
+  Future<void> loadSaved(String key) async {
     final bool holder = key.startsWith('pluto-holder-');
     try {
       if (holder) {
@@ -45,10 +63,8 @@ Future<Map<String, dynamic>> loadTicketWallet({
         final Map<String, dynamic> ticket =
             await request('holder', <String, dynamic>{'token': token});
         if (ticket['offline'] == true) savedTimes.add(ticket['savedAt'] as int);
-        tickets[ticket['id'] as String] = <String, dynamic>{
-          ...ticket,
-          'holderToken': token
-        };
+        mergeTicket(<String, dynamic>{...ticket, 'holderToken': token},
+            ticket['offline'] == true ? 2 : 12);
       } else {
         final String orderId = key.substring('pluto-order-'.length);
         final Map<String, dynamic> order = await request(
@@ -59,13 +75,14 @@ Future<Map<String, dynamic>> loadTicketWallet({
         if (order['offline'] == true) savedTimes.add(order['savedAt'] as int);
         orders[orderId] = order;
         for (final dynamic ticket in order['tickets'] as List) {
-          tickets[ticket['id'] as String] = <String, dynamic>{
+          mergeTicket(<String, dynamic>{
             ...ticket as Map<String, dynamic>,
             'orderId': orderId,
+            'eventId': order['eventId'],
             'eventTitle': order['eventTitle'],
             'venue': ticket['venue'] ??
                 (ticket['qr'] != null ? order['venue'] : null),
-          };
+          }, order['offline'] == true ? 1 : 11);
         }
       }
     } catch (error) {
@@ -94,6 +111,11 @@ Future<Map<String, dynamic>> loadTicketWallet({
                 'Its access is still saved on this device.');
       }
     }
+  }
+
+  // Bound concurrency, especially for guest devices with many saved purchases.
+  for (var offset = 0; offset < pending.length; offset += 4) {
+    await Future.wait(pending.skip(offset).take(4).map(loadSaved));
   }
   return <String, dynamic>{
     'orders': orders.values.toList(),

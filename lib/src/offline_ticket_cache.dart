@@ -89,9 +89,11 @@ class OfflineTicketCache {
       };
       if (data['id'] is String) latest[data['id'] as String] = data;
       for (final other in keys().where((k) => k.startsWith(prefix(scope)))) {
+        if (other == key) continue;
         try {
           final stored = jsonDecode(read(other)!) as Map<String, dynamic>;
           final payload = stored['data'] as Map<String, dynamic>;
+          final before = jsonEncode(payload);
           if (payload['id'] != null && latest.containsKey(payload['id']))
             stored['data'] = latest[payload['id']];
           if (payload['tickets'] is List)
@@ -102,7 +104,8 @@ class OfflineTicketCache {
                 else
                   {...t as Map, ...latest[t['id']] as Map}
             ];
-          await write(other, jsonEncode(stored));
+          if (jsonEncode(stored['data']) != before)
+            await write(other, jsonEncode(stored));
         } catch (_) {
           await remove(other);
         }
