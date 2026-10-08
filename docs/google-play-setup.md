@@ -7,10 +7,9 @@ flavors, native Google authentication, existing email/password flows, browser
 checkout handoff, account ticket claiming on app resume, persistent ticket
 wallets, private recovery/transfer App Links and native build validation.
 
-The first staging installation must be rehearsed on a physical Android phone.
-The first phone rehearsal confirmed the expected staging APK functionality;
-verified website-to-app links still need the staging backend deployment and the
-updated APK with the dashboard link.
+The first physical-phone rehearsal confirmed the expected staging APK
+functionality. Verified website-to-app links still need the staging backend
+deployment and the updated APK with the dashboard link.
 Native door admission (including durable offline replay), device-bound push,
 automatic account deletion and protected Play releases are subsequent milestones
 in the approved plan. This foundation does **not** make the app ready for a

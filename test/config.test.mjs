@@ -52,7 +52,8 @@ test("lockfiles exclude vulnerable Busboy versions", async () => {
 
 test("Hosting exposes public SSR routes and Flutter deep links", () => {
   const rewrites = firebase.hosting.rewrites;
-  assert.deepEqual(rewrites.slice(0, 2), [
+  assert.deepEqual(rewrites.slice(0, 3), [
+    { source: "/.well-known/assetlinks.json", function: { functionId: "publicSite", region: "us-central1" } },
     { source: "/app", destination: "/app/index.html" },
     { source: "/app/**", destination: "/app/index.html" },
   ]);
