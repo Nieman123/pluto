@@ -1,13 +1,11 @@
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
+import { smokeRequest } from './smoke-request.mjs';
 const manifest = JSON.parse(await readFile('tmp/release/manifest.json', 'utf8'));
 const results = [];
 for (const path of ['/__deployment', '/', '/events', '/past-events', '/privacy', '/terms', '/delete-account', '/tickets/admin', '/app/', '/assets/firebase-public-config.js', '/firebase-messaging-sw.js']) {
-  const response = await fetch(`${manifest.baseUrl}${path}?release=${manifest.revision}&probe=${Date.now()}`, { redirect: 'error',
-    headers: { 'Cache-Control': 'no-cache' }, signal: AbortSignal.timeout(30000) });
-  assert.equal(response.status, 200, `${path} must be available`);
+  const { response, body, attempts } = await smokeRequest(manifest.baseUrl, path, manifest.revision);
   if (manifest.environment === 'staging') assert.match(response.headers.get('x-robots-tag') || '', /noindex/);
-  const body = await response.text();
   if (path === '/__deployment') {
     const identity = JSON.parse(body);
     assert.equal(identity.projectId, manifest.projectId); assert.equal(identity.environment, manifest.environment);
@@ -33,7 +31,7 @@ for (const path of ['/__deployment', '/', '/events', '/past-events', '/privacy',
     assert.ok(body.includes(manifest.projectId));
     if (manifest.environment === 'staging') assert.ok(!body.includes('AIzaSyBLv7MumBOjUHpmAUiu9nLfhWvwmAYKorE'));
   }
-  results.push({ path, status: response.status });
+  results.push({ path, status: response.status, attempts });
 }
 await writeFile('tmp/release/smoke.json', JSON.stringify({ revision: manifest.revision, results }, null, 2));
 console.log('Deployed project, revision, public pages and notification configuration verified.');
