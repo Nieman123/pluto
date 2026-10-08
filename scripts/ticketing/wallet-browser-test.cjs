@@ -5,6 +5,14 @@ const { revealText, walletTop } = require('./flutter-wallet-scroll.cjs');
 (async () => {
   const browser = await chromium.launch();
   try {
+    // Match the Flutter regression: a collapsed text leaf precedes a visible
+    // accessible ticket group with the same event title.
+    const semantics = await browser.newPage();
+    await semantics.setContent('<span style="display:block;width:0;height:0;overflow:hidden">A Night in Orbit</span><div role="group" aria-label="A Night in Orbit · General admission · Status: valid" style="width:320px;height:100px">Ticket card</div>');
+    const renderedTicket = await revealText(semantics, 'A Night in Orbit');
+    assert.equal(await renderedTicket.getAttribute('role'), 'group');
+    assert.equal(await renderedTicket.isVisible(), true);
+    await semantics.close();
     for (const scenario of ['refunded', 'retransferred', 'temporary-failure']) {
       const context = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' }), goodId = 'a'.repeat(64), badId = 'd'.repeat(64), badToken = 'b'.repeat(64);
       await context.addInitScript(({ goodId, badId, badToken }) => {
