@@ -36,3 +36,6 @@ dotenv
 **/__pycache__/
 /firebase.release.json
 /gha-creds-*.json
+/android-credentials/
+*.jks
+*.keystore

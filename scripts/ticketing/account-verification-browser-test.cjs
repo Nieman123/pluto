@@ -43,7 +43,9 @@ async function fullSignup(page, email) {
   await page.goto(`${base}/app/sign-up`); await semantics(page);
   await fill(page, 'Name', 'Verification Tester'); await fill(page, 'Email', email);
   await fill(page, 'Password', password); await fill(page, 'Confirm password', password);
-  await page.getByRole('button', { name: 'Create Account', exact: true }).last().click();
+  // Activate the labeled button through Flutter's accessibility tap handler,
+  // rather than browser pointer coordinates in its scrolling semantics overlay.
+  await page.getByRole('button', { name: 'Create Account', exact: true }).last().dispatchEvent('click');
   await page.waitForURL(`${base}/app/`);
 }
 (async () => {
@@ -94,6 +96,15 @@ async function fullSignup(page, email) {
     assert.deepEqual(axe.violations.map(v => ({ id: v.id, targets: v.nodes.map(n => n.target) })), []);
     await active.screenshot({ path: 'tmp/account-verification-mobile.png', fullPage: true });
     await fullContext.close();
+    stage = 'compact mobile signup with slower rendering';
+    const compactContext = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 360, height: 740 } });
+    active = await compactContext.newPage();
+    const session = await compactContext.newCDPSession(active);
+    await session.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+    const compactEmail = `verify-compact-${randomUUID()}@preview.invalid`; emails.push(compactEmail);
+    await fullSignup(active, compactEmail); await received(active, compactEmail, 1);
+    assert.equal((await auth.getUserByEmail(compactEmail)).displayName, 'Verification Tester');
+    await compactContext.close();
     stage = 'verification-send failure preserves successful signup';
     const failureContext = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1280, height: 900 } });
     active = await failureContext.newPage(); await blockEmail(active);
@@ -107,7 +118,7 @@ async function fullSignup(page, email) {
     await feedback(active, /Verification email sent/).waitFor(); await received(active, failureEmail, 1);
     assert.equal((await auth.getUserByEmail(failureEmail)).uid, created.uid, 'retry uses the existing account');
     await failureContext.close();
-    console.log('Account verification browser checks passed: both signup paths send automatically, existing-account profile resend/error/retry, actual email code verification, refresh/reload, mobile layout/action accessibility and failed email preserves successful signup.');
+    console.log('Account verification browser checks passed: both signup paths send automatically, existing-account profile resend/error/retry, actual email code verification, refresh/reload, mobile layout/accessibility, compact mobile signup with slower rendering and failed email preserves successful signup.');
   } catch (error) {
     console.error(`Account verification failure at ${stage}:`, error);
     await active?.screenshot({ path: 'tmp/account-verification-failure.png', fullPage: true }).catch(() => {});

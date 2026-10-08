@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'src/background/pluto_background.dart';
 import 'src/email_verification.dart';
 import 'src/google_auth.dart';
+import 'src/legal_links.dart';
 import 'src/nav_bar/nav_bar.dart';
 import 'src/ticket_access_store.dart';
 import 'src/ticket_account_flow.dart';
@@ -650,6 +651,7 @@ class _SignUpPageState extends State<SignUpPage> {
             ),
           ),
           const SizedBox(height: 14),
+          const LegalLinks(),
           Wrap(
             alignment: WrapAlignment.center,
             crossAxisAlignment: WrapCrossAlignment.center,

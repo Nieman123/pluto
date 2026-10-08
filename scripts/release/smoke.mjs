@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 const manifest = JSON.parse(await readFile('tmp/release/manifest.json', 'utf8'));
 const results = [];
-for (const path of ['/__deployment', '/', '/events', '/past-events', '/tickets/admin', '/app/', '/assets/firebase-public-config.js', '/firebase-messaging-sw.js']) {
+for (const path of ['/__deployment', '/', '/events', '/past-events', '/privacy', '/terms', '/delete-account', '/tickets/admin', '/app/', '/assets/firebase-public-config.js', '/firebase-messaging-sw.js']) {
   const response = await fetch(`${manifest.baseUrl}${path}?release=${manifest.revision}&probe=${Date.now()}`, { redirect: 'error',
     headers: { 'Cache-Control': 'no-cache' }, signal: AbortSignal.timeout(30000) });
   assert.equal(response.status, 200, `${path} must be available`);
@@ -18,6 +18,11 @@ for (const path of ['/__deployment', '/', '/events', '/past-events', '/tickets/a
     if (manifest.environment === 'staging') assert.ok(!body.includes('pluto-9b6ca'));
   }
   if (path === '/firebase-messaging-sw.js') assert.ok(body.includes('/assets/firebase-public-config.js'));
+  if (['/privacy', '/terms', '/delete-account'].includes(path)) {
+    assert.match(body, /Pluto Events LLC/);
+    assert.match(body, /mailto:contact@pluto\.events/);
+    assert.match(body, /class="legal-page"/);
+  }
   if (path === '/events') assert.match(body, /href="\/past-events"/, 'Current events must link to the archive');
   if (path === '/past-events') {
     assert.match(body, /Past events \| Pluto Events/, 'Archive route must render the past-events page');

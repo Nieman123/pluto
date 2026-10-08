@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import 'src/background/pluto_background.dart';
 import 'src/email_verification.dart';
 import 'src/google_auth.dart';
+import 'src/legal_links.dart';
 import 'src/nav_bar/nav_bar.dart';
 import 'user_profile_repository.dart';
 
@@ -231,6 +232,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   onPressed: () => context.go('/sign-on'),
                   child: const Text('Go To Sign On'),
                 ),
+                const LegalLinks(includeDeletion: true),
               ],
             ),
           ),
@@ -583,6 +585,8 @@ class _ProfilePageState extends State<ProfilePage> {
               _buildTierAndPointsCard(profile),
               const SizedBox(height: 14),
               _buildPointsHistoryCard(user),
+              const SizedBox(height: 14),
+              const LegalLinks(includeDeletion: true),
             ],
           );
         }
@@ -601,6 +605,8 @@ class _ProfilePageState extends State<ProfilePage> {
                       _buildProfileEditorCard(user: user, profile: profile),
                       const SizedBox(height: 14),
                       _buildTierAndPointsCard(profile),
+                      const SizedBox(height: 14),
+                      const LegalLinks(includeDeletion: true),
                     ],
                   ),
                 ),
