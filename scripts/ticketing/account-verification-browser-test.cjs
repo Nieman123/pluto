@@ -41,9 +41,24 @@ async function blockEmail(page) {
 }
 async function fullSignup(page, email) {
   await page.goto(`${base}/app/sign-up`); await semantics(page);
+  if (page.viewportSize().width < 860) {
+    // Browser DOM auto-scroll does not move Flutter's canvas with its semantics
+    // overlay. Bring the mobile form into view before clicking any field.
+    await page.mouse.move(page.viewportSize().width / 2, page.viewportSize().height / 2);
+    await page.mouse.wheel(0, 350);
+    await page.waitForTimeout(250);
+  }
   await fill(page, 'Name', 'Verification Tester'); await fill(page, 'Email', email);
   await fill(page, 'Password', password); await fill(page, 'Confirm password', password);
-  await page.getByRole('button', { name: 'Create Account', exact: true }).last().click();
+  // Flutter omits off-screen controls from its web semantics tree. Scroll the
+  // form like a phone user before locating its submit button.
+  const submit = page.getByRole('button', { name: 'Create Account', exact: true }).last();
+  for (let attempt = 0; attempt < 6 && !await submit.count(); attempt++) {
+    await page.mouse.move(page.viewportSize().width / 2, page.viewportSize().height / 2);
+    await page.mouse.wheel(0, 400);
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  }
+  await submit.click();
   await page.waitForURL(`${base}/app/`);
 }
 (async () => {
