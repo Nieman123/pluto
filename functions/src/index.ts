@@ -13,6 +13,7 @@ import { walletSecrets } from './ticketing/digital-wallet';
 import { configureTrustedProxy } from './ticketing/client-identity';
 import { deploymentConfig } from './deployment-config';
 import { androidLinkStatements } from './android-links';
+import { legalRouter } from './legal-pages';
 export { ticketingFinancialWorker, ticketingFinancialBackfillWorker, ticketingMaintenance, ticketingWebhookWorker, ticketingEmailWorker, ticketingCampaignWorker, ticketingRecoveryWorker, ticketingCommunicationMaintenance, ticketingEmailMaintenance } from './ticketing/workers';
 import { normalizeRental, groupRentals, rentalContactEmail, type PublicRental } from './rentals-data';
 import { seedRentals } from './rentals-seed';
@@ -141,6 +142,7 @@ app.use((request, response, next) => {
   next();
 });
 
+app.use(legalRouter(commonContext));
 app.use("/manafest-waiver", waiverRouter(commonContext));
 app.use(ticketingRouter(commonContext));
 

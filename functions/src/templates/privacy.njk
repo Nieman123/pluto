@@ -1,0 +1,53 @@
+{% extends "legal.njk" %}
+{% block legal_title %}Privacy Policy{% endblock %}
+{% block legal_content %}
+<p>Pluto Events LLC ("Pluto," "we," "us") operates the Pluto Events website at pluto.events and the Pluto Events app, including our staging test app. This policy explains how we handle information when you use our services, buy tickets, RSVP, join a guestlist, earn rewards, sign an event waiver or contact us.</p>
+<section aria-labelledby="information"><h2 id="information">Information we collect</h2>
+  <ul>
+    <li><strong>Account and profile:</strong> your name, email address, account identifier, authentication and verification information, and details you choose to add, such as your profile photo, home city, favorite genre and bio. Firebase Authentication handles passwords. Google sign-in provides account information you authorize Google to share.</li>
+    <li><strong>Events and purchases:</strong> orders, selected ticket types, prices, taxes, discounts, payment and refund status, payment-provider identifiers, ticket ownership and transfers, RSVPs and approval status, waitlist entries, guestlist details, admission scans and attendance. We also keep rewards balances and points history.</li>
+    <li><strong>Payments:</strong> Stripe processes payment details, including card information, through its payment interface. Pluto receives payment results and transaction identifiers; we do not store your full card number or card security code.</li>
+    <li><strong>Waivers:</strong> when required for an event, your legal name, email, phone number, emergency contact name, relationship and phone number, acknowledgments, electronic signature and the signed document and signing records. Please only provide emergency contact details you are authorized to share.</li>
+    <li><strong>Content and communications:</strong> images or event materials you upload, support messages, event communications and email delivery information, such as delivery failures. Published event flyers, descriptions and galleries are visible to visitors.</li>
+    <li><strong>Device and usage information:</strong> IP address, browser and app information, device or app-instance identifiers (including advertising identifiers where available to the analytics SDK), pages and screens used, approximate region, timestamps and diagnostic or security logs. Google Analytics and Firebase Analytics help us understand service usage. Approximate location can be derived from an IP address; Pluto does not request GPS access or track precise or background location.</li>
+  </ul>
+</section>
+<section aria-labelledby="use"><h2 id="use">How we use information</h2>
+  <p>We use information to create and secure accounts; process orders and refunds; issue and transfer tickets; manage RSVPs, guestlists, admission and rewards; handle waivers; provide support; and send account verification, ticket, event, reminder and recovery emails. We also use information to maintain and improve the services, investigate problems, prevent fraud and meet accounting, tax and other legal obligations.</p>
+  <p>Organizer announcements and reminders relate to events you participate in. If you want to stop optional event communications, contact us. Essential account, security and transaction notices may still be necessary.</p>
+</section>
+<section aria-labelledby="sharing"><h2 id="sharing">Who receives information</h2>
+  <p>Authorized Pluto administrators and event staff can access information needed for their work. Door staff may see attendee names, ticket types, guestlists and arrival status to manage admission. A ticket transfer shares the information needed to deliver and manage that ticket with its recipient.</p>
+  <p>We use service providers to operate the services:</p>
+  <ul>
+    <li><strong>Google and Firebase:</strong> authentication, database, file storage, hosting, analytics and supported push notifications.</li>
+    <li><strong>Stripe:</strong> payment processing, tax calculation where enabled, refunds and payment security.</li>
+    <li><strong>Resend:</strong> sending service and event emails and reporting delivery status.</li>
+  </ul>
+  <p>These providers process information under their applicable terms and privacy policies. We may also disclose information when legally required, to protect people or our services, or as part of a business transfer subject to appropriate safeguards. We do not sell your personal information.</p>
+</section>
+<section aria-labelledby="storage"><h2 id="storage">Cookies, analytics and local storage</h2>
+  <p>The website and app use browser or device storage to maintain sign-in, remember checkout progress, support ticket access and store preferences. Some ticket information may be cached on your device. Google Analytics and Firebase Analytics use cookies or app identifiers to measure usage. Analytics and push notifications are disabled in the staging app.</p>
+  <p>You can manage cookies and website data through your browser, and notification permissions through your device settings. Clearing local data may sign you out or remove saved checkout or ticket access information. It does not delete your server-side account; use the <a href="/delete-account">account deletion request process</a> for that.</p>
+</section>
+<section aria-labelledby="permissions"><h2 id="permissions">Camera, photos and notifications</h2>
+  <p>Ticket scanners request camera access to read QR codes. The scanner sends ticket-code information for validation; Pluto does not record or store the scanner's camera video. Choosing a profile image gives the app access to the file you select. Push notifications, where supported, require your permission and use a device or app token. You can revoke camera and notification permissions in device or browser settings.</p>
+</section>
+<section aria-labelledby="retention"><h2 id="retention">Retention and deletion</h2>
+  <p>We retain account information while your account is active and other information for as long as needed to provide services or meet legitimate accounting, tax, dispute, safety, fraud-prevention and legal obligations. Retention depends on the type of record and those obligations; there is no single deletion period for every record.</p>
+  <p>You can request deletion of your account and associated personal data at <a href="/delete-account">pluto.events/delete-account</a> or by emailing <a href="mailto:contact@pluto.events?subject=Pluto%20account%20deletion%20request">contact@pluto.events</a> from your account email address. We verify account ownership, delete or anonymize associated data eligible for deletion, and coordinate with service providers where needed. We may retain limited transaction, refund, dispute, security or waiver records when needed for the obligations above, and will explain any relevant retention when responding to your request.</p>
+  <p>Deletion requests are handled by our team, rather than an automatic in-app deletion tool. We will respond with next steps and an expected completion timeframe after reviewing your request. Uninstalling the app does not delete your account.</p>
+</section>
+<section aria-labelledby="choices"><h2 id="choices">Your choices and requests</h2>
+  <p>You can update profile details in the app and contact us to request access, correction or deletion of your personal information. Depending on where you live, you may have additional privacy rights. We may need to verify your identity before acting on a request; do not send passwords, complete card numbers or identity documents in an initial email.</p>
+</section>
+<section aria-labelledby="security"><h2 id="security">Security and international processing</h2>
+  <p>We use encrypted connections, authentication, access controls and other safeguards to protect information. No service can guarantee absolute security. Keep account credentials, private ticket links and QR codes secure. Our services and providers may process information in the United States and other countries, whose privacy laws may differ from those where you live.</p>
+</section>
+<section aria-labelledby="children"><h2 id="children">Children and event age requirements</h2>
+  <p>Our services are not directed to children under 13, and we do not knowingly collect their personal information. Contact us if you believe a child has provided information so we can investigate and remove it as appropriate. Individual events may have higher age requirements, including 18+ or 21+, as stated on the event page.</p>
+</section>
+<section aria-labelledby="changes"><h2 id="changes">Policy changes</h2>
+  <p>We may update this policy as our services change. We will update the date above and provide additional notice of material changes when required.</p>
+</section>
+{% endblock %}
