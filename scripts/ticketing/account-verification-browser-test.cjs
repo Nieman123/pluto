@@ -41,24 +41,11 @@ async function blockEmail(page) {
 }
 async function fullSignup(page, email) {
   await page.goto(`${base}/app/sign-up`); await semantics(page);
-  if (page.viewportSize().width < 860) {
-    // Browser DOM auto-scroll does not move Flutter's canvas with its semantics
-    // overlay. Bring the mobile form into view before clicking any field.
-    await page.mouse.move(page.viewportSize().width / 2, page.viewportSize().height / 2);
-    await page.mouse.wheel(0, 350);
-    await page.waitForTimeout(250);
-  }
   await fill(page, 'Name', 'Verification Tester'); await fill(page, 'Email', email);
   await fill(page, 'Password', password); await fill(page, 'Confirm password', password);
-  // Flutter omits off-screen controls from its web semantics tree. Scroll the
-  // form like a phone user before locating its submit button.
-  const submit = page.getByRole('button', { name: 'Create Account', exact: true }).last();
-  for (let attempt = 0; attempt < 6 && !await submit.count(); attempt++) {
-    await page.mouse.move(page.viewportSize().width / 2, page.viewportSize().height / 2);
-    await page.mouse.wheel(0, 400);
-    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-  }
-  await submit.click();
+  // Activate the labeled button through Flutter's accessibility tap handler,
+  // rather than browser pointer coordinates in its scrolling semantics overlay.
+  await page.getByRole('button', { name: 'Create Account', exact: true }).last().dispatchEvent('click');
   await page.waitForURL(`${base}/app/`);
 }
 (async () => {
@@ -109,6 +96,15 @@ async function fullSignup(page, email) {
     assert.deepEqual(axe.violations.map(v => ({ id: v.id, targets: v.nodes.map(n => n.target) })), []);
     await active.screenshot({ path: 'tmp/account-verification-mobile.png', fullPage: true });
     await fullContext.close();
+    stage = 'compact mobile signup with slower rendering';
+    const compactContext = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 360, height: 740 } });
+    active = await compactContext.newPage();
+    const session = await compactContext.newCDPSession(active);
+    await session.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+    const compactEmail = `verify-compact-${randomUUID()}@preview.invalid`; emails.push(compactEmail);
+    await fullSignup(active, compactEmail); await received(active, compactEmail, 1);
+    assert.equal((await auth.getUserByEmail(compactEmail)).displayName, 'Verification Tester');
+    await compactContext.close();
     stage = 'verification-send failure preserves successful signup';
     const failureContext = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1280, height: 900 } });
     active = await failureContext.newPage(); await blockEmail(active);
@@ -122,7 +118,7 @@ async function fullSignup(page, email) {
     await feedback(active, /Verification email sent/).waitFor(); await received(active, failureEmail, 1);
     assert.equal((await auth.getUserByEmail(failureEmail)).uid, created.uid, 'retry uses the existing account');
     await failureContext.close();
-    console.log('Account verification browser checks passed: both signup paths send automatically, existing-account profile resend/error/retry, actual email code verification, refresh/reload, mobile layout/action accessibility and failed email preserves successful signup.');
+    console.log('Account verification browser checks passed: both signup paths send automatically, existing-account profile resend/error/retry, actual email code verification, refresh/reload, mobile layout/accessibility, compact mobile signup with slower rendering and failed email preserves successful signup.');
   } catch (error) {
     console.error(`Account verification failure at ${stage}:`, error);
     await active?.screenshot({ path: 'tmp/account-verification-failure.png', fullPage: true }).catch(() => {});
