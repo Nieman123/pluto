@@ -157,7 +157,9 @@ test("homepage prioritizes its hero without embedding event media", () => {
   );
   assert.match(html, /data-deferred-src="\/assets\/images\/pluto-preview\.jpg"/);
   assert.doesNotMatch(html, /<link rel="stylesheet" href="\/assets\/site\.css">/);
-  assert.ok(gzipSync(html).byteLength < 10_000);
+  // Releases are built on Linux. Git's Windows CRLF checkout must not change
+  // the deployed HTML size budget (the same fixture is 70 bytes larger here).
+  assert.ok(gzipSync(html.replace(/\r\n/g, '\n')).byteLength < 10_000);
 });
 
 test("link collections expose native list and navigation semantics", () => {

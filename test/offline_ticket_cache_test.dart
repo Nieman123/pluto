@@ -7,6 +7,34 @@ import 'package:pluto/src/persistent_ticket_store.dart';
 import 'package:pluto/ticketing_repository.dart';
 
 void main() {
+  test('refreshing one order does not rewrite unrelated offline snapshots',
+      () async {
+    final disk = <String, String>{};
+    final writes = <String>[];
+    final cache = OfflineTicketCache(
+        read: (key) => disk[key],
+        keys: () => disk.keys.toList(),
+        write: (key, value) async {
+          disk[key] = value;
+          writes.add(key);
+        },
+        remove: (key) async {
+          disk.remove(key);
+        });
+    Future<Map<String, dynamic>> fetch(
+            String _, Map<String, dynamic> body) async =>
+        {
+          'orderId': body['orderId'],
+          'tickets': [
+            {'id': 'ticket-${body['orderId']}', 'qr': 'qr'}
+          ],
+        };
+    await cache.request('order', {'orderId': 'one'}, 'guest', fetch);
+    await cache.request('order', {'orderId': 'two'}, 'guest', fetch);
+    writes.clear();
+    await cache.request('order', {'orderId': 'one'}, 'guest', fetch);
+    expect(writes, ['${cache.prefix('guest')}order:one']);
+  });
   late Map<String, String> disk;
   late OfflineTicketCache cache;
   late DateTime now;

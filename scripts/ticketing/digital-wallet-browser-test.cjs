@@ -23,7 +23,8 @@ const { qr } = require('../../test/fixtures/ticket-qr.json');
       for (const url of ['**/tickets/wallet/apple/test-download', 'https://pay.google.com/gp/v/save/test-token']) await context.route(url, route => route.fulfill({ contentType: 'text/html', body: '<p>Wallet provider flow</p>' }));
       const page = await context.newPage(); await page.goto('http://127.0.0.1:4173/app/tickets');
       await page.locator('flt-semantics-placeholder').evaluate(e => e.click(), { timeout: 20000 }).catch(() => {});
-      await page.getByText('Weekend pass', { exact: true }).waitFor({ timeout: 30000 });
+      await page.getByText('Weekend pass', { exact: false }).waitFor({ timeout: 30000 });
+      await page.mouse.move(190, 600); await page.mouse.wheel(0, 500);
       await page.getByRole('button', { name: /Admission QR for Weekend pass/ }).click();
       const code = page.getByRole('img', { name: 'Enlarged Admission QR for Weekend pass' }); await code.waitFor();
       const screenshot = await code.screenshot();
@@ -32,6 +33,7 @@ const { qr } = require('../../test/fixtures/ticket-qr.json');
       assert.equal(await page.getByText(/YOUR NIGHT AWAITS/).count(), 0);
       if (platform === 'pending' || platform === 'hidden') await page.screenshot({ path: 'tmp/ticket-qr-phone.png' });
       await page.getByRole('button', { name: 'Close enlarged QR', exact: true }).click();
+      await page.mouse.wheel(0, 200);
       if (!walletEnabled) {
         assert.equal(await page.getByRole('button', { name: 'Add to Wallet', exact: true }).count(), 0);
         const enlarge = await page.getByRole('button', { name: /Admission QR for Weekend pass/ }).boundingBox(), transfer = await page.getByRole('button', { name: 'Transfer ticket', exact: true }).boundingBox();

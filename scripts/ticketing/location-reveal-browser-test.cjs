@@ -3,6 +3,7 @@ const { randomUUID, randomBytes } = require('node:crypto');
 const { createRequire } = require('node:module');
 const { resolve } = require('node:path');
 const { chromium } = require('playwright');
+const { revealText } = require('./flutter-wallet-scroll.cjs');
 const { default: AxeBuilder } = require('@axe-core/playwright');
 const backend = createRequire(resolve(__dirname, '../../functions/package.json'));
 process.env.GCLOUD_PROJECT = 'demo-pluto-ticketing'; process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8185';
@@ -91,7 +92,7 @@ async function api(page, path, data) {
     });
     const tickets = await customer.newPage(); await tickets.goto(`${base}/app/tickets?order=${oid}`);
     await tickets.locator('flt-semantics-placeholder').evaluate(e => e.click(), { timeout: 20000 }).catch(() => {});
-    await tickets.getByText('The exact venue and directions are being kept private until the location reveal.', { exact: true }).waitFor();
+    await revealText(tickets, 'The exact venue and directions are being kept private until the location reveal.');
     assert.equal(await tickets.getByText(draft.address, { exact: true }).count(), 0);
     await tickets.screenshot({ path: 'tmp/holder-location-waiting-phone.png' });
     await tickets.getByText(draft.venueName, { exact: true }).waitFor({ timeout: 25000 });

@@ -3,6 +3,71 @@ import 'package:pluto/src/ticket_wallet.dart';
 import 'package:pluto/ticketing_repository.dart';
 
 void main() {
+  test(
+      'linked orders are not downloaded again and native claiming shares the wallet request',
+      () async {
+    final calls = <String>[];
+    final result = await loadTicketWallet(
+        signedIn: true,
+        claimPurchases: true,
+        savedKeys: ['pluto-order-linked'],
+        readAccess: (_) => 'proof',
+        removeAccess: (_) {},
+        request: (path, body) async {
+          calls.add(path);
+          expect(body['claimPurchases'], true);
+          return {
+            'orders': [
+              {'orderId': 'linked'}
+            ],
+            'tickets': [
+              {'id': 'ticket', 'qr': null}
+            ]
+          };
+        });
+    expect(calls, ['mine']);
+    expect((result['tickets'] as List).single['qr'], isNull);
+  });
+  test(
+      'guest receipt downloads have bounded concurrency and retain every ticket',
+      () async {
+    var running = 0, peak = 0;
+    final result = await loadTicketWallet(
+        signedIn: false,
+        savedKeys: List.generate(12, (i) => 'pluto-order-$i'),
+        readAccess: (_) => 'proof',
+        removeAccess: (_) {},
+        request: (path, body) async {
+          running++;
+          if (running > peak) peak = running;
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+          running--;
+          return {
+            'tickets': [
+              {'id': body['orderId'], 'qr': 'qr'}
+            ]
+          };
+        });
+    expect(peak, 4);
+    expect((result['tickets'] as List).length, 12);
+  });
+  test('cached holder QR cannot overwrite an authoritative account revocation',
+      () async {
+    final result = await loadTicketWallet(
+        signedIn: true,
+        savedKeys: ['pluto-holder-token'],
+        readAccess: (_) => 'proof',
+        removeAccess: (_) {},
+        request: (path, _) async => path == 'mine'
+            ? {
+                'orders': [],
+                'tickets': [
+                  {'id': 'same', 'qr': null}
+                ]
+              }
+            : {'id': 'same', 'qr': 'old-qr', 'offline': true, 'savedAt': 123});
+    expect((result['tickets'] as List).single['qr'], isNull);
+  });
   test('saved orders preserve gated locations only for usable tickets',
       () async {
     final Map<String, dynamic> waitingVenue = <String, dynamic>{

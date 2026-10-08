@@ -101,4 +101,23 @@ void main() {
     expect(find.text('Sign in'), findsOneWidget);
     expect(exits, 0);
   });
+  testWidgets('Back from a selected event stays in the wallet', (tester) async {
+    await start(tester, '/tickets?event=festival');
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(router.routeInformationProvider.value.uri.toString(), '/tickets');
+    expect(exits, 0);
+  });
+  testWidgets('Back from an order returns to orders before the ticket view',
+      (tester) async {
+    await start(tester, '/tickets?view=orders&order=one');
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(router.routeInformationProvider.value.uri.toString(),
+        '/tickets?view=orders');
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(router.routeInformationProvider.value.uri.toString(), '/tickets');
+    expect(exits, 0);
+  });
 }

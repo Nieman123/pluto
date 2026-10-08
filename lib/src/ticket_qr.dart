@@ -3,7 +3,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 /// Pluto styling stays outside the QR quiet zone. Square finder patterns,
 /// opaque light background and dark modules preserve contrast at the door.
-class TicketQr extends StatelessWidget {
+class TicketQr extends StatefulWidget {
   const TicketQr(
       {super.key,
       required this.data,
@@ -13,12 +13,34 @@ class TicketQr extends StatelessWidget {
   final String label;
   final double maxWidth;
   @override
+  State<TicketQr> createState() => _TicketQrState();
+}
+
+class _TicketQrState extends State<TicketQr> {
+  QrImage? _image;
+  void _encode() {
+    final validation = QrValidator.validate(
+        data: widget.data, errorCorrectionLevel: QrErrorCorrectLevel.M);
+    _image = validation.qrCode == null ? null : QrImage(validation.qrCode!);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _encode();
+  }
+
+  @override
+  void didUpdateWidget(TicketQr oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.data != widget.data) _encode();
+  }
+
+  @override
   Widget build(BuildContext context) =>
       LayoutBuilder(builder: (context, constraints) {
-        final width = constraints.maxWidth.clamp(0.0, maxWidth);
-        final validation = QrValidator.validate(
-            data: data, errorCorrectionLevel: QrErrorCorrectLevel.M);
-        final codeWidth = (width - 18).clamp(0.0, maxWidth - 18);
+        final width = constraints.maxWidth.clamp(0.0, widget.maxWidth);
+        final codeWidth = (width - 18).clamp(0.0, widget.maxWidth - 18);
         return Center(
             child: SizedBox(
                 width: width,
@@ -39,14 +61,13 @@ class TicketQr extends StatelessWidget {
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 1.1))),
-                    if (validation.qrCode != null)
+                    if (_image != null)
                       Semantics(
-                          label: label,
+                          label: widget.label,
                           image: true,
                           child: CustomPaint(
                             size: Size.square(codeWidth),
-                            painter: _TicketQrPainter(
-                                QrImage(validation.qrCode!),
+                            painter: _TicketQrPainter(_image!,
                                 MediaQuery.devicePixelRatioOf(context)),
                           )),
                     const Padding(

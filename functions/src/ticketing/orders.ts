@@ -59,7 +59,7 @@ export class Orders extends Catalog {
   }
   async checkoutAttempt(key: unknown) {
     const proof = receipt(key), order = (await this.order(hash(proof)).get()).data();
-    return { exists: !!order };
+    return order ? { exists: true, orderId: hash(proof), eventId: order.eventId, status: order.status, expiresAt: order.expiresAt } : { exists: false };
   }
   async authorize(orderId: string, key: unknown, actor: DecodedIdToken | null) {
     const order = (await this.order(orderId).get()).data() as Order | undefined;
@@ -484,26 +484,48 @@ export class Orders extends Catalog {
       tickets: tickets.map(t => { const d = t.data(), canUse = held.includes(t); return { id: t.id, name: d.name, holderName: d.holderName, status: d.status, validFrom: d.validFrom, validUntil: d.validUntil, admission: d.admission,
         amount: d.amount, calendarUrl: this.calendarUrl(event), calendarLinks: this.calendarOptions(event), venue: canUse ? venue : null, transferable: !d.rsvp && !d.rsvpOrderId && canUse && d.status === 'valid' && !d.admission && event?.status !== 'cancelled' && Date.now() < this.transferDeadline(d, event), qr: canUse && d.status === 'valid' && event?.status !== 'cancelled' ? this.credential(d, t.id) : null }; }), venue };
   }
-  async claim(actor: DecodedIdToken) {
+  async claim(actor: DecodedIdToken, onlyUnclaimed = false) {
     if (!actor.email_verified || !actor.email) fail('Verify your account email before claiming orders.', 403);
-    const orders = await this.db.collection('ticketingOrders').where('email', '==', actor.email.toLowerCase()).get();
-    for (const doc of orders.docs) await this.db.runTransaction(async tx => {
-      const latest = (await tx.get(doc.ref)).data() as Order;
-      if (latest.ownerUid && latest.ownerUid !== actor.uid) return;
-      const tickets = await tx.get(this.tickets().where('orderId', '==', doc.id));
-      tx.update(doc.ref, { ownerUid: actor.uid });
-      tickets.docs.filter(t => t.data().holderEmail === actor.email!.toLowerCase()).forEach(t => tx.update(t.ref, { ownerUid: actor.uid }));
-    });
+    let query = this.db.collection('ticketingOrders').where('email', '==', actor.email.toLowerCase());
+    if (onlyUnclaimed) query = query.where('ownerUid', '==', '');
+    const orders = await query.get();
+    for (const doc of orders.docs) {
+      if (doc.data().ownerUid) continue;
+      await this.db.runTransaction(async tx => {
+        const latest = (await tx.get(doc.ref)).data() as Order;
+        if (latest.ownerUid) return;
+        const tickets = await tx.get(this.tickets().where('orderId', '==', doc.id));
+        tx.update(doc.ref, { ownerUid: actor.uid });
+        tickets.docs.filter(t => t.data().holderEmail === actor.email!.toLowerCase()).forEach(t => tx.update(t.ref, { ownerUid: actor.uid }));
+      });
+    }
     return { claimed: true };
   }
-  async mine(actor: DecodedIdToken) {
-    const orders = await this.db.collection('ticketingOrders').where('ownerUid', '==', actor.uid).get();
-    const tickets = await this.tickets().where('ownerUid', '==', actor.uid).get();
-    return { orders: orders.docs.map(d => { const o = d.data(); return { orderId: d.id, eventTitle: o.eventTitle, status: o.status, method: o.method, rsvpStatus: o.rsvpStatus || '', total: o.total, createdAt: o.createdAt }; }).sort((a, b) => b.createdAt - a.createdAt),
-      tickets: await Promise.all(tickets.docs.map(async t => { const d = t.data(), event = (await this.event(d.eventId).get()).data(), order = (await this.order(d.orderId).get()).data(), upgradeValid = !!order && await this.db.runTransaction(tx => this.validUpgradeParent(tx, order)); return { id: t.id, orderId: d.orderId, eventTitle: d.eventTitle, name: d.name, holderName: d.holderName, status: d.status,
-        admission: d.admission, validFrom: d.validFrom, validUntil: d.validUntil, version: d.version, transferable: upgradeValid && !order?.financialBlocked && !d.rsvp && !d.rsvpOrderId && d.status === 'valid' && !d.admission && event?.status !== 'cancelled' && Date.now() < this.transferDeadline(d, event),
-        calendarUrl: this.calendarUrl(event), calendarLinks: this.calendarOptions(event), venue: upgradeValid && !order?.financialBlocked && d.status === 'valid' && (!d.rsvp || order?.rsvpStatus === 'approved') ? holderVenue(event?.liveDraft || event?.draft) : null,
-        qr: upgradeValid && !order?.financialBlocked && d.status === 'valid' && event?.status !== 'cancelled' ? this.credential(d, t.id) : null }; })) };
+  async mine(actor: DecodedIdToken, claimPurchases = false) {
+    if (claimPurchases && actor.email_verified && actor.email) await this.claim(actor, true);
+    const [orders, tickets] = await Promise.all([
+      this.db.collection('ticketingOrders').where('ownerUid', '==', actor.uid).get(),
+      this.tickets().where('ownerUid', '==', actor.uid).get(),
+    ]);
+    const orderMap = new Map<string, any>(orders.docs.map(doc => [doc.id, doc.data()]));
+    const eventIds = [...new Set(tickets.docs.map(t => t.data().eventId as string))];
+    const missingOrders = [...new Set(tickets.docs.map(t => t.data().orderId as string))].filter(key => !orderMap.has(key));
+    const [eventDocs, orderDocs] = await Promise.all([
+      eventIds.length ? this.db.getAll(...eventIds.map(key => this.event(key))) : [],
+      missingOrders.length ? this.db.getAll(...missingOrders.map(key => this.order(key))) : [],
+    ]);
+    const eventMap = new Map(eventDocs.map(doc => [doc.id, doc.data()]));
+    orderDocs.forEach(doc => orderMap.set(doc.id, doc.data()));
+    const upgradeChecks = new Map<string, Promise<boolean>>();
+    return { orders: orders.docs.map(d => { const o = d.data(); return { orderId: d.id, eventId: o.eventId, eventTitle: o.eventTitle, status: o.status, method: o.method, rsvpStatus: o.rsvpStatus || '', total: o.total, createdAt: o.createdAt }; }).sort((a, b) => b.createdAt - a.createdAt),
+      tickets: await Promise.all(tickets.docs.map(async t => { const d = t.data(), event = eventMap.get(d.eventId), order = orderMap.get(d.orderId);
+        if (order?.rsvpOrderId && !upgradeChecks.has(d.orderId)) upgradeChecks.set(d.orderId, this.db.runTransaction(tx => this.validUpgradeParent(tx, order)));
+        const upgradeValid = !!order && (!order.rsvpOrderId || await upgradeChecks.get(d.orderId));
+        const usable = !!event && upgradeValid && !order?.financialBlocked && d.status === 'valid' && event.status !== 'cancelled' && (!d.rsvp || order?.rsvpStatus === 'approved');
+        return { id: t.id, eventId: d.eventId, orderId: d.orderId, eventTitle: d.eventTitle, name: d.name, holderName: d.holderName, status: d.status,
+        admission: d.admission, validFrom: d.validFrom, validUntil: d.validUntil, version: d.version, transferable: usable && !d.rsvp && !d.rsvpOrderId && !d.admission && Date.now() < this.transferDeadline(d, event),
+        calendarUrl: this.calendarUrl(event), calendarLinks: this.calendarOptions(event), venue: usable ? holderVenue(event.liveDraft || event.draft) : null,
+        qr: usable ? this.credential(d, t.id) : null }; })) };
   }
   async recover(rawEmail: unknown) {
     const target = email(rawEmail), docs = await this.db.collection('ticketingOrders').where('email', '==', target).get();
