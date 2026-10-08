@@ -8,6 +8,9 @@ checkout handoff, account ticket claiming on app resume, persistent ticket
 wallets, private recovery/transfer App Links and native build validation.
 
 The first staging installation must be rehearsed on a physical Android phone.
+The first phone rehearsal confirmed the expected staging APK functionality;
+verified website-to-app links still need the staging backend deployment and the
+updated APK with the dashboard link.
 Native door admission (including durable offline replay), device-bound push,
 automatic account deletion and protected Play releases are subsequent milestones
 in the approved plan. This foundation does **not** make the app ready for a
@@ -73,7 +76,15 @@ from `functions/src/android-links-config.json`. Production publishes an empty
 association until the production **Play App Signing** certificate is added.
 Certificate fingerprints are public; keep private keystores out of Git.
 
-The app accepts `/app/tickets` and `/app/profile` on its own environment's host.
+The app accepts `/app`, `/app/`, `/app/tickets` and `/app/profile` on its own
+environment's host. The website's Open App buttons open the native dashboard.
+Android Chrome uses a user-tapped intent with a same-environment web fallback
+when the matching app is absent. Other browsers retain the HTTPS link and use
+their supported-link preferences. Desktop and iPhone continue to open the web app.
+This requires the updated APK; the earlier ticket/profile-only APK cannot handle
+the dashboard link. After deploying the association, reinstall/update the APK
+or re-verify it with the commands below; confirm Android's Open supported links
+setting is enabled for Pluto Events Staging.
 Public event checkout stays in the browser. Recovery and transfer capabilities
 remain in fragments and are not logged by the app. A browser checkout order ID
 alone never grants access: native resume uses the existing verified-email claim

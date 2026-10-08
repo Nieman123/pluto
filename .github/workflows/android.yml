@@ -38,8 +38,22 @@ jobs:
           cache: true
       - name: Configure native toolchain and locked packages
         run: |
+          sdk_manager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$sdk_manager" ]; then
+            for candidate in "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager; do
+              if [ -x "$candidate" ]; then
+                sdk_manager="$candidate"
+                break
+              fi
+            done
+          fi
+          if [ ! -x "$sdk_manager" ]; then
+            echo '::error::Android SDK command-line tools are missing from ANDROID_HOME.'
+            exit 1
+          fi
+          flutter config --android-sdk="$ANDROID_HOME"
           flutter config --jdk-dir="$JAVA_HOME"
-          sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+          "$sdk_manager" --sdk_root="$ANDROID_HOME" 'platforms;android-36' 'build-tools;36.0.0'
           flutter pub get --enforce-lockfile
       - name: Flutter validation
         run: |

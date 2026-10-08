@@ -120,6 +120,12 @@ void main() {
       'native ticket/recovery links retain fragment capabilities and reject unrelated hosts/routes',
       () {
     final origin = Uri.parse('https://pluto-staging-92eb7.web.app');
+    for (final path in ['/app', '/app/']) {
+      expect(
+          nativeAppRoute(Uri.parse('${origin.origin}$path'), origin: origin)
+              ?.path,
+          '/');
+    }
     final route = nativeAppRoute(
         Uri.parse(
             '${origin.origin}/app/tickets?order=123#recovery=private-token'),

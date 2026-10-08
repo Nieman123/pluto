@@ -5,12 +5,18 @@ import 'package:go_router/go_router.dart';
 import 'native_environment.dart';
 
 Uri? nativeAppRoute(Uri link, {required Uri origin}) {
+  const routes = <String, String>{
+    '/app': '/',
+    '/app/': '/',
+    '/app/tickets': '/tickets',
+    '/app/profile': '/profile',
+  };
   if (link.scheme != 'https' ||
       link.origin != origin.origin ||
       link.userInfo.isNotEmpty ||
-      !['/app/tickets', '/app/profile'].contains(link.path)) return null;
+      !routes.containsKey(link.path)) return null;
   return Uri(
-      path: link.path.substring(4),
+      path: routes[link.path],
       query: link.hasQuery ? link.query : null,
       fragment: link.hasFragment ? link.fragment : null);
 }
