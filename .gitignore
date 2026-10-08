@@ -33,5 +33,6 @@ dotenv
 .dart-tool
 
 /tmp/
+**/__pycache__/
 /firebase.release.json
 /gha-creds-*.json

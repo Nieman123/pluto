@@ -1,0 +1,6 @@
+{
+  "PLUTO_ENVIRONMENT": "staging",
+  "PLUTO_FIREBASE_ANDROID_CONFIG": "{\"apiKey\":\"AIzaSyBjIaYN6KHApn3H4hzv4ouyt_OOIO-DQaM\",\"appId\":\"1:702489323300:android:d61e47c9a892b64c46b5b1\",\"messagingSenderId\":\"702489323300\",\"projectId\":\"pluto-staging-92eb7\",\"storageBucket\":\"pluto-staging-92eb7.firebasestorage.app\"}",
+  "PLUTO_API_BASE_URL": "https://pluto-staging-92eb7.web.app",
+  "PLUTO_GOOGLE_SERVER_CLIENT_ID": "702489323300-edl40dmb9f9glpg5fm787d6be69nt8gu.apps.googleusercontent.com"
+}

@@ -1,10 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'src/background/pluto_background.dart';
 import 'src/email_verification.dart';
+import 'src/google_auth.dart';
 import 'src/nav_bar/nav_bar.dart';
 import 'src/ticket_access_store.dart';
 import 'src/ticket_account_flow.dart';
@@ -209,15 +209,7 @@ class _SignUpPageState extends State<SignUpPage> {
     });
 
     try {
-      if (!kIsWeb) {
-        throw FirebaseAuthException(
-          code: 'unsupported-platform',
-          message: 'Google popup sign-up is configured for web.',
-        );
-      }
-
-      final UserCredential credential =
-          await FirebaseAuth.instance.signInWithPopup(GoogleAuthProvider());
+      final UserCredential credential = await signInToPlutoWithGoogle();
       final User? user = credential.user ?? FirebaseAuth.instance.currentUser;
       if (user == null) {
         throw FirebaseAuthException(

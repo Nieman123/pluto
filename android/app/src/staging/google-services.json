@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "702489323300",
+    "project_id": "pluto-staging-92eb7",
+    "storage_bucket": "pluto-staging-92eb7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:702489323300:android:d61e47c9a892b64c46b5b1",
+        "android_client_info": {
+          "package_name": "events.pluto.app.staging"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "702489323300-r3i76l4gm155hvhhlthpvjb0lb6q87ir.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "events.pluto.app.staging",
+            "certificate_hash": "462b99cfcc7aa506bb20b805d60c83fd66491ed8"
+          }
+        },
+        {
+          "client_id": "702489323300-edl40dmb9f9glpg5fm787d6be69nt8gu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBjIaYN6KHApn3H4hzv4ouyt_OOIO-DQaM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "702489323300-edl40dmb9f9glpg5fm787d6be69nt8gu.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

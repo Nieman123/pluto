@@ -24,6 +24,7 @@ analyzer:
     - build/**
     - web/**
     - tmp/**
+    - android/**
 
 linter:
   rules:

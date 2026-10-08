@@ -3,6 +3,7 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -21,6 +22,9 @@ import 'sign_up_page.dart' deferred as sign_up_page;
 import 'src/configure_firebase_emulators.dart';
 import 'src/configure_web.dart';
 import 'src/deferred_widget.dart';
+import 'src/native_back_scope.dart';
+import 'src/native_environment.dart';
+import 'src/native_links.dart';
 import 'src/signed_in/signed_in_app_shell.dart';
 import 'src/theme/config.dart';
 import 'src/theme/custom_theme.dart';
@@ -36,6 +40,10 @@ Future<void> main() async {
     debugPrint('Persistent ticket storage is unavailable on this device.');
   }
   configureApp();
+  if (!kIsWeb) {
+    ticketingBaseUri(); // Fail closed before initializing native services.
+    await nativeLinks.capture();
+  }
   const String emulatorHost = String.fromEnvironment('FIREBASE_EMULATOR_HOST');
   const String emulatorProject = String.fromEnvironment(
       'FIREBASE_EMULATOR_PROJECT',
@@ -50,7 +58,7 @@ Future<void> main() async {
       ? DefaultFirebaseOptions.currentPlatform
       : const FirebaseOptions(
           apiKey: 'demo-preview-key',
-          appId: '1:123:web:preview',
+          appId: kIsWeb ? '1:123:web:preview' : '1:123:android:abcdef',
           messagingSenderId: '123',
           projectId: emulatorProject,
           authDomain: '$emulatorProject.firebaseapp.com',
@@ -130,10 +138,20 @@ class _MyAppState extends State<MyApp> {
     );
   }
 
+  Widget _buildDeferredPage({
+    required Future<void> Function() loadLibrary,
+    required WidgetBuilder builder,
+  }) {
+    return NativeBackScope(
+      child: DeferredWidget(loadLibrary: loadLibrary, builder: builder),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      nativeLinks.bind(_router);
       Future<void>.delayed(const Duration(milliseconds: 1500), () {
         if (mounted) {
           _initializeNotifications();
@@ -162,7 +180,7 @@ class _MyAppState extends State<MyApp> {
             pageBuilder: (BuildContext context, GoRouterState state) =>
                 _buildTabPage(
               state: state,
-              child: DeferredWidget(
+              child: _buildDeferredPage(
                   loadLibrary: tickets_page.loadLibrary,
                   builder: (BuildContext context) =>
                       tickets_page.TicketsPage(uri: state.uri)),
@@ -178,7 +196,7 @@ class _MyAppState extends State<MyApp> {
             pageBuilder: (BuildContext context, GoRouterState state) {
               return _buildTabPage(
                 state: state,
-                child: const App(),
+                child: const NativeBackScope(child: App()),
               );
             },
           ),
@@ -187,7 +205,7 @@ class _MyAppState extends State<MyApp> {
             pageBuilder: (BuildContext context, GoRouterState state) {
               return _buildTabPage(
                 state: state,
-                child: DeferredWidget(
+                child: _buildDeferredPage(
                   loadLibrary: profile_page.loadLibrary,
                   builder: (BuildContext context) => profile_page.ProfilePage(),
                 ),
@@ -199,7 +217,7 @@ class _MyAppState extends State<MyApp> {
             pageBuilder: (BuildContext context, GoRouterState state) {
               return _buildTabPage(
                 state: state,
-                child: DeferredWidget(
+                child: _buildDeferredPage(
                   loadLibrary: item_shop_page.loadLibrary,
                   builder: (BuildContext context) =>
                       item_shop_page.ItemShopPage(),
@@ -212,7 +230,7 @@ class _MyAppState extends State<MyApp> {
             pageBuilder: (BuildContext context, GoRouterState state) {
               return _buildTabPage(
                 state: state,
-                child: DeferredWidget(
+                child: _buildDeferredPage(
                   loadLibrary: manafest_page.loadLibrary,
                   builder: (BuildContext context) =>
                       manafest_page.ManaFestPage(),
@@ -225,7 +243,7 @@ class _MyAppState extends State<MyApp> {
       GoRoute(
         path: '/camping',
         builder: (BuildContext context, GoRouterState state) {
-          return DeferredWidget(
+          return _buildDeferredPage(
             loadLibrary: camping.loadLibrary,
             builder: (BuildContext context) => camping.CampingInfoPage(),
           );
@@ -234,7 +252,7 @@ class _MyAppState extends State<MyApp> {
       GoRoute(
         path: '/schedule',
         builder: (BuildContext context, GoRouterState state) {
-          return DeferredWidget(
+          return _buildDeferredPage(
             loadLibrary: schedule.loadLibrary,
             builder: (BuildContext context) => schedule.SchedulePage(),
           );
@@ -243,7 +261,7 @@ class _MyAppState extends State<MyApp> {
       GoRoute(
         path: '/sign-on',
         builder: (BuildContext context, GoRouterState state) {
-          return DeferredWidget(
+          return _buildDeferredPage(
             loadLibrary: sign_on_page.loadLibrary,
             builder: (BuildContext context) => sign_on_page.SignOnPage(
                 returnTo: state.uri.queryParameters['returnTo']),
@@ -253,7 +271,7 @@ class _MyAppState extends State<MyApp> {
       GoRoute(
         path: '/sign-up',
         builder: (BuildContext context, GoRouterState state) {
-          return DeferredWidget(
+          return _buildDeferredPage(
             loadLibrary: sign_up_page.loadLibrary,
             builder: (BuildContext context) => sign_up_page.SignUpPage(
                 returnTo: state.uri.queryParameters['returnTo']),
@@ -263,7 +281,7 @@ class _MyAppState extends State<MyApp> {
       GoRoute(
         path: '/admin',
         builder: (BuildContext context, GoRouterState state) {
-          return DeferredWidget(
+          return _buildDeferredPage(
             loadLibrary: admin_page.loadLibrary,
             builder: (BuildContext context) => admin_page.AdminPage(),
           );
@@ -272,7 +290,7 @@ class _MyAppState extends State<MyApp> {
       GoRoute(
         path: '/admin/manafest',
         builder: (BuildContext context, GoRouterState state) {
-          return DeferredWidget(
+          return _buildDeferredPage(
             loadLibrary: admin_page.loadLibrary,
             builder: (BuildContext context) => admin_page.AdminPage(
               section: admin_page.AdminSection.manafest,
@@ -283,7 +301,7 @@ class _MyAppState extends State<MyApp> {
       GoRoute(
         path: '/admin/events',
         builder: (BuildContext context, GoRouterState state) {
-          return DeferredWidget(
+          return _buildDeferredPage(
             loadLibrary: admin_page.loadLibrary,
             builder: (BuildContext context) => admin_page.AdminPage(
               section: admin_page.AdminSection.events,
@@ -294,7 +312,7 @@ class _MyAppState extends State<MyApp> {
       GoRoute(
         path: '/admin/rewards',
         builder: (BuildContext context, GoRouterState state) {
-          return DeferredWidget(
+          return _buildDeferredPage(
             loadLibrary: admin_page.loadLibrary,
             builder: (BuildContext context) => admin_page.AdminPage(
               section: admin_page.AdminSection.rewards,
@@ -305,7 +323,7 @@ class _MyAppState extends State<MyApp> {
       GoRoute(
         path: '/admin/links',
         builder: (BuildContext context, GoRouterState state) {
-          return DeferredWidget(
+          return _buildDeferredPage(
             loadLibrary: admin_page.loadLibrary,
             builder: (BuildContext context) => admin_page.AdminPage(
               section: admin_page.AdminSection.links,
@@ -316,7 +334,7 @@ class _MyAppState extends State<MyApp> {
       GoRoute(
         path: '/scan-qr',
         builder: (BuildContext context, GoRouterState state) {
-          return DeferredWidget(
+          return _buildDeferredPage(
             loadLibrary: event_qr_scan_page.loadLibrary,
             builder: (BuildContext context) =>
                 event_qr_scan_page.EventQrScanPage(),
@@ -326,7 +344,7 @@ class _MyAppState extends State<MyApp> {
       GoRoute(
         path: '/admin/rentals',
         builder: (BuildContext context, GoRouterState state) {
-          return DeferredWidget(
+          return _buildDeferredPage(
             loadLibrary: admin_page.loadLibrary,
             builder: (BuildContext context) => admin_page.AdminPage(
               section: admin_page.AdminSection.rentals,
@@ -355,6 +373,7 @@ class _MyAppState extends State<MyApp> {
 
   @override
   void dispose() {
+    nativeLinks.dispose();
     _router.routeInformationProvider.removeListener(_trackCurrentRoute);
     _router.dispose();
     super.dispose();

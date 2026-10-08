@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -19,7 +20,7 @@ class TicketsPage extends StatefulWidget {
   State<TicketsPage> createState() => _TicketsPageState();
 }
 
-class _TicketsPageState extends State<TicketsPage> {
+class _TicketsPageState extends State<TicketsPage> with WidgetsBindingObserver {
   final TicketingRepository _repository = TicketingRepository();
   final OfflineTicketCache _cache = OfflineTicketCache(
       read: ticketAccessRead,
@@ -59,6 +60,7 @@ class _TicketsPageState extends State<TicketsPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _orderId = widget.uri.queryParameters['order'];
     _lastAccount = FirebaseAuth.instance.currentUser?.uid;
     _authSubscription = FirebaseAuth.instance.authStateChanges().listen((_) {
@@ -139,6 +141,24 @@ class _TicketsPageState extends State<TicketsPage> {
         await _load();
       });
   Future<void> _load() async {
+    if (!kIsWeb) {
+      // Browser checkout has its own auth/storage. Link only through the
+      // server's verified-email claim flow; an order ID grants no access.
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        try {
+          await user.reload();
+          if (FirebaseAuth.instance.currentUser?.emailVerified == true) {
+            await FirebaseAuth.instance.currentUser!.getIdToken(true);
+            await _repository.request('claim');
+          }
+        } catch (_) {
+          // A network outage must still allow the existing offline wallet to load.
+          _notice =
+              'New purchases could not sync. Reconnect and refresh your tickets.';
+        }
+      }
+    }
     // Provider setup is optional and must not prevent access to in-app tickets.
     if (_showAddToWallet) {
       try {
@@ -981,10 +1001,16 @@ class _TicketsPageState extends State<TicketsPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _locationRevealTimer?.cancel();
     _authSubscription?.cancel();
     _repository.dispose();
     _email.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!kIsWeb && state == AppLifecycleState.resumed && !_busy) _refresh();
   }
 }

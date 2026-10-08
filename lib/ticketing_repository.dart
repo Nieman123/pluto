@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
+import 'src/native_environment.dart';
 import 'src/ticket_client_identity.dart';
 
 class TicketingException implements Exception {
@@ -18,10 +19,7 @@ class TicketingRepository {
       Uri? baseUri,
       Future<String?> Function()? tokenProvider})
       : _client = client ?? http.Client(),
-        _baseUri = baseUri ??
-            Uri.parse(<String>['http', 'https'].contains(Uri.base.scheme)
-                ? Uri.base.origin
-                : 'https://pluto.events'),
+        _baseUri = baseUri ?? ticketingBaseUri(),
         _tokenProvider = tokenProvider ??
             (() async => FirebaseAuth.instance.currentUser?.getIdToken());
   final http.Client _client;
