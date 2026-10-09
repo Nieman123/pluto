@@ -56,7 +56,7 @@ async function main() {
     }
     if (!ready) throw new Error('CI preview did not become ready.');
     await run('scripts/ticketing/seed-preview.cjs');
-    const suites = ['browser', 'account-verification-browser', 'wallet-browser', 'digital-wallet-browser', 'scanner-pin-browser', 'rotation-recovery-browser', 'rsvp-browser', 'rsvp-vip-browser', 'free-events-browser', 'checkout-account-browser', 'checkout-recovery-browser', 'orders-browser', 'rewards-browser', 'location-reveal-browser', 'operations-offline-browser', 'event-engagement-browser', 'event-discovery-browser', 'admin-revenue-browser'];
+    const suites = ['legal-pages-browser', 'browser', 'account-verification-browser', 'wallet-browser', 'digital-wallet-browser', 'scanner-pin-browser', 'rotation-recovery-browser', 'rsvp-browser', 'rsvp-vip-browser', 'free-events-browser', 'checkout-account-browser', 'checkout-recovery-browser', 'orders-browser', 'rewards-browser', 'location-reveal-browser', 'operations-offline-browser', 'event-engagement-browser', 'event-discovery-browser', 'admin-revenue-browser'];
     const selection = process.argv.find(arg => arg.startsWith('--suites='))?.slice(9).split(',') || suites;
     if (!selection.length || selection.some(suite => !suites.includes(suite))) throw new Error('Unknown browser suite selection.');
     for (const suite of selection) await run(`scripts/ticketing/${suite}-test.cjs`);

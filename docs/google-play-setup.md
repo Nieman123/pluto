@@ -135,6 +135,9 @@ after the Android milestones; no iOS project is included here yet.
 
 ## Phone rehearsal checklist
 
+Public privacy, terms and account deletion URLs and the manual fulfillment process
+are documented in [privacy-and-account-deletion.md](privacy-and-account-deletion.md).
+
 - Install, restart and update the staging APK without losing account/ticket data.
 - Create/verify an email account, use Google sign-in, sign out and sign in again.
 - Open profile, rewards, festival information and the ticket wallet.

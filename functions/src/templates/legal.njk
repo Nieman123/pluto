@@ -1,0 +1,20 @@
+{% extends "base.njk" %}
+{% block content %}
+<article class="legal-page">
+  <header class="legal-heading">
+    <p class="eyebrow">PLUTO EVENTS LLC</p>
+    <h1>{% block legal_title %}{% endblock %}</h1>
+    <p class="legal-updated">Last updated October 8, 2026</p>
+  </header>
+  <nav class="legal-navigation" aria-label="Policies">
+    <a href="/privacy" {% if path == '/privacy' %}aria-current="page"{% endif %}>Privacy Policy</a>
+    <a href="/terms" {% if path == '/terms' %}aria-current="page"{% endif %}>Terms of Use</a>
+    <a href="/delete-account" {% if path == '/delete-account' %}aria-current="page"{% endif %}>Account deletion</a>
+  </nav>
+  {% block legal_content %}{% endblock %}
+  <aside class="legal-contact" aria-label="Contact Pluto Events">
+    <h2>Talk to Pluto</h2>
+    <p>Questions about these policies or your information? Contact Pluto Events LLC at <a href="mailto:contact@pluto.events">contact@pluto.events</a>.</p>
+  </aside>
+</article>
+{% endblock %}
