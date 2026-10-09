@@ -9,6 +9,8 @@ on:
       - 'test/**'
       - 'scripts/android/**'
       - '.github/workflows/android.yml'
+      - '.github/workflows/android-release.yml'
+      - 'test/android-release.test.mjs'
   workflow_dispatch:
 permissions:
   contents: read

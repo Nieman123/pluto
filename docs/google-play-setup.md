@@ -10,8 +10,12 @@ wallets, private recovery/transfer App Links and native build validation.
 The first physical-phone rehearsal confirmed the expected staging APK
 functionality. Verified website-to-app links still need the staging backend
 deployment and the updated APK with the dashboard link.
+Signed internal testing builds and opt-in automatic staging uploads are now
+prepared in [Google Play internal testing setup](google-play-internal-testing.md).
+The Console app, first release, Play signing certificates and publisher access
+still need their one-time setup before automated uploads can run.
 Native door admission (including durable offline replay), device-bound push,
-automatic account deletion and protected Play releases are subsequent milestones
+automatic account deletion and public Play release are subsequent milestones
 in the approved plan. This foundation does **not** make the app ready for a
 public Play release. Full event administration stays on the website.
 
@@ -113,8 +117,9 @@ credentials and never fall back to debug signing. Local release credentials use
 `PLUTO_UPLOAD_KEYSTORE`, `PLUTO_UPLOAD_STORE_PASSWORD`, `PLUTO_UPLOAD_KEY_ALIAS`
 and `PLUTO_UPLOAD_KEY_PASSWORD`; keep them outside tracked files.
 
-For the planned store launch, create and verify a Google Play **organization**
-account using the D-U-N-S number. Google manages the Play App Signing key; Pluto
+The Google Play **organization** account is now set up. Create the staging app
+and enroll its first internal release using the linked setup guide. Google
+manages the Play App Signing key; Pluto
 backs up a separate upload key. Register the actual Play signing SHA-1/SHA-256 in
 Firebase and add the matching SHA-256 to App Links for each Play-distributed
 flavor. An upload certificate is not a substitute for the Play signing certificate.
