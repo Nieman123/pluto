@@ -6,6 +6,24 @@ import 'ticket_session_cleanup.dart';
 
 Future<void>? _googleInitialization;
 
+FirebaseAuthException googleSignInFailure(GoogleSignInExceptionCode code,
+    {required bool nativeAndroid}) {
+  if (code == GoogleSignInExceptionCode.canceled) {
+    // Android Credential Manager also uses "canceled" for OAuth configuration
+    // failures after account selection; it cannot distinguish them from dismissal.
+    return FirebaseAuthException(
+        code: nativeAndroid
+            ? 'google-sign-in-incomplete'
+            : 'popup-closed-by-user',
+        message: nativeAndroid
+            ? 'Google sign-in did not finish. Try again or use email sign-in.'
+            : 'Google sign-in was cancelled.');
+  }
+  return FirebaseAuthException(
+      code: 'google-sign-in-failed',
+      message: 'Google sign-in is unavailable. Try email sign-in.');
+}
+
 Future<UserCredential> signInToPlutoWithGoogle() async {
   final auth = FirebaseAuth.instance;
   if (kIsWeb) return auth.signInWithPopup(GoogleAuthProvider());
@@ -31,13 +49,8 @@ Future<UserCredential> signInToPlutoWithGoogle() async {
     return await auth
         .signInWithCredential(GoogleAuthProvider.credential(idToken: idToken));
   } on GoogleSignInException catch (error) {
-    throw FirebaseAuthException(
-        code: error.code == GoogleSignInExceptionCode.canceled
-            ? 'popup-closed-by-user'
-            : 'google-sign-in-failed',
-        message: error.code == GoogleSignInExceptionCode.canceled
-            ? 'Google sign-in was cancelled.'
-            : 'Google sign-in is unavailable. Try email sign-in.');
+    throw googleSignInFailure(error.code,
+        nativeAndroid: defaultTargetPlatform == TargetPlatform.android);
   }
 }
 
