@@ -18,6 +18,7 @@ import { waitlistHold, withoutWaitlistHold } from './waitlist-hold';
 import { approvedRsvpParent, assertRsvpPayment } from './rsvp-upgrade';
 import { plutoCheckoutBranding } from './checkout-branding';
 import { assertVenueRegistration, prepareVenueTax } from './venue-tax';
+import { checkInRewardPoints, prepareCheckInRewards } from './check-in-rewards';
 
 export interface Order {
   eventId: string; eventTitle: string; eventSlug: string; ownerUid: string; email: string; name: string; accessHash: string; inputHash: string;
@@ -495,8 +496,12 @@ export class Orders extends Catalog {
         const latest = (await tx.get(doc.ref)).data() as Order;
         if (latest.ownerUid) return;
         const tickets = await tx.get(this.tickets().where('orderId', '==', doc.id));
+        const held = tickets.docs.filter(t => t.data().holderEmail === actor.email!.toLowerCase());
+        const award = latest.status === 'paid' && !latest.financialBlocked
+          ? await prepareCheckInRewards(this.db, tx, held.map(t => ({ ref: t.ref, ticket: { ...t.data(), ownerUid: actor.uid } }))) : () => 0;
         tx.update(doc.ref, { ownerUid: actor.uid });
-        tickets.docs.filter(t => t.data().holderEmail === actor.email!.toLowerCase()).forEach(t => tx.update(t.ref, { ownerUid: actor.uid }));
+        held.forEach(t => tx.update(t.ref, { ownerUid: actor.uid }));
+        award();
       });
     }
     return { claimed: true };
@@ -601,7 +606,15 @@ export class Orders extends Catalog {
     const ticket = (await this.tickets().doc(access.ticketId).get()).data();
     if (!ticket || ticket.version !== access.version || ticket.status !== 'valid') fail('This ticket credential is no longer valid.', 409, 'ticket-access-revoked');
     if ((await this.order(ticket.orderId).get()).data()?.financialBlocked) fail('Payment needs staff review before admission.', 409);
-    if (actor?.email_verified && actor.email?.toLowerCase() === ticket.holderEmail && !ticket.ownerUid) await this.tickets().doc(access.ticketId).update({ ownerUid: actor.uid });
+    if (actor?.email_verified && actor.email?.toLowerCase() === ticket.holderEmail && !ticket.ownerUid) {
+      await this.db.runTransaction(async tx => {
+        const ref = this.tickets().doc(access.ticketId), latest = (await tx.get(ref)).data();
+        const order = latest ? (await tx.get(this.order(latest.orderId))).data() : null;
+        if (!latest || latest.version !== access.version || latest.status !== 'valid' || latest.holderEmail !== actor.email!.toLowerCase() || latest.ownerUid || order?.financialBlocked) return;
+        const award = await prepareCheckInRewards(this.db, tx, [{ ref, ticket: { ...latest, ownerUid: actor.uid } }]);
+        tx.update(ref, { ownerUid: actor.uid }); award();
+      });
+    }
     const event = (await this.event(ticket.eventId).get()).data()!;
     if (event.status === 'cancelled') fail('This event has been cancelled. Contact Pluto about your order.', 409);
     return { id: access.ticketId, orderId: ticket.orderId, name: ticket.name, eventTitle: ticket.eventTitle, holderName: ticket.holderName, status: ticket.status,
@@ -650,7 +663,15 @@ export class Orders extends Catalog {
       else if (!Number.isFinite(Date.parse(ticket.validFrom)) || !Number.isFinite(Date.parse(ticket.validUntil)) || at < Date.parse(ticket.validFrom) || at > Date.parse(ticket.validUntil)) result = 'outside-window';
       else if (ticket.admission) result = 'duplicate';
       else if (evidence?.rejection) result = evidence.rejection;
+      const admission = { at, ...access, scanId: key, offline };
+      const award = result === 'accepted' ? await prepareCheckInRewards(this.db, tx, [
+        { ref: ticketRef, ticket: { ...ticket!, admission }, earned: { points: checkInRewardPoints(ticket!, event!), at } },
+        ...(parentTicket && !parentTicket.admission ? [{ ref: this.tickets().doc(order!.rsvpTicketId),
+          ticket: { ...parentTicket, admission }, earned: { points: checkInRewardPoints(parentTicket, event!), at } }] : []),
+      ]) : () => 0;
+      const pointsAwarded = award();
       const record = { ticketId: parsed.id, rsvpTicketId: order?.rsvpTicketId || '', ...access, uid: evidence?.originUid || uid, result, at, syncedAt: Date.now(), offline, name: ticket?.name || '', holderName: ticket?.holderName || order?.name || '', source,
+        pointsAwarded,
         ...(evidence ? { offlineLeaseHash: evidence.leaseHash, offlineVersion: evidence.version, offlineProofVerified: evidence.verified, offlineKeyId: evidence.keyId, ticketKeyId: credentialKeyId(signingMaterial(this.signing()), parsed.kid), submittedBy: uid } : {}) };
       tx.create(scanRef, record); if (result === 'accepted') tx.update(ticketRef, { admission: { at, ...access, scanId: key, offline } });
       if (result === 'accepted' && parentTicket && !parentTicket.admission) tx.update(this.tickets().doc(order!.rsvpTicketId), { admission: { at, ...access, scanId: key, offline, viaUpgradeTicketId: parsed.id } });
@@ -727,8 +748,17 @@ export class Orders extends Catalog {
         } else {
           const ticketRef = this.tickets().doc(id(scan.ticketId)), ticket = (await tx.get(ticketRef)).data();
           const order = ticket ? (await tx.get(this.order(ticket.orderId))).data() : null;
-          if (!ticket || order?.financialBlocked || ticket.status !== 'valid' || ticket.version !== scan.offlineVersion || ticket.admission || scan.at < Date.parse(ticket.validFrom) || scan.at > Date.parse(ticket.validUntil)) fail('Ticket admission cannot be safely confirmed against the current ledger.', 409);
+          const upgradeValid = !!order && await this.validUpgradeParent(tx, order);
+          const parentTicket = order?.rsvpTicketId ? (await tx.get(this.tickets().doc(order.rsvpTicketId))).data() : null;
+          if (!ticket || order?.status !== 'paid' || order.financialBlocked || !upgradeValid || ticket.rsvp && order.rsvpStatus !== 'approved' || ticket.status !== 'valid' || ticket.version !== scan.offlineVersion || ticket.admission || scan.at < Date.parse(ticket.validFrom) || scan.at > Date.parse(ticket.validUntil)) fail('Ticket admission cannot be safely confirmed against the current ledger.', 409);
+          const award = await prepareCheckInRewards(this.db, tx, [
+            { ref: ticketRef, ticket: { ...ticket, admission }, earned: { points: checkInRewardPoints(ticket, event!), at: scan.at } },
+            ...(parentTicket && !parentTicket.admission ? [{ ref: this.tickets().doc(order!.rsvpTicketId),
+              ticket: { ...parentTicket, admission }, earned: { points: checkInRewardPoints(parentTicket, event!), at: scan.at } }] : []),
+          ]);
           tx.update(ticketRef, { admission });
+          if (parentTicket && !parentTicket.admission) tx.update(this.tickets().doc(order!.rsvpTicketId), { admission: { ...admission, viaUpgradeTicketId: scan.ticketId } });
+          award();
         }
       }
       tx.update(ref, { originalResult: scan.result, ...(decision === 'confirm' ? { result: 'accepted' } : {}), resolution: { decision, note, uid, at: Date.now() } });

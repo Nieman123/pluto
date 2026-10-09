@@ -124,6 +124,7 @@ async function surface(page, name) {
     await page.locator('[data-field="offers.1.name"]').fill('Vehicle pass'); await page.locator('[data-field="offers.1.name"]').dispatchEvent('change');
     await page.locator('[data-field="offers.1.kind"]').selectOption('vehicle');
     await page.locator('[data-field="offers.1.unitAmount"]').fill('15.50'); await page.locator('[data-field="offers.1.unitAmount"]').dispatchEvent('change');
+    await page.locator('[data-field="offers.1.checkInPoints"]').fill('25'); await page.locator('[data-field="offers.1.checkInPoints"]').dispatchEvent('change');
     await page.locator('[data-save-state]').first().filter({ hasText: 'Unsaved changes' }).waitFor();
     await page.getByRole('button', { name: 'Save ticket types', exact: true }).first().click();
     await page.locator('#ticketing-message').filter({ hasText: 'Ticket types saved' }).waitFor();
@@ -131,6 +132,7 @@ async function surface(page, name) {
     record = (await db.collection('ticketingEvents').doc(eventId).get()).data();
     const vehicleId = record.draft.offers[1].id;
     assert.equal(record.draft.offers[1].unitAmount, 1550); assert.deepEqual(record.draft.offers[1].requiresOfferIds, []);
+    assert.equal(record.draft.offers[1].checkInPoints, 25, 'ticket reward is saved from the dashboard editor');
     assert.equal(record.draft.pools[0].capacity, 275);
     await page.locator('#event-ticket-settings a[href="#event-promotions"]').click(); await page.locator('[data-add=promos]').click();
     await page.locator('#event-promotions > details').first().locator('summary').first().click();

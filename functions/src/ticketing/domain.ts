@@ -62,6 +62,7 @@ function media(value: any): Media | null {
 }
 export interface Offer {
   id: string; name: string; description: string; kind: string; unitAmount: number; maxPerOrder: number;
+  checkInPoints?: number;
   salesStart: string; salesEnd: string; validFrom: string; validUntil: string; active: boolean;
   pools: Record<string, number>; requiresOfferIds: string[]; taxCode: string; stripeProductId: string; stripeTaxRateIds: string[];
 }
@@ -102,6 +103,7 @@ export function validateDraft(raw: any): EventDraft {
     if (salesEnd <= salesStart || validUntil <= validFrom) fail('Check ticket sales and admission windows.');
     return { id: id(o.id), name: text(o.name, 'ticket name', 150, true), description: text(o.description || '', 'ticket description', 1000),
       kind: ['admission', 'camping', 'vehicle', 'upgrade'].includes(o.kind) ? o.kind : 'admission', unitAmount: integer(o.unitAmount, 'ticket price', 0, 1000000),
+      checkInPoints: integer(o.checkInPoints ?? 0, 'check-in Pluto Points', 0, 1000000),
       maxPerOrder: integer(o.maxPerOrder ?? 10, 'order limit', 1, 20), salesStart, salesEnd, validFrom, validUntil, active: o.active !== false,
       pools: poolUse, requiresOfferIds: [],
       taxCode: text(o.taxCode || '', 'tax code', 80), stripeProductId: text(o.stripeProductId || '', 'Stripe product', 80),
