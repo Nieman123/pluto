@@ -30,6 +30,9 @@ async function staff(page, route = '/tickets/admin') {
   await page.goto(`${base}${route}`);
   await page.getByRole('button', { name: 'Local preview staff sign-in' }).click();
   await page.locator('#staff-controls:not([hidden])').waitFor();
+  // Restored offline controls can already be visible while the online auth
+  // callback is still loading events and restoring the selected manifest.
+  if (route === '/tickets/staff') await page.locator('#ticketing-message').filter({ hasText: 'Your assigned events are ready.' }).waitFor();
 }
 async function semantics(page) {
   await page.locator('flt-semantics-placeholder').evaluate(e => e.click(), { timeout: 15000 }).catch(() => {});
@@ -321,8 +324,16 @@ async function surface(page, name) {
     await door.locator('#ticketing-message').filter({ hasText: 'Prepared offline admission' }).waitFor();
     await door.locator('[name=qr]').fill(admissionTicket.qr); await door.locator('#admission-form button').click();
     await door.locator('#admission-results').filter({ hasText: 'DUPLICATE' }).waitFor();
+    // Exercise a slower reconnect: syncing must wait for the staff event and
+    // manifest restoration rather than treating restored controls as ready.
+    const delayedEvents = async route => { await new Promise(resolve => setTimeout(resolve, 1000)); await route.continue(); };
+    await door.route('**/tickets/api/staff/events', delayedEvents);
     await context.setOffline(false); await staff(door, '/tickets/staff');
+    await door.unroute('**/tickets/api/staff/events', delayedEvents);
+    assert.equal(await door.locator('#staff-event').inputValue(), 'ticketing-preview-event');
+    await door.locator('#admission-cache-status').filter({ hasText: '1 queued scans' }).waitFor();
     await door.locator('#admission-replay').click(); await door.locator('#ticketing-message').filter({ hasText: 'Synced 1 admissions' }).waitFor();
+    await door.locator('#admission-cache-status').filter({ hasText: '0 queued scans' }).waitFor();
     assert.ok((await db.collection('ticketingTickets').doc(admissionTicket.id).get()).data().admission.offline);
     const conflictKey = key(), conflictOrder = await api(page, 'staff/cash', { eventId: 'ticketing-preview-event', accessKey: conflictKey, items: [{ offerId: 'weekend', quantity: 1 }], name: 'Conflict Guest', email: 'conflict@preview.invalid', comp: true, reason: 'Revoked offline credential test', cashReceived: 0 });
     const conflictTicket = (await api(page, 'order', { orderId: conflictOrder.orderId, accessKey: conflictKey })).tickets[0];
