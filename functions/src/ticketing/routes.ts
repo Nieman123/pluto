@@ -15,7 +15,7 @@ import { Webhook } from 'svix';
 import { resendWebhookKey } from './config';
 import { recordDelivery } from './delivery';
 import { calendarLinks, eventCalendar } from './calendar';
-import { discoveryEvents } from './event-discovery';
+import { discoveryEvents, activeAppEventCards } from './event-discovery';
 
 export function ticketingRouter(context: (path: string) => Record<string, unknown>, service = new Operations()) {
   const router = express.Router();
@@ -59,6 +59,15 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   router.get(['/tickets', '/tickets/order'], (req, res) => res.redirect(302, `/app/tickets${req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''}`));
   router.get(['/tickets/admin', '/tickets/staff'], page);
   router.get('/tickets/admission-sw.js', (_req, res) => res.type('application/javascript').set('Service-Worker-Allowed', '/tickets/').send(readFileSync(join(__dirname, 'admission-sw.js'), 'utf8')));
+  router.get('/tickets/api/public/events', async (_req, res) => {
+    const now = Date.now();
+    const [published, legacy] = await Promise.all([
+      service.db.collection('publishedEvents').where('endAt', '>', new Date(now).toISOString()).get(),
+      service.db.collection('currentEvents').get(),
+    ]);
+    res.json({ events: activeAppEventCards(published.docs.map(d => d.data()),
+      legacy.docs.map(d => ({ ...d.data(), id: d.id })), baseUrl(), now) });
+  });
   router.get(['/events', '/past-events'], async (req, res) => {
     const past = req.path === '/past-events', path = past ? '/past-events' : '/events';
     const events = discoveryEvents((await service.db.collection('publishedEvents').get()).docs.map(d => d.data()), past).map(e => ({ ...e,

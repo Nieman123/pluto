@@ -51,9 +51,16 @@ removing the old installation.
 
 ## 2. Register the actual Play app signing certificate
 
-In the staging app's **App integrity / App signing** page, locate the **App
-signing key certificate**, not the upload key certificate. Copy its SHA-1 and
+In the staging app's **Protected with Play → Play Store protection → Manage Play
+app signing** page (also labelled **Play Store distribution → Go to Play app
+signing**), locate the **App signing key certificate**, not the upload key certificate. Copy its SHA-1 and
 SHA-256 fingerprints.
+
+Cloud-project linking under **Play Integrity API** is a separate feature and is
+not required to retrieve the app signing certificate or enable Google sign-in.
+If Google sign-in works in a local APK but reports cancellation after selecting
+an account in the Play-installed app, check the Play signing SHA-1 registration
+first. Android Credential Manager can report configuration failures as cancellation.
 
 - Add both fingerprints to the staging Android app in Firebase project
   `pluto-staging-92eb7` (package `events.pluto.app.staging`). Confirm Google Auth

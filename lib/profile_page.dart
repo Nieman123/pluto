@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import 'src/app_build_info.dart';
 import 'src/background/pluto_background.dart';
 import 'src/email_verification.dart';
 import 'src/google_auth.dart';
@@ -587,6 +588,7 @@ class _ProfilePageState extends State<ProfilePage> {
               _buildPointsHistoryCard(user),
               const SizedBox(height: 14),
               const LegalLinks(includeDeletion: true),
+              const AppBuildInfo(),
             ],
           );
         }
@@ -607,6 +609,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       _buildTierAndPointsCard(profile),
                       const SizedBox(height: 14),
                       const LegalLinks(includeDeletion: true),
+                      const AppBuildInfo(),
                     ],
                   ),
                 ),

@@ -1,4 +1,7 @@
 /// Auth may return to the ticket wallet, without forwarding credential fragments.
+String signedInDestination(String? returnTo) =>
+    ticketAccountReturn(returnTo) ?? '/';
+
 String? ticketAccountReturn(String? value) {
   final Uri? uri = value == null ? null : Uri.tryParse(value);
   if (uri == null ||

@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "702489323300-al359uq4e88mh7jgv95795od5mh1iabq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "events.pluto.app.staging",
+            "certificate_hash": "8e234cd33cfac48a92238dd8d89862b5a078d1cf"
+          }
+        },
+        {
           "client_id": "702489323300-r3i76l4gm155hvhhlthpvjb0lb6q87ir.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

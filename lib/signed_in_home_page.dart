@@ -33,6 +33,8 @@ class SignedInHomePage extends StatelessWidget {
   final User user;
   final CurrentEventsRepository _eventsRepository = CurrentEventsRepository();
   final UserProfileRepository _profileRepository = UserProfileRepository();
+  late final Future<void> _ensureProfileFuture =
+      _profileRepository.ensureProfileForUser(user);
 
   String _displayNameForUser(User user) {
     final String explicitName = (user.displayName ?? '').trim();
@@ -154,7 +156,7 @@ class SignedInHomePage extends StatelessWidget {
 
   Widget _buildPointsOverview(BuildContext context) {
     return FutureBuilder<void>(
-      future: _profileRepository.ensureProfileForUser(user),
+      future: _ensureProfileFuture,
       builder: (BuildContext context, AsyncSnapshot<void> ensureSnapshot) {
         if (ensureSnapshot.hasError) {
           return const _DashboardStatusPanel(
@@ -415,7 +417,7 @@ class SignedInHomePage extends StatelessWidget {
 
             final List<CurrentEvent> otherEvents =
                 (snapshot.data ?? <CurrentEvent>[])
-                    .where((CurrentEvent event) => !event.isManaFest)
+                    .where((CurrentEvent event) => !event.isLegacyManaFest)
                     .take(3)
                     .toList();
 

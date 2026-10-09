@@ -406,32 +406,35 @@ class UserProfileRepository {
   Future<void> ensureProfileForUser(User user) async {
     final DocumentReference<Map<String, dynamic>> profileRef =
         _profiles.doc(user.uid);
-    final DocumentSnapshot<Map<String, dynamic>> snapshot =
-        await profileRef.get();
     final String fallbackName = _fallbackDisplayNameForUser(user);
-
-    if (!snapshot.exists) {
-      await profileRef.set(<String, dynamic>{
-        'displayName': fallbackName,
-        'homeCity': '',
-        'favoriteGenre': '',
-        'bio': '',
-        'profileImageDataUrl': '',
-        'pointsBalance': 0,
-        'lifetimePoints': 0,
-        'eventsAttended': 0,
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-      return;
-    }
-
-    await profileRef.set(
-      <String, dynamic>{
-        'updatedAt': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
-    );
+    // Another dashboard/tab or a ticket check-in can create this profile while
+    // sign-in is loading. Retry against the latest profile without resetting points.
+    await _firestore.runTransaction<void>((Transaction transaction) async {
+      final DocumentSnapshot<Map<String, dynamic>> snapshot =
+          await transaction.get(profileRef);
+      if (!snapshot.exists) {
+        transaction.set(profileRef, <String, dynamic>{
+          'displayName': fallbackName,
+          'homeCity': '',
+          'favoriteGenre': '',
+          'bio': '',
+          'profileImageDataUrl': '',
+          'pointsBalance': 0,
+          'lifetimePoints': 0,
+          'eventsAttended': 0,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        return;
+      }
+      transaction.set(
+        profileRef,
+        <String, dynamic>{
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+    });
   }
 
   Future<void> updateProfile({

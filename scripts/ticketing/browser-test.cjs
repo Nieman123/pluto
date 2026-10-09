@@ -54,13 +54,22 @@ async function surface(page, name) {
     const signInContext = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1280, height: 900 } });
     const signIn = await signInContext.newPage(); activePage = signIn;
     signIn.on('pageerror', error => console.error('App startup error:', error.message));
-    await signIn.goto(`${base}/app/sign-on`); await semantics(signIn);
-    await signIn.getByRole('textbox', { name: /Email/ }).fill('staff@ticketing-preview.invalid');
-    await signIn.getByRole('button', { name: 'Continue', exact: true }).click();
-    await signIn.getByLabel(/Enter your password/).fill('Local-ticketing-preview-2026!');
-    await signIn.getByRole('button', { name: 'Sign In', exact: true }).click();
-    await signIn.getByRole('button', { name: 'Open Admin', exact: true }).waitFor();
-    await signInContext.close();
+    const concurrentContext = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 390, height: 844 } });
+    const concurrentSignIn = await concurrentContext.newPage();
+    const signInPages = [signIn, concurrentSignIn];
+    for (const app of signInPages) {
+      await app.goto(`${base}/app/sign-on`); await semantics(app);
+      await app.getByRole('textbox', { name: /Email/ }).fill('staff@ticketing-preview.invalid');
+      await app.getByRole('button', { name: 'Continue', exact: true }).click();
+      await app.getByLabel(/Enter your password/).fill('Local-ticketing-preview-2026!');
+    }
+    await Promise.all(signInPages.map(app => app.getByRole('button', { name: 'Sign In', exact: true }).click()));
+    for (const app of signInPages) {
+      await app.waitForURL(`${base}/app/`);
+      await app.getByRole('button', { name: 'Browse Rewards', exact: true }).waitFor();
+      assert.equal(await app.getByText('Could not initialize your Pluto Points.', { exact: true }).count(), 0);
+    }
+    await concurrentContext.close(); await signInContext.close();
     const googleContext = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1280, height: 900 } });
     const google = await googleContext.newPage(); activePage = google;
     await google.goto(`${base}/app/sign-on`); await semantics(google);
@@ -69,7 +78,7 @@ async function surface(page, name) {
     const popup = await popupReady; assert.ok(popup, 'Google sign-in should open the emulator popup'); await popup.waitForLoadState('domcontentloaded');
     assert.equal(new URL(popup.url()).origin, 'http://127.0.0.1:9095', 'Google preview sign-in stays in the Auth emulator');
     await popup.close(); await googleContext.close();
-    if (process.argv.includes('--sign-in-only')) { console.log('App sign-in checks passed: seeded email/password, admin access and local Google popup.'); return; }
+    if (process.argv.includes('--sign-in-only')) { console.log('App sign-in checks passed: seeded email/password, dashboard redirect and local Google popup.'); return; }
     stage = 'editor';
     const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1440, height: 1000 } });
     const page = await context.newPage(); activePage = page;

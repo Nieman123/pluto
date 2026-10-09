@@ -54,7 +54,7 @@ class _SignUpPageState extends State<SignUpPage> {
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     ticketAccessRemove('pluto-account-email');
     ticketAccessRemove('pluto-account-name');
-    context.go(ticketAccountReturn(widget.returnTo) ?? '/');
+    context.go(signedInDestination(widget.returnTo));
     if (notice != null) {
       messenger.showSnackBar(SnackBar(
           content: Text(notice), duration: const Duration(seconds: 10)));
