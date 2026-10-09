@@ -23,7 +23,7 @@ async function field(page, path, value) {
 }
 
 (async () => {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch(), crowdedFeedRefs = [];
   try {
     const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1280, height: 900 } });
     const admin = await context.newPage(); active = admin;
@@ -100,6 +100,14 @@ async function field(page, path, value) {
     await guestContext.close();
 
     stage = 'Flutter navigation and old editor removal';
+    // Make the three-card limit reproducible even when this suite runs alone.
+    for (let i = 0; i < 4; i++) {
+      const id = `crowded-${randomUUID()}`, ref = db.collection('publishedEvents').doc(id);
+      await ref.set({ id, title: `Earlier dashboard event ${i}`, slug: id, status: 'published', registrationMode: 'rsvp',
+        startAt: new Date(Date.now() - 3600000).toISOString(), endAt: new Date(Date.now() + 3600000).toISOString(),
+        city: 'Asheville', region: 'NC', hero: null, flyer: null });
+      crowdedFeedRefs.push(ref);
+    }
     const appContext = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1280, height: 900 } });
     // The dashboard previews only three events. Earlier suites publish their own
     // events, so verify the real feed includes this fixture, then scope the preview.
@@ -108,6 +116,8 @@ async function field(page, path, value) {
       const feed = await response.json(), event = feed.events.find(e => e.id === `native-${eventId}`);
       assert.ok(event, 'published free event is present in the active app feed');
       assert.equal(event.registrationMode, 'free');
+      assert.ok(feed.events.filter(e => Date.parse(e.startAt) < Date.parse(event.startAt)).length >= 3,
+        'other events would displace this fixture from the three-card dashboard preview');
       await route.fulfill({ response, json: { ...feed, events: [event] } });
     });
     const app = await appContext.newPage(); active = app;
@@ -132,5 +142,5 @@ async function field(page, path, value) {
     await appContext.close(); await context.close();
     console.log('Free-event browser checks passed: Studio creation/publishing, public venue, no registration or payment form, discovery/app labels, flyer, desktop/mobile accessibility and Flutter Studio navigation without the old editor.');
   } catch (error) { console.error('Free-event browser phase:', stage); if (active) { console.error('URL:', active.url()); console.error((await active.locator('body').innerText()).slice(0, 2500)); await active.screenshot({ path: 'tmp/ticketing-free-event-failure.png' }).catch(() => {}); } throw error; }
-  finally { await browser.close(); }
+  finally { await browser.close(); for (const ref of crowdedFeedRefs) await ref.delete(); }
 })().then(() => process.exit(0), error => { console.error(error); process.exit(1); });
