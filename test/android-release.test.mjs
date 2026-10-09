@@ -1,9 +1,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { readFile, mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 import { apps, appSettings, buildNumber, releaseSelection, certificateFingerprint, validatePlayAccount, verifyNativeConfig, automaticSelection } from '../scripts/android/play-policy.mjs';
 import { publishInternal } from '../scripts/android/publish-internal.mjs';
+import { buildVersion } from '../scripts/android/build-version.mjs';
 
 const revision = 'a'.repeat(40), env = { GITHUB_REF: 'refs/heads/main', PLAY_ENVIRONMENT: 'staging', PLAY_OPERATION: 'publish-internal',
   PLAY_REVISION: revision, GITHUB_RUN_NUMBER: '8', GITHUB_RUN_ATTEMPT: '1', GITHUB_REPOSITORY: 'Nieman123/pluto' };
@@ -18,6 +23,39 @@ test('version codes are monotonic across workflow runs and attempts, including r
   assert.ok(buildNumber(9, 1) > buildNumber(8, 99));
   assert.ok(buildNumber(8, 2) > buildNumber(8, 1));
   for (const [run, retry] of [[0, 1], [1, 0], [1, 100], [21_000_000, 1], ['invalid', 1]]) assert.throws(() => buildNumber(run, retry));
+});
+test('failed-job retries build the current manifest version, despite cached earlier selection outputs', async () => {
+  const earlierSelection = releaseSelection(env);
+  const retryEnv = { ...env, GITHUB_RUN_ATTEMPT: '2', ANDROID_VERSION_CODE: String(earlierSelection.versionCode) };
+  const manifest = releaseSelection(retryEnv);
+  assert.notEqual(manifest.versionCode, earlierSelection.versionCode);
+  const folder = await mkdtemp(join(tmpdir(), 'pluto-play-retry-'));
+  try {
+    const manifestPath = join(folder, 'tmp/android-release/manifest.json');
+    await mkdir(join(folder, 'tmp/android-release'), { recursive: true });
+    await writeFile(manifestPath, JSON.stringify(manifest));
+    const script = fileURLToPath(new URL('../scripts/android/build-version.mjs', import.meta.url));
+    const result = spawnSync(process.execPath, [script], { cwd: folder, env: { ...process.env, ...retryEnv }, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout.trim(), String(manifest.versionCode));
+    await writeFile(manifestPath, JSON.stringify(earlierSelection));
+    const stale = spawnSync(process.execPath, [script], { cwd: folder, env: { ...process.env, ...retryEnv }, encoding: 'utf8' });
+    assert.equal(stale.status, 1);
+    assert.match(stale.stderr, /versionCode differs from the current release attempt/);
+    assert.equal(stale.stdout, '');
+  } finally { await rm(folder, { recursive: true, force: true }); }
+  // Guard the workflow connection: Flutter must receive this CLI's result.
+  const workflow = await readFile('.github/workflows/android-release.yml', 'utf8');
+  assert.match(workflow, /version_code="\$\(node scripts\/android\/build-version\.mjs\)"/);
+  assert.match(workflow, /--build-number="\$version_code"/);
+  assert.doesNotMatch(workflow, /needs\.selection\.outputs\.versionCode/);
+});
+test('build aborts before Flutter when the prepared manifest belongs to another release', () => {
+  const manifest = releaseSelection(env);
+  for (const change of [{ revision: 'b'.repeat(40) }, { environment: 'production' }, { operation: 'build-only' },
+    { packageName: apps.production.packageName }, { projectId: apps.production.projectId }, { track: 'production' }]) {
+    assert.throws(() => buildVersion({ ...manifest, ...change }, env));
+  }
 });
 test('public config validates the intended native project and excludes emulator builds', async () => {
   for (const flavor of ['staging', 'production']) await verifyNativeConfig(appSettings(flavor));
@@ -57,7 +95,7 @@ test('automatic updates require opt-in and exact successful staging evidence, an
 });
 
 function publisherHarness(options = {}) {
-  const calls = [], bundle = Buffer.from('signed bundle fixture'), manifest = { ...releaseSelection(env), bundleSha256: createHash('sha256').update(bundle).digest('hex') };
+  const calls = [], bundle = Buffer.from('signed bundle fixture'), manifest = { ...releaseSelection(options.env || env), bundleSha256: createHash('sha256').update(bundle).digest('hex') };
   const fetcher = async (url, request) => {
     calls.push({ url, method: request.method, body: request.body });
     assert.equal(new URL(url).host, 'androidpublisher.googleapis.com'); assert.equal(request.redirect, 'error');
@@ -68,7 +106,7 @@ function publisherHarness(options = {}) {
     if (url.endsWith('/edits')) data = { id: 'edit-1' };
     else if (url.endsWith('/tracks')) data = { tracks: [{ track: 'internal', releases: options.draft ? [{ status: 'draft', versionCodes: ['2'] }] : [{ status: 'completed', versionCodes: ['2'] }] }, { track: 'production', releases: [{ status: 'completed', versionCodes: ['1'] }] }] };
     else if (url.endsWith('/bundles')) data = { bundles: [{ versionCode: options.newer ? manifest.versionCode : 2 }] };
-    else if (url.includes('uploadType=media')) data = { versionCode: manifest.versionCode, sha256: options.tampered ? 'incorrect' : manifest.bundleSha256 };
+    else if (url.includes('uploadType=media')) data = { versionCode: options.uploadedVersionCode ?? manifest.versionCode, sha256: options.tampered ? 'incorrect' : manifest.bundleSha256 };
     return Response.json(data);
   };
   return { calls, manifest, bundle, fetcher, token: 'synthetic-token' };
@@ -81,6 +119,17 @@ test('publisher binds signed hash/version, updates only internal, validates and 
   assert.ok(h.calls.some(c => c.url.endsWith(':validate')));
   assert.match(h.calls.at(-1).url, /:commit\?changesInReviewBehavior=ERROR_IF_IN_REVIEW$/);
   assert.equal(h.calls.filter(c => c.url.includes('/tracks/production')).length, 0);
+});
+test('retry upload rejects the earlier bundle version and commits only the current attempt version', async () => {
+  const retryEnv = { ...env, GITHUB_RUN_ATTEMPT: '2' };
+  const stale = publisherHarness({ env: retryEnv, uploadedVersionCode: releaseSelection(env).versionCode });
+  await assert.rejects(publishInternal(stale), /expected 1000802, received 1000801/);
+  assert.equal(stale.calls.at(-1).method, 'DELETE');
+  assert.ok(!stale.calls.some(c => c.method === 'PUT' || c.url.includes(':commit')));
+  const current = publisherHarness({ env: retryEnv });
+  const result = await publishInternal(current);
+  assert.equal(result.versionCode, 1000802);
+  assert.equal(result.committed, true);
 });
 test('drafts and stale build numbers abort before upload; failed uploads/hash mismatches never commit and clean up their edit', async () => {
   for (const options of [{ draft: true }, { newer: true }, { failure: 'uploadType=media' }, { tampered: true }, { failure: ':commit' }]) {

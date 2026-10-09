@@ -39,7 +39,6 @@ jobs:
       revision: ${{ steps.select.outputs.revision }}
       operation: ${{ steps.select.outputs.operation }}
       source: ${{ steps.select.outputs.source }}
-      versionCode: ${{ steps.select.outputs.versionCode }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -128,10 +127,13 @@ jobs:
         run: node scripts/android/prepare-play-build.mjs
       - name: Build signed release bundle
         env:
-          ANDROID_VERSION_CODE: ${{ needs.selection.outputs.versionCode }}
           PLUTO_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_STORE_PASSWORD }}
           PLUTO_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
-        run: flutter build appbundle --release --flavor "$PLAY_ENVIRONMENT" --dart-define-from-file="config/android/$PLAY_ENVIRONMENT.json" --build-number="$ANDROID_VERSION_CODE"
+        run: |
+          # Failed-job retries reuse selection outputs from the earlier attempt.
+          # Build with the manifest prepared by this bundle job instead.
+          version_code="$(node scripts/android/build-version.mjs)"
+          flutter build appbundle --release --flavor "$PLAY_ENVIRONMENT" --dart-define-from-file="config/android/$PLAY_ENVIRONMENT.json" --build-number="$version_code"
       - name: Verify signing and 16 KB native libraries
         run: |
           node scripts/android/verify-play-build.mjs
