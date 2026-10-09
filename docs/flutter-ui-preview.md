@@ -5,6 +5,7 @@ animations, native touch feedback and orbital artwork with a River Styx motif.
 Points have a Treasury accent; admission tickets have a Passage accent. OS
 reduced-motion settings skip the custom movement. QR geometry and its light
 quiet zone are unchanged, and the wallet still builds ticket rows lazily.
+The decorative planet sits in the upper-right corner, away from tier progress.
 
 Navigation keeps Home, Rewards, Tickets and Profile in the bottom bar. The
 signed-in overflow menu contains the website shortcut, QR scanner, Account and

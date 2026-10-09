@@ -97,11 +97,12 @@ class PlutoOrbitPainter extends CustomPainter {
               center: Offset.zero, width: width, height: width * .6),
           paint);
     }
+    canvas.restore();
+    // Keep the decorative planet in the corner, clear of points and progress.
     paint
       ..style = PaintingStyle.fill
       ..color = PlutoColors.orange.withValues(alpha: .8);
-    canvas.drawCircle(const Offset(-104, 20), 4, paint);
-    canvas.restore();
+    canvas.drawCircle(Offset(size.width - 24, 24), 4, paint);
     // A quiet River Styx motif ties the orbital artwork to Pluto's underworld.
     paint
       ..style = PaintingStyle.stroke
