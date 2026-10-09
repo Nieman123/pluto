@@ -101,6 +101,15 @@ async function field(page, path, value) {
 
     stage = 'Flutter navigation and old editor removal';
     const appContext = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1280, height: 900 } });
+    // The dashboard previews only three events. Earlier suites publish their own
+    // events, so verify the real feed includes this fixture, then scope the preview.
+    await appContext.route('**/tickets/api/public/events', async route => {
+      const response = await route.fetch(); assert.equal(response.status(), 200);
+      const feed = await response.json(), event = feed.events.find(e => e.id === `native-${eventId}`);
+      assert.ok(event, 'published free event is present in the active app feed');
+      assert.equal(event.registrationMode, 'free');
+      await route.fulfill({ response, json: { ...feed, events: [event] } });
+    });
     const app = await appContext.newPage(); active = app;
     await app.goto(`${base}/app/sign-on`); await semantics(app);
     await app.getByRole('textbox', { name: /Email/ }).fill('staff@ticketing-preview.invalid');
@@ -122,6 +131,6 @@ async function field(page, path, value) {
     assert.equal(await app.getByText('YOUR NEXT NIGHT STARTS HERE', { exact: true }).count(), 0);
     await appContext.close(); await context.close();
     console.log('Free-event browser checks passed: Studio creation/publishing, public venue, no registration or payment form, discovery/app labels, flyer, desktop/mobile accessibility and Flutter Studio navigation without the old editor.');
-  } catch (error) { console.error('Free-event browser phase:', stage); if (active) await active.screenshot({ path: 'tmp/ticketing-free-event-failure.png' }).catch(() => {}); throw error; }
+  } catch (error) { console.error('Free-event browser phase:', stage); if (active) { console.error('URL:', active.url()); console.error((await active.locator('body').innerText()).slice(0, 2500)); await active.screenshot({ path: 'tmp/ticketing-free-event-failure.png' }).catch(() => {}); } throw error; }
   finally { await browser.close(); }
 })().then(() => process.exit(0), error => { console.error(error); process.exit(1); });
