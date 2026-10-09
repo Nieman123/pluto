@@ -417,7 +417,7 @@ class _SignUpPageState extends State<SignUpPage> {
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: _panelColor,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(26),
         border: Border.all(color: Colors.white24),
         boxShadow: <BoxShadow>[
           BoxShadow(
@@ -694,7 +694,7 @@ class _SignUpPageState extends State<SignUpPage> {
           padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
             color: _panelColor,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(26),
             border: Border.all(color: Colors.white24),
           ),
           child: Column(
@@ -736,7 +736,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     foregroundColor: _textColor,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
-                  child: const Text('Open Dashboard'),
+                  child: const Text('Open Home'),
                 ),
               ),
             ],

@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher_string.dart';
 
 import 'current_events_repository.dart';
 import 'festival_visibility.dart';
+import 'src/theme/pluto_ui.dart';
 import 'user_profile_repository.dart';
 
 class _DashboardColors {
@@ -68,7 +69,7 @@ class SignedInHomePage extends StatelessWidget {
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(16),
           ),
         ),
       ),
@@ -80,7 +81,7 @@ class SignedInHomePage extends StatelessWidget {
           ),
           padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(16),
           ),
         ),
       ),
@@ -98,54 +99,28 @@ class SignedInHomePage extends StatelessWidget {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
         final bool isCompact = constraints.maxWidth < 560;
-        final double logoSize = isCompact ? 64 : 76;
-        return Row(
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            SizedBox(
-              width: logoSize,
-              height: logoSize,
-              child: Image.asset(
-                'assets/experience/pluto-logo-small.webp',
-                fit: BoxFit.contain,
+            Text(
+              'Welcome back, $displayName',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: _DashboardColors.ink,
+                fontSize: isCompact ? 25 : 30,
+                fontWeight: FontWeight.w800,
+                height: 1.12,
               ),
             ),
-            SizedBox(width: isCompact ? 12 : 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  const Text(
-                    'MEMBER DASHBOARD',
-                    style: TextStyle(
-                      color: _DashboardColors.orange,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    'Welcome back, $displayName',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: _DashboardColors.ink,
-                      fontSize: isCompact ? 25 : 30,
-                      fontWeight: FontWeight.w800,
-                      height: 1.12,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    user.email ?? 'Your Pluto home base',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: _DashboardColors.muted,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
+            const SizedBox(height: 5),
+            const Text(
+              'Good to have you here.',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: _DashboardColors.muted,
+                fontSize: 13,
               ),
             ),
           ],
@@ -232,6 +207,24 @@ class SignedInHomePage extends StatelessWidget {
     );
   }
 
+  Widget _buildQuickActions(BuildContext context) {
+    return Row(children: [
+      Expanded(
+          child: OutlinedButton.icon(
+        onPressed: () => context.go('/tickets'),
+        icon: const Icon(Icons.confirmation_number_outlined),
+        label: const Text('My tickets'),
+      )),
+      const SizedBox(width: 12),
+      Expanded(
+          child: OutlinedButton.icon(
+        onPressed: () => context.go('/scan-qr'),
+        icon: const Icon(Icons.qr_code_scanner, color: PlutoColors.mint),
+        label: const Text('Scan & earn'),
+      )),
+    ]);
+  }
+
   Widget _buildEventFlyer(CurrentEvent event, double size) {
     if (event.flyerImageUrl.isNotEmpty) {
       return Image.network(
@@ -272,95 +265,90 @@ class SignedInHomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildEventRow(
-    BuildContext context, {
-    required CurrentEvent event,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(13),
-      decoration: BoxDecoration(
-        color: _DashboardColors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: _DashboardColors.purple.withValues(alpha: 0.16),
-        ),
-      ),
-      child: LayoutBuilder(
-        builder: (BuildContext context, BoxConstraints constraints) {
-          final bool isCompact = constraints.maxWidth < 560;
-          final double flyerSize = isCompact ? 88 : 106;
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: _buildEventFlyer(event, flyerSize),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
+  Widget _buildEventRow(BuildContext context, {required CurrentEvent event}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: PlutoSurface(
+        padding: EdgeInsets.zero,
+        child: PlutoPressable(
+          onTap: () => _openLink(event.ticketUrl),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: LayoutBuilder(builder: (context, constraints) {
+              final compact = constraints.maxWidth < 560;
+              return Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      event.title.isEmpty ? 'Upcoming Event' : event.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: _DashboardColors.ink,
-                        fontSize: 19,
-                        fontWeight: FontWeight.w800,
-                        height: 1.2,
-                      ),
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: SizedBox(
+                          width: compact ? 88 : 120,
+                          height: compact ? 126 : 154,
+                          child: _buildEventFlyer(event, compact ? 88 : 120)),
                     ),
-                    if (event.details.trim().isNotEmpty) ...<Widget>[
-                      const SizedBox(height: 6),
-                      Text(
-                        event.details,
-                        maxLines: isCompact ? 3 : 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: _DashboardColors.muted,
-                          fontSize: 14,
-                          height: 1.4,
-                        ),
-                      ),
-                    ],
-                    if (event.isFree) ...<Widget>[
-                      const SizedBox(height: 8),
-                      const Text('Free entry · No RSVP required',
-                          style: TextStyle(color: _DashboardColors.muted)),
-                    ],
-                    const SizedBox(height: 11),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: <Widget>[
-                        if (event.ticketUrl.trim().isNotEmpty)
-                          ElevatedButton.icon(
-                            onPressed: () => _openLink(event.ticketUrl),
-                            icon: Icon(
+                    const SizedBox(width: 16),
+                    Expanded(
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                          Text(
                               event.isFree
-                                  ? Icons.event_outlined
-                                  : Icons.confirmation_number_outlined,
-                              size: 18,
-                            ),
-                            label: Text(event.actionLabel),
-                          ),
-                        if (manaFestUiEnabled && event.isManaFest)
-                          OutlinedButton.icon(
-                            onPressed: () => context.go('/manafest'),
-                            icon: const Icon(Icons.festival_outlined, size: 18),
-                            label: const Text('Festival Hub'),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          );
-        },
+                                  ? 'FREE GATHERING'
+                                  : event.isRsvp
+                                      ? 'RSVP'
+                                      : 'PLUTO EVENTS',
+                              style: const TextStyle(
+                                  color: PlutoColors.orange,
+                                  fontFamily: 'SourceCodePro',
+                                  fontSize: 10,
+                                  letterSpacing: 1)),
+                          const SizedBox(height: 7),
+                          Text(
+                              event.title.isEmpty
+                                  ? 'Upcoming Event'
+                                  : event.title,
+                              style: TextStyle(
+                                  color: PlutoColors.ink,
+                                  fontSize: compact ? 18 : 22,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.2)),
+                          if (event.details.trim().isNotEmpty) ...[
+                            const SizedBox(height: 7),
+                            Text(event.details,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    color: PlutoColors.muted,
+                                    fontSize: 13,
+                                    height: 1.4)),
+                          ],
+                          if (event.isFree) ...[
+                            const SizedBox(height: 7),
+                            const Text('Free entry · No RSVP required',
+                                style: TextStyle(
+                                    color: PlutoColors.mint, fontSize: 12)),
+                          ],
+                          const SizedBox(height: 10),
+                          Wrap(spacing: 8, runSpacing: 8, children: [
+                            if (event.ticketUrl.trim().isNotEmpty)
+                              ElevatedButton.icon(
+                                onPressed: () => _openLink(event.ticketUrl),
+                                icon: const Icon(Icons.north_east, size: 16),
+                                label: Text(event.actionLabel),
+                              ),
+                            if (manaFestUiEnabled && event.isManaFest)
+                              OutlinedButton.icon(
+                                onPressed: () => context.go('/manafest'),
+                                icon: const Icon(Icons.festival_outlined,
+                                    size: 18),
+                                label: const Text('Festival Hub'),
+                              ),
+                          ]),
+                        ])),
+                  ]);
+            }),
+          ),
+        ),
       ),
     );
   }
@@ -460,9 +448,11 @@ class SignedInHomePage extends StatelessWidget {
               28,
             ),
             children: <Widget>[
-              _buildGreetingHeader(context),
+              PlutoEntrance(child: _buildGreetingHeader(context)),
               SizedBox(height: isCompact ? 20 : 26),
-              _buildOverview(context),
+              PlutoEntrance(child: _buildOverview(context)),
+              const SizedBox(height: 16),
+              _buildQuickActions(context),
               if (manaFestUiEnabled) ...<Widget>[
                 const SizedBox(height: 16),
                 _DashboardPrepBand(
@@ -471,7 +461,7 @@ class SignedInHomePage extends StatelessWidget {
                 ),
               ],
               const SizedBox(height: 28),
-              _buildUpcomingEventsSection(context),
+              PlutoEntrance(child: _buildUpcomingEventsSection(context)),
             ],
           );
         },
@@ -636,7 +626,7 @@ class _ManaFestCountdownPanelState extends State<_ManaFestCountdownPanel> {
     return Container(
       decoration: BoxDecoration(
         color: _DashboardColors.surfaceStrong,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: _DashboardColors.orange.withValues(alpha: 0.25),
         ),
@@ -833,17 +823,8 @@ class _DashboardPointsPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isTopTier = profile.nextTierThreshold == null;
-    return Container(
-      width: double.infinity,
-      constraints: const BoxConstraints(minHeight: 310),
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: _DashboardColors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: _DashboardColors.purple.withValues(alpha: 0.2),
-        ),
-      ),
+    return PlutoSurface(
+      orbit: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
@@ -853,12 +834,14 @@ class _DashboardPointsPanel extends StatelessWidget {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: _DashboardColors.purple.withValues(alpha: 0.13),
-                  borderRadius: BorderRadius.circular(8),
+                  color: _DashboardColors.orange.withValues(alpha: 0.13),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                      color: _DashboardColors.orange.withValues(alpha: .35)),
                 ),
                 child: const Icon(
-                  Icons.auto_awesome_outlined,
-                  color: _DashboardColors.purple,
+                  Icons.toll_outlined,
+                  color: _DashboardColors.orange,
                   size: 22,
                 ),
               ),
@@ -895,12 +878,21 @@ class _DashboardPointsPanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 18),
-          Text(
-            '${profile.pointsBalance} available',
-            style: const TextStyle(
-              color: _DashboardColors.ink,
-              fontSize: 30,
-              fontWeight: FontWeight.w800,
+          Semantics(
+            label: '${profile.pointsBalance} available',
+            excludeSemantics: true,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: profile.pointsBalance.toDouble()),
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : const Duration(milliseconds: 650),
+              curve: Curves.easeOutCubic,
+              builder: (_, value, __) => Text('${value.round()} available',
+                  style: const TextStyle(
+                      color: _DashboardColors.ink,
+                      fontSize: 38,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -1.5)),
             ),
           ),
           const SizedBox(height: 4),
@@ -914,11 +906,16 @@ class _DashboardPointsPanel extends StatelessWidget {
           const SizedBox(height: 17),
           ClipRRect(
             borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              value: profile.tierProgress,
-              minHeight: 7,
-              backgroundColor: _DashboardColors.ink.withValues(alpha: 0.12),
-              color: _DashboardColors.purple,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: profile.tierProgress),
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : const Duration(milliseconds: 650),
+              builder: (_, value, __) => LinearProgressIndicator(
+                  value: value,
+                  minHeight: 8,
+                  backgroundColor: const Color(0x22F7F2FF),
+                  color: PlutoColors.lilac),
             ),
           ),
           const SizedBox(height: 8),
@@ -960,7 +957,7 @@ class _DashboardPointsPanel extends StatelessWidget {
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
-            child: OutlinedButton.icon(
+            child: ElevatedButton.icon(
               onPressed: onBrowseRewards,
               icon: const Icon(Icons.card_giftcard_outlined, size: 18),
               label: const Text('Browse Rewards'),
@@ -1038,7 +1035,7 @@ class _DashboardPrepBand extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: _DashboardColors.surface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: _DashboardColors.cyan.withValues(alpha: 0.16),
         ),
@@ -1147,7 +1144,7 @@ class _DashboardPrepAction extends StatelessWidget {
           height: 44,
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(16),
           ),
           child: Icon(icon, color: color, size: 22),
         ),
@@ -1206,7 +1203,7 @@ class _DashboardStatusPanel extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: _DashboardColors.surface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: _DashboardColors.rose.withValues(alpha: 0.2),
         ),
@@ -1241,7 +1238,7 @@ class _DashboardPanelSkeleton extends StatelessWidget {
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: _DashboardColors.surface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0x1FD9A7FF)),
       ),
       child: const Column(
@@ -1272,7 +1269,7 @@ class _DashboardEventSkeleton extends StatelessWidget {
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
         color: _DashboardColors.surface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0x1FD9A7FF)),
       ),
       child: const Row(
@@ -1334,7 +1331,7 @@ class _DashboardEmptyState extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: _DashboardColors.surface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: _DashboardColors.cyan.withValues(alpha: 0.16),
         ),

@@ -479,7 +479,8 @@ class _MyAppState extends State<MyApp> {
             Align(
               alignment: Alignment.bottomCenter,
               child: SafeArea(
-                minimum: const EdgeInsets.all(14),
+                // Keep the floating opt-in above the app's bottom navigation.
+                minimum: const EdgeInsets.fromLTRB(14, 14, 14, 104),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 760),
                   child: Card(

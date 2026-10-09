@@ -8,6 +8,8 @@ import 'src/calendar_picker.dart';
 import 'src/email_verification.dart';
 import 'src/html_open_link.dart';
 import 'src/offline_ticket_cache.dart';
+import 'src/theme/custom_theme.dart';
+import 'src/theme/pluto_ui.dart';
 import 'src/ticket_access_store.dart';
 import 'src/ticket_checkout_cleanup.dart';
 import 'src/ticket_qr.dart';
@@ -329,74 +331,23 @@ class _TicketsPageState extends State<TicketsPage> with WidgetsBindingObserver {
     });
   }
 
-  static const Color _ink = Color(0xFFF4EFF8);
   static const Color _muted = Color(0xFFBDB0CB);
   static const Color _accent = Color(0xFFD49CFF);
-  static const Color _panelColor = Color(0xE60C0910);
 
-  ThemeData get _walletTheme => ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        fontFamily: 'Montserrat',
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: _accent,
-          brightness: Brightness.dark,
-          primary: _accent,
-          surface: const Color(0xFF16101D),
-          error: const Color(0xFFFFB4AB),
-        ),
-        textTheme: ThemeData.dark().textTheme.apply(
-              fontFamily: 'Montserrat',
-              bodyColor: _ink,
-              displayColor: _ink,
-            ),
-        filledButtonTheme: FilledButtonThemeData(
-            style: FilledButton.styleFrom(
-          backgroundColor: const Color(0xFF7F48D6),
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        )),
-        outlinedButtonTheme: OutlinedButtonThemeData(
-            style: OutlinedButton.styleFrom(
-          foregroundColor: _ink,
-          side: const BorderSide(color: Colors.white24),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        )),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: const Color(0xFF15111B),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.white24)),
-          labelStyle: const TextStyle(color: _muted),
-        ),
-        dividerColor: Colors.white12,
-      );
+  ThemeData get _walletTheme => CustomTheme.darkTheme;
 
   Widget _panel(
-          {required List<Widget> children, Color border = Colors.white12}) =>
-      Container(
-        width: double.infinity,
-        margin: const EdgeInsets.only(bottom: 18),
-        padding: const EdgeInsets.all(22),
-        decoration: BoxDecoration(
-          color: _panelColor,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: border),
-          boxShadow: <BoxShadow>[
-            BoxShadow(
-                color: Colors.black.withValues(alpha: .16),
-                blurRadius: 22,
-                offset: const Offset(0, 10))
-          ],
+          {required List<Widget> children,
+          Color border = Colors.white12,
+          bool ticketPass = false}) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: 18),
+        child: PlutoSurface(
+          orbit: ticketPass,
+          borderColor: border,
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start, children: children),
         ),
-        child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start, children: children),
       );
 
   Widget _title(String text) => Padding(
@@ -507,7 +458,19 @@ class _TicketsPageState extends State<TicketsPage> with WidgetsBindingObserver {
     }
   }
 
-  Widget _ticket(Map<String, dynamic> ticket) => _panel(children: <Widget>[
+  Widget _ticket(Map<String, dynamic> ticket) =>
+      _panel(ticketPass: true, children: <Widget>[
+        const Row(children: [
+          Icon(Icons.sailing_outlined, size: 16, color: PlutoColors.orange),
+          SizedBox(width: 8),
+          Text('YOUR PASSAGE',
+              style: TextStyle(
+                  color: PlutoColors.orange,
+                  fontFamily: 'SourceCodePro',
+                  fontSize: 10,
+                  letterSpacing: 1.5)),
+        ]),
+        const SizedBox(height: 16),
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
           const Padding(
               padding: EdgeInsets.only(right: 14, top: 3),
@@ -548,7 +511,8 @@ class _TicketsPageState extends State<TicketsPage> with WidgetsBindingObserver {
               'First admission recorded. Use your wristband for festival re-entry.'),
         ],
         const Padding(
-            padding: EdgeInsets.symmetric(vertical: 20), child: Divider()),
+            padding: EdgeInsets.symmetric(vertical: 14),
+            child: PlutoTicketDivider()),
         if (ticket['qr'] != null) ...<Widget>[
           ZoomableTicketQr(
               data: ticket['qr'] as String,
@@ -772,7 +736,7 @@ class _TicketsPageState extends State<TicketsPage> with WidgetsBindingObserver {
   Widget _orderRow(Map<String, dynamic> order) => Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Material(
-          color: _panelColor,
+          color: PlutoColors.surface,
           borderRadius: BorderRadius.circular(16),
           child: ListTile(
             contentPadding:
@@ -819,24 +783,30 @@ class _TicketsPageState extends State<TicketsPage> with WidgetsBindingObserver {
           ? 'Your purchases, receipts and RSVP requests.'
           : 'Your admission tickets and RSVPs stay here in the Pluto app.'),
       const SizedBox(height: 18),
-      Wrap(spacing: 12, runSpacing: 10, children: <Widget>[
-        OutlinedButton.icon(
-            onPressed: () => _showWalletView(),
-            icon: const Icon(Icons.confirmation_number_outlined),
-            label: const Text('Tickets')),
-        OutlinedButton.icon(
-            onPressed: () => _showWalletView(orders: true),
-            icon: const Icon(Icons.receipt_long_outlined),
-            label: const Text('Orders')),
-        OutlinedButton.icon(
-            onPressed: () => htmlNavigateTo('/events'),
-            icon: const Icon(Icons.explore_outlined),
-            label: const Text('Explore events')),
-        OutlinedButton.icon(
-            onPressed: () => context.go('/'),
-            icon: const Icon(Icons.dashboard_outlined),
-            label: const Text('Open Pluto app')),
-      ]),
+      SizedBox(
+          width: double.infinity,
+          child: SegmentedButton<bool>(
+            segments: const [
+              ButtonSegment(
+                  value: false,
+                  icon: Icon(Icons.confirmation_number_outlined),
+                  label: Text('Tickets')),
+              ButtonSegment(
+                  value: true,
+                  icon: Icon(Icons.receipt_long_outlined),
+                  label: Text('Orders')),
+            ],
+            selected: {showOrders},
+            showSelectedIcon: false,
+            onSelectionChanged: (selection) =>
+                _showWalletView(orders: selection.single),
+          )),
+      Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+              onPressed: () => htmlNavigateTo('/events'),
+              icon: const Icon(Icons.explore_outlined),
+              label: const Text('Explore events'))),
       const SizedBox(height: 24),
       if (_busy)
         const Padding(

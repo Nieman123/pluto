@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'src/background/pluto_background.dart';
 import 'src/nav_bar/nav_bar.dart';
+import 'src/theme/pluto_ui.dart';
 import 'user_profile_repository.dart';
 
 class ItemShopPage extends StatefulWidget {
@@ -114,7 +115,7 @@ class _ItemShopPageState extends State<ItemShopPage> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 680),
         child: Card(
-          color: Colors.black.withValues(alpha: 0.45),
+          color: PlutoColors.surface,
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -149,12 +150,23 @@ class _ItemShopPageState extends State<ItemShopPage> {
 
   Widget _buildPointsSummaryCard(UserProfile profile) {
     return Card(
-      color: Colors.black.withValues(alpha: 0.45),
+      color: const Color(0xFF332341),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
+            const Row(children: [
+              Icon(Icons.toll_outlined, color: PlutoColors.orange, size: 18),
+              SizedBox(width: 8),
+              Text('THE TREASURY',
+                  style: TextStyle(
+                      color: PlutoColors.orange,
+                      fontFamily: 'SourceCodePro',
+                      fontSize: 11,
+                      letterSpacing: 1.5)),
+            ]),
+            const SizedBox(height: 10),
             const Text(
               'Your Rewards Wallet',
               style: TextStyle(
@@ -164,6 +176,10 @@ class _ItemShopPageState extends State<ItemShopPage> {
               ),
             ),
             const SizedBox(height: 12),
+            const Text(
+                'Event check-ins and hidden QR codes turn into real perks.',
+                style: TextStyle(color: PlutoColors.muted, height: 1.5)),
+            const SizedBox(height: 16),
             Wrap(
               spacing: 12,
               runSpacing: 12,
@@ -199,7 +215,7 @@ class _ItemShopPageState extends State<ItemShopPage> {
     required UserProfile profile,
   }) {
     return Card(
-      color: Colors.black.withValues(alpha: 0.45),
+      color: PlutoColors.surface,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: StreamBuilder<List<RewardItem>>(
@@ -253,7 +269,7 @@ class _ItemShopPageState extends State<ItemShopPage> {
                   final bool isRedeeming = _redeemingRewardId == reward.id;
 
                   return Card(
-                    color: Colors.black.withValues(alpha: 0.35),
+                    color: const Color(0xFF2B2038),
                     margin: const EdgeInsets.only(top: 12),
                     child: Padding(
                       padding: const EdgeInsets.all(12),
@@ -267,7 +283,7 @@ class _ItemShopPageState extends State<ItemShopPage> {
                             children: <Widget>[
                               if (reward.imageBytes != null)
                                 ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(16),
                                   child: Image.memory(
                                     reward.imageBytes!,
                                     width: 110,
@@ -276,7 +292,9 @@ class _ItemShopPageState extends State<ItemShopPage> {
                                   ),
                                 ),
                               SizedBox(
-                                width: 420,
+                                width: (MediaQuery.sizeOf(context).width - 96)
+                                    .clamp(0, 420)
+                                    .toDouble(),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: <Widget>[
@@ -423,7 +441,7 @@ class _ItemShopPageState extends State<ItemShopPage> {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: Colors.black87,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Text(
           _statusMessage,

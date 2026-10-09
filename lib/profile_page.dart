@@ -12,6 +12,7 @@ import 'src/email_verification.dart';
 import 'src/google_auth.dart';
 import 'src/legal_links.dart';
 import 'src/nav_bar/nav_bar.dart';
+import 'src/theme/pluto_ui.dart';
 import 'user_profile_repository.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -208,7 +209,7 @@ class _ProfilePageState extends State<ProfilePage> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 680),
         child: Card(
-          color: Colors.black.withValues(alpha: 0.45),
+          color: PlutoColors.surface,
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -249,7 +250,7 @@ class _ProfilePageState extends State<ProfilePage> {
     final Uint8List? profileBytes = decodeDataUrl(_profileImageDataUrl);
 
     return Card(
-      color: Colors.black.withValues(alpha: 0.45),
+      color: PlutoColors.surface,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -329,10 +330,6 @@ class _ProfilePageState extends State<ProfilePage> {
               'Signed in as: ${user.email ?? 'No email'}',
               style: const TextStyle(color: Colors.white70),
             ),
-            SelectableText(
-              'UID: ${profile.uid}',
-              style: const TextStyle(color: Colors.white70),
-            ),
             const SizedBox(height: 14),
             ElevatedButton(
               onPressed: _isSavingProfile || _isSigningOut
@@ -372,7 +369,7 @@ class _ProfilePageState extends State<ProfilePage> {
     ];
 
     return Card(
-      color: Colors.black.withValues(alpha: 0.45),
+      color: PlutoColors.surface,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -482,7 +479,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildPointsHistoryCard(User user) {
     return Card(
-      color: Colors.black.withValues(alpha: 0.45),
+      color: PlutoColors.surface,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: StreamBuilder<List<PointsTransaction>>(
@@ -541,7 +538,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           .format(transaction.createdAt!.toLocal());
 
                   return Card(
-                    color: Colors.black.withValues(alpha: 0.35),
+                    color: const Color(0xFF2B2038),
                     margin: const EdgeInsets.only(top: 10),
                     child: ListTile(
                       title: Text(
@@ -581,11 +578,12 @@ class _ProfilePageState extends State<ProfilePage> {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: <Widget>[
-              _buildProfileEditorCard(user: user, profile: profile),
+              PlutoEntrance(
+                  child: _buildProfileEditorCard(user: user, profile: profile)),
               const SizedBox(height: 14),
-              _buildTierAndPointsCard(profile),
+              PlutoEntrance(child: _buildTierAndPointsCard(profile)),
               const SizedBox(height: 14),
-              _buildPointsHistoryCard(user),
+              PlutoEntrance(child: _buildPointsHistoryCard(user)),
               const SizedBox(height: 14),
               const LegalLinks(includeDeletion: true),
               const AppBuildInfo(),
@@ -667,7 +665,7 @@ class _ProfilePageState extends State<ProfilePage> {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: Colors.black87,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Text(
           _statusMessage,

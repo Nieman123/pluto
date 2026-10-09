@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -20,16 +21,6 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
   final bool isDarkModeBtnVisible;
 
   static const String _homeRoute = '/__public-home';
-  static const _NavMenuAction _homeMenuAction = _NavMenuAction.homeSection(
-    label: 'Home',
-    icon: Icons.home,
-    sectionIndex: 0,
-  );
-  static const _NavMenuAction _dashboardMenuAction = _NavMenuAction.route(
-    label: 'Dashboard',
-    icon: Icons.dashboard,
-    route: '/',
-  );
   static const _NavMenuAction _ticketsMenuAction = _NavMenuAction.route(
     label: 'Tickets',
     icon: Icons.confirmation_number_outlined,
@@ -68,7 +59,7 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
         children: <Widget>[
           const SizedBox(width: 12),
           Tooltip(
-            message: 'Dashboard',
+            message: 'Home',
             child: InkWell(
               borderRadius: BorderRadius.circular(8),
               onTap: () => GoRouter.of(context).go('/'),
@@ -86,6 +77,13 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
             ),
           ),
           const SizedBox(width: 8),
+          if (MediaQuery.sizeOf(context).width >= 380)
+            const Text('PLUTO',
+                style: TextStyle(
+                    fontFamily: 'SourceCodePro',
+                    fontSize: 14,
+                    letterSpacing: 3,
+                    color: Color(0xFFD4B2FF))),
           const Spacer(),
           const SizedBox(width: 8),
           _AuthNavActions(
@@ -102,14 +100,7 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
     required bool showHomeSectionSubItems,
   }) {
     return <_NavMenuAction>[
-      _dashboardMenuAction,
       ...compactHomeActions(showSectionSubItems: showHomeSectionSubItems),
-      _ticketsMenuAction,
-      const _NavMenuAction.route(
-        label: 'Rewards Shop',
-        icon: Icons.card_giftcard,
-        route: '/shop',
-      ),
       const _NavMenuAction.route(
         label: 'Scan QR Code',
         icon: Icons.qr_code_scanner,
@@ -126,11 +117,6 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
           icon: Icons.admin_panel_settings,
           route: '/admin',
         ),
-      const _NavMenuAction.route(
-        label: 'Profile',
-        icon: Icons.person,
-        route: '/profile',
-      ),
     ];
   }
 
@@ -155,9 +141,13 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
 
   static List<_NavMenuAction> compactHomeActions({
     required bool showSectionSubItems,
+    bool isWeb = kIsWeb,
   }) {
     return <_NavMenuAction>[
-      _homeMenuAction,
+      _NavMenuAction.homeSection(
+          label: isWeb ? 'Home' : 'Go to Website',
+          icon: isWeb ? Icons.home_outlined : Icons.open_in_new,
+          sectionIndex: 0),
       if (showSectionSubItems) ..._homeSectionMenuActions,
     ];
   }
@@ -369,7 +359,7 @@ class _CompactNavMenuButton extends StatelessWidget {
       color: Theme.of(context).scaffoldBackgroundColor,
       elevation: 8,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         side: BorderSide(color: navTextColor.withValues(alpha: 0.18)),
       ),
       constraints: const BoxConstraints(minWidth: 210),
@@ -475,7 +465,7 @@ class _ProfileAvatarButton extends StatelessWidget {
       padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: navTextColor, width: 1.5),
+        border: Border.all(color: const Color(0xFFD4B2FF), width: 1.5),
       ),
       child: CircleAvatar(
         backgroundColor: navTextColor.withValues(alpha: 0.12),

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <inset xmlns:android="http://schemas.android.com/apk/res/android"
-    android:insetLeft="20%" android:insetTop="20%" android:insetRight="20%" android:insetBottom="20%">
-    <bitmap android:gravity="fill" android:src="@drawable/pluto_logo" />
+    android:insetLeft="16%" android:insetTop="16%" android:insetRight="16%" android:insetBottom="16%">
+    <bitmap android:gravity="fill" android:filter="true" android:src="@drawable/pluto_launcher_art" />
 </inset>
