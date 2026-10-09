@@ -230,8 +230,9 @@ async function surface(page, name) {
     assert.equal(view.total, 0); assert.ok(view.tickets[0].qr);
     await page.evaluate(({ orderId, accessKey }) => localStorage.setItem(`pluto-order-${orderId}`, accessKey), { orderId: comp.orderId, accessKey });
     stage = 'app order'; const app = await context.newPage(); activePage = app; await app.goto(`${base}/app/tickets?order=${comp.orderId}`);
-    await semantics(app); await app.getByText('A Night in Orbit', { exact: true }).first().waitFor({ timeout: 30000 });
+    await semantics(app); await revealText(app, 'A Night in Orbit');
     await revealText(app, 'Status: valid');
+    await revealText(app, app.getByRole('button', { name: /Admission QR for General admission/ }));
     assert.equal(await app.getByText(/Download.*ticket|Print ticket/).count(), 0);
     await app.screenshot({ path: 'tmp/ticketing-app-order.png' });
     await api(page, 'transfer', { orderId: comp.orderId, accessKey, ticketId: view.tickets[0].id, email: 'recipient@preview.invalid' });

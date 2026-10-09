@@ -2,9 +2,11 @@
 // ticket with real scrolling before asserting its QR or admission status.
 async function revealText(page, text) {
   // Sliver ticket semantics group adjacent text into one card announcement.
+  // Ignore collapsed text leaves: the painted card's accessible group can be
+  // visible even when an earlier duplicate text node has no layout box.
   const target = typeof text === 'string'
-    ? page.getByText(text, { exact: false }).or(page.getByLabel(text, { exact: false })).first()
-    : text;
+    ? page.getByText(text, { exact: false }).or(page.getByLabel(text, { exact: false })).filter({ visible: true }).first()
+    : text.filter({ visible: true }).first();
   await page.mouse.move(190, 500);
   for (let step = 0; step < 200; step++) {
     if (await target.isVisible()) return target;
