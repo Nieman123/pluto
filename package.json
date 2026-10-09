@@ -14,7 +14,7 @@
     "test:rentals:rules": "node --test test/rentals-rules.test.mjs",
     "test:waiver:integration": "npm --prefix functions run test:waiver:integration",
     "test:ticketing:integration": "node functions/test/ticketing-integration.cjs",
-    "test:ticketing:hardening": "node --test functions/test/ticketing-hardening.cjs functions/test/offline-hardening.cjs",
+    "test:ticketing:hardening": "node --test functions/test/ticketing-hardening.cjs functions/test/offline-hardening.cjs functions/test/ticket-checkin-rewards.cjs",
     "test:ticketing:rotation": "node --test functions/test/signing-rotation.cjs",
     "test:ticketing:settings": "node --test functions/test/ticket-settings.cjs",
     "test:ticketing:rsvp": "node functions/test/rsvp-integration.cjs",
