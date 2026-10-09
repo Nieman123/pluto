@@ -39,6 +39,8 @@ for (const role of ['anonymous', 'buyer', 'ticketing-rules-admin']) test(`${role
     await assertFails(getDoc(doc(c.firestore(), path))); await assertFails(setDoc(doc(c.firestore(), path), { name: 'Forged guest' }));
   }
   await assertFails(getDocs(collection(c.firestore(), 'ticketingEvents/test-event/guests')));
+  await assertFails(getDoc(doc(c.firestore(), 'ticketingTickets/private/rewards/check-in')));
+  await assertFails(setDoc(doc(c.firestore(), 'ticketingTickets/private/rewards/check-in'), { points: 1000000, creditedUid: role }));
   for (const name of privateCollections) {
     await assertFails(getDoc(doc(c.firestore(), name, 'private'))); await assertFails(getDocs(collection(c.firestore(), name))); await assertFails(setDoc(doc(c.firestore(), name, 'private'), { private: false }));
   }
