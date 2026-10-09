@@ -14,7 +14,12 @@ const auth = backend('firebase-admin/auth').getAuth(), db = backend('firebase-ad
 const base = 'http://127.0.0.1:4173', emulator = 'http://127.0.0.1:9095';
 const emails = [], password = 'Local-verification-2026!';
 let browser, active, stage = 'setup';
-const feedback = (page, text) => page.getByLabel(text).or(page.getByText(text)).first();
+// Flutter also copies snackbars into screen-reader announcement nodes. Assert
+// the actual UI semantics, so duplicate/stale announcements cannot satisfy it.
+const feedback = (page, text) => {
+  const ui = page.locator('flt-semantics-host');
+  return ui.getByLabel(text).or(ui.getByText(text)).first();
+};
 async function semantics(page) {
   await page.locator('flt-semantics-placeholder').evaluate(el => el.click(), { timeout: 15000 }).catch(() => {});
 }
@@ -60,7 +65,17 @@ async function fullSignup(page, email) {
     await active.getByRole('button', { name: 'Create account', exact: true }).click();
     await active.getByRole('textbox', { name: /Password/i }).fill(password);
     await active.getByRole('button', { name: 'Create Account', exact: true }).last().click();
-    await active.getByText(/Verification email sent/).waitFor();
+    // Keep a duplicate announcement present to reproduce Flutter's live-region
+    // race deterministically; it must not substitute for the visible message.
+    await active.evaluate(() => {
+      const announcement = document.createElement('flt-announcement-polite');
+      announcement.id = 'verification-announcement-fixture';
+      announcement.setAttribute('aria-live', 'polite');
+      announcement.textContent = 'Verification email sent. Check your inbox and spam folder.';
+      document.body.append(announcement);
+    });
+    await feedback(active, /Verification email sent/).waitFor();
+    await active.locator('#verification-announcement-fixture').evaluate(el => el.remove());
     const initial = await received(active, email, 1);
     assert.equal(new URL(initial[0].oobLink).searchParams.get('continueUrl'), `${base}/app/profile`);
     assert.equal((await auth.getUserByEmail(email)).emailVerified, false, 'sending a link never verifies the account');
@@ -110,7 +125,7 @@ async function fullSignup(page, email) {
     active = await failureContext.newPage(); await blockEmail(active);
     const failureEmail = `verify-failure-${randomUUID()}@preview.invalid`; emails.push(failureEmail);
     await fullSignup(active, failureEmail);
-    await active.getByText(/Your account was created, but the verification email could not be sent/).last().waitFor();
+    await feedback(active, /Your account was created, but the verification email could not be sent/).waitFor();
     const created = await auth.getUserByEmail(failureEmail);
     assert.equal(created.emailVerified, false); assert.equal((await codes(active, failureEmail)).length, 0);
     await active.unroute('**/accounts:sendOobCode?*'); await profile(active);
