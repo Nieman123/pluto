@@ -40,7 +40,8 @@ export async function publishInternal({ manifest, bundle, token, fetcher = fetch
     if (used.some(code => !Number.isSafeInteger(code) || code >= manifest.versionCode)) throw new Error('This build number is not newer than the existing Play versions. Start a new workflow run; do not rerun an older release.');
     const uploadUrl = `https://androidpublisher.googleapis.com/upload/androidpublisher/v3/applications/${settings.packageName}/edits/${edit}/bundles?uploadType=media`;
     const uploaded = await request(uploadUrl, 'POST', bundle, true);
-    if (Number(uploaded.versionCode) !== manifest.versionCode || uploaded.sha256?.toLowerCase() !== manifest.bundleSha256) throw new Error('Google Play bundle hash/version does not match the verified build.');
+    if (Number(uploaded.versionCode) !== manifest.versionCode) throw new Error(`Google Play bundle version does not match the verified build: expected ${manifest.versionCode}, received ${uploaded.versionCode}.`);
+    if (uploaded.sha256?.toLowerCase() !== manifest.bundleSha256) throw new Error('Google Play bundle SHA-256 does not match the verified build.');
     await request(`${base}/${edit}/tracks/internal`, 'PUT', { track: 'internal', releases: [{
       name: `Pluto ${manifest.versionCode} (${manifest.revision.slice(0, 7)})`, versionCodes: [String(manifest.versionCode)],
       status: 'completed', releaseNotes: [{ language: 'en-US', text: 'Bug fixes and improvements for Pluto Events testing.' }],

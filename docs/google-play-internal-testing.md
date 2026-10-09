@@ -137,6 +137,20 @@ In Google Cloud, select **pluto-staging-92eb7**:
 4. Create/download its JSON key and store the complete JSON in GitHub staging's
    `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` environment secret.
 
+Grant **Service Account Token Creator on the publisher itself**, which our
+Google authentication action requires to mint an OAuth access token. Run in
+Cloud Shell or a terminal authenticated as a project administrator:
+
+```powershell
+gcloud iam service-accounts add-iam-policy-binding github-play-publisher@pluto-staging-92eb7.iam.gserviceaccount.com --project=pluto-staging-92eb7 --member=serviceAccount:github-play-publisher@pluto-staging-92eb7.iam.gserviceaccount.com --role=roles/iam.serviceAccountTokenCreator
+```
+
+This binding is on the individual service account, not the whole project. Allow
+about five minutes for permissions to propagate. Repeat for the production
+publisher with `pluto-9b6ca` when configuring that environment. Missing this
+binding causes `iam.serviceAccounts.getAccessToken` to be denied even when the
+Play Console permissions are correct.
+
 In Play Console **Users and permissions → Invite new users**:
 
 1. Invite the service account's email.
@@ -176,6 +190,11 @@ requiring Play publisher credentials. It uses the same upload certificate and
 needs the three signing secrets and fingerprint variable.
 
 CI version codes start above 1,000,000 and increase with workflow run/attempt.
+The bundle build and release manifest use the current bundle job's attempt,
+including when only failed jobs are retried. Older workflows before this fix
+must use **Re-run all jobs** so cached selection outputs are refreshed; rerunning
+only the bundle job can produce a version mismatch. This fix requires selecting
+a revision that contains `scripts/android/build-version.mjs`.
 The local bootstrap uses version 2. Re-running an older workflow after a newer
 version has shipped is rejected. To ship an older source revision, start a new
 workflow run with that merged SHA and ensure its backend evidence is valid.
@@ -211,6 +230,7 @@ testers or claim a real upload succeeded.
 - [Internal testing setup and tester access](https://support.google.com/googleplay/android-developer/answer/9845334?hl=en)
 - [Create a Play Console app](https://support.google.com/googleplay/android-developer/answer/9859152?hl=en)
 - [Publisher API/service-account setup](https://developers.google.com/android-publisher/getting_started)
+- [GitHub Google authentication and token-creation permissions](https://github.com/google-github-actions/auth#inputs-service-account-key-json)
 - [Play App Signing and upload keys](https://developer.android.com/studio/publish/app-signing)
 - [Bundle upload API](https://developers.google.com/android-publisher/api-ref/rest/v3/edits.bundles/upload)
 - [Edit commit and preserving an existing review](https://developers.google.com/android-publisher/api-ref/rest/v3/edits/commit)
