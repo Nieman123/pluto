@@ -107,8 +107,8 @@ async function field(page, path, value) {
     await app.getByRole('button', { name: 'Continue', exact: true }).click();
     await app.getByLabel(/Enter your password/).fill('Local-ticketing-preview-2026!');
     await app.getByRole('button', { name: 'Sign In', exact: true }).click();
-    await app.getByRole('button', { name: 'Open Admin', exact: true }).waitFor();
-    await app.goto(`${base}/app/`); await semantics(app);
+    await app.waitForURL(`${base}/app/`);
+    await app.getByRole('button', { name: 'Browse Rewards', exact: true }).waitFor();
     await app.getByRole('button', { name: 'View event', exact: true }).waitFor();
     await app.goto(`${base}/app/admin/events`); await semantics(app);
     await app.getByRole('button', { name: 'Open Event Studio', exact: true }).waitFor();
