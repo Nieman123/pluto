@@ -5,20 +5,21 @@ class PlutoBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox.expand(
+    return const RepaintBoundary(
+        child: SizedBox.expand(
       child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: <Color>[
-              Color(0xFF141118),
-              Color(0xFF24172E),
-              Color(0xFF101014),
+              Color(0xFF17101F),
+              Color(0xFF21162D),
+              Color(0xFF100D16),
             ],
           ),
         ),
       ),
-    );
+    ));
   }
 }

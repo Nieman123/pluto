@@ -275,7 +275,7 @@ async function surface(page, name) {
     await account.evaluate(({ orderId, accessKey }) => localStorage.setItem(`pluto-order-${orderId}`, accessKey), { orderId: accountOrder.orderId, accessKey: accountKey });
     await account.goto(`${base}/app/tickets?order=${accountOrder.orderId}`); await semantics(account);
     await account.getByRole('button', { name: 'Create my account', exact: true }).waitFor();
-    await account.getByRole('button', { name: 'Open Pluto app', exact: true }).waitFor();
+    assert.equal(await account.getByRole('button', { name: 'Open Pluto app', exact: true }).count(), 0);
     await account.screenshot({ path: 'tmp/ticketing-guest-order.png' });
     await account.getByRole('button', { name: 'Create my account', exact: true }).click();
     await account.getByRole('textbox', { name: 'Name', exact: true }).waitFor();
@@ -305,7 +305,7 @@ async function surface(page, name) {
     assert.equal((await db.collection('ticketingOrders').doc(accountOrder.orderId).get()).data().ownerUid, accountUser.uid);
     await account.evaluate(() => { for (const key of Object.keys(localStorage)) if (key.startsWith('pluto-order-')) localStorage.removeItem(key); });
     await account.goto(`${base}/app/tickets`); await semantics(account); await revealText(account, 'Status: valid');
-    await walletTop(account); await account.getByRole('button', { name: 'Open Pluto app', exact: true }).click(); await account.waitForURL(`${base}/app/`);
+    await walletTop(account); await account.getByRole('tab', { name: 'Home', exact: true }).click(); await account.waitForURL(`${base}/app/`);
     await accountContext.close();
     const activeKey = key(), active = await api(page, 'staff/cash', { eventId: 'ticketing-preview-event', accessKey: activeKey, items: [{ offerId: 'weekend', quantity: 1 }], name: 'Door Guest', email: 'door@preview.invalid', comp: true, reason: 'Offline admission test', cashReceived: 0 });
     const admissionTicket = (await api(page, 'order', { orderId: active.orderId, accessKey: activeKey })).tickets[0];

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'theme/pluto_ui.dart';
 
 class WalletEvent {
   WalletEvent(this.id, this.title);
@@ -97,20 +98,29 @@ class TicketWalletBrowser extends StatelessWidget {
                     itemCount: groups.length,
                     itemBuilder: (_, index) {
                       final event = groups[index];
-                      return Card(
-                          margin: const EdgeInsets.only(bottom: 14),
-                          child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 20, vertical: 12),
-                              leading: const Icon(Icons.event_outlined),
-                              title: Text(event.title,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold)),
-                              subtitle: Text(event.tickets.isEmpty
-                                  ? 'RSVP status in Orders'
-                                  : '${event.tickets.length} ticket${event.tickets.length == 1 ? '' : 's'}'),
-                              trailing: const Icon(Icons.chevron_right),
-                              onTap: () => onEvent(event.id)));
+                      return Padding(
+                          padding: const EdgeInsets.only(bottom: 14),
+                          child: PlutoEntrance(
+                              child: PlutoSurface(
+                                  padding: EdgeInsets.zero,
+                                  child: ListTile(
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                              horizontal: 20, vertical: 12),
+                                      leading: const CircleAvatar(
+                                          backgroundColor: Color(0xFF3B2851),
+                                          child: Icon(
+                                              Icons
+                                                  .confirmation_number_outlined,
+                                              color: PlutoColors.lilac)),
+                                      title: Text(event.title,
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.bold)),
+                                      subtitle: Text(event.tickets.isEmpty
+                                          ? 'RSVP status in Orders'
+                                          : '${event.tickets.length} ticket${event.tickets.length == 1 ? '' : 's'}'),
+                                      trailing: const Icon(Icons.chevron_right),
+                                      onTap: () => onEvent(event.id)))));
                     })),
           if (wallet && !showOrders && selected != null)
             SliverPadding(
@@ -146,14 +156,15 @@ class TicketWalletBrowser extends StatelessWidget {
                                   column++) ...<Widget>[
                                 if (column > 0) const SizedBox(width: 18),
                                 Expanded(
-                                    child:
-                                        row * columns + column < visible.length
-                                            ? RepaintBoundary(
+                                    child: row * columns + column <
+                                            visible.length
+                                        ? RepaintBoundary(
+                                            child: PlutoEntrance(
                                                 child: ticketBuilder(
                                                     Map<String, dynamic>.from(
                                                         visible[row * columns +
-                                                            column] as Map)))
-                                            : const SizedBox.shrink()),
+                                                            column] as Map))))
+                                        : const SizedBox.shrink()),
                               ],
                             ]))),
           SliverPadding(

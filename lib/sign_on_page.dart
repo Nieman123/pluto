@@ -274,9 +274,9 @@ class _SignOnPageState extends State<SignOnPage> {
                     const SizedBox(height: 14),
                     Card(
                       color: Colors.black.withValues(alpha: 0.6),
-                      elevation: 12,
+                      elevation: 0,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
+                        borderRadius: BorderRadius.circular(26),
                         side: const BorderSide(color: Colors.white24),
                       ),
                       child: Padding(
@@ -539,8 +539,9 @@ class _SignOnPageState extends State<SignOnPage> {
                                           _isBusy ? null : _submitPasswordStep,
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor:
-                                            const Color(0xFF2B5DDA),
-                                        foregroundColor: Colors.white,
+                                            const Color(0xFFBCA1F2),
+                                        foregroundColor:
+                                            const Color(0xFF21132C),
                                         padding: const EdgeInsets.symmetric(
                                           vertical: 14,
                                         ),

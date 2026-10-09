@@ -1,10 +1,13 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../festival_visibility.dart';
 import '../background/pluto_background.dart';
 import '../nav_bar/nav_bar.dart';
+import '../theme/pluto_ui.dart';
 
 enum SignedInAppTab {
   tickets(
@@ -14,10 +17,10 @@ enum SignedInAppTab {
     selectedIcon: Icons.confirmation_number,
   ),
   dashboard(
-    label: 'Dashboard',
+    label: 'Home',
     route: '/',
-    icon: Icons.dashboard_outlined,
-    selectedIcon: Icons.dashboard,
+    icon: Icons.home_outlined,
+    selectedIcon: Icons.home_rounded,
   ),
   rewards(
     label: 'Rewards',
@@ -82,7 +85,7 @@ class SignedInAppShell extends StatelessWidget {
                     ),
                   ),
                 ),
-                _SignedInBottomNavigation(selectedTab: selectedTab),
+                PlutoBottomNavigation(selectedTab: selectedTab),
               ],
             ),
           ),
@@ -157,8 +160,9 @@ extension SignedInAppTabX on SignedInAppTab {
   }
 }
 
-class _SignedInBottomNavigation extends StatelessWidget {
-  const _SignedInBottomNavigation({
+class PlutoBottomNavigation extends StatelessWidget {
+  const PlutoBottomNavigation({
+    super.key,
     required this.selectedTab,
   });
 
@@ -174,7 +178,7 @@ class _SignedInBottomNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color navTextColor = Theme.of(context).primaryColor;
+    const Color navTextColor = PlutoColors.lilac;
     final Color selectedColor = Colors.white.withValues(alpha: 0.96);
     final Color unselectedColor = Colors.white.withValues(alpha: 0.72);
     final int selectedIndex = _tabs.indexOf(selectedTab);
@@ -186,8 +190,19 @@ class _SignedInBottomNavigation extends StatelessWidget {
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 680),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(18),
+            child: Container(
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(26),
+                color: const Color(0xFF21192C),
+                border: Border.all(color: const Color(0x44D4B2FF)),
+                boxShadow: const [
+                  BoxShadow(
+                      color: Color(0x33000000),
+                      blurRadius: 16,
+                      offset: Offset(0, 6))
+                ],
+              ),
               child: NavigationBarTheme(
                 data: NavigationBarThemeData(
                   iconTheme: WidgetStateProperty.resolveWith<IconThemeData>(
@@ -216,7 +231,7 @@ class _SignedInBottomNavigation extends StatelessWidget {
                 child: NavigationBar(
                   selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
                   height: 72,
-                  backgroundColor: Colors.black.withValues(alpha: 0.78),
+                  backgroundColor: Colors.transparent,
                   indicatorColor: navTextColor.withValues(alpha: 0.28),
                   labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
                   onDestinationSelected: (int index) {
@@ -224,13 +239,20 @@ class _SignedInBottomNavigation extends StatelessWidget {
                     if (tab == selectedTab) {
                       return;
                     }
+                    if (!kIsWeb) HapticFeedback.selectionClick();
                     GoRouter.of(context).go(tab.route);
                   },
                   destinations: _tabs
                       .map(
                         (SignedInAppTab tab) => NavigationDestination(
                           icon: Icon(tab.icon),
-                          selectedIcon: Icon(tab.selectedIcon),
+                          selectedIcon: AnimatedScale(
+                            scale: tab == selectedTab ? 1.08 : 1,
+                            duration: MediaQuery.disableAnimationsOf(context)
+                                ? Duration.zero
+                                : const Duration(milliseconds: 180),
+                            child: Icon(tab.selectedIcon),
+                          ),
                           label: tab.label,
                         ),
                       )
