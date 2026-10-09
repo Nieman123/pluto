@@ -163,8 +163,7 @@ class _SignOnPageState extends State<SignOnPage> {
       if (!mounted) {
         return;
       }
-      final String? returnTo = ticketAccountReturn(widget.returnTo);
-      if (FirebaseAuth.instance.currentUser != null && returnTo != null) {
+      if (FirebaseAuth.instance.currentUser != null) {
         if (verifyCreatedAccount) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
               content: Text(successMessage),
@@ -172,7 +171,7 @@ class _SignOnPageState extends State<SignOnPage> {
         }
         ticketAccessRemove('pluto-account-email');
         ticketAccessRemove('pluto-account-name');
-        context.go(returnTo);
+        context.go(signedInDestination(widget.returnTo));
         return;
       }
       setState(() {

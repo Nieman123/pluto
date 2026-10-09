@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:http/http.dart' as http;
+import 'src/native_environment.dart';
 
 class CurrentEvent {
   CurrentEvent({
@@ -13,6 +16,8 @@ class CurrentEvent {
     this.flyerImageUrl = '',
     this.flyerStoragePath = '',
     this.registrationMode = 'tickets',
+    this.startAt,
+    this.endAt,
     required this.isActive,
     required this.sortOrder,
     required this.createdAt,
@@ -22,10 +27,13 @@ class CurrentEvent {
   factory CurrentEvent.fromSnapshot(
     DocumentSnapshot<Map<String, dynamic>> snapshot,
   ) {
-    final Map<String, dynamic> data = snapshot.data() ?? <String, dynamic>{};
+    return CurrentEvent.fromData(
+        snapshot.id, snapshot.data() ?? <String, dynamic>{});
+  }
 
+  factory CurrentEvent.fromData(String id, Map<String, dynamic> data) {
     return CurrentEvent(
-      id: snapshot.id,
+      id: id,
       title: (data['title'] as String? ?? '').trim(),
       details: (data['details'] as String? ?? '').trim(),
       ticketUrl: (data['ticketUrl'] as String? ?? '').trim(),
@@ -33,6 +41,8 @@ class CurrentEvent {
       flyerImageUrl: (data['flyerImageUrl'] as String? ?? '').trim(),
       flyerStoragePath: (data['flyerStoragePath'] as String? ?? '').trim(),
       registrationMode: data['registrationMode'] as String? ?? 'tickets',
+      startAt: _parseTimestamp(data['startAt']),
+      endAt: _parseTimestamp(data['endAt']),
       isActive: data['isActive'] as bool? ?? true,
       sortOrder: _parseInt(data['sortOrder']),
       createdAt: _parseTimestamp(data['createdAt']),
@@ -48,6 +58,8 @@ class CurrentEvent {
   final String flyerImageUrl;
   final String flyerStoragePath;
   final String registrationMode;
+  final DateTime? startAt;
+  final DateTime? endAt;
   final bool isActive;
   final int sortOrder;
   final DateTime? createdAt;
@@ -56,6 +68,8 @@ class CurrentEvent {
   Uint8List? get flyerBytes => decodeFlyerDataUrl(flyerDataUrl);
 
   bool get isFree => registrationMode == 'free';
+  bool isCurrentAt(DateTime now) =>
+      isActive && (endAt == null || endAt!.isAfter(now));
   bool get isRsvp =>
       registrationMode == 'rsvp' || registrationMode == 'rsvp-approval';
   String get actionLabel => isFree
@@ -81,11 +95,14 @@ class CurrentEvent {
     if (value is Timestamp) {
       return value.toDate();
     }
+    if (value is String) return DateTime.tryParse(value);
     return null;
   }
 }
 
 extension CurrentEventX on CurrentEvent {
+  bool get isLegacyManaFest => isManaFest && !id.startsWith('native-');
+
   bool get isManaFest {
     final String normalizedTitle =
         title.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
@@ -110,26 +127,81 @@ Uint8List? decodeFlyerDataUrl(String dataUrl) {
 }
 
 class CurrentEventsRepository {
-  CurrentEventsRepository({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+  CurrentEventsRepository(
+      {FirebaseFirestore? firestore,
+      http.Client? client,
+      Uri? baseUri,
+      DateTime Function()? now,
+      this.refreshInterval = const Duration(minutes: 1)})
+      : _providedFirestore = firestore,
+        _get = client?.get ?? http.get,
+        _baseUri = baseUri,
+        _now = now ?? DateTime.now;
 
-  final FirebaseFirestore _firestore;
+  final FirebaseFirestore? _providedFirestore;
+  FirebaseFirestore get _firestore =>
+      _providedFirestore ?? FirebaseFirestore.instance;
+  final Future<http.Response> Function(Uri, {Map<String, String>? headers})
+      _get;
+  final Uri? _baseUri;
+  final DateTime Function() _now;
+  final Duration refreshInterval;
+
+  Future<List<CurrentEvent>> loadActiveEvents() async {
+    final response = await _get((_baseUri ?? ticketingBaseUri())
+            .resolve('/tickets/api/public/events'))
+        .timeout(const Duration(seconds: 20));
+    if (response.statusCode != 200)
+      throw StateError('Upcoming events could not be loaded.');
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final events = (data['events'] as List)
+        .map((raw) {
+          final value = Map<String, dynamic>.from(raw as Map);
+          return CurrentEvent.fromData(value['id'] as String, value);
+        })
+        .where((event) => event.isCurrentAt(_now()))
+        .toList();
+    events.sort(_sortEvents);
+    return events;
+  }
+
+  Stream<List<CurrentEvent>> _watchActiveEvents() {
+    return Stream<List<CurrentEvent>>.multi((controller) {
+      var active = true, loading = false;
+      Future<void> refresh() async {
+        if (!active || loading) return;
+        loading = true;
+        try {
+          final events = await loadActiveEvents();
+          if (active) controller.add(events);
+        } catch (error, stack) {
+          if (active) controller.addError(error, stack);
+        } finally {
+          loading = false;
+        }
+      }
+
+      final timer = Timer.periodic(refreshInterval, (_) => refresh());
+      controller.onCancel = () {
+        active = false;
+        timer.cancel();
+      };
+      unawaited(refresh());
+    });
+  }
 
   CollectionReference<Map<String, dynamic>> get _currentEventsCollection =>
       _firestore.collection('currentEvents');
 
   Stream<List<CurrentEvent>> watchEvents({required bool onlyActive}) {
+    if (onlyActive) return _watchActiveEvents();
     return _currentEventsCollection
         .snapshots()
         .map((QuerySnapshot<Map<String, dynamic>> snapshot) {
       final List<CurrentEvent> allEvents =
           snapshot.docs.map(CurrentEvent.fromSnapshot).toList();
-      final List<CurrentEvent> filteredEvents = onlyActive
-          ? allEvents.where((CurrentEvent event) => event.isActive).toList()
-          : allEvents;
-
-      filteredEvents.sort(_sortEvents);
-      return filteredEvents;
+      allEvents.sort(_sortEvents);
+      return allEvents;
     });
   }
 
@@ -144,6 +216,10 @@ class CurrentEventsRepository {
     if (bySortOrder != 0) {
       return bySortOrder;
     }
+    if (a.startAt != null && b.startAt == null) return -1;
+    if (a.startAt == null && b.startAt != null) return 1;
+    if (a.startAt != null && b.startAt != null)
+      return a.startAt!.compareTo(b.startAt!);
 
     final DateTime aDate =
         a.updatedAt ?? a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);

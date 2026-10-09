@@ -415,7 +415,7 @@ class SignedInHomePage extends StatelessWidget {
 
             final List<CurrentEvent> otherEvents =
                 (snapshot.data ?? <CurrentEvent>[])
-                    .where((CurrentEvent event) => !event.isManaFest)
+                    .where((CurrentEvent event) => !event.isLegacyManaFest)
                     .take(3)
                     .toList();
 

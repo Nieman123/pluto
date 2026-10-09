@@ -2,6 +2,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pluto/src/ticket_account_flow.dart';
 
 void main() {
+  test(
+      'successful sign-in defaults to dashboard and preserves safe wallet returns',
+      () {
+    expect(signedInDestination(null), '/');
+    expect(signedInDestination('/tickets?order=order-123&accessKey=secret'),
+        '/tickets?order=order-123');
+    expect(signedInDestination('https://example.com/tickets'), '/');
+  });
   test('ticket auth returns retain only the order identifier', () {
     expect(
         ticketAccountReturn(
