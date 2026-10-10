@@ -1,7 +1,7 @@
 # Pluto Events iOS foundation
 
-The iOS project supports iPhone and iPad on iOS 15.5 or newer, matching the locked
-QR scanner's native minimum. It shares the member
+The iOS project supports iPhone and iPad on iOS 15.5 or newer. QR scanning uses
+Apple Vision on iOS and supports Apple Silicon simulators. It shares the member
 UI, rewards, scavenger-hunt scanning, secure ticket wallet, browser checkout,
 reviewer demo mode and profile with Android. Event administration stays on the
 website. This foundation is ready for native compilation checks; it is not yet
