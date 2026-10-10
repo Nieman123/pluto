@@ -1,7 +1,7 @@
 import config from './android-links-config.json';
 
 // These are public app-signing certificate fingerprints, never signing keys.
-// Production stays unassociated until its Google Play App Signing cert exists.
+// Each environment trusts only its registered app-signing certificates.
 export function androidLinkStatements(environment: string) {
   if (environment !== 'staging' && environment !== 'production') return [];
   const app = config[environment];
