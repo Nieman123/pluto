@@ -68,8 +68,11 @@ first. Android Credential Manager can report configuration failures as cancellat
 - Add the Play **SHA-256** to the staging `sha256` list in
   `functions/src/android-links-config.json`. Keep the local debug fingerprint so
   local builds continue to work. Commit/deploy that public configuration.
-- Repeat for the production app/project when it is enrolled. Production's list
-  is currently empty until its Play signing certificate is known.
+- Production (`events.pluto.app`, project `pluto-9b6ca`) is registered with Play
+  signing SHA-1 `E3:27:E4:BC:FC:F4:43:13:37:EA:19:F3:E7:65:F4:1A:42:9B:B2:DE`
+  and SHA-256 `E3:37:C2:CB:E0:77:CC:78:32:4F:B7:C1:01:BF:F4:B2:AF:B2:70:BE:8B:0E:3E:CA:2C:9D:1A:39:E4:72:94:99`.
+  The SHA-256 is included in the production App Links configuration; deploy
+  the backend to publish it at `https://pluto.events/.well-known/assetlinks.json`.
 
 The upload certificate, debug certificate, Play app signing certificate and
 ticket Ed25519 signing keys have different jobs. Google signs installed apps;

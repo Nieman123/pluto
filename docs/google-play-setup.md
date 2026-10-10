@@ -75,8 +75,9 @@ Run Flutter checks/builds sequentially; they can both update `android/local.prop
 
 Deploy this branch's web backend to staging to serve
 `/.well-known/assetlinks.json`. It publishes the local staging debug certificate
-from `functions/src/android-links-config.json`. Production publishes an empty
-association until the production **Play App Signing** certificate is added.
+from `functions/src/android-links-config.json`. Production's configuration
+includes its **Play App Signing** certificate; deploy the backend to publish
+that association at `https://pluto.events/.well-known/assetlinks.json`.
 Certificate fingerprints are public; keep private keystores out of Git.
 
 The app accepts `/app`, `/app/`, `/app/tickets` and `/app/profile` on its own
