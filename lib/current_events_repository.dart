@@ -16,6 +16,7 @@ class CurrentEvent {
     this.flyerImageUrl = '',
     this.flyerStoragePath = '',
     this.registrationMode = 'tickets',
+    this.demo = false,
     this.startAt,
     this.endAt,
     required this.isActive,
@@ -41,6 +42,7 @@ class CurrentEvent {
       flyerImageUrl: (data['flyerImageUrl'] as String? ?? '').trim(),
       flyerStoragePath: (data['flyerStoragePath'] as String? ?? '').trim(),
       registrationMode: data['registrationMode'] as String? ?? 'tickets',
+      demo: data['demo'] == true,
       startAt: _parseTimestamp(data['startAt']),
       endAt: _parseTimestamp(data['endAt']),
       isActive: data['isActive'] as bool? ?? true,
@@ -58,6 +60,7 @@ class CurrentEvent {
   final String flyerImageUrl;
   final String flyerStoragePath;
   final String registrationMode;
+  final bool demo;
   final DateTime? startAt;
   final DateTime? endAt;
   final bool isActive;
@@ -132,11 +135,15 @@ class CurrentEventsRepository {
       http.Client? client,
       Uri? baseUri,
       DateTime Function()? now,
+      Future<String?> Function()? tokenProvider,
       this.refreshInterval = const Duration(minutes: 1)})
       : _providedFirestore = firestore,
         _get = client?.get ?? http.get,
         _baseUri = baseUri,
+        _tokenProvider = tokenProvider,
         _now = now ?? DateTime.now;
+
+  final Future<String?> Function()? _tokenProvider;
 
   final FirebaseFirestore? _providedFirestore;
   FirebaseFirestore get _firestore =>
@@ -148,8 +155,11 @@ class CurrentEventsRepository {
   final Duration refreshInterval;
 
   Future<List<CurrentEvent>> loadActiveEvents() async {
-    final response = await _get((_baseUri ?? ticketingBaseUri())
-            .resolve('/tickets/api/public/events'))
+    final token = await _tokenProvider?.call();
+    final response = await _get(
+            (_baseUri ?? ticketingBaseUri())
+                .resolve('/tickets/api/public/events'),
+            headers: token == null ? null : {'Authorization': 'Bearer $token'})
         .timeout(const Duration(seconds: 20));
     if (response.statusCode != 200)
       throw StateError('Upcoming events could not be loaded.');

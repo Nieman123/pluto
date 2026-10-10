@@ -32,7 +32,8 @@ class SignedInHomePage extends StatelessWidget {
   }) : super(key: key);
 
   final User user;
-  final CurrentEventsRepository _eventsRepository = CurrentEventsRepository();
+  late final CurrentEventsRepository _eventsRepository =
+      CurrentEventsRepository(tokenProvider: () => user.getIdToken());
   final UserProfileRepository _profileRepository = UserProfileRepository();
   late final Future<void> _ensureProfileFuture =
       _profileRepository.ensureProfileForUser(user);
@@ -57,6 +58,43 @@ class SignedInHomePage extends StatelessWidget {
       return;
     }
     await launchUrlString(normalizedUrl, webOnlyWindowName: '_blank');
+  }
+
+  void _openEvent(BuildContext context, CurrentEvent event) {
+    if (!event.demo) {
+      _openLink(event.ticketUrl);
+      return;
+    }
+    showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        builder: (sheetContext) => SafeArea(
+            child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('SAMPLE EVENT • NO REAL ADMISSION',
+                          style: TextStyle(
+                              color: PlutoColors.lilac, fontSize: 12)),
+                      const SizedBox(height: 12),
+                      Text(event.title,
+                          style: Theme.of(context).textTheme.headlineSmall),
+                      const SizedBox(height: 12),
+                      Text(event.details),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                              onPressed: () {
+                                Navigator.pop(sheetContext);
+                                context.go('/tickets?event=${event.id}');
+                              },
+                              icon: const Icon(
+                                  Icons.confirmation_number_outlined),
+                              label: const Text('View sample ticket'))),
+                    ]))));
   }
 
   ThemeData _pageTheme(BuildContext context) {
@@ -271,7 +309,7 @@ class SignedInHomePage extends StatelessWidget {
       child: PlutoSurface(
         padding: EdgeInsets.zero,
         child: PlutoPressable(
-          onTap: () => _openLink(event.ticketUrl),
+          onTap: () => _openEvent(context, event),
           child: Padding(
             padding: const EdgeInsets.all(18),
             child: LayoutBuilder(builder: (context, constraints) {
@@ -332,7 +370,7 @@ class SignedInHomePage extends StatelessWidget {
                           Wrap(spacing: 8, runSpacing: 8, children: [
                             if (event.ticketUrl.trim().isNotEmpty)
                               ElevatedButton.icon(
-                                onPressed: () => _openLink(event.ticketUrl),
+                                onPressed: () => _openEvent(context, event),
                                 icon: const Icon(Icons.north_east, size: 16),
                                 label: Text(event.actionLabel),
                               ),

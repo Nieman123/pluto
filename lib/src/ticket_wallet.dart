@@ -23,11 +23,13 @@ Future<Map<String, dynamic>> loadTicketWallet({
   }
 
   final Set<String> warnings = <String>{};
+  bool demo = false;
   final List<int> savedTimes = <int>[];
   if (signedIn) {
     try {
       final Map<String, dynamic> linked = await request('mine',
           <String, dynamic>{if (claimPurchases) 'claimPurchases': true});
+      demo = linked['demo'] == true;
       if (linked['offline'] == true) savedTimes.add(linked['savedAt'] as int);
       for (final dynamic order in linked['orders'] as List) {
         orders[order['orderId'] as String] = order;
@@ -118,6 +120,7 @@ Future<Map<String, dynamic>> loadTicketWallet({
     await Future.wait(pending.skip(offset).take(4).map(loadSaved));
   }
   return <String, dynamic>{
+    if (demo) 'demo': true,
     'orders': orders.values.toList(),
     'tickets': tickets.values.toList(),
     'warnings': warnings.toList(),

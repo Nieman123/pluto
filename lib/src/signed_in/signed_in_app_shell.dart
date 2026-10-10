@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../festival_visibility.dart';
+import '../app_review_banner.dart';
 import '../background/pluto_background.dart';
 import '../nav_bar/nav_bar.dart';
 import '../theme/pluto_ui.dart';
@@ -77,6 +78,8 @@ class SignedInAppShell extends StatelessWidget {
             top: false,
             child: Column(
               children: <Widget>[
+                AppReviewBanner(
+                    key: ValueKey(FirebaseAuth.instance.currentUser?.uid)),
                 Expanded(
                   child: Center(
                     child: ConstrainedBox(

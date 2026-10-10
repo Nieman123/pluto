@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'rewards_repository.dart';
+import 'src/app_review_access.dart';
 
 class UserProfile {
   UserProfile({
@@ -294,12 +295,7 @@ class UserProfileRepository {
   final RewardsRepository _rewards;
 
   final FirebaseFirestore _firestore;
-
-  CollectionReference<Map<String, dynamic>> get _profiles =>
-      _firestore.collection('userProfiles');
-
-  CollectionReference<Map<String, dynamic>> get _rewardItems =>
-      _firestore.collection('rewardItems');
+  AppReviewAccess get _review => AppReviewAccess(_firestore);
 
   CollectionReference<Map<String, dynamic>> get _eventQrCodes =>
       _firestore.collection('eventQrCodes');
@@ -308,7 +304,7 @@ class UserProfileRepository {
     required String uid,
     required String fallbackDisplayName,
   }) {
-    return _profiles.doc(uid).snapshots().map(
+    return _review.profile(uid).map(
       (DocumentSnapshot<Map<String, dynamic>> snapshot) {
         if (!snapshot.exists) {
           return null;
@@ -321,8 +317,14 @@ class UserProfileRepository {
     );
   }
 
-  Stream<List<RewardItem>> watchActiveRewardItems() {
-    return _rewardItems.snapshots().map(
+  Stream<List<RewardItem>> watchActiveRewardItems() async* {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      yield <RewardItem>[];
+      return;
+    }
+    final items = await _review.collection('rewardItems', uid);
+    yield* items.snapshots().map(
       (QuerySnapshot<Map<String, dynamic>> snapshot) {
         final List<RewardItem> items = snapshot.docs
             .map(RewardItem.fromSnapshot)
@@ -376,8 +378,9 @@ class UserProfileRepository {
   Stream<List<PointsTransaction>> watchRecentTransactions({
     required String uid,
     int limit = 20,
-  }) {
-    return _profiles
+  }) async* {
+    final profiles = await _review.collection('userProfiles', uid);
+    yield* profiles
         .doc(uid)
         .collection('pointsTransactions')
         .orderBy('createdAt', descending: true)
@@ -405,7 +408,7 @@ class UserProfileRepository {
 
   Future<void> ensureProfileForUser(User user) async {
     final DocumentReference<Map<String, dynamic>> profileRef =
-        _profiles.doc(user.uid);
+        (await _review.collection('userProfiles', user.uid)).doc(user.uid);
     final String fallbackName = _fallbackDisplayNameForUser(user);
     // Another dashboard/tab or a ticket check-in can create this profile while
     // sign-in is loading. Retry against the latest profile without resetting points.
@@ -445,7 +448,7 @@ class UserProfileRepository {
     required String bio,
     required String profileImageDataUrl,
   }) async {
-    await _profiles.doc(uid).set(
+    await (await _review.collection('userProfiles', uid)).doc(uid).set(
       <String, dynamic>{
         'displayName': displayName.trim(),
         'homeCity': homeCity.trim(),
