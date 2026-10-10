@@ -29,7 +29,7 @@ a signed TestFlight or App Store release.
 - App privacy manifest describing account/profile/ticket data and required
   UserDefaults access. It is a starting declaration that must be checked against
   the final archive's aggregated SDK privacy report before submission. Native
-  analytics and notification prompts are disabled until their consent/delivery
+  iOS analytics and notification prompts are disabled until their consent/delivery
   implementations are ready. There is no location permission or tracking prompt.
 - Universal Link entitlement for each environment's host and the public
   `/.well-known/apple-app-site-association` endpoint. No association is published
