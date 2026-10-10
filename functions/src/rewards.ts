@@ -25,15 +25,24 @@ function timestamp(value: unknown): number | null {
 
 // Actor identity comes from verified Firebase auth, never from request body fields.
 export class Rewards {
-  constructor(private db: Firestore, private now: () => number = Date.now) {}
+  constructor(private db: Firestore, private now: () => number = Date.now, private reviewUid?: string) {}
+  private collection(name: string) {
+    return this.reviewUid ? this.db.collection('appReviewAccounts').doc(this.reviewUid).collection(name) : this.db.collection(name);
+  }
+  private async reviewGuard(tx: FirebaseFirestore.Transaction) {
+    if (this.reviewUid && (await tx.get(this.db.collection('appReviewAccounts').doc(this.reviewUid))).data()?.enabled !== true)
+      fail('Demo access is disabled.', 403, 'demo-disabled');
+  }
   private profile(actor: DecodedIdToken, raw: any) {
     if (raw.uid !== undefined && raw.uid !== actor.uid) fail('This reward request belongs to another account.', 403, 'account-mismatch');
-    return this.db.collection('userProfiles').doc(actor.uid);
+    if (this.reviewUid && actor.uid !== this.reviewUid) fail('This demo belongs to another account.', 403, 'account-mismatch');
+    return this.collection('userProfiles').doc(actor.uid);
   }
   async redeem(raw: any, actor: DecodedIdToken) {
     const profile = this.profile(actor, raw), rewardId = id(raw.rewardItemId), key = attempt(raw.attempt);
-    const reward = this.db.collection('rewardItems').doc(rewardId), request = profile.collection('redemptionRequests').doc(`reward_${key}`);
+    const reward = this.collection('rewardItems').doc(rewardId), request = profile.collection('redemptionRequests').doc(`reward_${key}`);
     return this.db.runTransaction(async tx => {
+      await this.reviewGuard(tx);
       const prior = (await tx.get(request)).data();
       if (prior) {
         if (prior.rewardItemId !== rewardId) fail('This retry key was used for another reward.', 409, 'attempt-conflict');
@@ -60,15 +69,16 @@ export class Rewards {
     const profile = this.profile(actor, raw), normalized = code(raw.code), key = attempt(raw.attempt);
     const receipt = profile.collection('rewardAttempts').doc(`claim_${key}`), rate = profile.collection('claimRateLimits').doc('eventQr');
     return this.db.runTransaction(async tx => {
+      await this.reviewGuard(tx);
       const prior = (await tx.get(receipt)).data();
       if (prior) {
         if (prior.codeHash !== hash(normalized)) fail('This retry key was used for another event QR.', 409, 'attempt-conflict');
         return prior.result;
       }
-      const matching = await tx.get(this.db.collection('eventQrCodes').where('code', '==', normalized).limit(2));
+      const matching = await tx.get(this.collection('eventQrCodes').where('code', '==', normalized).limit(2));
       if (matching.empty) fail('This QR code was not found.', 404, 'qr-not-found');
       if (matching.size !== 1) fail('This QR code needs organizer review.', 409, 'qr-ambiguous');
-      const qr = matching.docs[0], data = qr.data(), claim = qr.ref.collection('claims').doc(actor.uid);
+      const qr = matching.docs[0], data = qr.data(), claim = qr.ref.collection(this.reviewUid ? 'demoClaims' : 'claims').doc(actor.uid);
       if ((await tx.get(claim)).exists) fail('You already claimed Pluto Points for this event.', 409, 'already-claimed');
       const profileData = (await tx.get(profile)).data(), rateData = (await tx.get(rate)).data() || {}, now = this.now(), dayKey = new Date(now).toISOString().slice(0, 10);
       if (data.isActive !== true) fail('This event QR code is not active.', 409, 'qr-inactive');

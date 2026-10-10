@@ -21,6 +21,7 @@
     "test:ticketing:free": "node --test functions/test/free-events.cjs",
     "test:ticketing:rules": "node --test test/ticketing-rules.test.mjs",
     "test:rewards": "node --test functions/test/rewards-hardening.cjs && node --test test/rewards-rules.test.mjs",
+    "test:app-review": "node --test functions/test/app-review.cjs && node --test test/app-review-rules.test.mjs",
     "test:rewards:browser": "node scripts/ticketing/rewards-browser-test.cjs",
     "test:ticketing:browser": "node scripts/ticketing/browser-test.cjs",
     "test:ticketing:wallet-browser": "node scripts/ticketing/wallet-browser-test.cjs",

@@ -22,6 +22,32 @@ CurrentEvent _eventWithTitle(String title,
 }
 
 void main() {
+  test(
+      'authenticated discovery passes identity and preserves sample event marker',
+      () async {
+    final repository = CurrentEventsRepository(
+        baseUri: Uri.parse('http://127.0.0.1:4173'),
+        tokenProvider: () async => 'member-token',
+        client: MockClient((request) async {
+          expect(request.headers['Authorization'], 'Bearer member-token');
+          return http.Response(
+              jsonEncode({
+                'events': [
+                  {
+                    'id': 'sample',
+                    'title': 'Demo',
+                    'demo': true,
+                    'ticketUrl': '/app/tickets?event=sample'
+                  }
+                ]
+              }),
+              200);
+        }));
+    final events = await repository.loadActiveEvents();
+    expect(events.single.demo, isTrue);
+    expect(events.single.ticketUrl, '/app/tickets?event=sample');
+  });
+
   test('active discovery recovers after an initial network failure', () async {
     var requests = 0;
     final client = MockClient((_) async => ++requests == 1

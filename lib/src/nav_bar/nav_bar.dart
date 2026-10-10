@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../app_review_access.dart';
 import '../html_open_link.dart';
 import '../ticket_account_flow.dart';
 import 'pluto_app_bar.dart';
@@ -419,10 +420,7 @@ class _ProfileAvatarButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
-          .collection('userProfiles')
-          .doc(user.uid)
-          .snapshots(),
+      stream: AppReviewAccess(FirebaseFirestore.instance).profile(user.uid),
       builder: (BuildContext context,
           AsyncSnapshot<DocumentSnapshot<Map<String, dynamic>>> snapshot) {
         final Map<String, dynamic> profileData =

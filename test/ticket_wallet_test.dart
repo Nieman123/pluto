@@ -3,6 +3,17 @@ import 'package:pluto/src/ticket_wallet.dart';
 import 'package:pluto/ticketing_repository.dart';
 
 void main() {
+  test('wallet retains backend demo marker to suppress live recovery controls',
+      () async {
+    final result = await loadTicketWallet(
+        signedIn: true,
+        savedKeys: [],
+        readAccess: (_) => null,
+        removeAccess: (_) {},
+        request: (_, __) async => {'demo': true, 'orders': [], 'tickets': []});
+    expect(result['demo'], true);
+  });
+
   test(
       'linked orders are not downloaded again and native claiming shares the wallet request',
       () async {

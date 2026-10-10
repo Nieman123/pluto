@@ -518,10 +518,13 @@ class _TicketsPageState extends State<TicketsPage> with WidgetsBindingObserver {
               data: ticket['qr'] as String,
               label: 'Admission QR for ${ticket['name']}'),
           const SizedBox(height: 16),
-          const Center(
-              child: Text('Show this code at the door · Tap to enlarge',
+          Center(
+              child: Text(
+                  ticket['demo'] == true
+                      ? 'Sample QR · Not valid for admission · Tap to enlarge'
+                      : 'Show this code at the door · Tap to enlarge',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: _muted, fontSize: 13))),
+                  style: const TextStyle(color: _muted, fontSize: 13))),
         ] else
           _body(
               'This admission credential is unavailable here. It may have been transferred, refunded or revoked.'),
@@ -630,7 +633,7 @@ class _TicketsPageState extends State<TicketsPage> with WidgetsBindingObserver {
               'An additional ${_money(data['externalRefundAmount'])} refund is awaiting ticket review.'),
         const SizedBox(height: 10),
         Wrap(spacing: 12, runSpacing: 8, children: <Widget>[
-          if (data['status'] == 'paid')
+          if (data['status'] == 'paid' && data['demo'] != true)
             TextButton(
                 onPressed: _busy || data['offline'] == true
                     ? null
@@ -645,7 +648,8 @@ class _TicketsPageState extends State<TicketsPage> with WidgetsBindingObserver {
                                 'Confirmation email queued. Your tickets stay in the app.');
                         }),
                 child: const Text('Resend confirmation')),
-          if (data['method'] == 'rsvp' &&
+          if (data['demo'] != true &&
+              data['method'] == 'rsvp' &&
               <String>['pending', 'approved'].contains(data['rsvpStatus']))
             TextButton(
                 onPressed: _busy || data['offline'] == true
@@ -879,8 +883,9 @@ class _TicketsPageState extends State<TicketsPage> with WidgetsBindingObserver {
         _venue(data!['venue'] as Map?),
       if (_holderToken != null)
         TextButton(onPressed: _allTickets, child: const Text('All my tickets')),
-      if (wallet) _recovery(),
-      if (FirebaseAuth.instance.currentUser?.emailVerified == true)
+      if (wallet && data?['demo'] != true) _recovery(),
+      if (data?['demo'] != true &&
+          FirebaseAuth.instance.currentUser?.emailVerified == true)
         Padding(
             padding: const EdgeInsets.only(bottom: 14),
             child: TextButton.icon(

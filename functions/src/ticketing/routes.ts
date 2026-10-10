@@ -9,6 +9,7 @@ import { orderPdf } from './pdf';
 import { clientIdentity } from './client-identity';
 import { email } from './domain';
 import { Rewards } from '../rewards';
+import { AppReview } from '../app-review';
 import { DigitalWallet } from './digital-wallet';
 import { allowedSiteOrigins } from '../deployment-config';
 import { Webhook } from 'svix';
@@ -20,6 +21,7 @@ import { discoveryEvents, activeAppEventCards } from './event-discovery';
 export function ticketingRouter(context: (path: string) => Record<string, unknown>, service = new Operations()) {
   const router = express.Router();
   const rewards = new Rewards(service.db);
+  const review = new AppReview(service.db);
   const digitalWallet = new DigitalWallet();
   router.use((req, res, next) => {
     res.set({ 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY',
@@ -59,7 +61,13 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   router.get(['/tickets', '/tickets/order'], (req, res) => res.redirect(302, `/app/tickets${req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''}`));
   router.get(['/tickets/admin', '/tickets/staff'], page);
   router.get('/tickets/admission-sw.js', (_req, res) => res.type('application/javascript').set('Service-Worker-Allowed', '/tickets/').send(readFileSync(join(__dirname, 'admission-sw.js'), 'utf8')));
-  router.get('/tickets/api/public/events', async (_req, res) => {
+  router.get('/tickets/api/public/events', async (req, res) => {
+    const authorization = req.get('authorization');
+    const user = authorization ? await service.actor(authorization.replace(/^Bearer /, ''), true) : null;
+    if (user && await review.enrolled(user.uid)) {
+      await review.requireEnabled(user.uid);
+      return res.json({ demo: true, events: review.events() });
+    }
     const now = Date.now();
     const [published, legacy] = await Promise.all([
       service.db.collection('publishedEvents').where('endAt', '>', new Date(now).toISOString()).get(),
@@ -141,6 +149,12 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
     next();
   }, express.json({ limit: '7300kb' }), async (req, res, next) => {
     res.locals.actor = await service.actor((req.get('authorization') || '').replace(/^Bearer /, ''), true);
+    // Intercept every private API before any live operation or scanner authority.
+    // Even disabled enrolled accounts cannot fall back to real ticketing.
+    if (res.locals.actor && await review.enrolled(res.locals.actor.uid)) {
+      await service.rateLimit(res.locals.actor.uid, 'demo-api', 120);
+      return res.json(await review.handle(req.path, req.body, res.locals.actor));
+    }
     const scannerRoutes = ['/staff/scan', '/staff/manifest', '/staff/scan-review', '/staff/guestlist', '/staff/guestlist/arrive', '/staff/attendance', '/staff/attendance/move', '/scanner/session'];
     if (req.get('x-pluto-scanner') && scannerRoutes.includes(req.path)) res.locals.scanner = await service.scannerSession(req.get('x-pluto-scanner')!);
     const upload = req.path === '/staff/media', identity = clientIdentity(req, res.locals.actor?.uid, res.locals.scanner ? req.get('x-pluto-scanner') : undefined);
