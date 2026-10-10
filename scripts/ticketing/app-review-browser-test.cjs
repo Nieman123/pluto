@@ -25,6 +25,7 @@ async function semantics() { await page.locator('flt-semantics-placeholder').eva
     await page.getByRole('textbox', { name: /Email/ }).fill(email); await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await page.getByLabel(/Enter your password/).fill(password); await page.getByRole('button', { name: 'Sign In', exact: true }).click();
     await page.waitForURL('http://127.0.0.1:4173/app/');
+    await semantics();
     await page.getByText('Demo account • sample data only').or(page.getByLabel('Demo account • sample data only')).filter({ visible: true }).first().waitFor();
     stage = 'sample event and wallet';
     await (await revealText(page, 'Orbit • sample event')).click();
@@ -55,7 +56,7 @@ async function semantics() { await page.locator('flt-semantics-placeholder').eva
     await profile.update({ pointsBalance: 100 });
     await page.getByRole('button', { name: 'Demo guide', exact: true }).click();
     await page.getByRole('button', { name: 'Refill demo points', exact: true }).click();
-    await page.getByText('Your sample points are ready.', { exact: true }).waitFor();
+    await page.getByText('Your sample points are ready.', { exact: true }).filter({ visible: true }).first().waitFor();
     assert.equal((await profile.get()).data().pointsBalance, 500);
     console.log('Demo browser checks passed: real sign-in, sample home event, ticket QR, orders, isolated rewards, hunt claim, profile history and refill.');
   } catch (error) {

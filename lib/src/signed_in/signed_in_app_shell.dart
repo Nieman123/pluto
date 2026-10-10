@@ -81,12 +81,17 @@ class SignedInAppShell extends StatelessWidget {
                 AppReviewBanner(
                     key: ValueKey(FirebaseAuth.instance.currentUser?.uid)),
                 Expanded(
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(maxWidth: maxContentWidth),
-                      child: child,
-                    ),
-                  ),
+                  // The nested Navigator's opaque routes must not suppress
+                  // accessibility for the demo banner preceding this region.
+                  child: Semantics(
+                      container: true,
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints:
+                              BoxConstraints(maxWidth: maxContentWidth),
+                          child: child,
+                        ),
+                      )),
                 ),
                 PlutoBottomNavigation(selectedTab: selectedTab),
               ],

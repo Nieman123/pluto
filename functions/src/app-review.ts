@@ -2,6 +2,7 @@ import { FieldValue, type Firestore } from 'firebase-admin/firestore';
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import { Rewards } from './rewards';
 import { fail } from './ticketing/domain';
+import { baseUrl } from './ticketing/config';
 
 // Explicitly enrolled demo identities only. Public discovery and live ledgers
 // never contain these fixtures; no production signing credentials are minted.
@@ -18,7 +19,8 @@ export class AppReview {
     return [
       { id: 'review-orbit', title: 'Orbit • sample event', details: 'A dance music gathering in Asheville. Demo tickets only; no real event or purchase.', registrationMode: 'tickets' },
       { id: 'review-underworld', title: 'Underworld • sample RSVP', details: 'Explore a confirmed RSVP for a sample community gathering. No real admission.', registrationMode: 'rsvp' },
-    ].map((e, sortOrder) => ({ ...e, demo: true, startAt: start, endAt: end, isActive: true, sortOrder, ticketUrl: `/app/tickets?event=${e.id}`, flyerDataUrl: '' }));
+    ].map((e, sortOrder) => ({ ...e, demo: true, startAt: start, endAt: end, isActive: true, sortOrder, ticketUrl: `/app/tickets?event=${e.id}`, flyerDataUrl: '',
+      flyerImageUrl: `${baseUrl()}/gallery/${sortOrder ? 'manafest-2026-light-canopy' : 'manafest-2026-pink-stage'}.webp` }));
   }
   wallet(actor: DecodedIdToken) {
     const events = this.events();

@@ -67,6 +67,9 @@ class _AppReviewBannerState extends State<AppReviewBanner> {
             return Semantics(
                 container: true,
                 explicitChildNodes: true,
+                label: enabled
+                    ? 'Demo account • sample data only'
+                    : 'Demo access disabled • contact Pluto',
                 child: Material(
                     color: const Color(0xFF322347),
                     child: Padding(
