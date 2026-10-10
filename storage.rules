@@ -3,6 +3,7 @@ service firebase.storage {
   match /b/{bucket}/o {
     function isAdmin() {
       return request.auth != null &&
+          !firestore.exists(/databases/(default)/documents/accountDeletionRequests/$(request.auth.uid)) &&
           firestore.exists(
             /databases/(default)/documents/adminUsers/$(request.auth.uid)
           );

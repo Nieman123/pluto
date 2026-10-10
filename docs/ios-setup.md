@@ -95,10 +95,10 @@ provide the initial compilation check.
 
 ## Before App Store submission
 
-- Replace the existing email-based account deletion route with an in-app
-  authenticated deletion flow. Include account-associated data removal,
-  permitted retention, completion confirmation and Apple token revocation. This
-  is a known submission blocker, not completed by the iOS scaffolding.
+- Rehearse the authenticated account deletion flow in the app and website.
+  Apple-linked users must reauthenticate and revoke Apple access. Confirm native
+  authorization-code revocation on a signed device after the provider is enabled.
+  See `docs/account-deletion.md` for cleanup, retention and operational checks.
 - Verify Apple sign-in, Google sign-in, email verification, Hide My Email receipt
   delivery, account linking and deletion on a signed physical-device build.
 - Rehearse ticket claiming and QR display, offline wallet persistence after

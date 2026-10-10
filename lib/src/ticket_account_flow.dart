@@ -7,9 +7,10 @@ String? ticketAccountReturn(String? value) {
   if (uri == null ||
       uri.hasScheme ||
       uri.hasAuthority ||
-      uri.path != '/tickets') {
+      !['/tickets', '/delete-account'].contains(uri.path)) {
     return null;
   }
+  if (uri.path == '/delete-account') return '/delete-account';
   final String? order = uri.queryParameters['order'];
   return Uri(
           path: '/tickets',

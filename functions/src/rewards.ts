@@ -43,6 +43,7 @@ export class Rewards {
     const reward = this.collection('rewardItems').doc(rewardId), request = profile.collection('redemptionRequests').doc(`reward_${key}`);
     return this.db.runTransaction(async tx => {
       await this.reviewGuard(tx);
+      if ((await tx.get(this.db.collection('accountDeletionRequests').doc(actor.uid))).exists) fail('Account deletion is in progress.', 403, 'account-deleting');
       const prior = (await tx.get(request)).data();
       if (prior) {
         if (prior.rewardItemId !== rewardId) fail('This retry key was used for another reward.', 409, 'attempt-conflict');
@@ -70,6 +71,7 @@ export class Rewards {
     const receipt = profile.collection('rewardAttempts').doc(`claim_${key}`), rate = profile.collection('claimRateLimits').doc('eventQr');
     return this.db.runTransaction(async tx => {
       await this.reviewGuard(tx);
+      if ((await tx.get(this.db.collection('accountDeletionRequests').doc(actor.uid))).exists) fail('Account deletion is in progress.', 403, 'account-deleting');
       const prior = (await tx.get(receipt)).data();
       if (prior) {
         if (prior.codeHash !== hash(normalized)) fail('This retry key was used for another event QR.', 409, 'attempt-conflict');

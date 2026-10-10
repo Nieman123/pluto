@@ -17,12 +17,14 @@ import { resendWebhookKey } from './config';
 import { recordDelivery } from './delivery';
 import { calendarLinks, eventCalendar } from './calendar';
 import { discoveryEvents, activeAppEventCards } from './event-discovery';
+import { AccountDeletion } from '../account-deletion';
 
 export function ticketingRouter(context: (path: string) => Record<string, unknown>, service = new Operations()) {
   const router = express.Router();
   const rewards = new Rewards(service.db);
   const review = new AppReview(service.db);
   const digitalWallet = new DigitalWallet();
+  const deletion = new AccountDeletion(service.db);
   router.use((req, res, next) => {
     res.set({ 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY',
       'Content-Security-Policy': "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'" });
@@ -148,10 +150,15 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
     if (((req as Request & { rawBody?: Buffer }).rawBody?.length || 0) > 7300000) return next(new TicketingError(413, 'The request is too large.'));
     next();
   }, express.json({ limit: '7300kb' }), async (req, res, next) => {
+    // A random deletion receipt permits completion checks after sign-in is disabled.
+    if (req.path === '/account/deletion-status') {
+      await service.rateLimit(req.ip || 'unknown', 'deletion-status', 600, 60000);
+      return res.json(await deletion.status(req.body));
+    }
     res.locals.actor = await service.actor((req.get('authorization') || '').replace(/^Bearer /, ''), true);
     // Intercept every private API before any live operation or scanner authority.
     // Even disabled enrolled accounts cannot fall back to real ticketing.
-    if (res.locals.actor && await review.enrolled(res.locals.actor.uid)) {
+    if (req.path !== '/account/delete' && res.locals.actor && await review.enrolled(res.locals.actor.uid)) {
       await service.rateLimit(res.locals.actor.uid, 'demo-api', 120);
       return res.json(await review.handle(req.path, req.body, res.locals.actor));
     }
@@ -166,6 +173,7 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   const actor = (res: Response): DecodedIdToken => res.locals.actor || fail('Sign in to continue.', 401);
   const admissionIdentity = (req: Request, res: Response) => req.get('x-pluto-scanner') ? { scannerToken: req.get('x-pluto-scanner')! } : actor(res).uid;
   const bodyId = (req: Request, key = 'eventId') => id(req.body?.[key]);
+  router.post('/tickets/api/account/delete', async (req, res) => res.json(await deletion.request(actor(res), req.body, (req.get('authorization') || '').replace(/^Bearer /, ''))));
   router.post('/tickets/api/account/navigation', async (_req, res) => res.json({ admin: (await service.db.collection('adminUsers').doc(actor(res).uid).get()).exists }));
   router.post('/tickets/api/waitlist/verification', async (req, res) => { await service.rateLimit(email(req.body.email), 'waitlist-verification-contact', 5); await service.rateLimit(res.locals.rateIdentity, 'waitlist-verification-client', 20); res.json(await service.requestRsvpVerification(req.body, res.locals.actor, 'waitlist')); });
   router.post('/tickets/api/waitlist/join', async (req, res) => { await service.rateLimit(email(req.body.email), 'waitlist-join-contact', 20); res.json(await service.joinWaitlist(req.body, res.locals.actor)); });

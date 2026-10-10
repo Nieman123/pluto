@@ -1,6 +1,7 @@
 import { initWaiver, initStaff } from './waiver.js';
 import { initCalendarPicker } from './calendar.js';
 import { initAppLinks } from './app-links.mjs';
+import { initAccountDeletion } from './account-deletion.js';
 initAppLinks();
 initCalendarPicker();
 initWaiver();
@@ -129,6 +130,7 @@ async function enhanceAuth() {
     authModule.connectAuthEmulator(auth, firebaseConfig.authEmulatorUrl, { disableWarnings: true });
   }
   let profileStore, stopAdminWatch, authRevision = 0;
+  initAccountDeletion(auth, authModule);
 
   onAuthStateChanged(auth, async (user) => {
     const revision = ++authRevision;

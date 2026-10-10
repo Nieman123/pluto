@@ -55,7 +55,8 @@ export class Rsvps extends Guests {
     pools.forEach(pool => tx.update(pool.ref, { sold: pool.data()!.sold + order.consumption[pool.id] }));
     order.units.forEach((unit, index) => tx.set(this.tickets().doc(ticketId(orderId, index)), {
       ...unit, orderId, eventId: order.eventId, eventTitle: order.eventTitle, ownerUid: order.ownerUid,
-      holderEmail: order.email, holderName: order.name, transferCutoff: order.transferCutoff || unit.validFrom,
+      holderEmail: (order as any).accountDeletedAt ? '' : order.email, holderName: (order as any).accountDeletedAt ? 'Deleted account' : order.name,
+      ...((order as any).accountDeletedAt ? { accountDeletedAt: (order as any).accountDeletedAt } : {}), transferCutoff: order.transferCutoff || unit.validFrom,
       rsvp: true, version: (order as any).rsvpTicketVersion || 1, status: 'valid', admission: null, refunded: false, index,
     }));
     tx.create(this.db.collection('ticketingEmailJobs').doc(`receipt_${orderId}${((order as any).rsvpTicketVersion || 1) > 1 ? `_${(order as any).rsvpTicketVersion}` : ''}`), { type: 'receipt', orderId, to: order.email, status: 'pending', createdAt: Date.now(), attempts: 0 });
@@ -73,6 +74,7 @@ export class Rsvps extends Guests {
     }
     const proofRef = previousAttempt || raw.waitlistToken ? null : await this.rsvpProof(raw, actor);
     await this.db.runTransaction(async tx => {
+      await this.activeAccount(tx, actor);
       const existing = (await tx.get(ref)).data() as Order | undefined;
       if (existing) { if (existing.method !== 'rsvp' || existing.inputHash !== inputHash) fail('This RSVP attempt has different details. Use the original request or start a new attempt.', 409); return; }
       const eventRef = this.event(eventId), event = (await tx.get(eventRef)).data(), now = Date.now();

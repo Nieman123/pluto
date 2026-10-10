@@ -10,6 +10,8 @@ import 'package:go_router/go_router.dart';
 import 'admin_page.dart' deferred as admin_page hide AdminSectionX;
 import 'app.dart';
 import 'camping.dart' deferred as camping;
+import 'delete_account_page.dart' deferred as delete_account_page;
+import 'edit_profile_page.dart' deferred as edit_profile_page;
 import 'event_qr_scan_page.dart' deferred as event_qr_scan_page;
 import 'firebase_options.dart';
 import 'item_shop_page.dart' deferred as item_shop_page;
@@ -211,7 +213,19 @@ class _MyAppState extends State<MyApp> {
                 ),
               );
             },
+            routes: [
+              GoRoute(
+                  path: 'edit',
+                  builder: (context, state) => _buildDeferredPage(
+                      loadLibrary: edit_profile_page.loadLibrary,
+                      builder: (_) => edit_profile_page.EditProfilePage()))
+            ],
           ),
+          GoRoute(
+              path: '/delete-account',
+              builder: (context, state) => _buildDeferredPage(
+                  loadLibrary: delete_account_page.loadLibrary,
+                  builder: (_) => delete_account_page.DeleteAccountPage())),
           GoRoute(
             path: '/shop',
             pageBuilder: (BuildContext context, GoRouterState state) {

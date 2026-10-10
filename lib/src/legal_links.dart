@@ -3,8 +3,13 @@ import 'html_open_link.dart';
 
 /// Public policy links resolve against the same website as this app environment.
 class LegalLinks extends StatelessWidget {
-  const LegalLinks({super.key, this.includeDeletion = false, this.openLink});
+  const LegalLinks(
+      {super.key,
+      this.includeDeletion = false,
+      this.openLink,
+      this.onDeleteAccount});
 
+  final VoidCallback? onDeleteAccount;
   final bool includeDeletion;
   final Future<void> Function(String)? openLink;
 
@@ -13,7 +18,7 @@ class LegalLinks extends StatelessWidget {
     final links = <String, String>{
       'Privacy Policy': '/privacy',
       'Terms of Use': '/terms',
-      if (includeDeletion) 'Request account deletion': '/delete-account',
+      if (includeDeletion) 'Delete account': '/delete-account',
     };
     return Wrap(
       alignment: WrapAlignment.center,
@@ -21,6 +26,11 @@ class LegalLinks extends StatelessWidget {
       children: links.entries
           .map((link) => TextButton(
                 onPressed: () async {
+                  if (link.value == '/delete-account' &&
+                      onDeleteAccount != null) {
+                    onDeleteAccount!();
+                    return;
+                  }
                   try {
                     await (openLink ?? htmlOpenLink)(link.value);
                   } catch (_) {

@@ -28,8 +28,8 @@ test('legal pages render without an account, database or client scripts', async 
     assert.match(html, /href="\/delete-account"/);
     if (path === '/privacy') assert.match(html, /Stripe[\s\S]*Resend[\s\S]*Retention and deletion/);
     if (path === '/delete-account') {
-      assert.match(html, /without signing in or reinstalling/);
-      assert.match(html, /Request account deletion/);
+      assert.match(html, /Sign in and confirm your identity/);
+      assert.match(html, /data-deletion-confirmation/);
       assert.match(html, /What gets deleted/);
       assert.match(html, /What may need to be retained/);
     }

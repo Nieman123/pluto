@@ -13,3 +13,14 @@
 .legal-contact { margin-top: 48px; }
 .legal-page .button-primary { color: #211523; margin: 12px 0; white-space: normal; text-align: center; }
 @media (max-width: 480px) { .legal-page { padding: 40px 20px; } .legal-contact, .legal-request { padding: 18px; } }
+
+[data-account-deletion] form { display: grid; gap: .8rem; margin-top: 1rem; max-width: 38rem; }
+[data-account-deletion] [hidden] { display: none !important; }
+[data-account-deletion] input:not([type=checkbox]) { width: 100%; min-width: 0; border: 1px solid #705577; border-radius: .65rem; background: #18121e; color: #fff; padding: .85rem; font: inherit; }
+[data-account-deletion] label { color: #f5eafb; }
+.deletion-provider-buttons { display: flex; flex-wrap: wrap; gap: .75rem; }
+.deletion-acknowledgment { display: flex; align-items: flex-start; gap: .7rem; margin: .75rem 0; }
+.deletion-acknowledgment input { margin-top: .3rem; width: 1.2rem; height: 1.2rem; flex-shrink: 0; }
+.deletion-danger { background: #a92b45; border-color: #e1748c; color: #fff; }
+[data-account-deletion] button:disabled { opacity: .55; cursor: not-allowed; }
+[data-deletion-status] { padding: .8rem 0; color: #ffe0b2; }

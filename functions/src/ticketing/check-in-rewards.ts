@@ -10,7 +10,7 @@ export interface TicketRewardInput {
 export async function prepareCheckInRewards(db: Firestore, tx: Transaction, inputs: TicketRewardInput[]) {
   const grants: { ref: DocumentReference; prior: any; points: number; ticket: Record<string, any>; ticketId: string; at: number; uid: string }[] = [];
   for (const input of inputs) {
-    if (!input.ticket.admission || input.ticket.status !== 'valid') continue;
+    if (!input.ticket.admission || input.ticket.status !== 'valid' || input.ticket.accountDeletedAt || input.ticket.ownerUid?.startsWith('deleted_')) continue;
     const ref = input.ref.collection('rewards').doc('check-in'), prior = (await tx.get(ref)).data();
     if (prior?.creditedUid || !prior && !input.earned) continue;
     const points = integer(prior?.points ?? input.earned!.points, 'check-in Pluto Points', 0, 1000000);
@@ -23,6 +23,7 @@ export async function prepareCheckInRewards(db: Firestore, tx: Transaction, inpu
     if (!grant.uid) continue;
     let profile = profiles.get(grant.uid);
     if (!profile) {
+      if ((await tx.get(db.collection('accountDeletionRequests').doc(grant.uid))).exists) { grant.uid = ''; continue; }
       const ref = db.collection('userProfiles').doc(grant.uid), data = (await tx.get(ref)).data();
       profile = { ref, data, points: 0, balance: 0, lifetime: 0 }; profiles.set(grant.uid, profile);
     }

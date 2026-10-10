@@ -24,9 +24,13 @@ FirebaseAuthException googleSignInFailure(GoogleSignInExceptionCode code,
       message: 'Google sign-in is unavailable. Try email sign-in.');
 }
 
-Future<UserCredential> signInToPlutoWithGoogle() async {
+Future<UserCredential> signInToPlutoWithGoogle(
+    {User? reauthenticateUser}) async {
   final auth = FirebaseAuth.instance;
-  if (kIsWeb) return auth.signInWithPopup(GoogleAuthProvider());
+  if (kIsWeb)
+    return reauthenticateUser != null
+        ? reauthenticateUser.reauthenticateWithPopup(GoogleAuthProvider())
+        : auth.signInWithPopup(GoogleAuthProvider());
   const serverClientId =
       String.fromEnvironment('PLUTO_GOOGLE_SERVER_CLIENT_ID');
   const iosClientId = String.fromEnvironment('PLUTO_GOOGLE_IOS_CLIENT_ID');
@@ -51,8 +55,10 @@ Future<UserCredential> signInToPlutoWithGoogle() async {
       throw FirebaseAuthException(
           code: 'missing-google-token',
           message: 'Google sign-in could not be confirmed.');
-    return await auth
-        .signInWithCredential(GoogleAuthProvider.credential(idToken: idToken));
+    final credential = GoogleAuthProvider.credential(idToken: idToken);
+    return reauthenticateUser != null
+        ? await reauthenticateUser.reauthenticateWithCredential(credential)
+        : await auth.signInWithCredential(credential);
   } on GoogleSignInException catch (error) {
     throw googleSignInFailure(error.code,
         nativeAndroid: defaultTargetPlatform == TargetPlatform.android);

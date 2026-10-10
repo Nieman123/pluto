@@ -121,7 +121,8 @@ class AuthAwareSignedInAppShell extends StatelessWidget {
       builder: (BuildContext context, AsyncSnapshot<User?> snapshot) {
         final User? user = snapshot.data;
         if (user == null) {
-          if (currentPath != '/tickets') return child;
+          if (!['/tickets', '/delete-account', '/profile/edit']
+              .contains(currentPath)) return child;
           return Scaffold(
             appBar: const NavBar(isDarkModeBtnVisible: true),
             body: Stack(children: <Widget>[
@@ -149,6 +150,8 @@ class AuthAwareSignedInAppShell extends StatelessWidget {
 
 extension SignedInAppTabX on SignedInAppTab {
   static SignedInAppTab fromPath(String path) {
+    if (path.startsWith('/profile/') || path == '/delete-account')
+      return SignedInAppTab.profile;
     return SignedInAppTab.values.firstWhere(
       (SignedInAppTab tab) => tab.route == path,
       orElse: () => SignedInAppTab.dashboard,
