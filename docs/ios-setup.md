@@ -24,7 +24,9 @@ a signed TestFlight or App Store release.
 - Google iOS client initialization and callback URL scheme; the Web OAuth client
   remains the server client. Sign in with Apple is available on the native iOS
   sign-in and signup screens via Firebase's native nonce-protected provider.
-  Apple sign-in requires the Apple/Firebase setup below before it can work.
+  The Flutter web sign-in and signup screens also offer Apple sign-in through
+  Firebase's popup flow. Native Android keeps it hidden. Apple sign-in requires
+  the Apple/Firebase setup below before it can work.
 - Camera/photo purpose strings, Keychain access for persistent tickets, branded
   opaque app icons and launch artwork using the approved Pluto icon.
 - App privacy manifest describing account/profile/ticket data and required
@@ -33,9 +35,10 @@ a signed TestFlight or App Store release.
   iOS analytics and notification prompts are disabled until their consent/delivery
   implementations are ready. There is no location permission or tracking prompt.
 - Universal Link entitlement for each environment's host and the public
-  `/.well-known/apple-app-site-association` endpoint. No association is published
-  until the real Apple App ID prefix is entered in
-  `functions/src/ios-links-config.json`. Routes are restricted to `/app`, `/app/`,
+  `/.well-known/apple-app-site-association` endpoint. The confirmed Apple App ID
+  prefix `W9Z7U26894` is configured for both environments in
+  `functions/src/ios-links-config.json`; the matching backend release publishes
+  these associations. Routes are restricted to `/app`, `/app/`,
   `/app/tickets`, and `/app/profile`; capability query/fragment values are
   preserved by the shared native router.
 - `iOS validation` PR workflow: macOS simulator compilation for both flavors.
@@ -77,8 +80,8 @@ provide the initial compilation check.
    distribution certificates and provisioning profiles out of Git and chat.
    Configure Apple's private-email relay for the actual verification/receipt
    sender domains so Hide My Email users can receive Pluto messages.
-5. Add the confirmed App ID prefix to `functions/src/ios-links-config.json` for
-   each environment and deploy the matching backend. Confirm the association
+5. The confirmed App ID prefix is already in `functions/src/ios-links-config.json`
+   for each environment; deploy the matching backend. Confirm the association
    response is JSON over HTTPS without authentication or redirects. Rehearse
    cold/warm Universal Links on a physical iPhone; Safari may retain navigation
    in-browser for same-domain taps rather than opening the installed app.

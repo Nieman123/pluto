@@ -3,14 +3,16 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 bool get offersAppleSignIn =>
-    !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+    kIsWeb || defaultTargetPlatform == TargetPlatform.iOS;
 
 Future<UserCredential> signInToPlutoWithApple() async {
   if (!offersAppleSignIn)
-    throw StateError('Apple sign-in is available in the iOS app.');
+    throw StateError(
+        'Apple sign-in is available on the web and in the iOS app.');
   final provider = AppleAuthProvider()
     ..addScope('email')
     ..addScope('name');
+  if (kIsWeb) return FirebaseAuth.instance.signInWithPopup(provider);
   // Firebase's native SDK handles the secure nonce and system authorization sheet.
   return FirebaseAuth.instance.signInWithProvider(provider);
 }

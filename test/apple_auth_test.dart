@@ -4,11 +4,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pluto/src/apple_auth.dart';
 
 void main() {
-  test('Apple sign-in is offered only on the iOS app', () {
+  test('Apple sign-in is offered on the web and only iOS on native platforms',
+      () {
     addTearDown(() => debugDefaultTargetPlatformOverride = null);
-    for (final platform in [TargetPlatform.android, TargetPlatform.iOS]) {
+    for (final platform in TargetPlatform.values) {
       debugDefaultTargetPlatformOverride = platform;
-      expect(offersAppleSignIn, platform == TargetPlatform.iOS);
+      expect(offersAppleSignIn, kIsWeb || platform == TargetPlatform.iOS);
     }
   });
   testWidgets(
