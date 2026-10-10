@@ -13,7 +13,8 @@ const db = getFirestore(), staff = `rsvp-admin-${randomUUID()}`, signingKey = ge
 const service = new Operations(db, { signingKey, stripe: {} });
 const accessKey = () => randomBytes(32).toString('hex');
 const request = (eventId, overrides = {}) => ({ eventId, accessKey: accessKey(), name: 'RSVP Attendee', email: `${randomUUID()}@example.test`, items: [{ offerId: 'weekend', quantity: 1 }], ...overrides });
-async function verifiedRsvp(raw, actor) { return service.rsvp(raw, { ...actor, uid: actor?.uid || '', email: raw.email, email_verified: true }); }
+// A verified Firebase identity always has a UID; keep it stable across retries.
+async function verifiedRsvp(raw, actor) { return service.rsvp(raw, { ...actor, uid: actor?.uid || `rsvp-buyer-${raw.email}`, email: raw.email, email_verified: true }); }
 async function event(mode, capacity = 2) {
   const eventId = randomUUID(), draft = fixture(true); draft.slug += `-${eventId}`; draft.registrationMode = mode;
   draft.offers = [{ ...draft.offers[0], unitAmount: 0, maxPerOrder: 1 }]; draft.pools[0].capacity = capacity; draft.pools[1].capacity = capacity;
