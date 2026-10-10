@@ -1,0 +1,7 @@
+{
+  "PLUTO_ENVIRONMENT": "staging",
+  "PLUTO_FIREBASE_IOS_CONFIG": "{\"apiKey\":\"AIzaSyB4d4BH2hRh6SQgnD-uypCHAt0WMaQ3cz4\",\"appId\":\"1:702489323300:ios:9d61e07beb50b03d46b5b1\",\"messagingSenderId\":\"702489323300\",\"projectId\":\"pluto-staging-92eb7\",\"storageBucket\":\"pluto-staging-92eb7.firebasestorage.app\",\"iosBundleId\":\"events.pluto.app.staging\",\"iosClientId\":\"702489323300-16q58kh8jd8r204l09vap18g2erclj5k.apps.googleusercontent.com\"}",
+  "PLUTO_API_BASE_URL": "https://pluto-staging-92eb7.web.app",
+  "PLUTO_GOOGLE_IOS_CLIENT_ID": "702489323300-16q58kh8jd8r204l09vap18g2erclj5k.apps.googleusercontent.com",
+  "PLUTO_GOOGLE_SERVER_CLIENT_ID": "702489323300-edl40dmb9f9glpg5fm787d6be69nt8gu.apps.googleusercontent.com"
+}

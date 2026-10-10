@@ -29,9 +29,14 @@ Future<UserCredential> signInToPlutoWithGoogle() async {
   if (kIsWeb) return auth.signInWithPopup(GoogleAuthProvider());
   const serverClientId =
       String.fromEnvironment('PLUTO_GOOGLE_SERVER_CLIENT_ID');
+  const iosClientId = String.fromEnvironment('PLUTO_GOOGLE_IOS_CLIENT_ID');
   try {
     final initialization = _googleInitialization ??= GoogleSignIn.instance
         .initialize(
+            clientId: defaultTargetPlatform == TargetPlatform.iOS &&
+                    iosClientId.isNotEmpty
+                ? iosClientId
+                : null,
             serverClientId: serverClientId.isEmpty ? null : serverClientId);
     try {
       await initialization;

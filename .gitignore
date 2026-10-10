@@ -39,3 +39,7 @@ dotenv
 /android-credentials/
 *.jks
 *.keystore
+/ios-credentials/
+*.p12
+*.mobileprovision
+AuthKey_*.p8

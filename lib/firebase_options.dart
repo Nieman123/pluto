@@ -30,10 +30,11 @@ class DefaultFirebaseOptions {
             configJson:
                 const String.fromEnvironment('PLUTO_FIREBASE_ANDROID_CONFIG'));
       case TargetPlatform.iOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for ios - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return resolveIOS(
+            environment: plutoEnvironment,
+            flavor: plutoFlavor,
+            configJson:
+                const String.fromEnvironment('PLUTO_FIREBASE_IOS_CONFIG'));
       case TargetPlatform.macOS:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for macos - '
@@ -100,6 +101,58 @@ class DefaultFirebaseOptions {
         messagingSenderId: sender,
         projectId: project,
         storageBucket: config['storageBucket']);
+  }
+
+  static FirebaseOptions resolveIOS({
+    required String environment,
+    required String flavor,
+    required String configJson,
+  }) {
+    validateNativeEnvironment(environment, flavor);
+    if (configJson.isEmpty)
+      throw StateError('iOS Firebase configuration is required.');
+    final config = Map<String, dynamic>.from(jsonDecode(configJson) as Map);
+    final project =
+        environment == 'staging' ? 'pluto-staging-92eb7' : 'pluto-9b6ca';
+    final sender = environment == 'staging' ? '702489323300' : '763906028056';
+    final bundle = environment == 'staging'
+        ? 'events.pluto.app.staging'
+        : 'events.pluto.app';
+    const fields = [
+      'apiKey',
+      'appId',
+      'messagingSenderId',
+      'projectId',
+      'storageBucket',
+      'iosBundleId',
+      'iosClientId'
+    ];
+    if (config.keys.any((key) => !fields.contains(key)) ||
+        fields.any((key) =>
+            config[key] is! String || (config[key] as String).isEmpty)) {
+      throw StateError('Only complete public iOS Firebase fields are allowed.');
+    }
+    if (config['projectId'] != project ||
+        config['messagingSenderId'] != sender ||
+        config['iosBundleId'] != bundle ||
+        !RegExp('^1:$sender:ios:[a-f0-9]+\$')
+            .hasMatch(config['appId'] as String) ||
+        !RegExp('^$sender-[a-z0-9]+\\.apps\\.googleusercontent\\.com\$')
+            .hasMatch(config['iosClientId'] as String) ||
+        !['$project.appspot.com', '$project.firebasestorage.app']
+            .contains(config['storageBucket']) ||
+        (environment == 'staging' &&
+            config['apiKey'] == productionWeb.apiKey)) {
+      throw StateError('iOS Firebase configuration does not match its flavor.');
+    }
+    return FirebaseOptions(
+        apiKey: config['apiKey'],
+        appId: config['appId'],
+        messagingSenderId: sender,
+        projectId: project,
+        storageBucket: config['storageBucket'],
+        iosBundleId: bundle,
+        iosClientId: config['iosClientId']);
   }
 
   static FirebaseOptions get web => resolveWeb(

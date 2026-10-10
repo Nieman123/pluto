@@ -53,7 +53,8 @@ test("lockfiles exclude vulnerable Busboy versions", async () => {
 test("Hosting exposes public SSR routes and Flutter deep links", () => {
   assert.equal(firebase.hosting.appAssociation, 'NONE', 'Hosting must serve our association instead of auto-generating an empty one');
   const rewrites = firebase.hosting.rewrites;
-  assert.deepEqual(rewrites.slice(0, 3), [
+  assert.deepEqual(rewrites.slice(0, 4), [
+    { source: "/.well-known/apple-app-site-association", function: { functionId: "publicSite", region: "us-central1" } },
     { source: "/.well-known/assetlinks.json", function: { functionId: "publicSite", region: "us-central1" } },
     { source: "/app", destination: "/app/index.html" },
     { source: "/app/**", destination: "/app/index.html" },
