@@ -24,7 +24,7 @@ jobs:
           curl --fail --location --retry 3 https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz -o tmp/actionlint.tar.gz
           printf '8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  tmp/actionlint.tar.gz\n' | sha256sum --check
           tar -xzf tmp/actionlint.tar.gz -C tmp/actionlint
-          tmp/actionlint/actionlint -shellcheck='' -pyflakes='' .github/workflows/build.yml .github/workflows/validate.yml .github/workflows/release.yml .github/workflows/android.yml .github/workflows/android-release.yml
+          tmp/actionlint/actionlint -shellcheck='' -pyflakes='' .github/workflows/build.yml .github/workflows/validate.yml .github/workflows/release.yml .github/workflows/android.yml .github/workflows/android-release.yml .github/workflows/ios.yml
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22

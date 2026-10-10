@@ -1,0 +1,4 @@
+{
+  "staging": { "bundleId": "events.pluto.app.staging", "appIdentifierPrefix": "" },
+  "production": { "bundleId": "events.pluto.app", "appIdentifierPrefix": "" }
+}

@@ -1,0 +1,7 @@
+{
+  "PLUTO_ENVIRONMENT": "production",
+  "PLUTO_FIREBASE_IOS_CONFIG": "{\"apiKey\":\"AIzaSyDZM-RgbPYwp7zGRtFWrnVUxilHQtqzOEI\",\"appId\":\"1:763906028056:ios:1d7697595f3abe3992896d\",\"messagingSenderId\":\"763906028056\",\"projectId\":\"pluto-9b6ca\",\"storageBucket\":\"pluto-9b6ca.appspot.com\",\"iosBundleId\":\"events.pluto.app\",\"iosClientId\":\"763906028056-a8eiqvnrf5c7ssapsc88o32cu5lajceo.apps.googleusercontent.com\"}",
+  "PLUTO_API_BASE_URL": "https://pluto.events",
+  "PLUTO_GOOGLE_IOS_CLIENT_ID": "763906028056-a8eiqvnrf5c7ssapsc88o32cu5lajceo.apps.googleusercontent.com",
+  "PLUTO_GOOGLE_SERVER_CLIENT_ID": "763906028056-lfief07v2pnbhj39e974crv721etefrs.apps.googleusercontent.com"
+}

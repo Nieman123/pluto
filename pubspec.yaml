@@ -41,6 +41,8 @@ dev_dependencies:
     sdk: flutter
 
 flutter:
+  config:
+    enable-swift-package-manager: false
   uses-material-design: true
 
   fonts:

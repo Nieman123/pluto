@@ -25,6 +25,7 @@ analyzer:
     - web/**
     - tmp/**
     - android/**
+    - ios/**
 
 linter:
   rules:
