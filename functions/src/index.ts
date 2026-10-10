@@ -14,6 +14,7 @@ import { configureTrustedProxy } from './ticketing/client-identity';
 import { deploymentConfig } from './deployment-config';
 import { androidLinkStatements } from './android-links';
 import { iosLinkAssociation } from './ios-links';
+export { accountDeletionWorker, accountDeletionMaintenance } from './account-deletion-workers';
 import { legalRouter } from './legal-pages';
 export { ticketingFinancialWorker, ticketingFinancialBackfillWorker, ticketingMaintenance, ticketingWebhookWorker, ticketingEmailWorker, ticketingCampaignWorker, ticketingRecoveryWorker, ticketingCommunicationMaintenance, ticketingEmailMaintenance } from './ticketing/workers';
 import { normalizeRental, groupRentals, rentalContactEmail, type PublicRental } from './rentals-data';

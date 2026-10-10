@@ -348,6 +348,9 @@ export class Operations extends Communications {
     try {
       if (await stopExpired()) return;
       const currentOrder = job.orderId ? (await this.order(job.orderId).get()).data() : null;
+      if (job.accountDeletedAt || !job.to || currentOrder?.accountDeletedAt && job.type !== 'transfer') {
+        await ref.update({ status: 'cancelled', to: '', leaseUntil: 0, token: null, code: null, emailPayload: null }); return;
+      }
       if (currentOrder && job.type !== 'transfer' && job.to !== currentOrder.email) {
         await ref.update({ status: 'cancelled', leaseUntil: 0, token: null, emailPayload: null, lastError: 'Recipient was corrected. Send a new access link to the current contact.' }); return;
       }

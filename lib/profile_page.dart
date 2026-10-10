@@ -1,6 +1,3 @@
-import 'dart:typed_data';
-
-import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -12,6 +9,7 @@ import 'src/email_verification.dart';
 import 'src/google_auth.dart';
 import 'src/legal_links.dart';
 import 'src/nav_bar/nav_bar.dart';
+import 'src/profile_identity_card.dart';
 import 'src/theme/pluto_ui.dart';
 import 'user_profile_repository.dart';
 
@@ -25,43 +23,10 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   final UserProfileRepository _profileRepository = UserProfileRepository();
 
-  final TextEditingController _displayNameController = TextEditingController();
-  final TextEditingController _homeCityController = TextEditingController();
-  final TextEditingController _favoriteGenreController =
-      TextEditingController();
-  final TextEditingController _bioController = TextEditingController();
-
-  String _profileImageDataUrl = '';
-  bool _isSavingProfile = false;
   bool _isSigningOut = false;
-  String _statusMessage = '';
 
-  String? _profileHydratedForUid;
   String? _ensureProfileUid;
   Future<void>? _ensureProfileFuture;
-
-  @override
-  void dispose() {
-    _displayNameController.dispose();
-    _homeCityController.dispose();
-    _favoriteGenreController.dispose();
-    _bioController.dispose();
-    super.dispose();
-  }
-
-  InputDecoration _inputDecoration(String labelText) {
-    return InputDecoration(
-      labelText: labelText,
-      labelStyle: const TextStyle(color: Colors.white70),
-      border: const OutlineInputBorder(),
-      enabledBorder: const OutlineInputBorder(
-        borderSide: BorderSide(color: Colors.white54),
-      ),
-      focusedBorder: const OutlineInputBorder(
-        borderSide: BorderSide(color: Colors.white),
-      ),
-    );
-  }
 
   String _fallbackDisplayNameForUser(User user) {
     final String userDisplayName = (user.displayName ?? '').trim();
@@ -86,102 +51,8 @@ class _ProfilePageState extends State<ProfilePage> {
     }
 
     _ensureProfileUid = user.uid;
-    _profileHydratedForUid = null;
     _ensureProfileFuture = _profileRepository.ensureProfileForUser(user);
     return _ensureProfileFuture!;
-  }
-
-  void _hydrateFormFromProfileIfNeeded({
-    required User user,
-    required UserProfile profile,
-  }) {
-    if (_profileHydratedForUid == user.uid) {
-      return;
-    }
-
-    _displayNameController.text = profile.displayName;
-    _homeCityController.text = profile.homeCity;
-    _favoriteGenreController.text = profile.favoriteGenre;
-    _bioController.text = profile.bio;
-    _profileImageDataUrl = profile.profileImageDataUrl;
-    _profileHydratedForUid = user.uid;
-  }
-
-  Future<void> _pickProfileImage() async {
-    final FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: <String>['png', 'jpg', 'jpeg', 'webp'],
-      withData: true,
-    );
-    if (result == null || result.files.isEmpty) {
-      return;
-    }
-
-    final PlatformFile file = result.files.first;
-    final Uint8List? fileBytes = file.bytes;
-    if (fileBytes == null) {
-      setState(() {
-        _statusMessage = 'Could not read selected file bytes.';
-      });
-      return;
-    }
-
-    if (fileBytes.lengthInBytes > 700000) {
-      setState(() {
-        _statusMessage =
-            'Image too large for Firestore profile storage. Please pick a smaller file.';
-      });
-      return;
-    }
-
-    final String mimeType = _mimeTypeForExtension(file.extension ?? '');
-    setState(() {
-      _profileImageDataUrl =
-          encodeDataUrl(bytes: fileBytes, mimeType: mimeType);
-      _statusMessage = 'Profile picture selected.';
-    });
-  }
-
-  Future<void> _saveProfile(User user) async {
-    if (_isSavingProfile || _isSigningOut) {
-      return;
-    }
-
-    setState(() {
-      _isSavingProfile = true;
-      _statusMessage = '';
-    });
-
-    try {
-      await _profileRepository.updateProfile(
-        uid: user.uid,
-        displayName: _displayNameController.text,
-        homeCity: _homeCityController.text,
-        favoriteGenre: _favoriteGenreController.text,
-        bio: _bioController.text,
-        profileImageDataUrl: _profileImageDataUrl,
-      );
-
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _statusMessage = 'Profile saved.';
-      });
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _statusMessage = 'Failed to save profile: $error';
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSavingProfile = false;
-        });
-      }
-    }
   }
 
   Future<void> _signOut() async {
@@ -234,7 +105,9 @@ class _ProfilePageState extends State<ProfilePage> {
                   onPressed: () => context.go('/sign-on'),
                   child: const Text('Go To Sign On'),
                 ),
-                const LegalLinks(includeDeletion: true),
+                LegalLinks(
+                    includeDeletion: true,
+                    onDeleteAccount: () => context.go('/delete-account')),
               ],
             ),
           ),
@@ -243,105 +116,15 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildProfileEditorCard({
-    required User user,
-    required UserProfile profile,
-  }) {
-    final Uint8List? profileBytes = decodeDataUrl(_profileImageDataUrl);
-
-    return Card(
-      color: PlutoColors.surface,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            EmailVerificationPanel(key: ValueKey(user.uid), user: user),
-            Wrap(
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 18,
-              runSpacing: 12,
-              children: <Widget>[
-                CircleAvatar(
-                  radius: 54,
-                  backgroundColor: Colors.white12,
-                  backgroundImage:
-                      profileBytes != null ? MemoryImage(profileBytes) : null,
-                  child: profileBytes == null
-                      ? const Icon(
-                          Icons.person,
-                          color: Colors.white70,
-                          size: 48,
-                        )
-                      : null,
-                ),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: <Widget>[
-                    ElevatedButton(
-                      onPressed: _pickProfileImage,
-                      child: const Text('Upload Picture'),
-                    ),
-                    OutlinedButton(
-                      onPressed: () {
-                        setState(() {
-                          _profileImageDataUrl = '';
-                          _statusMessage = 'Profile picture removed.';
-                        });
-                      },
-                      child: const Text('Remove Picture'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: _displayNameController,
-              style: const TextStyle(color: Colors.white),
-              cursorColor: Colors.white,
-              decoration: _inputDecoration('Display Name'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _homeCityController,
-              style: const TextStyle(color: Colors.white),
-              cursorColor: Colors.white,
-              decoration: _inputDecoration('Home City'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _favoriteGenreController,
-              style: const TextStyle(color: Colors.white),
-              cursorColor: Colors.white,
-              decoration: _inputDecoration('Favorite Genre'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _bioController,
-              maxLines: 3,
-              style: const TextStyle(color: Colors.white),
-              cursorColor: Colors.white,
-              decoration: _inputDecoration('Bio'),
-            ),
-            const SizedBox(height: 12),
-            SelectableText(
-              'Signed in as: ${user.email ?? 'No email'}',
-              style: const TextStyle(color: Colors.white70),
-            ),
-            const SizedBox(height: 14),
-            ElevatedButton(
-              onPressed: _isSavingProfile || _isSigningOut
-                  ? null
-                  : () => _saveProfile(user),
-              child: Text(_isSavingProfile ? 'Saving...' : 'Save Profile'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget _buildProfileSummary(
+          {required User user, required UserProfile profile}) =>
+      Column(children: [
+        ProfileIdentityCard(
+            profile: profile,
+            photoUrl: user.photoURL,
+            onEdit: () => context.go('/profile/edit')),
+        EmailVerificationPanel(key: ValueKey(user.uid), user: user),
+      ]);
 
   Widget _buildTierAndPointsCard(UserProfile profile) {
     final int? nextTier = profile.nextTierThreshold;
@@ -579,13 +362,15 @@ class _ProfilePageState extends State<ProfilePage> {
             padding: const EdgeInsets.all(16),
             children: <Widget>[
               PlutoEntrance(
-                  child: _buildProfileEditorCard(user: user, profile: profile)),
+                  child: _buildProfileSummary(user: user, profile: profile)),
               const SizedBox(height: 14),
               PlutoEntrance(child: _buildTierAndPointsCard(profile)),
               const SizedBox(height: 14),
               PlutoEntrance(child: _buildPointsHistoryCard(user)),
               const SizedBox(height: 14),
-              const LegalLinks(includeDeletion: true),
+              LegalLinks(
+                  includeDeletion: true,
+                  onDeleteAccount: () => context.go('/delete-account')),
               const AppBuildInfo(),
             ],
           );
@@ -602,11 +387,13 @@ class _ProfilePageState extends State<ProfilePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: <Widget>[
-                      _buildProfileEditorCard(user: user, profile: profile),
+                      _buildProfileSummary(user: user, profile: profile),
                       const SizedBox(height: 14),
                       _buildTierAndPointsCard(profile),
                       const SizedBox(height: 14),
-                      const LegalLinks(includeDeletion: true),
+                      LegalLinks(
+                          includeDeletion: true,
+                          onDeleteAccount: () => context.go('/delete-account')),
                       const AppBuildInfo(),
                     ],
                   ),
@@ -631,20 +418,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  String _mimeTypeForExtension(String extension) {
-    switch (extension.toLowerCase()) {
-      case 'png':
-        return 'image/png';
-      case 'jpg':
-      case 'jpeg':
-        return 'image/jpeg';
-      case 'webp':
-        return 'image/webp';
-      default:
-        return 'application/octet-stream';
-    }
-  }
-
   Widget _buildStandaloneScaffold(Widget body) {
     return Scaffold(
       appBar: const NavBar(isDarkModeBtnVisible: true),
@@ -653,24 +426,6 @@ class _ProfilePageState extends State<ProfilePage> {
           const PlutoBackground(),
           body,
         ],
-      ),
-    );
-  }
-
-  Widget _buildStatusOverlay() {
-    return Align(
-      alignment: Alignment.bottomCenter,
-      child: Container(
-        margin: const EdgeInsets.all(18),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: Colors.black87,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Text(
-          _statusMessage,
-          style: const TextStyle(color: Colors.white),
-        ),
       ),
     );
   }
@@ -773,8 +528,6 @@ class _ProfilePageState extends State<ProfilePage> {
                         return const Center(child: CircularProgressIndicator());
                       }
 
-                      _hydrateFormFromProfileIfNeeded(
-                          user: user, profile: profile);
                       return Stack(
                         children: <Widget>[
                           Positioned.fill(
@@ -783,7 +536,6 @@ class _ProfilePageState extends State<ProfilePage> {
                               profile: profile,
                             ),
                           ),
-                          if (_statusMessage.isNotEmpty) _buildStatusOverlay(),
                         ],
                       );
                     },

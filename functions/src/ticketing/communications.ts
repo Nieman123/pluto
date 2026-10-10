@@ -114,9 +114,9 @@ export class Communications extends Door {
         if (campaign.phase === 'tickets') {
           const order = orders.get(value.orderId);
           if (value.kind === 'admission' && value.status === 'valid' && campaign.kind !== 'event-cancelled' && reconciliationPending(order)) fail('Payment reconciliation is still running. Retry this campaign page.', 503);
-          if (value.kind !== 'admission' || value.status !== 'valid' || order?.status !== 'paid' || order.financialBlocked && campaign.kind !== 'event-cancelled' || value.rsvp && order.rsvpStatus !== 'approved') continue;
+          if (value.accountDeletedAt || !value.holderEmail || value.kind !== 'admission' || value.status !== 'valid' || order?.status !== 'paid' || order.financialBlocked && campaign.kind !== 'event-cancelled' || value.rsvp && order.rsvpStatus !== 'approved') continue;
           recipients.set(value.holderEmail, { ticketId: row.id });
-        } else if (value.method === 'rsvp' && value.rsvpStatus === 'pending') recipients.set(value.email, { pendingOrderId: row.id });
+        } else if (!value.accountDeletedAt && value.email && value.method === 'rsvp' && value.rsvpStatus === 'pending') recipients.set(value.email, { pendingOrderId: row.id });
       }
       await this.db.runTransaction(async tx => {
         const latest = (await tx.get(ref)).data(); if (!latest || latest.leaseId !== leaseId || latest.cursor !== campaign.cursor || latest.phase !== campaign.phase || latest.status !== 'pending') return;

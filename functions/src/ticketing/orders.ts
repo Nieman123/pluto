@@ -65,6 +65,7 @@ export class Orders extends Catalog {
   async authorize(orderId: string, key: unknown, actor: DecodedIdToken | null) {
     const order = (await this.order(orderId).get()).data() as Order | undefined;
     if (!order) fail('Order not found.', 404);
+    if ((order as any).accountDeletedAt) fail('This order is no longer available through account access. Contact Pluto for purchase support.', 403);
     if (actor && order.ownerUid === actor.uid) return order;
     if (typeof key === 'string' && /^[a-f0-9]{64}$/.test(key)) {
       if (hash(key) === order.accessHash) return order;
@@ -77,6 +78,7 @@ export class Orders extends Catalog {
     const ticketId = id(raw.ticketId);
     return this.db.runTransaction(async tx => {
       const ticket = (await tx.get(this.tickets().doc(ticketId))).data(); if (!ticket) fail('Ticket not found.', 404);
+      if (ticket.accountDeletedAt) fail('Ticket account access has been removed.', 403, 'ticket-access-revoked');
       const order = (await tx.get(this.order(ticket.orderId))).data(); if (!order) fail('Order not found.', 404);
       let authorized = !!actor && ticket.ownerUid === actor.uid;
       if (raw.holderToken) {
@@ -145,6 +147,7 @@ export class Orders extends Catalog {
       preflightRevision = event.publishedRevision;
     }
     await this.db.runTransaction(async tx => {
+      await this.activeAccount(tx, actor);
       const existing = (await tx.get(ref)).data() as Order | undefined;
       if (existing) { if (existing.inputHash !== requestHash) fail('This checkout attempt has different details. Use the original cart or start a new attempt.', 409); return; }
       const event = (await tx.get(this.event(eventId))).data();
@@ -396,7 +399,8 @@ export class Orders extends Catalog {
       if (promoRef) tx.update(promoRef, { held: promo!.held - 1, used: promo!.used + 1 });
       (verifiedUnits || order.units).forEach((unit, index) => tx.create(this.tickets().doc(ticketId(orderId, index)), { ...unit, orderId, eventId: order.eventId, eventTitle: order.eventTitle,
         ...(order.rsvpOrderId ? { rsvpOrderId: order.rsvpOrderId, rsvpTicketId: order.rsvpTicketId, rsvpTicketVersion: order.rsvpTicketVersion } : {}),
-        ownerUid: order.ownerUid, holderEmail: order.email, holderName: order.name, transferCutoff: order.transferCutoff || unit.validFrom, version: 1, status: 'valid', admission: null, refunded: false, index }));
+        ownerUid: order.ownerUid, holderEmail: (order as any).accountDeletedAt ? '' : order.email, holderName: (order as any).accountDeletedAt ? 'Deleted account' : order.name,
+        ...((order as any).accountDeletedAt ? { accountDeletedAt: (order as any).accountDeletedAt } : {}), transferCutoff: order.transferCutoff || unit.validFrom, version: 1, status: 'valid', admission: null, refunded: false, index }));
       tx.update(ref, { status: 'paid', paidAt: Date.now(), stripeFee: null, stripeFeeStatus: 'pending', ...payment, ...(verifiedUnits ? { units: verifiedUnits } : {}), clientSecret: null });
       tx.set(this.db.collection('ticketingEmailJobs').doc(`receipt_${orderId}`), { type: 'receipt', orderId, to: order.email, status: 'pending', createdAt: Date.now(), attempts: 0 });
     });
@@ -491,10 +495,12 @@ export class Orders extends Catalog {
     if (onlyUnclaimed) query = query.where('ownerUid', '==', '');
     const orders = await query.get();
     for (const doc of orders.docs) {
+      if (doc.data().accountDeletedAt) continue;
       if (doc.data().ownerUid) continue;
       await this.db.runTransaction(async tx => {
+      await this.activeAccount(tx, actor);
         const latest = (await tx.get(doc.ref)).data() as Order;
-        if (latest.ownerUid) return;
+        if (latest.ownerUid || (latest as any).accountDeletedAt) return;
         const tickets = await tx.get(this.tickets().where('orderId', '==', doc.id));
         const held = tickets.docs.filter(t => t.data().holderEmail === actor.email!.toLowerCase());
         const award = latest.status === 'paid' && !latest.financialBlocked
@@ -535,6 +541,7 @@ export class Orders extends Catalog {
   async recover(rawEmail: unknown) {
     const target = email(rawEmail), docs = await this.db.collection('ticketingOrders').where('email', '==', target).get();
     for (const doc of docs.docs.slice(0, 25)) {
+      if (doc.data().accountDeletedAt) continue;
       const token = secret();
       const batch = this.db.batch();
       batch.set(this.db.collection('ticketingRecovery').doc(hash(token)), { orderId: doc.id, accessRevision: doc.data().accessRevision || 0, expiresAt: Date.now() + 30 * 60000, used: false });
@@ -548,7 +555,7 @@ export class Orders extends Catalog {
     const orderId = await this.db.runTransaction(async tx => {
       const record = (await tx.get(ref)).data(); if (!record || record.used || record.expiresAt < Date.now()) fail('This recovery link is expired or already used.', 403);
       const order = (await tx.get(this.order(record.orderId))).data();
-      if (!order || (record.accessRevision || 0) !== (order.accessRevision || 0)) fail('This order link was replaced. Request a new recovery email.', 403);
+      if (!order || order.accountDeletedAt || (record.accessRevision || 0) !== (order.accessRevision || 0)) fail('This order link was replaced. Request a new recovery email.', 403);
       tx.update(ref, { used: true }); tx.create(this.db.collection('ticketingAccess').doc(hash(accessKey)), { orderId: record.orderId, accessRevision: order.accessRevision || 0, expiresAt: Date.now() + 24 * 3600000 });
       return record.orderId;
     });
@@ -585,11 +592,12 @@ export class Orders extends Catalog {
     const token = receipt(rawToken), ref = this.db.collection('ticketingTransfers').doc(hash(token));
     let ticketKey = '';
     await this.db.runTransaction(async tx => {
+      await this.activeAccount(tx, actor);
       const transfer = (await tx.get(ref)).data();
       if (!transfer || transfer.accepted || transfer.expiresAt <= Date.now()) fail('This transfer is expired or already accepted.', 409);
       const ticketRef = this.tickets().doc(transfer.ticketId), ticket = (await tx.get(ticketRef)).data();
       if ((await tx.get(this.order(transfer.orderId))).data()?.financialBlocked) fail('Payment needs staff review before transferring.', 409);
-      if (!ticket || ticket.rsvp || ticket.rsvpOrderId || ticket.version !== transfer.ticketVersion || ticket.status !== 'valid' || ticket.admission) fail('This ticket is no longer transferable.', 409);
+      if (!ticket || ticket.accountDeletedAt || ticket.rsvp || ticket.rsvpOrderId || ticket.version !== transfer.ticketVersion || ticket.status !== 'valid' || ticket.admission) fail('This ticket is no longer transferable.', 409);
       const event = (await tx.get(this.event(ticket.eventId))).data()!;
       if (event.status === 'cancelled' || Date.now() >= this.transferDeadline(ticket, event)) fail('The event transfer window is closed.', 409);
       ticketKey = transfer.ticketId;
@@ -604,10 +612,11 @@ export class Orders extends Catalog {
     const token = receipt(rawToken), access = (await this.db.collection('ticketingHolderAccess').doc(hash(token)).get()).data();
     if (!access) fail('Ticket access not found.', 404, 'ticket-access-revoked');
     const ticket = (await this.tickets().doc(access.ticketId).get()).data();
-    if (!ticket || ticket.version !== access.version || ticket.status !== 'valid') fail('This ticket credential is no longer valid.', 409, 'ticket-access-revoked');
+    if (!ticket || ticket.accountDeletedAt || ticket.version !== access.version || ticket.status !== 'valid') fail('This ticket credential is no longer valid.', 409, 'ticket-access-revoked');
     if ((await this.order(ticket.orderId).get()).data()?.financialBlocked) fail('Payment needs staff review before admission.', 409);
     if (actor?.email_verified && actor.email?.toLowerCase() === ticket.holderEmail && !ticket.ownerUid) {
       await this.db.runTransaction(async tx => {
+      await this.activeAccount(tx, actor);
         const ref = this.tickets().doc(access.ticketId), latest = (await tx.get(ref)).data();
         const order = latest ? (await tx.get(this.order(latest.orderId))).data() : null;
         if (!latest || latest.version !== access.version || latest.status !== 'valid' || latest.holderEmail !== actor.email!.toLowerCase() || latest.ownerUid || order?.financialBlocked) return;

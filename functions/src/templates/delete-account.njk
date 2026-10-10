@@ -1,24 +1,39 @@
 {% extends "legal.njk" %}
 {% block legal_title %}Delete your Pluto account{% endblock %}
 {% block legal_content %}
-<p>You can request deletion of your Pluto Events account and its associated personal data without signing in or reinstalling the app. Pluto Events LLC handles requests by email.</p>
-<section class="legal-request" aria-labelledby="request"><h2 id="request">Send a deletion request</h2>
-  <ol>
-    <li>Email <a href="mailto:contact@pluto.events?subject=Pluto%20account%20deletion%20request">contact@pluto.events</a>, preferably from the email address associated with your Pluto account.</li>
-    <li>Use the subject <strong>Pluto account deletion request</strong> and state that you want your account and associated personal data deleted. If your account is on our staging test site or staging app, please mention that.</li>
-    <li>Our team will verify ownership, explain any information we need to retain and respond with the expected completion timeframe. If you cannot access your account email, contact us for help verifying ownership.</li>
-  </ol>
-  <a class="button button-primary" href="mailto:contact@pluto.events?subject=Pluto%20account%20deletion%20request&body=Please%20delete%20my%20Pluto%20Events%20account%20and%20associated%20personal%20data.%0A%0AAccount%20email%3A%20%0AProduction%20or%20staging%3A%20">Request account deletion</a>
-  <p>If the button does not open an email app, write to the address above using your preferred email service. Never include your password, full card number or identity documents in the initial request.</p>
+<p>Delete your Pluto Events account here or in the app under My Profile → Delete account. You do not need to reinstall the app or send an email. Sign in and confirm your identity to protect your account.</p>
+<section class="legal-request" aria-labelledby="request"><h2 id="request">Delete account</h2>
+  <p>Your profile details and photo, Pluto Points, rewards history, and sign-in account will be permanently deleted. You will lose account access to your tickets and orders. Deletion does not issue refunds or automatically cancel event admission. Contact Pluto before continuing if you still need ticket access.</p>
+  <div data-account-deletion hidden>
+    <p data-deletion-status role="status" aria-live="polite"></p>
+    <form data-deletion-login>
+      <label for="deletion-email">Account email</label><input id="deletion-email" name="email" type="email" autocomplete="username" required>
+      <label for="deletion-login-password">Password</label><input id="deletion-login-password" name="password" type="password" autocomplete="current-password" required>
+      <button class="button button-primary" type="submit">Sign in</button>
+      <div class="deletion-provider-buttons">
+        <button class="button" type="button" data-deletion-google>Continue with Google</button>
+        <button class="button" type="button" data-deletion-apple>Continue with Apple</button>
+      </div>
+    </form>
+    <form data-deletion-confirmation hidden>
+      <p data-deletion-identity></p>
+      <div data-deletion-password><label for="deletion-confirm-password">Confirm your password</label><input id="deletion-confirm-password" name="password" type="password" autocomplete="current-password"></div>
+      <label class="deletion-acknowledgment"><input name="accepted" type="checkbox"> <span>I understand this is permanent and I will lose account access to my tickets.</span></label>
+      <button class="button deletion-danger" type="submit" disabled>Permanently delete account</button>
+    </form>
+  </div>
+  <noscript><p>Enable JavaScript to securely sign in and delete your account, or use Delete account in the Pluto app.</p></noscript>
+  <p>If sign-in is unavailable, <a href="/app/delete-account">open account deletion in the web app</a>. If you cannot access your account, contact <a href="mailto:contact@pluto.events">contact@pluto.events</a> for help recovering access.</p>
 </section>
 <section aria-labelledby="deleted"><h2 id="deleted">What gets deleted</h2>
-  <p>After verifying the request, we delete your sign-in account and delete or anonymize associated personal data eligible for deletion, including your profile details and photo, rewards profile and unnecessary account-linked activity or communications data. We coordinate deletion with service providers where appropriate.</p>
+  <p>Your sign-in account, profile and photo, rewards profile and history, scavenger-hunt claim details, staff access, waitlist registrations, and unnecessary account-linked communication data are removed. Personal ticket-holder details are anonymized. Previously transferred tickets held by another person remain theirs.</p>
+  <p>Deletion starts immediately and usually finishes within a few minutes. If a service is temporarily unavailable, it retries automatically. This page and the app show completion using a saved confirmation on your device, even after you are signed out. Keep that confirmation private.</p>
 </section>
 <section aria-labelledby="retained"><h2 id="retained">What may need to be retained</h2>
-  <p>Limited purchase, payment, tax, refund, dispute, admission-security and signed-waiver records may be retained when required for accounting, legal obligations, resolving disputes or preventing fraud. Retention lasts only as long as those purposes require and varies by record. We will explain relevant exceptions and expected retention when responding to your request.</p>
-  <p>Account deletion does not automatically cancel tickets or refund purchases. If you have an upcoming event or an unresolved order, mention it so we can explain how deletion affects ticket access. We will not require you to buy anything or reinstall the app to make a request.</p>
+  <p>Limited purchase records, including payer details and payment references, tax, refund, dispute, admission-security and signed-waiver records may remain for accounting, legal obligations, resolving disputes and preventing fraud. These records are restricted to authorized operations and retained only as long as those purposes require. A minimal deletion record remains to prevent old sessions from recreating your profile and to confirm completion.</p>
+  <p>Records held by payment providers and emails already delivered are subject to those providers' retention and your email settings. This flow does not delete your Google or Apple account.</p>
 </section>
 <section aria-labelledby="other"><h2 id="other">Other privacy requests</h2>
-  <p>You can also request correction or deletion of specific personal information without deleting your whole account. Email us with the details. For more about data handling, read our <a href="/privacy#retention">Privacy Policy</a>. Uninstalling the app, signing out or clearing browser data alone does not delete server-side records.</p>
+  <p>You can request correction or deletion of specific personal information without deleting your whole account by emailing <a href="mailto:contact@pluto.events">contact@pluto.events</a>. Read our <a href="/privacy#retention">Privacy Policy</a> for more about data handling. Uninstalling the app or signing out does not delete server-side records.</p>
 </section>
 {% endblock %}

@@ -1,4 +1,4 @@
-import { getFirestore, Timestamp, type Firestore } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp, type Firestore, type Transaction } from 'firebase-admin/firestore';
 import { getAuth, type DecodedIdToken } from 'firebase-admin/auth';
 import { getStorage } from 'firebase-admin/storage';
 import sharp from 'sharp';
@@ -14,7 +14,14 @@ export class Catalog {
   event(eventId: string) { return this.db.collection('ticketingEvents').doc(id(eventId)); }
   async actor(token: string, optional = false): Promise<DecodedIdToken | null> {
     if (!token && optional) return null;
-    try { return await getAuth().verifyIdToken(token, true); } catch { return fail('Sign in to continue.', 401); }
+    let actor: DecodedIdToken;
+    try { actor = await getAuth().verifyIdToken(token, true); } catch { return fail('Sign in to continue.', 401); }
+    if ((await this.db.collection('accountDeletionRequests').doc(actor.uid).get()).exists) fail('Account deletion is in progress.', 401, 'account-deleting');
+    return actor;
+  }
+  protected async activeAccount(tx: Transaction, actor: { uid: string } | null | undefined) {
+    if (actor && (await tx.get(this.db.collection('accountDeletionRequests').doc(actor.uid))).exists)
+      fail('Account deletion is in progress.', 403, 'account-deleting');
   }
   async role(uid: string, eventId: string, roles = ['manager']) {
     if ((await this.db.collection('adminUsers').doc(uid).get()).exists) return;

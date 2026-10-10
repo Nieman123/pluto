@@ -45,6 +45,7 @@ test('event index financial summaries are withheld from admission-only staff', a
     const eid = await h.event(), raw = h.request(eid), checkout = await h.service.checkout(raw, null); await h.pay(checkout.orderId);
     await h.db.collection('ticketingStaff').doc(`${eid}_${door}`).set({ uid: door, eventId: eid, roles: ['admission'] });
     assert.equal((await h.service.list(door, true)).events[0].revenue, undefined);
+    await require('../lib/ticketing/financial-projection').syncFinancialOrder(h.db, checkout.orderId);
     const admin = (await h.service.list(h.staff, true)).events.find(e => e.id === eid); assert.equal(admin.revenue.gross, 10000);
   } finally { for (const doc of (await h.db.collection('ticketingStaff').where('uid', '==', door).get()).docs) await doc.ref.delete(); await h.cleanup(); }
 });

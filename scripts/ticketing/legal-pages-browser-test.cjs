@@ -55,15 +55,13 @@ if (process.env.GCLOUD_PROJECT !== 'demo-pluto-ticketing') throw Error('Isolated
     });
     await page.goto(base + '/app/profile');
     await page.locator('flt-semantics-placeholder').evaluate(el => el.click(), { timeout: 15000 });
-    for (let attempt = 0; attempt < 8 && !await page.getByRole('button', { name: 'Request account deletion', exact: true }).count(); attempt++) {
+    for (let attempt = 0; attempt < 8 && !await page.getByRole('button', { name: 'Delete account', exact: true }).count(); attempt++) {
       await page.mouse.wheel(0, 1600);
       await page.waitForTimeout(250);
     }
-    const deletionPopup = page.waitForEvent('popup');
-    await page.getByRole('button', { name: 'Request account deletion', exact: true }).click();
-    const deletion = await deletionPopup;
-    await deletion.waitForURL('**/delete-account');
-    await deletion.getByRole('link', { name: 'Request account deletion', exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Delete account', exact: true }).click();
+    await page.waitForURL('**/app/delete-account');
+    await page.getByText('Your sign-in account, profile and photo', { exact: false }).or(page.getByLabel(/Your sign-in account, profile and photo/)).first().waitFor();
     await context.close();
     console.log('Public policies work without JavaScript or sign-in on desktop/mobile; accessibility, signup policy and signed-in profile deletion links passed.');
   } finally { await browser.close(); }

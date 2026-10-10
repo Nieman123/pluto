@@ -12,6 +12,7 @@ export class Waitlists extends Rsvps {
     const previous = (await ref.get()).data(), resume = previous?.accessHash === accessHash && ['waiting', 'approved', 'offered'].includes(previous.status);
     const proofRef = resume ? null : await this.rsvpProof(raw, actor, 'waitlist');
     return this.db.runTransaction(async tx => {
+      await this.activeAccount(tx, actor);
       const entry = (await tx.get(ref)).data(), event = (await tx.get(this.event(eventId))).data(), draft = event?.liveDraft as EventDraft, now = Date.now();
       if (resume && entry?.accessHash !== accessHash) fail('Waitlist access changed. Verify your email again.', 403);
       if (!draft || event?.status !== 'published' || !draft.waitlistEnabled || !waitlistEligible(draft, offerId) || now >= Date.parse(draft.endAt)) fail('This waitlist is not open.', 409);

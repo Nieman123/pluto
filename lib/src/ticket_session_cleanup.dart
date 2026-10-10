@@ -7,3 +7,10 @@ List<String> attendeeKeysToRemoveOnSignOut(Iterable<String> keys) => keys
         key.startsWith('pluto-holder-') ||
         key.startsWith('pluto-account-'))
     .toList();
+
+List<String> attendeeKeysToRemoveOnDeletion(Iterable<String> keys) => keys
+    .where((key) =>
+        attendeeKeysToRemoveOnSignOut([key]).isNotEmpty ||
+        key.startsWith('pluto-checkout-') ||
+        key.startsWith('pluto-rsvp-upgrade-'))
+    .toList();

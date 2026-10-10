@@ -19,7 +19,7 @@ void main() {
     for (final label in [
       'Privacy Policy',
       'Terms of Use',
-      'Request account deletion'
+      'Delete account'
     ]) {
       await tester.tap(find.text(label));
       await tester.pump();
@@ -37,6 +37,6 @@ void main() {
     await tester.tap(find.text('Privacy Policy'));
     await tester.pump();
     expect(find.textContaining('contact@pluto.events'), findsOneWidget);
-    expect(find.text('Request account deletion'), findsNothing);
+    expect(find.text('Delete account'), findsNothing);
   });
 }
