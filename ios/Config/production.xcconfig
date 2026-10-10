@@ -1,0 +1,5 @@
+PLUTO_ENVIRONMENT = production
+PLUTO_LINK_HOST = pluto.events
+PLUTO_DISPLAY_NAME = Pluto Events
+PLUTO_GOOGLE_IOS_CLIENT_ID = 763906028056-a8eiqvnrf5c7ssapsc88o32cu5lajceo.apps.googleusercontent.com
+PLUTO_GOOGLE_REVERSED_CLIENT_ID = com.googleusercontent.apps.763906028056-a8eiqvnrf5c7ssapsc88o32cu5lajceo

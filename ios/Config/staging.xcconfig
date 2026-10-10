@@ -1,0 +1,5 @@
+PLUTO_ENVIRONMENT = staging
+PLUTO_LINK_HOST = pluto-staging-92eb7.web.app
+PLUTO_DISPLAY_NAME = Pluto Events Staging
+PLUTO_GOOGLE_IOS_CLIENT_ID = 702489323300-16q58kh8jd8r204l09vap18g2erclj5k.apps.googleusercontent.com
+PLUTO_GOOGLE_REVERSED_CLIENT_ID = com.googleusercontent.apps.702489323300-16q58kh8jd8r204l09vap18g2erclj5k

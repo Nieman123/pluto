@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import 'src/apple_auth.dart';
 import 'src/background/pluto_background.dart';
 import 'src/email_verification.dart';
 import 'src/google_auth.dart';
@@ -242,6 +243,12 @@ class _SignOnPageState extends State<SignOnPage> {
     });
   }
 
+  Future<void> _signInWithApple() async {
+    await _runAuthAction(() async {
+      await signInToPlutoWithApple();
+    });
+  }
+
   Future<void> _signOut() async {
     await _runAuthAction(() async {
       await signOutOfPluto();
@@ -466,6 +473,12 @@ class _SignOnPageState extends State<SignOnPage> {
                                       label: const Text('Continue with Google'),
                                     ),
                                   ),
+                                  if (offersAppleSignIn) ...[
+                                    const SizedBox(height: 12),
+                                    AppleSignInButton(
+                                        onPressed:
+                                            _isBusy ? null : _signInWithApple),
+                                  ],
                                   const SizedBox(height: 16),
                                   const Row(
                                     children: <Widget>[

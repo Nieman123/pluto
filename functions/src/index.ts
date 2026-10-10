@@ -13,6 +13,7 @@ import { walletSecrets } from './ticketing/digital-wallet';
 import { configureTrustedProxy } from './ticketing/client-identity';
 import { deploymentConfig } from './deployment-config';
 import { androidLinkStatements } from './android-links';
+import { iosLinkAssociation } from './ios-links';
 import { legalRouter } from './legal-pages';
 export { ticketingFinancialWorker, ticketingFinancialBackfillWorker, ticketingMaintenance, ticketingWebhookWorker, ticketingEmailWorker, ticketingCampaignWorker, ticketingRecoveryWorker, ticketingCommunicationMaintenance, ticketingEmailMaintenance } from './ticketing/workers';
 import { normalizeRental, groupRentals, rentalContactEmail, type PublicRental } from './rentals-data';
@@ -149,6 +150,11 @@ app.use(ticketingRouter(commonContext));
 app.get('/.well-known/assetlinks.json', (_request, response) => {
   response.type('application/json').set('Cache-Control', 'public, max-age=300')
     .json(androidLinkStatements(deploymentConfig().environment));
+});
+
+app.get('/.well-known/apple-app-site-association', (_request, response) => {
+  response.type('application/json').set('Cache-Control', 'public, max-age=300')
+    .json(iosLinkAssociation(deploymentConfig().environment));
 });
 
 app.get("/", async (_request: Request, response: Response) => {

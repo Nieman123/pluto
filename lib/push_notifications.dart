@@ -7,8 +7,13 @@ const bool _previewNotificationsDisabled =
     String.fromEnvironment('PLUTO_ENVIRONMENT') == 'staging' ||
         String.fromEnvironment('FIREBASE_EMULATOR_HOST') != '';
 
+// APNs setup and device token registration are a separate iOS release gate.
+bool get _iosNotificationsDisabled =>
+    !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+
 Future<Map<String, bool>> initializePushNotifications() async {
-  if (_previewNotificationsDisabled) return _statusMap(supported: false);
+  if (_previewNotificationsDisabled || _iosNotificationsDisabled)
+    return _statusMap(supported: false);
   final FirebaseMessaging messaging = FirebaseMessaging.instance;
   final bool supported = await messaging.isSupported();
   if (!supported) {
@@ -22,7 +27,8 @@ Future<Map<String, bool>> initializePushNotifications() async {
 }
 
 Future<Map<String, bool>> requestPushNotificationPermission() async {
-  if (_previewNotificationsDisabled) return _statusMap(supported: false);
+  if (_previewNotificationsDisabled || _iosNotificationsDisabled)
+    return _statusMap(supported: false);
   final FirebaseMessaging messaging = FirebaseMessaging.instance;
   final bool supported = await messaging.isSupported();
   if (!supported) {

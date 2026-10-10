@@ -7,7 +7,7 @@ const plutoFlavor = String.fromEnvironment('FLUTTER_APP_FLAVOR');
 String validateNativeEnvironment(String environment, String flavor) {
   if (!['staging', 'production'].contains(environment) ||
       environment != flavor) {
-    throw StateError('The Android flavor and Pluto environment must match.');
+    throw StateError('The native app flavor and Pluto environment must match.');
   }
   return environment;
 }
@@ -33,7 +33,7 @@ Uri nativeApiBaseUri({
       !['', '/'].contains(uri.path) ||
       uri.hasQuery ||
       uri.hasFragment) {
-    throw StateError('The ticket API must match the Android environment.');
+    throw StateError('The ticket API must match the native app environment.');
   }
   return uri;
 }

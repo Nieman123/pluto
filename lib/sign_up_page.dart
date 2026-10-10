@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import 'src/apple_auth.dart';
 import 'src/background/pluto_background.dart';
 import 'src/email_verification.dart';
 import 'src/google_auth.dart';
@@ -198,7 +199,14 @@ class _SignUpPageState extends State<SignUpPage> {
     }
   }
 
-  Future<void> _signUpWithGoogle() async {
+  Future<void> _signUpWithGoogle() =>
+      _signUpWithProvider(signInToPlutoWithGoogle);
+
+  Future<void> _signUpWithApple() =>
+      _signUpWithProvider(signInToPlutoWithApple);
+
+  Future<void> _signUpWithProvider(
+      Future<UserCredential> Function() signIn) async {
     if (_isBusy) {
       return;
     }
@@ -210,12 +218,12 @@ class _SignUpPageState extends State<SignUpPage> {
     });
 
     try {
-      final UserCredential credential = await signInToPlutoWithGoogle();
+      final UserCredential credential = await signIn();
       final User? user = credential.user ?? FirebaseAuth.instance.currentUser;
       if (user == null) {
         throw FirebaseAuthException(
           code: 'missing-user',
-          message: 'Google sign-up finished, but no user was returned.',
+          message: 'Sign-up finished, but no user was returned.',
         );
       }
 
@@ -486,6 +494,10 @@ class _SignUpPageState extends State<SignUpPage> {
               label: const Text('Sign up with Google'),
             ),
           ),
+          if (offersAppleSignIn) ...[
+            const SizedBox(height: 12),
+            AppleSignInButton(onPressed: _isBusy ? null : _signUpWithApple),
+          ],
           const SizedBox(height: 16),
           const Row(
             children: <Widget>[

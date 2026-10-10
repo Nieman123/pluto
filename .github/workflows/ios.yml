@@ -1,0 +1,52 @@
+name: iOS validation
+on:
+  pull_request:
+    paths:
+      - 'ios/**'
+      - 'config/ios/**'
+      - 'lib/**'
+      - 'pubspec.*'
+      - 'test/**'
+      - 'scripts/ios/**'
+      - '.github/workflows/ios.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ios-validation-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  compilation:
+    name: ${{ matrix.flavor }} iOS simulator
+    runs-on: macos-15
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        flavor: [staging, production]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - name: Validate public iOS configuration and native project
+        run: |
+          xcodebuild -version
+          xcodebuild -list -project ios/Runner.xcodeproj
+          python3 -m unittest discover -s scripts/ios -p 'test_*.py'
+          flutter pub get --enforce-lockfile
+      - name: Compile iPhone and iPad simulator app
+        env:
+          IOS_FLAVOR: ${{ matrix.flavor }}
+        run: flutter build ios --simulator --debug --flavor "$IOS_FLAVOR" --dart-define-from-file="config/ios/$IOS_FLAVOR.json"
+      - name: Keep simulator validation artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ios-${{ matrix.flavor }}-simulator-${{ github.sha }}
+          path: build/ios/iphonesimulator/Runner.app
+          if-no-files-found: error
+          retention-days: 7

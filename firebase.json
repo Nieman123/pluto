@@ -70,6 +70,7 @@
       }
     ],
     "rewrites": [
+      { "source": "/.well-known/apple-app-site-association", "function": { "functionId": "publicSite", "region": "us-central1" } },
       { "source": "/.well-known/assetlinks.json", "function": { "functionId": "publicSite", "region": "us-central1" } },
       { "source": "/app", "destination": "/app/index.html" },
       { "source": "/app/**", "destination": "/app/index.html" },
