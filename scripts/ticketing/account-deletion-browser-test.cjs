@@ -4,6 +4,7 @@ const { resolve } = require('node:path');
 const { randomUUID } = require('node:crypto');
 const { chromium } = require('playwright');
 const { default: AxeBuilder } = require('@axe-core/playwright');
+const fillFlutterInput = require('../ci/flutter-input.cjs');
 const requireFunctions = createRequire(resolve(__dirname, '../../functions/package.json'));
 if (process.env.GCLOUD_PROJECT !== 'demo-pluto-ticketing' || process.env.FIREBASE_AUTH_EMULATOR_HOST !== '127.0.0.1:9095') throw Error('Isolated demo emulators required.');
 requireFunctions('firebase-admin/app').initializeApp({ projectId: process.env.GCLOUD_PROJECT });
@@ -56,13 +57,19 @@ async function semantics(page) {
     await app.screenshot({ path: 'tmp/profile-summary-mobile.png' });
     await app.getByRole('button', { name: 'Edit profile', exact: true }).click();
     await app.waitForURL('**/app/profile/edit');
+    const rendering = await appContext.newCDPSession(app);
+    await rendering.send('Emulation.setCPUThrottlingRate', { rate: 4 });
     for (const [label, value] of [['Display Name', 'Updated member'], ['Home City', 'Durham'], ['Favorite Genre', 'Techno'], ['Bio', 'New profile bio']]) {
-      await app.getByRole('textbox', { name: new RegExp(label) }).fill(value);
+      await fillFlutterInput(app, new RegExp(label), value);
     }
     await app.screenshot({ path: 'tmp/profile-editor-mobile.png' });
     await app.getByRole('button', { name: 'Save profile', exact: true }).click();
     await app.waitForURL('**/app/profile');
-    assert.equal((await db.collection('userProfiles').doc(appUser.uid).get()).data().homeCity, 'Durham');
+    const saved = (await db.collection('userProfiles').doc(appUser.uid).get()).data();
+    for (const [field, value] of Object.entries({ displayName: 'Updated member', homeCity: 'Durham', favoriteGenre: 'Techno', bio: 'New profile bio' })) {
+      assert.equal(saved[field], value, `${field} is committed to the member profile`);
+    }
+    await rendering.send('Emulation.setCPUThrottlingRate', { rate: 1 });
     for (let i = 0; i < 8 && !await app.getByRole('button', { name: 'Delete account', exact: true }).isVisible().catch(() => false); i++) {
       await app.mouse.wheel(0, 1200); await app.waitForTimeout(250);
     }
