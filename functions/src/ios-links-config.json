@@ -1,4 +1,4 @@
 {
-  "staging": { "bundleId": "events.pluto.app.staging", "appIdentifierPrefix": "" },
-  "production": { "bundleId": "events.pluto.app", "appIdentifierPrefix": "" }
+  "staging": { "bundleId": "events.pluto.app.staging", "appIdentifierPrefix": "W9Z7U26894" },
+  "production": { "bundleId": "events.pluto.app", "appIdentifierPrefix": "W9Z7U26894" }
 }

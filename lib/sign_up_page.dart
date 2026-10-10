@@ -263,7 +263,7 @@ class _SignUpPageState extends State<SignUpPage> {
       case 'invalid-email':
         return 'Enter a valid email address.';
       case 'popup-closed-by-user':
-        return 'Google sign-up was closed before it finished.';
+        return 'Sign-up was closed before it finished.';
       case 'weak-password':
         return error.message ?? 'Use a stronger password.';
       default:
