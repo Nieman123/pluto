@@ -75,6 +75,8 @@ def main():
         plist['NSAppTransportSecurity'] = {'NSAllowsArbitraryLoads': True}
         plist_path.write_bytes(plistlib.dumps(plist))
         subprocess.run(['codesign', '--force', '--sign', '-',
+                        str(app / 'Frameworks/App.framework')], check=True)
+        subprocess.run(['codesign', '--force', '--sign', '-',
                         '--preserve-metadata=entitlements', str(app)], check=True)
         subprocess.run(['xcrun', 'simctl', 'install', udid, str(app)], check=True)
         log = open(ROOT / 'tmp/store-capture-app.log', 'w')

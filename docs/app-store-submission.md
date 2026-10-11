@@ -38,6 +38,13 @@ The workflow requires no Apple distribution credentials or live Firebase keys.
 It builds only a debug simulator app using `scripts/store/capture.dart`; normal
 TestFlight/App Store releases keep `lib/main.dart` as their entrypoint.
 
+For faster captures, it can reuse a successful **iOS validation** simulator
+runtime. It verifies the native source, dependency lock and SDK workflow against
+that run, then compiles the current Dart UI and assets independently. Expired
+artifacts or changed native inputs fall back to a full native build. The manual
+`runtime_run_id` input can select a more recent validation run; `0` forces a fresh
+compile. The initial runtime comes from PR #56's successful validation run.
+
 ## Privacy questionnaire worksheet
 
 This worksheet describes repository behavior, not a completed Console declaration.
