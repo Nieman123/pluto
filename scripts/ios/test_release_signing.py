@@ -3,8 +3,11 @@ import importlib.util
 import json
 import os
 import plistlib
+import shutil
+import sys
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -42,6 +45,85 @@ def archive(value):
 
 
 class ReleaseSigningTests(unittest.TestCase):
+    def test_entitlements_use_explicit_plain_xml_stdout_and_reject_invalid_output(self):
+        app = Path('Runner.app')
+        entitlements = archive(selected())[1]
+        with patch.object(signing, 'run', return_value=plistlib.dumps(entitlements)) as run:
+            self.assertEqual(signing.read_entitlements(app), entitlements)
+            run.assert_called_once_with('codesign', '--display', '--entitlements', '-', '--xml', str(app), binary=True)
+        xml = plistlib.dumps(entitlements)
+        wrapped = bytes.fromhex('fade7171') + (len(xml) + 8).to_bytes(4, 'big') + xml
+        for invalid in (wrapped, b'', b'<plist><dict>', plistlib.dumps(['wrong shape'])):
+            with patch.object(signing, 'run', return_value=invalid):
+                with self.assertRaisesRegex(ValueError, 'entitlements'):
+                    signing.read_entitlements(app)
+
+    @unittest.skipUnless(sys.platform == 'darwin', 'Requires the real macOS codesign tool.')
+    def test_real_macos_codesign_xml_extraction(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            executable, entitlements_file = root / 'signing-probe', root / 'probe.plist'
+            shutil.copyfile('/usr/bin/true', executable)
+            executable.chmod(0o755)
+            expected = {'com.apple.security.app-sandbox': True}
+            entitlements_file.write_bytes(plistlib.dumps(expected))
+            signing.run('codesign', '--force', '--sign', '-', '--entitlements', str(entitlements_file), str(executable))
+            signing.run('codesign', '--verify', '--strict', str(executable))
+            self.assertEqual(signing.read_entitlements(executable), expected)
+
+    def test_verify_reads_xml_from_both_archive_and_export_before_producing_upload_evidence(self):
+        value = {**selected(), 'operation': 'upload-testflight', 'revision': 'a' * 40}
+        info, entitlements, firebase = archive(value)
+        with tempfile.TemporaryDirectory() as temp:
+            root, work = Path(temp), Path(temp) / 'signing'
+            work.mkdir()
+            app = root / 'build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app'
+            app.mkdir(parents=True)
+            (app / 'Info.plist').write_bytes(plistlib.dumps(info))
+            (app / 'GoogleService-Info.plist').write_bytes(plistlib.dumps(firebase))
+            config = root / 'ios/Firebase/production'
+            config.mkdir(parents=True)
+            (config / 'GoogleService-Info.plist').write_bytes(plistlib.dumps(firebase))
+            (root / 'pubspec.yaml').write_text('version: 1.0.0+1\n')
+            (root / 'tmp/ios-release').mkdir(parents=True)
+            ipa = root / 'build/ios/ipa/Runner.ipa'
+            ipa.parent.mkdir(parents=True)
+            with zipfile.ZipFile(ipa, 'w') as bundle:
+                bundle.writestr('Payload/Runner.app/Info.plist', plistlib.dumps(info))
+                bundle.writestr('Payload/Runner.app/GoogleService-Info.plist', plistlib.dumps(firebase))
+                bundle.writestr('Payload/Runner.app/embedded.mobileprovision', b'profile fixture')
+
+            def tools(*args, **kwargs):
+                if args[:2] == ('codesign', '--display'):
+                    self.assertEqual(args[2:5], ('--entitlements', '-', '--xml'))
+                    self.assertTrue(kwargs['binary'])
+                    return plistlib.dumps(entitlements)
+                if args[:2] == ('codesign', '--verify'):
+                    return ''
+                if args[:3] == ('codesign', '-d', '--extract-certificates'):
+                    Path(args[3] + '0').write_bytes(b'fixture certificate')
+                    return ''
+                if args[0] == 'ditto':
+                    with zipfile.ZipFile(args[3]) as bundle:
+                        bundle.extractall(args[4])
+                    return ''
+                if args[0] == 'security':
+                    return plistlib.dumps(profile(value))
+                if args[0] == 'openssl':
+                    return b'fixture certificate'
+                self.fail('Unexpected signing command: ' + args[0])
+
+            with patch.object(signing, 'ROOT', root), patch.object(signing, 'folder', return_value=work), patch.object(signing, 'settings', return_value=value), patch.object(signing, 'run', side_effect=tools) as run:
+                signing.verify()
+                extraction = [call for call in run.call_args_list if call[0][0:2] == ('codesign', '--display')]
+                self.assertEqual(len(extraction), 2)
+                self.assertEqual(Path(extraction[0][0][-1]), app)
+                self.assertEqual(Path(extraction[1][0][-1]), work / 'exported/Payload/Runner.app')
+            evidence = json.loads((root / 'tmp/ios-release/verification.json').read_text())
+            self.assertTrue(evidence['verified'])
+            self.assertEqual(evidence['bundleId'], value['bundleId'])
+            self.assertEqual(len(evidence['ipaSha256']), 64)
+
     def test_profiles_allow_real_app_prefix_distinct_from_team_and_both_flavors(self):
         for environment in ('production', 'staging'):
             value = selected(environment)
