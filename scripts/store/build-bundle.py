@@ -15,4 +15,4 @@ subprocess.run(['flutter', 'assemble', '--output=build/flutter_assets',
     '-dBuildMode=debug', '-dTargetPlatform=ios', '-dConfiguration=Debug-staging',
     '-dTargetFile=scripts/store/capture.dart', '-dTrackWidgetCreation=true',
     '-dSdkRoot=' + sdk, '-dSdkName=iphonesimulator', '-dIosArchs=' + arch,
-    '-dDartDefines=' + defines, 'copy_flutter_bundle'], cwd=ROOT, check=True)
+    '--DartDefines=' + defines, 'copy_flutter_bundle'], cwd=ROOT, check=True)
