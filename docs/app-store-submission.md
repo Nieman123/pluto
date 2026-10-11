@@ -15,7 +15,7 @@ completing every selected type, review the preview and click **Publish**.
 
 ## Screenshot sets
 
-The **App Store screenshots** GitHub workflow creates six PNGs per display:
+The **App Store screenshots** GitHub workflow creates six candidate PNGs per display:
 
 | Folder | Upload class | Pixels |
 | --- | --- | --- |
@@ -25,6 +25,11 @@ The **App Store screenshots** GitHub workflow creates six PNGs per display:
 | `ipad` | iPad 13-inch | 2064 × 2752 |
 
 Download its `app-store-screenshots-…` artifact and use PNGs in numeric order.
+For the curated upload set, use `01`, `02`, `04`, `05` and `06` on iPhone and
+both Duo displays. Use `01`, `04` and `05` on iPad: the events shot duplicates
+Home at that viewport, and the capture profile footer identifies the simulator's
+staging app. Keep `03` as a review reference because its scrolled framing clips
+content on the smaller displays.
 The scenes show Home, upcoming events, tickets, the enlarged admission QR,
 rewards and profile. They render the actual application widgets in a native iOS
 simulator with a fictional member and local Firebase emulator data. The capture

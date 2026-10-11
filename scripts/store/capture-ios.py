@@ -115,10 +115,8 @@ def main():
         with zipfile.ZipFile(OUTPUT / 'pluto-app-store-screenshots.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
             for file in sorted(OUTPUT.rglob('*')):
                 if file.is_file() and file.suffix != '.zip': archive.write(file, file.relative_to(OUTPUT))
-        # A compact preview in the workflow log permits visual QA even when
-        # the artifact connector returns only a remote ZIP file reference.
-        preview = request('/preview', {})
-        print('STORE_CAPTURE_PREVIEW=' + preview['base64'], flush=True)
+        request('/preview', {})
+        print('Generated screenshot review preview.', flush=True)
     finally:
         if launch: launch.terminate()
         if udid: subprocess.run(['xcrun', 'simctl', 'shutdown', udid], check=False)

@@ -23,7 +23,7 @@ const server=createServer(async(req,res)=>{
     } else if(req.method==='POST' && url.pathname==='/failure'){
       state=JSON.parse((await body()).toString());res.end('{}');
     } else if(req.method==='POST' && url.pathname==='/preview'){
-      const names=['iphone/01-home.png','iphone/03-ticket-wallet.png','iphone-duo-inner/01-home.png','ipad/01-home.png'];
+      const names=['iphone/01-home.png','iphone/04-admission-qr.png','iphone-duo-inner/01-home.png','ipad/01-home.png'];
       const images=await Promise.all(names.map(async name=>{
         const data=await sharp(resolve('output/app-store-screenshots',name)).resize({width:480}).png().toBuffer();
         return {data,height:(await sharp(data).metadata()).height};
@@ -32,7 +32,7 @@ const server=createServer(async(req,res)=>{
       const preview=await sharp({create:{width:960,height:firstHeight+secondHeight,channels:3,background:'#130e1a'}})
         .composite(images.map((im,i)=>({input:im.data,left:(i%2)*480,top:i<2?0:firstHeight}))).png().toBuffer();
       await writeFile(resolve('output/app-store-screenshots/preview.png'),preview);
-      res.end(JSON.stringify({base64:preview.toString('base64')}));
+      res.end(JSON.stringify({file:'preview.png'}));
     } else if(req.method==='POST' && url.pathname==='/image' && url.searchParams.get('id')===command.id){
       const raw=await body(),metadata=await sharp(raw).metadata();
       if(metadata.width!==command.width || metadata.height!==command.height) throw Error('Capture dimensions do not match viewport');
