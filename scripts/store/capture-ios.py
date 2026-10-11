@@ -34,6 +34,7 @@ def request(path, data=None):
 def main():
     if os.uname().sysname != 'Darwin':
         raise RuntimeError('iOS screenshots require the macOS workflow.')
+    (ROOT / 'tmp').mkdir(parents=True, exist_ok=True)
     subprocess.run(['node', '--check', 'scripts/store/seed.cjs'], check=True)
     marker = ROOT / 'tmp/store-capture-ready'
     marker.unlink(missing_ok=True)
@@ -112,6 +113,10 @@ def main():
         with zipfile.ZipFile(OUTPUT / 'pluto-app-store-screenshots.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
             for file in sorted(OUTPUT.rglob('*')):
                 if file.is_file() and file.suffix != '.zip': archive.write(file, file.relative_to(OUTPUT))
+        # A compact preview in the workflow log permits visual QA even when
+        # the artifact connector returns only a remote ZIP file reference.
+        preview = request('/preview', {})
+        print('STORE_CAPTURE_PREVIEW=' + preview['base64'], flush=True)
     finally:
         if launch: launch.terminate()
         if udid: subprocess.run(['xcrun', 'simctl', 'shutdown', udid], check=False)

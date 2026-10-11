@@ -22,6 +22,17 @@ const server=createServer(async(req,res)=>{
       command=next;state={};res.end('{}');
     } else if(req.method==='POST' && url.pathname==='/failure'){
       state=JSON.parse((await body()).toString());res.end('{}');
+    } else if(req.method==='POST' && url.pathname==='/preview'){
+      const names=['iphone/01-home.png','iphone/03-ticket-wallet.png','iphone-duo-inner/01-home.png','ipad/01-home.png'];
+      const images=await Promise.all(names.map(async name=>{
+        const data=await sharp(resolve('output/app-store-screenshots',name)).resize({width:480}).png().toBuffer();
+        return {data,height:(await sharp(data).metadata()).height};
+      }));
+      const firstHeight=Math.max(images[0].height,images[1].height),secondHeight=Math.max(images[2].height,images[3].height);
+      const preview=await sharp({create:{width:960,height:firstHeight+secondHeight,channels:3,background:'#130e1a'}})
+        .composite(images.map((im,i)=>({input:im.data,left:(i%2)*480,top:i<2?0:firstHeight}))).png().toBuffer();
+      await writeFile(resolve('output/app-store-screenshots/preview.png'),preview);
+      res.end(JSON.stringify({base64:preview.toString('base64')}));
     } else if(req.method==='POST' && url.pathname==='/image' && url.searchParams.get('id')===command.id){
       const raw=await body(),metadata=await sharp(raw).metadata();
       if(metadata.width!==command.width || metadata.height!==command.height) throw Error('Capture dimensions do not match viewport');
@@ -43,5 +54,6 @@ for(let i=0;i<60;i++){
 if(!ready)throw Error('Isolated backend did not start');
 const seed=spawn(process.execPath,['scripts/store/seed.cjs'],{env,stdio:'inherit'});
 await new Promise((done,reject)=>seed.once('exit',code=>code===0?done():reject(Error('Screenshot seed failed'))));
+await mkdir('tmp',{recursive:true});
 await writeFile('tmp/store-capture-ready','ready');
 console.log('Native screenshot backend is ready.');
