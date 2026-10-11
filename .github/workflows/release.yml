@@ -1,5 +1,7 @@
 name: Release
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       environment:
@@ -24,31 +26,26 @@ permissions:
   contents: read
 # Never cancel a release halfway through deployment.
 concurrency:
-  group: release-${{ inputs.environment }}
+  group: release-${{ github.event_name == 'push' && 'staging' || inputs.environment }}
   cancel-in-progress: false
 jobs:
   selection:
     runs-on: ubuntu-latest
     outputs:
       revision: ${{ steps.guard.outputs.revision }}
+      environment: ${{ steps.guard.outputs.environment }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: main
           fetch-depth: 0
           persist-credentials: false
-      - name: Require trusted workflow and explicit revision
+      - name: Select staging for main pushes or an explicit manual revision
         id: guard
         env:
-          REVISION: ${{ inputs.revision }}
-        run: |
-          node --input-type=module <<'JS'
-          import { appendFileSync } from 'node:fs';
-          import { execFileSync } from 'node:child_process';
-          if (process.env.GITHUB_REF !== 'refs/heads/main' || !/^[a-f0-9]{40}$/.test(process.env.REVISION || '')) throw new Error('Run Release from main with a full commit SHA.');
-          execFileSync('git', ['merge-base', '--is-ancestor', process.env.REVISION, 'origin/main']);
-          appendFileSync(process.env.GITHUB_OUTPUT, `revision=${process.env.REVISION}\n`);
-          JS
+          RELEASE_SHA: ${{ inputs.revision }}
+          RELEASE_ENVIRONMENT: ${{ inputs.environment }}
+        run: node scripts/release/select.mjs
   validation:
     needs: selection
     uses: ./.github/workflows/validate.yml
@@ -59,13 +56,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     environment:
-      name: ${{ inputs.environment }}
+      name: ${{ needs.selection.outputs.environment }}
     permissions:
       contents: read
       actions: read
       deployments: write
     env:
-      RELEASE_ENVIRONMENT: ${{ inputs.environment }}
+      RELEASE_ENVIRONMENT: ${{ needs.selection.outputs.environment }}
       RELEASE_SHA: ${{ needs.selection.outputs.revision }}
       RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
       RELEASE_LIVE_APPROVED: ${{ inputs.enable_live_payments }}
@@ -133,7 +130,7 @@ jobs:
         if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: release-${{ inputs.environment }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: release-${{ needs.selection.outputs.environment }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             tmp/release/manifest.json
             tmp/release/smoke.json

@@ -3,7 +3,8 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main, native-ticketing]
+    # Main pushes are validated once by Release before staging deployment.
+    branches: [native-ticketing]
   merge_group:
   workflow_dispatch:
 permissions:

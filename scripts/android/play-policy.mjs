@@ -49,7 +49,7 @@ export async function automaticSelection(env, event, api) {
   const id = event.workflow_run?.id;
   if (!Number.isSafeInteger(id) || id < 1) throw new Error('Missing upstream release identity.');
   const run = await api(`/actions/runs/${id}`);
-  if (run.path !== '.github/workflows/release.yml' || run.event !== 'workflow_dispatch' ||
+  if (run.path !== '.github/workflows/release.yml' || !['workflow_dispatch', 'push'].includes(run.event) ||
       run.head_branch !== 'main' || run.head_repository?.full_name?.toLowerCase() !== env.GITHUB_REPOSITORY?.toLowerCase() ||
       run.status !== 'completed' || run.conclusion !== 'success') return null;
   const deployments = await api('/deployments?environment=staging&per_page=100');

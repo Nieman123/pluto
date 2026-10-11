@@ -85,6 +85,11 @@ test('automatic updates require opt-in and exact successful staging evidence, an
   const api = async path => path.includes('/statuses') ? [{ state }] : path.startsWith('/actions/runs/') ? selectedRun : selectedDeployments;
   const automatic = { ...env, ANDROID_STAGING_AUTO_PUBLISH: 'true' }, event = { workflow_run: { id: 10 } };
   assert.equal((await automaticSelection(automatic, event, api)).revision, revision);
+  selectedRun = { ...run, event: 'push', head_sha: revision };
+  assert.equal((await automaticSelection(automatic, event, api)).revision, revision);
+  selectedRun = { ...run, event: 'push', head_sha: 'b'.repeat(40) };
+  await assert.rejects(automaticSelection(automatic, event, api), /no completed/);
+  selectedRun = run;
   assert.equal(await automaticSelection(env, event, () => { throw new Error('must not request'); }), null);
   for (const change of [{ conclusion: 'failure' }, { head_repository: { full_name: 'attacker/fork' } }, { head_branch: 'other' }, { path: '.github/workflows/untrusted.yml' }]) {
     selectedRun = { ...run, ...change }; assert.equal(await automaticSelection(automatic, event, api), null);

@@ -1,11 +1,14 @@
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
+import { selectRelease } from './select.mjs';
 const require = createRequire(import.meta.url);
 const { validateWebConfig } = require('../../functions/lib/deployment-config.js');
 export const projects = JSON.parse(await readFile(new URL('../../functions/src/deployment-projects.json', import.meta.url), 'utf8'));
 
 export function releaseSettings(env) {
+  const selected = selectRelease(env);
   const environment = env.RELEASE_ENVIRONMENT;
+  if (environment !== selected.environment || env.RELEASE_SHA !== selected.revision) throw new Error('Automatic releases must deploy staging at the exact main push SHA.');
   if (!['staging', 'production'].includes(environment)) throw new Error('Select staging or production.');
   if (!/^[a-f0-9]{40}$/.test(env.RELEASE_SHA || '')) throw new Error('Release revision must be a full 40-character commit SHA.');
   if (env.GITHUB_REF !== 'refs/heads/main') throw new Error('Release workflows must run from main.');
@@ -70,7 +73,8 @@ export async function verifyStagingEvidence(api, settings) {
     const statuses = await api(`/deployments/${deployment.id}/statuses?per_page=1`);
     if (statuses[0]?.state !== 'success') continue;
     const run = await api(`/actions/runs/${payload.runId}/attempts/${payload.runAttempt}`);
-    if (run.path === '.github/workflows/release.yml' && run.event === 'workflow_dispatch' && run.head_branch === 'main' &&
+    const trustedEvent = run.event === 'workflow_dispatch' || (run.event === 'push' && run.head_sha === settings.revision);
+    if (run.path === '.github/workflows/release.yml' && trustedEvent && run.head_branch === 'main' &&
         run.status === 'completed' && run.conclusion === 'success') return deployment.id;
   }
   throw new Error('This commit has no completed, successful release to the isolated staging project.');
