@@ -18,14 +18,14 @@ test('build numbers stay unique and increase for retries and later runs within A
   assert.equal(iosReleaseSettings({ ...env, GITHUB_RUN_NUMBER: '3' }).buildNumber, '3.1.0');
   for (const change of [{ GITHUB_RUN_NUMBER: '0' }, { GITHUB_RUN_NUMBER: '10000' }, { GITHUB_RUN_ATTEMPT: '100' }, { GITHUB_RUN_NUMBER: '2.5' }]) assert.throws(() => iosReleaseSettings({ ...env, ...change }));
 });
-function api({ state = 'success', trusted = true, production = true } = {}) {
+function api({ state = 'success', trusted = true, production = true, upstreamEvent = 'workflow_dispatch' } = {}) {
   return async path => {
     if (path === '/environments/production') return production ? { can_admins_bypass: false,
       deployment_branch_policy: { custom_branch_policies: true }, protection_rules: [{ type: 'required_reviewers', prevent_self_review: false,
         reviewers: [{ type: 'User', reviewer: { id: 123 } }] }] } : {};
     if (path.includes('deployment-branch-policies')) return { branch_policies: [{ name: 'main', type: 'branch' }] };
     if (path.includes('/statuses')) return [{ state }];
-    if (path.includes('/actions/runs/')) return { path: '.github/workflows/release.yml', event: 'workflow_dispatch', head_branch: 'main', status: 'completed', conclusion: 'success' };
+    if (path.includes('/actions/runs/')) return { path: '.github/workflows/release.yml', event: upstreamEvent, head_sha: sha, head_branch: 'main', status: 'completed', conclusion: 'success' };
     return trusted ? [{ id: 42, environment: 'staging', sha, creator: { login: 'github-actions[bot]' },
       payload: { kind: 'pluto-validated-release', projectId: 'pluto-staging-92eb7', revision: sha, runId: '10', runAttempt: '1' } }] : [];
   };
@@ -33,6 +33,7 @@ function api({ state = 'success', trusted = true, production = true } = {}) {
 test('both flavors need exact successful staging evidence before upload', async () => {
   for (const settings of [env, { ...env, IOS_ENVIRONMENT: 'production', PRODUCTION_APPROVAL_POLICY: 'solo-maintainer', GITHUB_ACTOR_ID: '123' }]) {
     assert.equal((await verifyIosRelease(settings, api())).revision, sha);
+    assert.equal((await verifyIosRelease(settings, api({ upstreamEvent: 'push' }))).revision, sha);
     for (const failure of [{ state: 'failure' }, { state: 'in_progress' }, { trusted: false }]) await assert.rejects(verifyIosRelease(settings, api(failure)), /no completed/);
   }
 });

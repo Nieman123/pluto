@@ -129,7 +129,9 @@ Secret Manager entries for these iOS build-only credentials.
 
 After this workflow PR is merged, it appears under **Actions → iOS TestFlight**.
 Use a full merged SHA containing this workflow and its helpers. Uploads require
-a completed, successful **Release → staging** run for that exact SHA; production
+a completed, successful **Release → staging** run for that exact SHA. Merging
+to main starts this staging release automatically; wait for its successful
+completion before uploading. Manual staging retries/rollbacks also qualify. Production
 approvals are checked again before credentials are imported.
 
 Click **Run workflow**:

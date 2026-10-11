@@ -3,12 +3,24 @@ import { test } from 'node:test';
 import { readFile } from 'node:fs/promises';
 import { releaseSettings, verifyServiceAccount, verifyProductionProtection, verifyStagingEvidence, projects, dotenvParameters } from '../scripts/release/policy.mjs';
 import { browserEnvironment, ciStripeFixture } from '../scripts/ci/browser-suite.mjs';
+import { selectRelease } from '../scripts/release/select.mjs';
 
 const sha = 'a'.repeat(40);
 const web = { apiKey: 'staging-public-key', appId: '1:987654:web:abcdef123', messagingSenderId: '987654', projectId: projects.staging,
   authDomain: `${projects.staging}.firebaseapp.com`, storageBucket: `${projects.staging}.firebasestorage.app` };
-const env = { RELEASE_ENVIRONMENT: 'staging', RELEASE_SHA: sha, GITHUB_REF: 'refs/heads/main', DEPLOY_PROJECT_ID: projects.staging,
+const env = { RELEASE_ENVIRONMENT: 'staging', RELEASE_SHA: sha, GITHUB_REF: 'refs/heads/main', GITHUB_EVENT_NAME: 'workflow_dispatch', DEPLOY_PROJECT_ID: projects.staging,
   DEPLOY_WEB_CONFIG: JSON.stringify(web), DEPLOY_PAYMENT_MODE: 'test', DEPLOY_STRIPE_PUBLISHABLE_KEY: 'pk_test_fakePublicFixture' };
+
+test('main pushes select staging and their exact SHA regardless of manual input values', () => {
+  const push = { ...env, GITHUB_EVENT_NAME: 'push', GITHUB_SHA: sha };
+  assert.deepEqual(selectRelease({ ...push, RELEASE_ENVIRONMENT: 'production', RELEASE_SHA: 'b'.repeat(40) }), { environment: 'staging', revision: sha });
+  assert.equal(releaseSettings(push).revision, sha);
+  for (const change of [{ RELEASE_ENVIRONMENT: 'production' }, { RELEASE_SHA: 'b'.repeat(40) }, { GITHUB_SHA: '' },
+    { GITHUB_SHA: 'main' }, { GITHUB_REF: 'refs/heads/other' }, { GITHUB_EVENT_NAME: 'pull_request' }, { GITHUB_EVENT_NAME: 'workflow_run' }]) {
+    assert.throws(() => releaseSettings({ ...push, ...change }));
+  }
+  assert.deepEqual(selectRelease({ ...env, RELEASE_ENVIRONMENT: 'production', RELEASE_SHA: 'b'.repeat(40) }), { environment: 'production', revision: 'b'.repeat(40) });
+});
 
 test('release selection rejects untrusted branches, missing configuration and cross-project deployment', () => {
   assert.equal(releaseSettings(env).projectId, projects.staging);
@@ -81,6 +93,31 @@ test('production accepts only completed staging release evidence for the exact c
   for (const change of [{ status: 'in_progress' }, { conclusion: 'failure' }, { path: '.github/workflows/build.yml' }, { head_branch: 'native-ticketing' }, { event: 'pull_request' }]) {
     await assert.rejects(verifyStagingEvidence(fakeApi(deployment, 'success', { ...completed, ...change }), { revision: sha }));
   }
+});
+
+test('automatic staging evidence requires a successful main push with exactly the deployed SHA', async () => {
+  const run = { ...completed, event: 'push', head_sha: sha };
+  assert.equal(await verifyStagingEvidence(fakeApi(deployment, 'success', run), { revision: sha }), 42);
+  for (const change of [{ head_sha: 'b'.repeat(40) }, { head_sha: undefined }, { event: 'workflow_run' },
+    { head_branch: 'other' }, { conclusion: 'failure' }, { status: 'in_progress' }]) {
+    await assert.rejects(verifyStagingEvidence(fakeApi(deployment, 'success', { ...run, ...change }), { revision: sha }));
+  }
+});
+
+test('automatic Release validates main once, serializes staging deploys and keeps production manual', async () => {
+  const release = await readFile('.github/workflows/release.yml', 'utf8');
+  const checks = await readFile('.github/workflows/build.yml', 'utf8');
+  assert.match(release, /push:\s*branches: \[main\]/);
+  assert.match(release, /workflow_dispatch:/);
+  assert.match(release, /group: release-\$\{\{ github.event_name == 'push' && 'staging' \|\| inputs.environment \}\}/);
+  assert.match(release, /cancel-in-progress: false/);
+  assert.match(release, /run: node scripts\/release\/select.mjs/);
+  assert.match(release, /needs: \[selection, validation\]/);
+  assert.match(release, /uses: \.\/\.github\/workflows\/validate.yml/);
+  assert.match(release, /name: \$\{\{ needs.selection.outputs.environment \}\}/);
+  assert.doesNotMatch(checks, /push:\s*branches: \[main/);
+  assert.match(checks, /pull_request:/);
+  assert.match(checks, /merge_group:/);
 });
 test('CI browser runner refuses cloud endpoints and discards payment and email credentials', () => {
   const input = { GCLOUD_PROJECT: 'demo-pluto-ticketing', FIRESTORE_EMULATOR_HOST: '127.0.0.1:8185', FIREBASE_AUTH_EMULATOR_HOST: '127.0.0.1:9095', FIREBASE_STORAGE_EMULATOR_HOST: '127.0.0.1:9295',
