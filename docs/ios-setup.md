@@ -100,6 +100,11 @@ provide the initial compilation check.
 
 ## Before App Store submission
 
+The iOS launch screen uses the transparent Pluto logo on a dark background in
+both flavors. The home-screen/App Store icon keeps the purple gradient artwork.
+To regenerate launch image densities after changing the logo, run
+`python scripts/ios/generate-launch-logo.py` with Pillow installed.
+
 - Rehearse the authenticated account deletion flow in the app and website.
   Apple-linked users must reauthenticate and revoke Apple access. Confirm native
   authorization-code revocation on a signed device after the provider is enabled.
