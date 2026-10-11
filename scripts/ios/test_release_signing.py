@@ -45,6 +45,51 @@ def archive(value):
 
 
 class ReleaseSigningTests(unittest.TestCase):
+    def test_certificate_prefix_is_attached_and_missing_certificate_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temp:
+            app, prefix = Path('Runner.app'), Path(temp) / 'leaf-'
+            leaf = Path(str(prefix) + '0')
+            with patch.object(signing, 'run') as run:
+                with self.assertRaisesRegex(ValueError, 'No leaf signing certificate'):
+                    signing.read_signing_certificate(app, prefix)
+                run.assert_called_once_with('codesign', '--display', '--extract-certificates=' + str(prefix), str(app))
+            leaf.write_bytes(b'fixture certificate')
+            with patch.object(signing, 'run'):
+                self.assertEqual(signing.read_signing_certificate(app, prefix), leaf.read_bytes())
+            leaf.write_bytes(b'')
+            with patch.object(signing, 'run'):
+                with self.assertRaisesRegex(ValueError, 'No leaf signing certificate'):
+                    signing.read_signing_certificate(app, prefix)
+
+    def test_codesign_failures_identify_operation_and_preserve_diagnostic(self):
+        with patch.object(signing.subprocess, 'run') as run:
+            run.return_value.returncode = 1
+            run.return_value.stderr = b'/tmp/leaf-: No such file or directory\n'
+            with self.assertRaisesRegex(ValueError, 'codesign --display failed.*No such file or directory'):
+                signing.run('codesign', '--display', '--extract-certificates', '/tmp/leaf-', 'Runner.app')
+
+    def test_password_receiving_tools_keep_diagnostics_private(self):
+        with patch.object(signing.subprocess, 'run') as run:
+            run.return_value.returncode = 1
+            run.return_value.stderr = b'sensitive diagnostic fixture'
+            with self.assertRaises(ValueError) as error:
+                signing.run('security', 'import', 'distribution.p12', '-P', 'password fixture')
+            self.assertNotIn('sensitive diagnostic', str(error.exception))
+            self.assertNotIn('password fixture', str(error.exception))
+
+    @unittest.skipUnless(sys.platform == 'darwin', 'Requires real macOS signed code and codesign.')
+    def test_real_macos_certificate_extraction_with_custom_prefix(self):
+        # The selected Xcode bundle is already distribution-signed by Apple;
+        # certificate extraction needs no Pluto signing keys or account access.
+        xcode = Path(signing.run('xcode-select', '--print-path')).parents[1]
+        with tempfile.TemporaryDirectory() as temp:
+            prefix = Path(temp) / 'xcode-certificate-'
+            broken = signing.subprocess.run(['codesign', '--display', '--extract-certificates', str(prefix), str(xcode)], cwd=temp, capture_output=True)
+            self.assertNotEqual(broken.returncode, 0, 'a separate optional prefix must be rejected as an input path')
+            self.assertIn(str(prefix).encode(), broken.stderr)
+            self.assertTrue(signing.read_signing_certificate(xcode, prefix))
+            signing.run('openssl', 'x509', '-inform', 'DER', '-in', str(prefix) + '0', '-noout')
+
     def test_entitlements_use_explicit_plain_xml_stdout_and_reject_invalid_output(self):
         app = Path('Runner.app')
         entitlements = archive(selected())[1]
@@ -94,14 +139,15 @@ class ReleaseSigningTests(unittest.TestCase):
                 bundle.writestr('Payload/Runner.app/embedded.mobileprovision', b'profile fixture')
 
             def tools(*args, **kwargs):
-                if args[:2] == ('codesign', '--display'):
+                if args[:3] == ('codesign', '--display', '--entitlements'):
                     self.assertEqual(args[2:5], ('--entitlements', '-', '--xml'))
                     self.assertTrue(kwargs['binary'])
                     return plistlib.dumps(entitlements)
                 if args[:2] == ('codesign', '--verify'):
                     return ''
-                if args[:3] == ('codesign', '-d', '--extract-certificates'):
-                    Path(args[3] + '0').write_bytes(b'fixture certificate')
+                if args[:2] == ('codesign', '--display') and args[2].startswith('--extract-certificates='):
+                    self.assertEqual(len(args), 4, 'the certificate prefix must not become an extra input path')
+                    Path(args[2].split('=', 1)[1] + '0').write_bytes(b'fixture certificate')
                     return ''
                 if args[0] == 'ditto':
                     with zipfile.ZipFile(args[3]) as bundle:
@@ -115,7 +161,7 @@ class ReleaseSigningTests(unittest.TestCase):
 
             with patch.object(signing, 'ROOT', root), patch.object(signing, 'folder', return_value=work), patch.object(signing, 'settings', return_value=value), patch.object(signing, 'run', side_effect=tools) as run:
                 signing.verify()
-                extraction = [call for call in run.call_args_list if call[0][0:2] == ('codesign', '--display')]
+                extraction = [call for call in run.call_args_list if call[0][0:3] == ('codesign', '--display', '--entitlements')]
                 self.assertEqual(len(extraction), 2)
                 self.assertEqual(Path(extraction[0][0][-1]), app)
                 self.assertEqual(Path(extraction[1][0][-1]), work / 'exported/Payload/Runner.app')
