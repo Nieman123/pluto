@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'src/apple_auth.dart';
+import 'src/auth_keyboard.dart';
 import 'src/background/pluto_background.dart';
 import 'src/email_verification.dart';
 import 'src/google_auth.dart';
@@ -150,6 +151,7 @@ class _SignOnPageState extends State<SignOnPage> {
       return;
     }
 
+    dismissAuthKeyboard();
     setState(() {
       _isBusy = true;
       _statusMessage = '';
@@ -157,6 +159,7 @@ class _SignOnPageState extends State<SignOnPage> {
 
     try {
       await action();
+      dismissAuthKeyboard();
       final User? user = FirebaseAuth.instance.currentUser;
       final String successMessage = verifyCreatedAccount && user != null
           ? await requestSignupVerification(user)

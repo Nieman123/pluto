@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'src/apple_auth.dart';
+import 'src/auth_keyboard.dart';
 import 'src/background/pluto_background.dart';
 import 'src/email_verification.dart';
 import 'src/google_auth.dart';
@@ -52,6 +53,7 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   void _finishAccount({String? notice}) {
+    dismissAuthKeyboard();
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     ticketAccessRemove('pluto-account-email');
     ticketAccessRemove('pluto-account-name');
@@ -106,7 +108,7 @@ class _SignUpPageState extends State<SignUpPage> {
       return;
     }
 
-    FocusScope.of(context).unfocus();
+    dismissAuthKeyboard();
     setState(() {
       _isBusy = true;
       _statusMessage = '';
@@ -211,7 +213,7 @@ class _SignUpPageState extends State<SignUpPage> {
       return;
     }
 
-    FocusScope.of(context).unfocus();
+    dismissAuthKeyboard();
     setState(() {
       _isBusy = true;
       _statusMessage = '';
@@ -219,6 +221,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
     try {
       final UserCredential credential = await signIn();
+      dismissAuthKeyboard();
       final User? user = credential.user ?? FirebaseAuth.instance.currentUser;
       if (user == null) {
         throw FirebaseAuthException(
