@@ -14,7 +14,11 @@ const scannerReady = mode === 'staff' ? initScanner() : Promise.resolve(false);
 if (mode === 'staff' && !navigator.onLine) scannerReady.then(active => { if (!active) action(null, restoreOfflineAdmission); });
 let signedIn = false;
 document.querySelector('#ticketing-dialog-close')?.addEventListener('click', () => document.querySelector('#ticketing-dialog').close());
-document.querySelector('#ticketing-dialog')?.addEventListener('close', () => document.querySelector('#ticketing-dialog-content').replaceChildren());
+document.querySelector('#ticketing-dialog')?.addEventListener('close', event => {
+  // Browsers queue this event. An order detail can already have been replaced
+  // by a new review form when the previous dialog's close event arrives.
+  if (!event.currentTarget.open) document.querySelector('#ticketing-dialog-content').replaceChildren();
+});
 window.addEventListener('pluto-auth', async event => {
   const previewSignIn = document.querySelector('#preview-staff-sign-in'); if (previewSignIn) previewSignIn.disabled = false;
   setUser(event.detail);

@@ -51,6 +51,18 @@ async function mockedRequests(page, path) {
   try {
     const adminContext = await browser.newContext({ ignoreHTTPSErrors: true }), admin = await adminContext.newPage();
     await admin.goto(`${base}/tickets/admin`); await admin.locator('#preview-staff-sign-in').click(); await admin.locator('#staff-controls:not([hidden])').waitFor();
+    // A queued close event must not destroy a newly opened review form. Exercise
+    // the actual dialog handlers with both transitions in the same browser turn.
+    assert.equal(await admin.evaluate(async () => {
+      const modal = document.querySelector('#ticketing-dialog'), content = document.querySelector('#ticketing-dialog-content');
+      content.textContent = 'Previous order details'; modal.showModal();
+      const closed = new Promise(resolve => modal.addEventListener('close', resolve, { once: true }));
+      modal.close(); content.innerHTML = '<form data-reopened-review><textarea name="note">Organizer review</textarea></form>'; modal.showModal();
+      await closed;
+      const retained = !!content.querySelector('[data-reopened-review]');
+      const cleaned = new Promise(resolve => modal.addEventListener('close', resolve, { once: true })); modal.close(); await cleaned;
+      return retained;
+    }), true, 'a stale close event must preserve a reopened review form');
     const eventId = randomUUID(), draft = fixture(true); draft.slug += `-${eventId}`;
     await api(admin, 'staff/save', { eventId, draft, revision: 0 }); await api(admin, 'staff/publish', { eventId, action: 'publish', revision: 1 });
     const accessKey = randomBytes(32).toString('hex'), order = await api(admin, 'staff/cash', { eventId, accessKey, items: [{ offerId: 'weekend', quantity: 1 }], name: 'Recovery attendee', email: 'rotation@preview.invalid', comp: true, reason: 'Rotation recovery test' });
@@ -81,7 +93,7 @@ async function mockedRequests(page, path) {
     assert.equal(report.records[0].orderId, order.orderId);
     assert.equal(await page.locator('#admission-archive-reviewed').isVisible(), false, 'PIN staff cannot archive organizer reviews');
     await page.getByRole('button', { name: 'End scanner session' }).click(); await page.locator('#scanner-login:not([hidden])').waitFor();
-    await page.locator('#preview-staff-sign-in').click(); await page.locator('#staff-controls:not([hidden])').waitFor(); await page.locator('#staff-event').selectOption(eventId);
+    await page.locator('#preview-staff-sign-in').click(); await page.locator('#ticketing-message').filter({ hasText: 'Your assigned events are ready.' }).waitFor(); await page.locator('#staff-event').selectOption(eventId);
     await page.locator('#admission-sync').click(); await page.locator('#admission-archive-reviewed:not([hidden])').waitFor();
     await page.locator('#admission-archive-reviewed').click();
     await page.getByRole('button', { name: 'Review order', exact: true }).click(); await page.locator('#ticketing-dialog').getByText('Recovery attendee', { exact: true }).first().waitFor();
@@ -92,7 +104,9 @@ async function mockedRequests(page, path) {
     assert.equal((await mockedRequests(page, 'staff/offline-conflicts')).length, 1, 'the manager denial must be consumed');
     assert.equal((await queue(page)).length, 1, 'failed current manager authorization cannot discard retained evidence');
     await mockApiError(page, 'staff/offline-conflicts', null);
-    await page.locator('#archive-offline-form button').click(); await page.locator('#ticketing-message').filter({ hasText: 'records archived' }).waitFor();
+    const authorized = page.waitForResponse(response => new URL(response.url()).pathname === '/tickets/api/staff/offline-conflicts' && response.request().method() === 'POST');
+    await page.locator('#archive-offline-form button').click(); assert.equal((await authorized).status(), 200, 'the retry must obtain fresh real manager authorization');
+    await page.locator('#ticketing-message').filter({ hasText: 'records archived' }).waitFor();
     assert.equal((await queue(page)).length, 0); assert.equal((await db.collection('ticketingTickets').doc(ticket.id).get()).data().admission, null, 'archiving a device record never grants admission');
     const archivedDownload = page.waitForEvent('download'); await page.locator('#admission-export').click();
     const archived = JSON.parse(await readFile(await (await archivedDownload).path(), 'utf8'));
