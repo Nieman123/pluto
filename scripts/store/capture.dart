@@ -53,10 +53,14 @@ Future<void> _startApp() async {
     throw StateError('Store captures require a debug iOS simulator build.');
   }
   WidgetsFlutterBinding.ensureInitialized();
-  await ticketAccessInitialize();
+  try {
+    await ticketAccessInitialize();
+  } catch (error) {
+    debugPrint('Simulator persistent ticket storage unavailable: $error');
+  }
   await Firebase.initializeApp(
       options: const FirebaseOptions(
-          apiKey: 'demo-preview-key',
+          apiKey: 'AIzaSy000000000000000000000000000000000',
           appId: '1:123:ios:abcdef',
           messagingSenderId: '123',
           projectId: 'demo-pluto-ticketing',
@@ -195,6 +199,7 @@ class _CaptureAppState extends State<CaptureApp> {
       }
       final boundary =
           _image.currentContext!.findRenderObject()! as RenderRepaintBoundary;
+      await WidgetsBinding.instance.endOfFrame;
       final image = await boundary.toImage(pixelRatio: _scale);
       final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
       image.dispose();

@@ -55,6 +55,19 @@ def main():
         subprocess.run(['xcrun', 'simctl', 'boot', udid], check=True)
         subprocess.run(['xcrun', 'simctl', 'bootstatus', udid, '-b'], check=True)
         app = ROOT / 'build/ios/iphonesimulator/Runner.app'
+        # FlutterFire's iOS plugin initializes its default app from this resource
+        # before Dart runs. Substitute demo options in the simulator artifact,
+        # not the checked-in Firebase configuration or any release archive.
+        demo_plist = {
+            'API_KEY': 'AIzaSy000000000000000000000000000000000',
+            'GOOGLE_APP_ID': '1:123:ios:abcdef', 'GCM_SENDER_ID': '123',
+            'PROJECT_ID': 'demo-pluto-ticketing',
+            'STORAGE_BUCKET': 'demo-pluto-ticketing.appspot.com',
+            'BUNDLE_ID': 'events.pluto.app.staging', 'PLIST_VERSION': '1',
+            'IS_ADS_ENABLED': False, 'IS_ANALYTICS_ENABLED': False,
+            'IS_GCM_ENABLED': False, 'IS_SIGNIN_ENABLED': False,
+        }
+        (app / 'GoogleService-Info.plist').write_bytes(plistlib.dumps(demo_plist))
         plist_path = app / 'Info.plist'
         plist = plistlib.loads(plist_path.read_bytes())
         # The capture-only simulator artifact talks to its host's local emulators.
