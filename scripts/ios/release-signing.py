@@ -11,6 +11,7 @@ import shlex
 import subprocess
 import sys
 from pathlib import Path
+from xml.parsers.expat import ExpatError
 
 ROOT = Path(__file__).resolve().parents[2]
 SIGNING_CONFIG = ROOT / 'ios/Config/Signing.generated.xcconfig'
@@ -207,6 +208,19 @@ def ipa_file():
     return files[0]
 
 
+def read_entitlements(app):
+    # File extraction includes a signing-blob header. Request plain XML on
+    # stdout, as documented in Apple TN3125, before handing it to plistlib.
+    raw = run('codesign', '--display', '--entitlements', '-', '--xml', str(app), binary=True)
+    try:
+        entitlements = plistlib.loads(raw)
+    except (ValueError, ExpatError):
+        raise ValueError(f'Could not parse XML signing entitlements for {app.name}.') from None
+    if not isinstance(entitlements, dict):
+        raise ValueError(f'Signing entitlements for {app.name} must be a property-list dictionary.')
+    return entitlements
+
+
 def verify():
     selected = settings()
     apps = list((ROOT / 'build/ios/archive').glob('*.xcarchive/Products/Applications/*.app'))
@@ -214,10 +228,8 @@ def verify():
         raise ValueError('Expected exactly one archived iOS app.')
     app = apps[0]
     run('codesign', '--verify', '--deep', '--strict', str(app))
-    ent_file = folder() / 'archive-entitlements.plist'
-    run('codesign', '-d', '--entitlements', str(ent_file), str(app))
     info = plistlib.loads((app / 'Info.plist').read_bytes())
-    validate_archive(info, plistlib.loads(ent_file.read_bytes()), selected,
+    validate_archive(info, read_entitlements(app), selected,
                      plistlib.loads((app / 'GoogleService-Info.plist').read_bytes()))
     # Verify the exported IPA as well; export may add metadata to Info.plist.
     import zipfile
@@ -227,7 +239,9 @@ def verify():
             raise ValueError('Expected one exported app.')
         for name in bundle.namelist():
             candidate = (folder() / 'exported' / name).resolve()
-            if not candidate.is_relative_to((folder() / 'exported').resolve()):
+            try:
+                candidate.relative_to((folder() / 'exported').resolve())
+            except ValueError:
                 raise ValueError('Unsafe IPA archive path.')
         prefix = names[0][:-len('Info.plist')]
         exported_info = plistlib.loads(bundle.read(names[0]))
@@ -235,9 +249,7 @@ def verify():
     run('ditto', '-x', '-k', str(ipa_file()), str(folder() / 'exported'))
     exported_app = folder() / 'exported' / prefix.rstrip('/')
     run('codesign', '--verify', '--deep', '--strict', str(exported_app))
-    exported_entitlements = folder() / 'exported-entitlements.plist'
-    run('codesign', '-d', '--entitlements', str(exported_entitlements), str(exported_app))
-    validate_archive(exported_info, plistlib.loads(exported_entitlements.read_bytes()), selected, exported_firebase)
+    validate_archive(exported_info, read_entitlements(exported_app), selected, exported_firebase)
     exported_profile = plistlib.loads(run('security', 'cms', '-D', '-i', str(exported_app / 'embedded.mobileprovision'), binary=True))
     certificate = run('openssl', 'x509', '-in', str(folder() / 'distribution.pem'), '-outform', 'DER', binary=True)
     validate_profile(exported_profile, selected, certificate)
