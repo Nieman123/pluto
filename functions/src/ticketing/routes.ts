@@ -11,7 +11,8 @@ import { email } from './domain';
 import { Rewards } from '../rewards';
 import { AppReview } from '../app-review';
 import { DigitalWallet } from './digital-wallet';
-import { allowedSiteOrigins } from '../deployment-config';
+import { allowedSiteOrigins, deploymentConfig } from '../deployment-config';
+import { checkoutAppScheme } from './checkout-return';
 import { Webhook } from 'svix';
 import { resendWebhookKey } from './config';
 import { recordDelivery } from './delivery';
@@ -61,6 +62,14 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
     meta: { title: `${req.path.includes('admin') ? 'Event studio' : req.path.includes('staff') ? 'Ticket admission' : 'My tickets'} | Pluto Events`, description: 'Manage your Pluto Events tickets.', canonical: `${baseUrl()}${req.path}` },
     mode: req.path.includes('admin') ? 'admin' : req.path.includes('staff') ? 'staff' : 'customer', sandbox: !isLive() });
   router.get(['/tickets', '/tickets/order'], (req, res) => res.redirect(302, `/app/tickets${req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''}`));
+  router.get('/tickets/checkout-return', (req, res) => {
+    const order = req.query.order;
+    if (typeof order !== 'string' || !/^[a-f0-9]{64}$/.test(order)) return res.status(400).send('Invalid checkout order.');
+    const nativeUrl = `${checkoutAppScheme(deploymentConfig().environment)}://tickets?order=${order}`;
+    res.render('checkout-return', { ...context(req.path), googleAnalyticsId: '', nativeUrl,
+      webUrl: `/app/tickets?order=${order}`,
+      meta: { title: 'Back to Pluto | Pluto Events', description: 'Return to your tickets in the Pluto app.', canonical: `${baseUrl()}${req.path}` } });
+  });
   router.get(['/tickets/admin', '/tickets/staff'], page);
   router.get('/tickets/admission-sw.js', (_req, res) => res.type('application/javascript').set('Service-Worker-Allowed', '/tickets/').send(readFileSync(join(__dirname, 'admission-sw.js'), 'utf8')));
   router.get('/tickets/api/public/events', async (req, res) => {
@@ -116,7 +125,7 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
       image: event.hero ? `${baseUrl()}/events/${event.slug}/media/${event.hero.assetId}` : undefined,
       offers: free ? undefined : mapped.offers.map((o: any) => ({ '@type': 'Offer', name: o.name, price: (o.unitAmount / 100).toFixed(2), priceCurrency: 'USD', url: `${baseUrl()}/events/${event.slug}#tickets`, availability: o.available ? 'https://schema.org/InStock' : o.availability === 'Coming soon' ? 'https://schema.org/PreSale' : 'https://schema.org/SoldOut' })) });
     const view = { ...context(`/events/${event.slug}`), googleAnalyticsId: '', meta: { title: `${event.title} | Pluto Events`, description: event.subtitle, canonical: `${baseUrl()}/events/${event.slug}`, image: event.hero ? `${baseUrl()}/events/${event.slug}/media/${event.hero.assetId}` : `${baseUrl()}/assets/images/pluto-preview.jpg` },
-      event: mapped, accentText, state, preview, sandbox: !isLive(), dateLabel: `${dateLabel.format(new Date(event.startAt))} – ${dateLabel.format(new Date(event.endAt))}`, jsonLd, checkoutJson: serializeJson({ eventId: event.id, registrationMode: event.registrationMode || 'tickets', offers: mapped.offers, preview, status: event.status, endAt: event.endAt }) };
+      event: mapped, accentText, state, preview, sandbox: !isLive(), dateLabel: `${dateLabel.format(new Date(event.startAt))} – ${dateLabel.format(new Date(event.endAt))}`, jsonLd, checkoutJson: serializeJson({ eventId: event.id, nativeAppScheme: checkoutAppScheme(deploymentConfig().environment), registrationMode: event.registrationMode || 'tickets', offers: mapped.offers, preview, status: event.status, endAt: event.endAt }) };
     if (preview) {
       // Authenticated previews carry sanitized embedded images, never public draft URLs.
       for (const m of [mapped.hero, mapped.flyer, ...mapped.gallery, ...mapped.lineup.map((a: any) => a.image)].filter(Boolean)) m.url = `data:image/webp;base64,${(await service.media(event.id, m.assetId, res.locals.actor.uid)).toString('base64')}`;

@@ -14,9 +14,9 @@ const fake = {
     create: async (params, opts) => {
       if (idempotency.has(opts.idempotencyKey)) return sessions.get(idempotency.get(opts.idempotencyKey));
       assert.equal(params.ui_mode, 'embedded_page'); assert.equal(params.mode, 'payment'); assert.equal(params.payment_method_types, undefined);
-      assert.ok(!params.invoice_creation); assert.match(params.return_url, /\/app\/tickets/);
+      assert.ok(!params.invoice_creation); assert.match(params.return_url, /\/(app\/tickets|tickets\/checkout-return)\?order=[a-f0-9]{64}/);
       const session = { id: `cs_test_${randomUUID()}`, client_secret: 'fake-client-secret', metadata: params.metadata, client_reference_id: params.client_reference_id, currency: 'usd', amount_total: params.line_items.reduce((n, l) => n + l.price_data.unit_amount, 0), livemode: false, status: 'open', payment_status: 'unpaid', expires_at: params.expires_at,
-        line_items: params.line_items.map((l, i) => ({ id: `li_${i}`, metadata: l.metadata, quantity: l.quantity, amount_total: l.price_data.unit_amount, amount_tax: 0, currency: 'usd' })) };
+        return_url: params.return_url, line_items: params.line_items.map((l, i) => ({ id: `li_${i}`, metadata: l.metadata, quantity: l.quantity, amount_total: l.price_data.unit_amount, amount_tax: 0, currency: 'usd' })) };
       sessions.set(session.id, session); idempotency.set(opts.idempotencyKey, session.id); return session;
     },
     retrieve: async key => { assert.ok(sessions.has(key)); return sessions.get(key); },
@@ -50,10 +50,15 @@ async function pay(result) { const order = (await service.order(result.orderId).
 async function main() {
   await db.collection('adminUsers').doc(staff).set({ role: 'admin' });
   const eventId = await makeEvent(false, d => { d.pools[0].capacity = 2; d.pools[1].capacity = 2; });
-  const attempts = Array.from({ length: 5 }, () => request(eventId));
+  const attempts = Array.from({ length: 5 }, () => request(eventId, { nativeApp: true }));
   const results = await Promise.allSettled(attempts.map(r => service.checkout(r, buyer)));
   const winners = results.flatMap((r, i) => r.status === 'fulfilled' ? [{ request: attempts[i], result: r.value }] : []);
   assert.equal(winners.length, 2, 'shared pools cannot oversell under concurrent checkout');
+  for (const winner of winners) {
+    const order = (await service.order(winner.result.orderId).get()).data();
+    assert.equal(order.nativeApp, true);
+    assert.equal(sessions.get(order.sessionId).return_url, `http://127.0.0.1:4173/tickets/checkout-return?order=${winner.result.orderId}`);
+  }
   const pool = (await service.event(eventId).collection('pools').doc('friday').get()).data(); assert.equal(pool.held, 2); assert.equal(pool.sold, 0);
   const first = winners[0]; await service.checkout(first.request, buyer); assert.equal(sessions.size, 2, 'request retry creates no second Session');
   await pay(first.result); await pay(first.result); let view = await service.view(first.result.orderId, first.request.accessKey, null);

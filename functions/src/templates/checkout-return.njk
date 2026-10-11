@@ -1,0 +1,13 @@
+{% extends 'base.njk' %}
+{% block content %}
+<link rel="stylesheet" href="/assets/ticketing.css?v={{ assetVersion }}">
+<section class="checkout-return" aria-labelledby="checkout-return-title">
+  <p class="eyebrow">PLUTO EVENTS</p>
+  <h1 id="checkout-return-title">Back to Pluto.</h1>
+  <p>Open the app to see your tickets and order status. Payments may take a moment to finish; RSVPs that need approval will show their status there.</p>
+  <a id="native-checkout-return" class="button button-primary" href="{{ nativeUrl }}">Open my tickets in Pluto</a>
+  <p>If the app didn’t open automatically, tap the button above.</p>
+  <a class="button button-quiet" href="{{ webUrl }}">Continue in browser</a>
+</section>
+<script src="/assets/ticketing.js?v={{ assetVersion }}" defer></script>
+{% endblock %}

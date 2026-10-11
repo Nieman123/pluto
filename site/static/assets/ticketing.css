@@ -85,3 +85,5 @@ html{scroll-padding-top:100px}.native-event.checkout-active .native-hero,.native
 #ticketing-dialog input, #ticketing-dialog textarea, #ticketing-dialog select { font: inherit; width: 100%; padding: 12px; border: 1px solid #655775; border-radius: 8px; background: #19141f; color: #f7f3fc; }
 .discover-history-link { display: flex; justify-content: center; margin-top: 3rem; padding-top: 2rem; border-top: 1px solid rgba(196,162,255,.2); }
 .discover-history-link .button span { margin-left: .4rem; }
+
+.checkout-return{max-width:620px;margin:4rem auto;padding:2rem;border:1px solid #554164;border-radius:24px;background:linear-gradient(135deg,#261a33,#151019)}.checkout-return h1{font-size:clamp(2rem,6vw,3rem);margin:.4em 0}.checkout-return p{line-height:1.6}.checkout-return .button{display:flex;justify-content:center;text-align:center;width:100%;box-sizing:border-box;margin:1rem 0}.checkout-return .button-primary{background:#d9a7ff;color:#21152e}@media(max-width:680px){.checkout-return{margin:2rem 1rem;padding:1.5rem}}
