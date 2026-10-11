@@ -4,10 +4,10 @@ import 'dart:typed_data';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher_string.dart';
 
 import 'current_events_repository.dart';
 import 'festival_visibility.dart';
+import 'src/event_checkout_link.dart';
 import 'src/theme/pluto_ui.dart';
 import 'user_profile_repository.dart';
 
@@ -57,7 +57,7 @@ class SignedInHomePage extends StatelessWidget {
     if (normalizedUrl.isEmpty) {
       return;
     }
-    await launchUrlString(normalizedUrl, webOnlyWindowName: '_blank');
+    await openEventCheckout(normalizedUrl);
   }
 
   void _openEvent(BuildContext context, CurrentEvent event) {

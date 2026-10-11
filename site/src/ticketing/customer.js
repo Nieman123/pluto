@@ -1,10 +1,14 @@
 import { accessKey, action, api, bind, dialog, esc, message, money } from './api.js';
 import { initWaitlist } from './waitlist.js';
+import { checkoutDestination } from './checkout-return.mjs';
 
 export function initCheckout() {
   const form = document.querySelector('#native-checkout-form'); if (!form) return;
   const config = JSON.parse(document.querySelector('#native-checkout-config').textContent), storageKey = `pluto-checkout-${config.eventId}`;
   const rsvp = ['rsvp', 'rsvp-approval'].includes(config.registrationMode);
+  const nativeApp = new URLSearchParams(location.search).get('native_app') === '1';
+  const openTickets = orderId => { location.href = checkoutDestination(orderId, nativeApp); };
+  if (nativeApp) form.querySelector('a[href="/app/tickets"]')?.setAttribute('href', `${config.nativeAppScheme}://tickets`);
   const initiallyClosed = form.querySelector('[type=submit]').disabled;
   let checkout, result, frozen, countdown, checkingSaved = false;
   let account = null, profileName = '';
@@ -73,6 +77,7 @@ export function initCheckout() {
     cartSummary();
   });
   async function mount(request) {
+    if (nativeApp) request.nativeApp = true;
     request.checkoutKind ||= freeRsvp(request) ? 'rsvp' : 'payment';
     frozen = request; localStorage.setItem(storageKey, JSON.stringify(frozen));
     lockCart();
@@ -88,13 +93,13 @@ export function initCheckout() {
     // original checkout request was in flight.
     if (frozen !== request) return;
     localStorage.setItem(`pluto-order-${result.orderId}`, frozen.accessKey);
-    if (freeRsvp(frozen) || result.status === 'paid') { localStorage.removeItem(storageKey); location.href = `/app/tickets?order=${result.orderId}`; return; }
+    if (freeRsvp(frozen) || result.status === 'paid') { localStorage.removeItem(storageKey); openTickets(result.orderId); return; }
     if (['expired', 'cancelled'].includes(result.status)) { localStorage.removeItem(storageKey); frozen = null; lockCart(); throw new Error('The previous reservation has closed. Choose your tickets again.'); }
     document.querySelector('#checkout-cancel').hidden = false;
     if (!result.clientSecret || !result.publishableKey) throw new Error('Payment setup is incomplete. Your cart is saved; retry once checkout is configured.');
     if (!window.Stripe) await new Promise((resolve, reject) => { const script = document.createElement('script'); script.src = 'https://js.stripe.com/endive/stripe.js'; script.onload = resolve; script.onerror = () => reject(new Error('The payment form could not load. Check your connection and retry.')); document.head.append(script); });
     checkout = await window.Stripe(result.publishableKey).createEmbeddedCheckoutPage({ fetchClientSecret: async () => result.clientSecret,
-      onComplete: () => { clearSavedCart(); location.href = `/app/tickets?order=${result.orderId}`; } });
+      onComplete: () => { clearSavedCart(); openTickets(result.orderId); } });
     checkout.mount('#stripe-checkout'); form.hidden = true; document.querySelector('#checkout-cancel').hidden = false;
     document.querySelector('.native-event').classList.add('checkout-active'); document.querySelector('.native-layout').classList.add('checkout-active');
     document.querySelector('#tickets').scrollIntoView({ block: 'start' }); message('Complete your payment below. Your tickets will appear in the Pluto app.');
@@ -122,7 +127,7 @@ export function initCheckout() {
   });
   bind('#checkout-cancel', async () => {
     const closed = await api('cancel', { orderId: result.orderId, accessKey: frozen.accessKey });
-    if (closed.status === 'paid') { localStorage.removeItem(storageKey); location.href = `/app/tickets?order=${result.orderId}`; return; }
+    if (closed.status === 'paid') { localStorage.removeItem(storageKey); openTickets(result.orderId); return; }
     checkout?.destroy(); clearInterval(countdown); localStorage.removeItem(storageKey); frozen = null; result = null; lockCart(); form.hidden = false; document.querySelector('#checkout-cancel').hidden = true; document.querySelector('#checkout-countdown').textContent = ''; document.querySelector('.native-event').classList.remove('checkout-active'); document.querySelector('.native-layout').classList.remove('checkout-active'); message('Your reservation is closed. You can choose another cart.');
   });
   function clearSavedCart() {

@@ -1,9 +1,11 @@
 import { action, api, initMessages, message, scannerSession, setUser } from './ticketing/api.js';
 import { initCheckout } from './ticketing/customer.js';
+import { initCheckoutReturn } from './ticketing/checkout-return.mjs';
 import { initEditor, loadEvents } from './ticketing/editor.js';
 import { initToolbarIcons } from './ticketing/toolbar-icons.js';
 import { initAdmission, initScanner, restoreManifest, cacheStaffEvents, restoreOfflineAdmission, lockOfflineAdmission } from './ticketing/admission.js';
 initMessages();
+initCheckoutReturn();
 initCheckout();
 const mode = document.querySelector('[data-ticketing-console]')?.dataset.ticketingConsole;
 if (mode === 'admin') { initToolbarIcons(document.querySelector('[data-ticketing-console]')); initEditor(); }

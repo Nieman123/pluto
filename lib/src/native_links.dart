@@ -2,9 +2,27 @@ import 'dart:async';
 import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'native_environment.dart';
 
 Uri? nativeAppRoute(Uri link, {required Uri origin}) {
+  final checkoutScheme = switch (origin.host) {
+    'pluto.events' => 'events.pluto.app',
+    'pluto-staging-92eb7.web.app' => 'events.pluto.app.staging',
+    _ => null,
+  };
+  // The browser handoff contains only a public order ID. Ticket access still
+  // requires the signed-in account; never accept capabilities on this scheme.
+  if (checkoutScheme != null && link.scheme == checkoutScheme) {
+    if (link.host != 'tickets' ||
+        link.path.isNotEmpty ||
+        link.hasPort ||
+        link.userInfo.isNotEmpty ||
+        link.hasFragment ||
+        (link.hasQuery &&
+            !RegExp(r'^order=[a-f0-9]{64}$').hasMatch(link.query))) return null;
+    return Uri(path: '/tickets', query: link.hasQuery ? link.query : null);
+  }
   const routes = <String, String>{
     '/app': '/',
     '/app/': '/',
@@ -39,6 +57,9 @@ class NativeLinks {
   void _receive(Uri link) {
     final route = nativeAppRoute(link, origin: ticketingBaseUri());
     if (route == null) return;
+    if (link.scheme != 'https') {
+      unawaited(closeInAppWebView().catchError((_) {}));
+    }
     if (_router == null)
       _pending = route;
     else

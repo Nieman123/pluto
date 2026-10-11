@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher_string.dart';
 
 import '../current_events_repository.dart';
 import '../src/custom/custom_text.dart';
+import '../src/event_checkout_link.dart';
 
 class Event extends StatelessWidget {
   const Event({Key? key}) : super(key: key);
@@ -46,7 +46,7 @@ class Event extends StatelessWidget {
     if (url.trim().isEmpty) {
       return;
     }
-    await launchUrlString(url, webOnlyWindowName: '_blank');
+    await openEventCheckout(url);
   }
 
   String _galleryUrl(String fileName) {

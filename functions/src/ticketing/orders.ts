@@ -6,7 +6,8 @@ import { Catalog } from './catalog';
 import { orderPage } from './order-page';
 import { financialSummary } from './financial-projection';
 import { calendarLinks } from './calendar';
-import { assertSigningConfigured, apiVersion, appTicketsUrl, baseUrl, isLive, readTicket, signTicket, stripeClient, signingMaterial, verificationKeys, scannerPinKeys, type SigningMaterial } from './config';
+import { assertSigningConfigured, apiVersion, baseUrl, isLive, readTicket, signTicket, stripeClient, signingMaterial, verificationKeys, scannerPinKeys, type SigningMaterial } from './config';
+import { checkoutReturnUrl } from './checkout-return';
 import { validatePinKeys, type ScannerPinKeys } from './pin-keys';
 import { assertVerificationKeyAccepted, credentialKeyId } from './signing';
 import { assertCapacity, cart, email, fail, hash, holderVenue, id, integer, receipt, secret, text, ticketId, type EventDraft, type Unit } from './domain';
@@ -28,6 +29,7 @@ export interface Order {
   stripeFeeStatus?: 'pending' | 'confirmed'; financialBlocked?: boolean; financialCheckId?: string; financialReviewReason?: string;
   providerState?: string; provisioningLeaseUntil?: number; provisioningAttemptId?: string; expiredAt?: number;
   checkoutBranding?: Stripe.Checkout.SessionCreateParams.BrandingSettings;
+  nativeApp?: boolean;
   refundedAmount?: number; refundedTaxAmount?: number; reviewReason?: string;
   transferCutoff?: string;
   rsvpStatus?: 'pending' | 'approved' | 'declined' | 'withdrawn';
@@ -204,6 +206,7 @@ export class Orders extends Catalog {
         tx.update(this.order(rsvpLink.rsvpOrderId), { rsvpUpgradeRevision: (upgradeParent!.rsvpUpgradeRevision || 0) + 1 });
       }
       tx.create(ref, { eventId, eventTitle: draft.title, eventSlug: draft.slug, ...contact, accessHash: hash(accessKey), inputHash: requestHash,
+        ...(method === 'stripe' && raw.nativeApp === true ? { nativeApp: true } : {}),
         ...(rsvpLink || {}),
         ...(method === 'stripe' && priced.total > 0 ? { checkoutBranding: { ...plutoCheckoutBranding } } : {}),
         ...priced, tax: draft.tax, taxCustomerAddress, currency: 'usd', livemode: isLive(), status: 'provisioning', method, createdAt: now, expiresAt: now + 35 * 60000,
@@ -229,7 +232,7 @@ export class Orders extends Catalog {
       mode: 'payment', ui_mode: 'embedded_page', customer_email: order.email, client_reference_id: orderId,
       // Legacy attempts omit this field, retaining their original Stripe request.
       ...(order.checkoutBranding ? { branding_settings: order.checkoutBranding } : {}),
-      return_url: `${appTicketsUrl()}?order=${orderId}&session_id={CHECKOUT_SESSION_ID}`,
+      return_url: checkoutReturnUrl(baseUrl(), orderId, order.nativeApp),
       expires_at: Math.floor((order.createdAt + 35 * 60000) / 1000),
       integration_identifier: `pluto_ticketing_${orderId.slice(0, 8).replace(/[0-9]/g, n => String.fromCharCode(97 + Number(n)))}`,
       metadata: { pluto_order_id: orderId, pluto_event_id: order.eventId }, payment_intent_data: { metadata: { pluto_order_id: orderId, pluto_event_id: order.eventId } },
