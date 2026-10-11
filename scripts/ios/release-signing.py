@@ -20,6 +20,11 @@ SIGNING_CONFIG = ROOT / 'ios/Config/Signing.generated.xcconfig'
 def run(*args, binary=False):
     result = subprocess.run(args, capture_output=True)
     if result.returncode:
+        if Path(args[0]).name == 'codesign':
+            # Verification commands contain only public app/certificate paths.
+            # Other signing tools may receive passwords: keep their errors generic.
+            detail = result.stderr.decode(errors='replace').strip()[-4000:]
+            raise ValueError(f"codesign {args[1]} failed (exit {result.returncode}): {detail or 'No diagnostic returned.'}")
         raise ValueError(f'{Path(args[0]).name} failed (exit {result.returncode}). Check the signing files and toolchain.')
     return result.stdout if binary else result.stdout.decode().strip()
 
@@ -221,14 +226,26 @@ def read_entitlements(app):
     return entitlements
 
 
+def read_signing_certificate(app, prefix):
+    # codesign treats this as an optional option argument; a separate prefix is
+    # parsed as an additional input path instead. Attach it using '='.
+    run('codesign', '--display', f'--extract-certificates={prefix}', str(app))
+    leaf = Path(str(prefix) + '0')
+    if not leaf.is_file() or not leaf.stat().st_size:
+        raise ValueError(f'No leaf signing certificate was extracted for {app.name}.')
+    return leaf.read_bytes()
+
+
 def verify():
     selected = settings()
     apps = list((ROOT / 'build/ios/archive').glob('*.xcarchive/Products/Applications/*.app'))
     if len(apps) != 1:
         raise ValueError('Expected exactly one archived iOS app.')
     app = apps[0]
+    print('Verifying archived app signature.', flush=True)
     run('codesign', '--verify', '--deep', '--strict', str(app))
     info = plistlib.loads((app / 'Info.plist').read_bytes())
+    print('Checking archived app entitlements and identity.', flush=True)
     validate_archive(info, read_entitlements(app), selected,
                      plistlib.loads((app / 'GoogleService-Info.plist').read_bytes()))
     # Verify the exported IPA as well; export may add metadata to Info.plist.
@@ -248,13 +265,14 @@ def verify():
         exported_firebase = plistlib.loads(bundle.read(prefix + 'GoogleService-Info.plist'))
     run('ditto', '-x', '-k', str(ipa_file()), str(folder() / 'exported'))
     exported_app = folder() / 'exported' / prefix.rstrip('/')
+    print('Verifying exported IPA signature.', flush=True)
     run('codesign', '--verify', '--deep', '--strict', str(exported_app))
+    print('Checking exported IPA entitlements, profile and signing certificate.', flush=True)
     validate_archive(exported_info, read_entitlements(exported_app), selected, exported_firebase)
     exported_profile = plistlib.loads(run('security', 'cms', '-D', '-i', str(exported_app / 'embedded.mobileprovision'), binary=True))
     certificate = run('openssl', 'x509', '-in', str(folder() / 'distribution.pem'), '-outform', 'DER', binary=True)
     validate_profile(exported_profile, selected, certificate)
-    run('codesign', '-d', '--extract-certificates', str(folder() / 'exported-certificate-'), str(exported_app))
-    if (folder() / 'exported-certificate-0').read_bytes() != certificate:
+    if read_signing_certificate(exported_app, folder() / 'exported-certificate-') != certificate:
         raise ValueError('Exported IPA signature uses a different signing certificate.')
     evidence = {**selected, 'ipaSha256': hashlib.sha256(ipa_file().read_bytes()).hexdigest(), 'sdk': info['DTSDKName'], 'verified': True}
     (ROOT / 'tmp/ios-release/verification.json').write_text(json.dumps(evidence, indent=2))
