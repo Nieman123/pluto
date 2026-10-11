@@ -70,7 +70,7 @@ jobs:
       - name: Compile current UI for the validated runtime
         if: steps.runtime-download.outcome == 'success'
         run: |
-          flutter assemble --output=build/flutter_assets -dBuildMode=debug -dTargetPlatform=ios -dConfiguration=Debug-staging -dTargetFile=scripts/store/capture.dart --dart-define-from-file=config/ios/staging.json copy_flutter_bundle
+          python3 scripts/store/build-bundle.py
           python3 scripts/store/prepare-runtime.py
       - name: Compile fresh native screenshot app
         if: steps.runtime-download.outcome != 'success'
