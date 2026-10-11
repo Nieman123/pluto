@@ -1,0 +1,111 @@
+name: iOS TestFlight
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: App/backend environment
+        type: choice
+        options: [staging, production]
+        default: production
+        required: true
+      operation:
+        description: Build a signed IPA, or upload it to App Store Connect/TestFlight
+        type: choice
+        options: [build-only, upload-testflight]
+        default: build-only
+        required: true
+      revision:
+        description: Full 40-character SHA merged into main (upload requires successful staging)
+        type: string
+        required: true
+permissions:
+  contents: read
+  actions: read
+  deployments: read
+concurrency:
+  group: ios-testflight-${{ inputs.environment }}
+  cancel-in-progress: false
+jobs:
+  release:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: macos-15
+    timeout-minutes: 60
+    environment:
+      name: ${{ inputs.environment }}
+    env:
+      IOS_ENVIRONMENT: ${{ inputs.environment }}
+      IOS_OPERATION: ${{ inputs.operation }}
+      IOS_REVISION: ${{ inputs.revision }}
+      PRODUCTION_APPROVAL_POLICY: ${{ vars.PRODUCTION_APPROVAL_POLICY || 'two-person' }}
+      IOS_TEAM_ID: ${{ vars.IOS_TEAM_ID }}
+      IOS_APP_ID_PREFIX: ${{ vars.IOS_APP_ID_PREFIX }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify requested SHA is merged before executing its code
+        run: |
+          [[ "$IOS_REVISION" =~ ^[a-f0-9]{40}$ ]] || { echo 'Use a full commit SHA.'; exit 1; }
+          git merge-base --is-ancestor "$IOS_REVISION" origin/main
+          git checkout --detach "$IOS_REVISION"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - name: Verify trusted release and backend evidence
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          npm ci --prefix functions
+          npm run build:functions
+          node scripts/ios/release-policy.mjs
+          python3 -m unittest discover -s scripts/ios -p 'test_*.py'
+      - name: Select App Store supported Xcode and SDK
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.3.app/Contents/Developer
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+          python3 scripts/ios/release-signing.py toolchain
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - name: Install locked app dependencies
+        run: flutter pub get --enforce-lockfile
+      - name: Import and validate distribution signing
+        env:
+          IOS_DISTRIBUTION_P12_BASE64: ${{ secrets.IOS_DISTRIBUTION_P12_BASE64 }}
+          IOS_DISTRIBUTION_P12_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_P12_PASSWORD }}
+          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+          ASC_KEY_ID: ${{ vars.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ vars.ASC_ISSUER_ID }}
+          ASC_PRIVATE_KEY_P8: ${{ secrets.ASC_PRIVATE_KEY_P8 }}
+        run: python3 scripts/ios/release-signing.py prepare
+      - name: Build signed iPhone and iPad archive
+        run: |
+          flutter build ipa --release --flavor "$IOS_ENVIRONMENT" --dart-define-from-file="config/ios/$IOS_ENVIRONMENT.json" --build-number="$IOS_BUILD_NUMBER" --export-options-plist="$RUNNER_TEMP/pluto-ios-signing/ExportOptions.plist"
+      - name: Verify archive identity, capabilities and SDK
+        run: python3 scripts/ios/release-signing.py verify
+      - name: Validate and upload to App Store Connect
+        if: ${{ env.IOS_OPERATION == 'upload-testflight' }}
+        env:
+          ASC_KEY_ID: ${{ vars.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ vars.ASC_ISSUER_ID }}
+        run: python3 scripts/ios/release-signing.py upload
+      - name: Keep signed build and public verification evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ios-${{ env.IOS_ENVIRONMENT }}-${{ github.run_number }}-${{ github.run_attempt }}
+          path: |
+            build/ios/ipa/*.ipa
+            tmp/ios-release/manifest.json
+            tmp/ios-release/verification.json
+            tmp/ios-release/upload-result.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Remove temporary signing credentials
+        if: ${{ always() }}
+        run: python3 scripts/ios/release-signing.py cleanup
