@@ -19,12 +19,15 @@ The **App Store screenshots** GitHub workflow creates six candidate PNGs per dis
 
 | Folder | Upload class | Pixels |
 | --- | --- | --- |
+| `iphone-medium` | iPhone 6.1/6.3-inch | 1206 × 2622 |
 | `iphone` | iPhone 6.9-inch | 1320 × 2868 |
 | `iphone-duo-outer` | iPhone Duo outer display | 1398 × 2034 |
 | `iphone-duo-inner` | iPhone Duo inner display | 2007 × 2853 |
 | `ipad` | iPad 13-inch | 2064 × 2752 |
 
 Download its `app-store-screenshots-…` artifact and use PNGs in numeric order.
+Match the folder to the upload slot: the 1320 × 2868 large-display images cannot
+be uploaded into the 6.1/6.3-inch slot; use `iphone-medium` there.
 For the curated upload set, use `01`, `02`, `04`, `05` and `06` on iPhone and
 both Duo displays. Use `01`, `04` and `05` on iPad: the events shot duplicates
 Home at that viewport, and the capture profile footer identifies the simulator's

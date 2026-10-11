@@ -14,7 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 OUTPUT = ROOT / 'output/app-store-screenshots'
-VIEWPORTS = {'iphone': (1320, 2868, 3), 'iphone-duo-outer': (1398, 2034, 3),
+VIEWPORTS = {'iphone-medium': (1206, 2622, 3), 'iphone': (1320, 2868, 3), 'iphone-duo-outer': (1398, 2034, 3),
              'iphone-duo-inner': (2007, 2853, 3), 'ipad': (2064, 2752, 2)}
 SCREENS = [('01-home', '/', 0, False, 'Welcome back'),
            ('02-upcoming-events', '/', 'bottom', False, 'Into the Orbit'),
@@ -106,7 +106,9 @@ def main():
                 print('Captured ' + identity, flush=True)
         (OUTPUT / 'manifest.json').write_text(json.dumps(manifest, indent=2))
         (OUTPUT / 'README.md').write_text(
-            'Upload PNGs from iphone, iphone-duo-outer, iphone-duo-inner and ipad.\n\n'
+            'Use iphone-medium for the 6.1/6.3-inch slot (1206 x 2622), '
+            'iphone for the large 6.9-inch slot (1320 x 2868), '
+            'and the matching iphone-duo-outer, iphone-duo-inner and ipad folders.\n\n'
             'These are real Flutter screens rendered by the native iOS simulator app '
             'at each target viewport, without system status bars or device frames. '
             'Duo images are viewport layout renders, not physical-device captures. '

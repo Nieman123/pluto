@@ -18,7 +18,7 @@ const server=createServer(async(req,res)=>{
     else if(req.method==='GET' && url.pathname==='/state') res.end(JSON.stringify(state));
     else if(req.method==='POST' && url.pathname==='/command'){
       const next=JSON.parse((await body()).toString());
-      if(!/^(iphone|iphone-duo-outer|iphone-duo-inner|ipad)$/.test(next.device) || !/^\d{2}-[a-z-]+$/.test(next.name) || !Number.isInteger(next.width) || !Number.isInteger(next.height)) throw Error('Invalid capture command');
+      if(!/^(iphone|iphone-medium|iphone-duo-outer|iphone-duo-inner|ipad)$/.test(next.device) || !/^\d{2}-[a-z-]+$/.test(next.name) || !Number.isInteger(next.width) || !Number.isInteger(next.height)) throw Error('Invalid capture command');
       command=next;state={};res.end('{}');
     } else if(req.method==='POST' && url.pathname==='/failure'){
       state=JSON.parse((await body()).toString());res.end('{}');
