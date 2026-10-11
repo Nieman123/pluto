@@ -9,6 +9,7 @@ on:
       - 'test/**'
       - 'scripts/ios/**'
       - '.github/workflows/ios.yml'
+      - '.github/workflows/ios-release.yml'
   workflow_dispatch:
 permissions:
   contents: read
@@ -35,7 +36,9 @@ jobs:
           cache: true
       - name: Validate public iOS configuration and native project
         run: |
+          sudo xcode-select -s /Applications/Xcode_26.3.app/Contents/Developer
           xcodebuild -version
+          python3 scripts/ios/release-signing.py toolchain
           xcodebuild -list -project ios/Runner.xcodeproj
           python3 -m unittest discover -s scripts/ios -p 'test_*.py'
           flutter pub get --enforce-lockfile

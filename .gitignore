@@ -43,3 +43,4 @@ dotenv
 *.p12
 *.mobileprovision
 AuthKey_*.p8
+/ios/Config/Signing.generated.xcconfig

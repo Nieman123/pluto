@@ -5,7 +5,9 @@ Apple Vision on iOS and supports Apple Silicon simulators. It shares the member
 UI, rewards, scavenger-hunt scanning, secure ticket wallet, browser checkout,
 reviewer demo mode and profile with Android. Event administration stays on the
 website. This foundation is ready for native compilation checks; it is not yet
-a signed TestFlight or App Store release.
+a signed TestFlight or App Store release until distribution credentials are configured.
+The manual **iOS TestFlight** workflow now builds and uploads signed device archives;
+follow [the Windows-compatible setup guide](ios-testflight.md).
 
 | Flavor | Bundle ID | Firebase project | Website |
 | --- | --- | --- | --- |
@@ -89,12 +91,12 @@ provide the initial compilation check.
    staging and production records mirror the Android isolation; production
    TestFlight builds use the production backend. Confirm Apple's current
    upload SDK/Xcode requirements before creating a distributable archive.
-7. Provision distribution signing and an App Store Connect API key for a future
-   manually approved TestFlight workflow. No signed-release workflow has been
-   enabled yet. Use main-only validated revisions with successful staging
-   evidence; keep signing credentials in protected GitHub environments and clean
-   up temporary runner keychains. Do not add these credentials to the public
-   Firebase/build config files.
+7. Provision distribution signing and an App Store Connect API key using
+   [the TestFlight setup guide](ios-testflight.md). The workflow requires a
+   main-only revision, successful staging evidence for uploads, protected
+   production approval and credentials in the selected GitHub environment.
+   Temporary runner keychains and signing files are removed after each run.
+   Do not add credentials to public Firebase/build config files.
 
 ## Before App Store submission
 
