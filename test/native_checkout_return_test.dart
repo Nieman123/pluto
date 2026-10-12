@@ -4,6 +4,52 @@ import 'package:pluto/src/native_links.dart';
 
 void main() {
   final order = 'a' * 64;
+  test(
+      'native account handoff stays on our event origin and out of query parameters',
+      () async {
+    final origin = Uri.parse('https://pluto.events');
+    final calls = <String>[];
+    Future<String?> mint(String slug) async {
+      calls.add(slug);
+      return order;
+    }
+
+    final link = await prepareEventCheckoutLink(
+        Uri.parse('/events/show?ref=artist#tickets'),
+        origin: origin,
+        native: true,
+        createHandoff: mint);
+    expect(calls, ['show']);
+    expect(link.queryParameters, {'ref': 'artist', 'native_app': '1'});
+    expect(Uri.splitQueryString(link.fragment),
+        {'pluto_checkout': order, 'anchor': 'tickets'});
+    for (final url in [
+      'https://evil.example/events/show?native_app=1',
+      'https://user@pluto.events/events/show',
+      '/tickets/admin?native_app=1',
+      '/events/show/media/id?native_app=1',
+      'mailto:contact@pluto.events'
+    ]) {
+      await prepareEventCheckoutLink(Uri.parse(url),
+          origin: origin, native: true, createHandoff: mint);
+    }
+    await prepareEventCheckoutLink(Uri.parse('/events/show'),
+        origin: origin, native: false, createHandoff: mint);
+    expect(calls, ['show']);
+    for (final mint in [
+      (String _) async => null,
+      (String _) async => 'malformed',
+      (String _) async => throw Exception('Offline'),
+    ]) {
+      final fallback = await prepareEventCheckoutLink(
+          Uri.parse('/events/show#tickets'),
+          origin: origin,
+          native: true,
+          createHandoff: mint);
+      expect(fallback.fragment, 'tickets');
+      expect(fallback.queryParameters, {'native_app': '1'});
+    }
+  });
   for (final entry in {
     'https://pluto.events': 'events.pluto.app',
     'https://pluto-staging-92eb7.web.app': 'events.pluto.app.staging',

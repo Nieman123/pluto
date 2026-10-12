@@ -15,9 +15,16 @@ function clientIdentity() {
   return clientId;
 }
 export function setUser(value) { user = value; }
+let checkoutSession = null, checkoutReady = Promise.resolve();
+const checkoutPaths = new Set(['checkout', 'rsvp', 'rsvp/verification', 'rsvp/upgrade/verification', 'rsvp/upgrade-access', 'waitlist/verification', 'waitlist/join', 'order', 'cancel', 'checkout-attempt']);
+export function setCheckoutSession(value) { checkoutSession = value; }
+export function setCheckoutReady(value) { checkoutReady = value; }
 export async function api(path, body = {}, binary = false) {
-  const scannerToken = scannerPaths.has(path) ? scannerSession?.token : '', token = !scannerToken && user ? await user.getIdToken() : '';
-  const response = await fetch(`/tickets/api/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Pluto-Client': clientIdentity(), ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(scannerToken ? { 'X-Pluto-Scanner': scannerToken } : {}) },
+  if (checkoutPaths.has(path)) await checkoutReady;
+  const checkoutToken = checkoutPaths.has(path) ? checkoutSession?.token : '';
+  const scannerToken = scannerPaths.has(path) ? scannerSession?.token : '', token =
+    path !== 'native-checkout/redeem' && !(checkoutPaths.has(path) && checkoutSession) && !scannerToken && user ? await user.getIdToken() : '';
+  const response = await fetch(`/tickets/api/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Pluto-Client': clientIdentity(), ...(checkoutToken ? { 'X-Pluto-Checkout': checkoutToken } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(scannerToken ? { 'X-Pluto-Scanner': scannerToken } : {}) },
     body: JSON.stringify(body), credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(45000) });
   if (!response.ok) { const detail = await response.json().catch(() => ({})); const error = new Error(detail.error || 'The request could not be confirmed. Please retry.'); error.status = response.status; error.code = detail.code || '';
     if (scannerToken && [401, 403].includes(response.status)) window.dispatchEvent(new Event('pluto-scanner-denied'));

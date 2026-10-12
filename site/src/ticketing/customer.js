@@ -1,8 +1,11 @@
-import { accessKey, action, api, bind, dialog, esc, message, money } from './api.js';
+import { accessKey, action, api, bind, dialog, esc, message, money, setCheckoutReady, setCheckoutSession } from './api.js';
 import { initWaitlist } from './waitlist.js';
 import { checkoutDestination } from './checkout-return.mjs';
 
 export function initCheckout() {
+  const fragment = new URLSearchParams(location.hash.slice(1)), handoff = fragment.get('pluto_checkout');
+  // Strip the one-time capability before making any asynchronous requests.
+  if (handoff) history.replaceState(history.state, '', `${location.pathname}${location.search}${fragment.get('anchor') ? `#${encodeURIComponent(fragment.get('anchor'))}` : ''}`);
   const form = document.querySelector('#native-checkout-form'); if (!form) return;
   const config = JSON.parse(document.querySelector('#native-checkout-config').textContent), storageKey = `pluto-checkout-${config.eventId}`;
   const rsvp = ['rsvp', 'rsvp-approval'].includes(config.registrationMode);
@@ -12,6 +15,8 @@ export function initCheckout() {
   const initiallyClosed = form.querySelector('[type=submit]').disabled;
   let checkout, result, frozen, countdown, checkingSaved = false;
   let account = null, profileName = '';
+  const nativeContext = !!handoff && nativeApp;
+  let nativePending = nativeContext;
   const contacts = { buyerName: form.elements.buyerName, email: form.elements.email };
   const filledFromAccount = new Map();
   const selectedItems = () => [...form.querySelectorAll('[data-ticket-quantity]')].filter(s => Number(s.value) > 0).map(s => ({ offerId: s.name, quantity: Number(s.value) }));
@@ -53,23 +58,34 @@ export function initCheckout() {
     }
   }
   window.addEventListener('pluto-auth', event => {
+    if (nativeContext) return;
     account = event.detail; profileName = ''; syncContact();
   });
   window.addEventListener('pluto-profile', event => {
+    if (nativeContext) return;
     if (account?.uid !== event.detail.uid) return;
     profileName = event.detail.displayName; syncContact();
   });
   function lockCart() {
-    form.querySelectorAll('input,select').forEach(input => { input.disabled = !!frozen; });
+    form.querySelectorAll('input,select').forEach(input => { input.disabled = !!frozen || nativePending; });
     if (frozen) {
       for (const [name, value] of Object.entries({ buyerName: frozen.name, email: frozen.email, promoCode: frozen.promoCode })) if (form.elements[name]) form.elements[name].value = value || '';
       form.querySelectorAll('[data-ticket-quantity]').forEach(select => { select.value = '0'; });
       for (const item of frozen.items) { const select = form.elements[item.offerId]; if (select) select.value = String(item.quantity); }
     }
     syncContact();
-    form.querySelector('[type=submit]').disabled = checkingSaved || (frozen ? false : initiallyClosed);
+    form.querySelector('[type=submit]').disabled = nativePending || checkingSaved || (frozen ? false : initiallyClosed);
     cartSummary();
   }
+  const nativeReady = nativePending ? api('native-checkout/redeem', { handoff, eventId: config.eventId }).then(session => {
+    setCheckoutSession(session); account = session.account; profileName = ''; syncContact();
+  }).catch(() => {
+    // Never substitute an unrelated account from this browser's stored login.
+    setCheckoutSession({ token: null }); account = null; profileName = ''; syncContact();
+    message('We couldn’t load your app account for checkout. Enter your details below, or reopen this event from the Pluto app.', true);
+  }).finally(() => { nativePending = false; lockCart(); }) : Promise.resolve();
+  setCheckoutReady(nativeReady);
+  if (nativePending) lockCart();
   const promoter = new URLSearchParams(location.search).get('ref');
   if (promoter && /^[a-zA-Z0-9_-]{1,80}$/.test(promoter)) localStorage.setItem(`pluto-promoter-${config.eventId}`, JSON.stringify({ promoterId: promoter, promoterClickedAt: Date.now() }));
   form.addEventListener('input', event => {
@@ -108,6 +124,7 @@ export function initCheckout() {
   form.addEventListener('submit', event => {
     event.preventDefault(); if (config.preview || config.status !== 'published') return;
     action(event.submitter, async () => {
+      await nativeReady;
       if (!frozen) {
         const data = new FormData(form), attribution = JSON.parse(localStorage.getItem(`pluto-promoter-${config.eventId}`) || '{}');
         const items = selectedItems();

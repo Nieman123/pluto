@@ -1,4 +1,5 @@
 import { randomInt, randomUUID } from 'node:crypto';
+import { NativeCheckout } from './native-checkout';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { FieldPath } from 'firebase-admin/firestore';
 import { error as logError, warn as logWarning } from 'firebase-functions/logger';
@@ -494,6 +495,7 @@ export class Operations extends Communications {
     ] : lane === 'emails' ? [
       () => batch('ticketingEmailJobs', ['pending'], 100, 'email', 'emails', doc => this.emailJob(doc.id)),
     ] : [
+      () => new NativeCheckout(this).cleanup(),
       async () => { const result = await financialRecovery(this.db, this.workBudget()); summary.financialRecoveries = result.processed; },
       async () => { summary.waitlists = await this.waitlistMaintenance(this.workBudget()); },
       async () => { summary.campaigns = await this.communicationMaintenance(this.workBudget()); },

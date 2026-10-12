@@ -13,7 +13,7 @@ Future<void> htmlOpenLink(String url) async {
   if (url.trim().isEmpty) {
     return;
   }
-  await launchUrlString(externalPlutoLink(url),
+  await launchUrlString(kIsWeb ? url : await eventCheckoutUrl(url),
       webOnlyWindowName: '_blank',
       mode:
           kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication);
@@ -23,7 +23,7 @@ Future<void> htmlNavigateTo(String url) async {
   if (url.trim().isEmpty) {
     return;
   }
-  await launchUrlString(externalPlutoLink(url),
+  await launchUrlString(kIsWeb ? url : await eventCheckoutUrl(url),
       webOnlyWindowName: '_self',
       mode:
           kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication);
