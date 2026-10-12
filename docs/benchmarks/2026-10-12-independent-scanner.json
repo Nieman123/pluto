@@ -1,0 +1,442 @@
+{
+  "schema": 1,
+  "runId": "e72b4ada8e034c47",
+  "project": "pluto-staging-92eb7",
+  "base": "https://pluto-staging-92eb7.web.app",
+  "startedAt": "2026-10-12T17:36:19.065Z",
+  "deployment": {
+    "environment": "staging",
+    "projectId": "pluto-staging-92eb7",
+    "revision": "f0f22e31aa9ab580aba449f66eaa9895e637d144",
+    "paymentMode": "test"
+  },
+  "sourceRevision": "f0f22e31aa9ab580aba449f66eaa9895e637d144",
+  "node": "v22.23.3",
+  "driver": "local Windows client; Firestore REST transport over WAN",
+  "workload": {
+    "sizes": [
+      250,
+      1000,
+      3000
+    ],
+    "levels": [
+      1,
+      5,
+      10,
+      25
+    ],
+    "samples": 60,
+    "scannerSessions": "one session per concurrent scanner"
+  },
+  "limits": [
+    "Closed-loop bounded concurrency, not an open-loop saturation test.",
+    "Inventory diagnostic uses real checkout code/Firestore but intercepts the provisional order status to prevent background payments and emails; it excludes deployed HTTP/auth/Stripe latency.",
+    "Scanner and order-page timings include the deployed staging HTTPS API, auth, network and database.",
+    "Seeded admission tickets are synthetic comps with zero points; paid fulfillment/refunds and email delivery are not load-tested.",
+    "Short runs establish tested envelopes, not a guaranteed maximum attendee count."
+  ],
+  "phases": [
+    {
+      "name": "manifest",
+      "concurrency": 1,
+      "requested": 3,
+      "completed": 3,
+      "successes": 3,
+      "failures": 0,
+      "seconds": 2.3212740000000047,
+      "successfulRps": 1.2923937458481825,
+      "p50Ms": 778.7272999999986,
+      "p95Ms": 888.2105999999912,
+      "p99Ms": 888.2105999999912,
+      "p95ResponseBytes": 226382,
+      "outcomes": {
+        "ok": 3
+      },
+      "attendees": 250
+    },
+    {
+      "name": "admission",
+      "concurrency": 1,
+      "requested": 60,
+      "completed": 60,
+      "successes": 60,
+      "failures": 0,
+      "seconds": 21.327815700000006,
+      "successfulRps": 2.8132276105517913,
+      "p50Ms": 347.9505000000063,
+      "p95Ms": 415.10400000000664,
+      "p99Ms": 473.53190000000177,
+      "p95ResponseBytes": 578,
+      "outcomes": {
+        "accepted": 60
+      },
+      "attendees": 250
+    },
+    {
+      "name": "admission",
+      "concurrency": 5,
+      "requested": 60,
+      "completed": 60,
+      "successes": 60,
+      "failures": 0,
+      "seconds": 4.717804900000003,
+      "successfulRps": 12.717778982339851,
+      "p50Ms": 366.69400000000314,
+      "p95Ms": 516.200199999992,
+      "p99Ms": 544.6463999999978,
+      "p95ResponseBytes": 578,
+      "outcomes": {
+        "accepted": 60
+      },
+      "attendees": 250
+    },
+    {
+      "name": "admission",
+      "concurrency": 10,
+      "requested": 60,
+      "completed": 60,
+      "successes": 60,
+      "failures": 0,
+      "seconds": 4.566736600000004,
+      "successfulRps": 13.138484930354851,
+      "p50Ms": 450.65559999999823,
+      "p95Ms": 684.1753000000026,
+      "p99Ms": 1943.396900000007,
+      "p95ResponseBytes": 578,
+      "outcomes": {
+        "accepted": 60
+      },
+      "attendees": 250
+    },
+    {
+      "name": "admission",
+      "concurrency": 25,
+      "requested": 60,
+      "completed": 60,
+      "successes": 60,
+      "failures": 0,
+      "seconds": 2.378010500000004,
+      "successfulRps": 25.231175387997617,
+      "p50Ms": 835.7165999999997,
+      "p95Ms": 1236.4033999999956,
+      "p99Ms": 2079.470399999991,
+      "p95ResponseBytes": 587,
+      "outcomes": {
+        "accepted": 60
+      },
+      "attendees": 250
+    },
+    {
+      "name": "order-page",
+      "concurrency": 5,
+      "requested": 10,
+      "completed": 10,
+      "successes": 10,
+      "failures": 0,
+      "seconds": 1.6802323000000032,
+      "successfulRps": 5.9515580077826025,
+      "p50Ms": 342.25800000000163,
+      "p95Ms": 1679.5456000000122,
+      "p99Ms": 1679.5456000000122,
+      "p95ResponseBytes": 24379,
+      "outcomes": {
+        "ok": 10
+      },
+      "attendees": 250
+    },
+    {
+      "name": "manifest",
+      "concurrency": 1,
+      "requested": 3,
+      "completed": 3,
+      "successes": 3,
+      "failures": 0,
+      "seconds": 5.137593699999997,
+      "successfulRps": 0.5839309558480659,
+      "p50Ms": 1748.2695999999996,
+      "p95Ms": 1940.0097999999998,
+      "p99Ms": 1940.0097999999998,
+      "p95ResponseBytes": 904633,
+      "outcomes": {
+        "ok": 3
+      },
+      "attendees": 1000
+    },
+    {
+      "name": "admission",
+      "concurrency": 1,
+      "requested": 60,
+      "completed": 60,
+      "successes": 60,
+      "failures": 0,
+      "seconds": 20.2741875,
+      "successfulRps": 2.9594280905215067,
+      "p50Ms": 331.7139000000316,
+      "p95Ms": 389.7515999999887,
+      "p99Ms": 427.5850999999966,
+      "p95ResponseBytes": 579,
+      "outcomes": {
+        "accepted": 60
+      },
+      "attendees": 1000
+    },
+    {
+      "name": "admission",
+      "concurrency": 5,
+      "requested": 60,
+      "completed": 60,
+      "successes": 60,
+      "failures": 0,
+      "seconds": 5.548589600000007,
+      "successfulRps": 10.813558818623012,
+      "p50Ms": 335.0665999999619,
+      "p95Ms": 467.27960000000894,
+      "p99Ms": 1594.1686000000336,
+      "p95ResponseBytes": 579,
+      "outcomes": {
+        "accepted": 60
+      },
+      "attendees": 1000
+    },
+    {
+      "name": "admission",
+      "concurrency": 10,
+      "requested": 60,
+      "completed": 60,
+      "successes": 60,
+      "failures": 0,
+      "seconds": 2.866362199999974,
+      "successfulRps": 20.932455779664043,
+      "p50Ms": 415.6943999999785,
+      "p95Ms": 661.7339999999967,
+      "p99Ms": 1007.8573000000324,
+      "p95ResponseBytes": 579,
+      "outcomes": {
+        "accepted": 60
+      },
+      "attendees": 1000
+    },
+    {
+      "name": "admission",
+      "concurrency": 25,
+      "requested": 60,
+      "completed": 60,
+      "successes": 60,
+      "failures": 0,
+      "seconds": 2.833805699999968,
+      "successfulRps": 21.17294068538315,
+      "p50Ms": 708.6138999999966,
+      "p95Ms": 1647.3826000000117,
+      "p99Ms": 2047.5683999999892,
+      "p95ResponseBytes": 588,
+      "outcomes": {
+        "accepted": 60
+      },
+      "attendees": 1000
+    },
+    {
+      "name": "order-page",
+      "concurrency": 5,
+      "requested": 10,
+      "completed": 10,
+      "successes": 10,
+      "failures": 0,
+      "seconds": 1.2008564999999944,
+      "successfulRps": 8.327389658964286,
+      "p50Ms": 320.46140000002924,
+      "p95Ms": 1200.3465999999898,
+      "p99Ms": 1200.3465999999898,
+      "p95ResponseBytes": 24479,
+      "outcomes": {
+        "ok": 10
+      },
+      "attendees": 1000
+    },
+    {
+      "name": "manifest",
+      "concurrency": 1,
+      "requested": 3,
+      "completed": 3,
+      "successes": 3,
+      "failures": 0,
+      "seconds": 9.565685500000022,
+      "successfulRps": 0.31362101545153176,
+      "p50Ms": 3121.5604000000167,
+      "p95Ms": 3365.065100000007,
+      "p99Ms": 3365.065100000007,
+      "p95ResponseBytes": 2712633,
+      "outcomes": {
+        "ok": 3
+      },
+      "attendees": 3000
+    },
+    {
+      "name": "admission",
+      "concurrency": 1,
+      "requested": 60,
+      "completed": 60,
+      "successes": 60,
+      "failures": 0,
+      "seconds": 20.15094139999995,
+      "successfulRps": 2.9775283848525382,
+      "p50Ms": 326.43369999999413,
+      "p95Ms": 395.904899999965,
+      "p99Ms": 404.69049999996787,
+      "p95ResponseBytes": 579,
+      "outcomes": {
+        "accepted": 60
+      },
+      "attendees": 3000
+    },
+    {
+      "name": "admission",
+      "concurrency": 5,
+      "requested": 60,
+      "completed": 60,
+      "successes": 60,
+      "failures": 0,
+      "seconds": 4.958244000000006,
+      "successfulRps": 12.101058358564027,
+      "p50Ms": 355.4174999999814,
+      "p95Ms": 608.8801000000094,
+      "p99Ms": 771.5062000000034,
+      "p95ResponseBytes": 579,
+      "outcomes": {
+        "accepted": 60
+      },
+      "attendees": 3000
+    },
+    {
+      "name": "admission",
+      "concurrency": 10,
+      "requested": 60,
+      "completed": 60,
+      "successes": 60,
+      "failures": 0,
+      "seconds": 2.7995120999999927,
+      "successfulRps": 21.43230600789336,
+      "p50Ms": 399.5590000000084,
+      "p95Ms": 579.2112000000197,
+      "p99Ms": 1717.9942000000156,
+      "p95ResponseBytes": 579,
+      "outcomes": {
+        "accepted": 60
+      },
+      "attendees": 3000
+    },
+    {
+      "name": "admission",
+      "concurrency": 25,
+      "requested": 60,
+      "completed": 60,
+      "successes": 60,
+      "failures": 0,
+      "seconds": 2.240298999999999,
+      "successfulRps": 26.78213934836378,
+      "p50Ms": 728.920999999973,
+      "p95Ms": 1253.960299999977,
+      "p99Ms": 1538.0796000000555,
+      "p95ResponseBytes": 588,
+      "outcomes": {
+        "accepted": 60
+      },
+      "attendees": 3000
+    },
+    {
+      "name": "order-page",
+      "concurrency": 5,
+      "requested": 10,
+      "completed": 10,
+      "successes": 10,
+      "failures": 0,
+      "seconds": 1.487855500000005,
+      "successfulRps": 6.721082793322313,
+      "p50Ms": 379.1889000000083,
+      "p95Ms": 1417.5267999999924,
+      "p99Ms": 1417.5267999999924,
+      "p95ResponseBytes": 24479,
+      "outcomes": {
+        "ok": 10
+      },
+      "attendees": 3000
+    }
+  ],
+  "integrity": [
+    {
+      "name": "financial summary convergence before scans",
+      "attendees": 250,
+      "pass": true,
+      "lagMs": 12169,
+      "note": "Ready before measured scans"
+    },
+    {
+      "name": "duplicate admission",
+      "attendees": 250,
+      "accepted": 1,
+      "duplicates": 9,
+      "pass": true
+    },
+    {
+      "name": "admission accounting",
+      "attendees": 250,
+      "admitted": 241,
+      "expected": 241,
+      "pass": true
+    },
+    {
+      "name": "financial summary convergence before scans",
+      "attendees": 1000,
+      "pass": true,
+      "lagMs": 28473,
+      "note": "Ready before measured scans"
+    },
+    {
+      "name": "duplicate admission",
+      "attendees": 1000,
+      "accepted": 1,
+      "duplicates": 9,
+      "pass": true
+    },
+    {
+      "name": "admission accounting",
+      "attendees": 1000,
+      "admitted": 241,
+      "expected": 241,
+      "pass": true
+    },
+    {
+      "name": "financial summary convergence before scans",
+      "attendees": 3000,
+      "pass": false,
+      "lagMs": 30806,
+      "note": "Not ready within 30 seconds; background work may influence timings"
+    },
+    {
+      "name": "duplicate admission",
+      "attendees": 3000,
+      "accepted": 1,
+      "duplicates": 9,
+      "pass": true
+    },
+    {
+      "name": "admission accounting",
+      "attendees": 3000,
+      "admitted": 241,
+      "expected": 241,
+      "pass": true
+    },
+    {
+      "name": "no seeded receipt emails",
+      "pass": true,
+      "jobs": 0
+    }
+  ],
+  "cleanupComplete": true,
+  "finishedAt": "2026-10-12T17:44:16.381Z",
+  "cleanupVerification": {
+    "checkedAt": "2026-10-12T17:46:39.452Z",
+    "events": 3,
+    "residualRecords": 0
+  },
+  "aggregateOnly": true
+}
