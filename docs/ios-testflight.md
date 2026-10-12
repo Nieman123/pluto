@@ -16,6 +16,21 @@ Use the already-tested Apple reviewer email/password in review details. Secrets
 and passwords are kept out of this document and Git. No new Firebase or Stripe
 keys are needed for this workflow.
 
+Native event checkout uses a one-time account handoff so an iOS in-app browser
+can fill the saved profile name and account email without a separate website
+login. Deploy the website/functions changes before installing the corresponding
+native build; no new secrets or IAM roles are required. The handoff expires in
+two minutes, is removed from the browser URL, and grants access only to that
+event's checkout for up to 45 minutes. Disabled, revoked and deleting accounts
+cannot continue using it. The session stays in browser memory; reopening the
+event from the app creates a fresh handoff.
+
+On an iPhone with no website login, sign into the app, open a ticketed/RSVP
+event and confirm checkout already has your saved name and email. Complete a
+free RSVP or staging purchase, confirm it returns to native Tickets and check
+that the order belongs to the signed-in account. Also test a profile without a
+saved name (the name field stays editable) and ordinary signed-out checkout.
+
 ## 1. Confirm your public Apple identifiers
 
 In [Apple Developer account](https://developer.apple.com/account), open

@@ -14,7 +14,8 @@ const { Catalog } = require('../../functions/lib/ticketing/catalog');
 const { fixture } = require('../../functions/test/ticketing-fixture.cjs');
 const base = 'http://127.0.0.1:4173', password = 'Local-checkout-account-2026!', suffix = randomUUID();
 const users = [{ uid: `checkout-full-${suffix}`, email: `full-${suffix}@preview.invalid`, displayName: 'Old auth name' },
-  { uid: `checkout-missing-${suffix}`, email: `missing-${suffix}@preview.invalid` }];
+  { uid: `checkout-missing-${suffix}`, email: `missing-${suffix}@preview.invalid` },
+  { uid: `checkout-native-${suffix}`, email: `native-${suffix}@preview.invalid`, displayName: 'Native auth name' }];
 const events = [], orders = [];
 let active, stage = 'setup';
 async function signIn(page, user) {
@@ -30,9 +31,9 @@ async function visibility(page, nameVisible, emailVisible) {
     return !form.elements.buyerName.closest('label').hidden === nameVisible && !form.elements.email.closest('label').hidden === emailVisible;
   }, { nameVisible, emailVisible });
 }
-async function submit(page, expected, status = 'paid') {
+async function submit(page, expected, status = 'paid', native = false) {
   await page.locator('[data-ticket-quantity]').first().selectOption('1');
-  const navigation = page.waitForURL('**/app/tickets?order=*');
+  const navigation = page.waitForURL(native ? '**/tickets/checkout-return?order=*' : '**/app/tickets?order=*');
   await page.locator('#native-checkout-form [type=submit]').click(); await navigation;
   const orderId = new URL(page.url()).searchParams.get('order'); orders.push(orderId);
   const order = (await db.collection('ticketingOrders').doc(orderId).get()).data();
@@ -43,6 +44,7 @@ async function submit(page, expected, status = 'paid') {
   try {
     for (const user of users) await auth.createUser({ ...user, password, emailVerified: true });
     await db.collection('userProfiles').doc(users[0].uid).set({ displayName: 'Saved Pluto profile name' });
+    await db.collection('userProfiles').doc(users[2].uid).set({ displayName: 'Saved native profile' });
     const catalog = new Catalog();
     for (const mode of ['tickets', 'rsvp', 'rsvp-approval']) {
       const eventId = randomUUID(), draft = fixture(); draft.registrationMode = mode; draft.slug = `account-checkout-${eventId}`;
@@ -50,6 +52,91 @@ async function submit(page, expected, status = 'paid') {
       await catalog.save(eventId, draft, 0, 'ticketing-preview-admin'); await catalog.publish(eventId, 'publish', 1, 'ticketing-preview-admin');
     }
     browser = await chromium.launch();
+    const nativeUser = users[2];
+    const nativeLogin = await fetch('http://127.0.0.1:9095/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=preview', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: nativeUser.email, password, returnSecureToken: true }),
+    });
+    const { idToken } = await nativeLogin.json(); assert.ok(idToken);
+    const mintNative = async slug => {
+      const response = await fetch(`${base}/tickets/api/native-checkout/create`, { method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` }, body: JSON.stringify({ slug }) });
+      assert.equal(response.status, 200); return (await response.json()).handoff;
+    };
+    assert.equal((await fetch(`${base}/tickets/api/native-checkout/create`, { method: 'POST',
+      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug: events[0].slug }) })).status, 401);
+    let lastNativeSession;
+    for (let i = 0; i < events.length; i++) {
+      stage = `isolated native browser ${i}`;
+      const handoff = await mintNative(events[i].slug);
+      const wrongEvent = await fetch(`${base}/tickets/api/native-checkout/redeem`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ handoff, eventId: events[(i + 1) % events.length].eventId }) });
+      assert.equal(wrongEvent.status, 401);
+      const isolated = await browser.newContext({ ignoreHTTPSErrors: true });
+      await isolated.addInitScript(() => window.addEventListener('pluto-auth', () => window.checkoutAuthReady = true));
+      const nativePage = await isolated.newPage(); active = nativePage;
+      const redemption = nativePage.waitForResponse(r => r.url().endsWith('/tickets/api/native-checkout/redeem'));
+      await nativePage.goto(`${base}/events/${events[i].slug}?native_app=1#pluto_checkout=${handoff}&anchor=tickets`);
+      const redeemed = await redemption; assert.equal(redeemed.status(), 200); const session = await redeemed.json();
+      lastNativeSession = session;
+      await visibility(nativePage, false, false);
+      if (i === 0) {
+        await signIn(nativePage, users[1]);
+        await visibility(nativePage, false, false);
+        assert.equal(await nativePage.locator('[name=email]').inputValue(), nativeUser.email);
+      }
+      assert.equal(await nativePage.locator('[name=buyerName]').inputValue(), 'Saved native profile');
+      assert.equal(await nativePage.locator('[name=email]').inputValue(), nativeUser.email);
+      assert.equal(new URL(nativePage.url()).hash, '#tickets');
+      assert.equal(await nativePage.evaluate(() => localStorage.getItem('pluto-native-checkout')), null);
+      const replay = await nativePage.request.post(`${base}/tickets/api/native-checkout/redeem`, { data: { handoff, eventId: events[i].eventId } });
+      assert.equal(replay.status(), 401);
+      for (const [path, data] of [['staff/events', {}], ['account/delete', {}], ['checkout', { eventId: events[(i + 1) % events.length].eventId }]]) {
+        const denied = await nativePage.request.post(`${base}/tickets/api/${path}`, { headers: { 'X-Pluto-Checkout': session.token }, data });
+        assert.equal(denied.status(), 403, path);
+      }
+      // A later anonymous website-auth notification must not clear native identity.
+      await nativePage.evaluate(() => window.dispatchEvent(new CustomEvent('pluto-auth', { detail: null })));
+      await visibility(nativePage, false, false);
+      await submit(nativePage, { name: 'Saved native profile', email: nativeUser.email, uid: nativeUser.uid }, i === 2 ? 'pending-approval' : 'paid', true);
+      await isolated.close();
+    }
+    stage = 'disabled native account and deletion cannot keep checkout access';
+    const checkNativeSession = () => fetch(`${base}/tickets/api/rsvp/verification`, { method: 'POST', headers: {
+      'Content-Type': 'application/json', 'X-Pluto-Checkout': lastNativeSession.token },
+      body: JSON.stringify({ eventId: lastNativeSession.eventId, email: nativeUser.email }) });
+    await auth.updateUser(nativeUser.uid, { disabled: true }); assert.equal((await checkNativeSession()).status, 401);
+    await auth.updateUser(nativeUser.uid, { disabled: false });
+    await db.collection('accountDeletionRequests').doc(nativeUser.uid).set({ status: 'pending' });
+    assert.equal((await checkNativeSession()).status, 401); await db.collection('accountDeletionRequests').doc(nativeUser.uid).delete();
+    await db.collection('ticketingNativeCheckouts').doc(require('../../functions/lib/ticketing/domain').hash(lastNativeSession.token))
+      .update({ expiresAt: backend('firebase-admin/firestore').Timestamp.fromMillis(Date.now() - 1000) });
+    assert.equal((await checkNativeSession()).status, 401);
+    stage = 'expired native handoff falls back to editable contact';
+    const staleHandoff = await mintNative(events[0].slug);
+    const { hash } = require('../../functions/lib/ticketing/domain');
+    const { Timestamp } = backend('firebase-admin/firestore');
+    await db.collection('ticketingNativeCheckouts').doc(hash(staleHandoff)).update({ expiresAt: Timestamp.fromMillis(Date.now() - 1000) });
+    const staleContext = await browser.newContext({ ignoreHTTPSErrors: true });
+    const stalePage = await staleContext.newPage(); active = stalePage;
+    await stalePage.goto(`${base}/events/${events[0].slug}?native_app=1#pluto_checkout=${staleHandoff}`);
+    await stalePage.waitForFunction(() => !document.querySelector('[name=buyerName]').disabled);
+    await visibility(stalePage, true, true);
+    assert.equal(new URL(stalePage.url()).hash, '');
+    assert.equal(await stalePage.locator('[name=email]').inputValue(), '');
+    await staleContext.close();
+    stage = 'native profile without a name';
+    await db.collection('userProfiles').doc(nativeUser.uid).delete(); await auth.updateUser(nativeUser.uid, { displayName: null });
+    const namelessHandoff = await mintNative(events[0].slug);
+    const namelessContext = await browser.newContext({ ignoreHTTPSErrors: true });
+    const namelessPage = await namelessContext.newPage(); active = namelessPage;
+    await namelessPage.goto(`${base}/events/${events[0].slug}?native_app=1#pluto_checkout=${namelessHandoff}`);
+    await visibility(namelessPage, true, false);
+    assert.equal(await namelessPage.locator('[name=buyerName]').inputValue(), '');
+    assert.equal(await namelessPage.locator('[name=email]').inputValue(), nativeUser.email);
+    await namelessContext.close();
+    await new (require('../../functions/lib/ticketing/native-checkout').NativeCheckout)(catalog).cleanup();
+    assert.equal((await db.collection('ticketingNativeCheckouts').doc(hash(staleHandoff)).get()).exists, false);
+    console.log('Native account handoff passed: isolated browser autofill, app-account ownership across tickets/RSVP/approval, unrelated website login isolation, one-use/event/admin boundaries, disabled/deleting/expired denial, editable missing name, safe expired fallback and expired-record cleanup.');
     const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1280, height: 900 } });
     await context.addInitScript(() => window.addEventListener('pluto-auth', () => window.checkoutAuthReady = true));
     const page = await context.newPage(); active = page;
@@ -174,6 +261,11 @@ async function submit(page, expected, status = 'paid') {
       await db.recursiveDelete(db.collection('ticketingEvents').doc(event.eventId)); await db.collection('publishedEvents').doc(event.eventId).delete();
       await db.collection('eventSlugs').doc(event.slug).delete(); await db.collection('currentEvents').doc(`native-${event.eventId}`).delete();
     }
-    for (const user of users) { await db.collection('adminUsers').doc(user.uid).delete(); await db.collection('userProfiles').doc(user.uid).delete(); await auth.deleteUser(user.uid).catch(() => {}); }
+    for (const user of users) {
+      const sessions = await db.collection('ticketingNativeCheckouts').where('actor.uid', '==', user.uid).get();
+      await Promise.all(sessions.docs.map(doc => doc.ref.delete()));
+      await db.collection('accountDeletionRequests').doc(user.uid).delete();
+      await db.collection('adminUsers').doc(user.uid).delete(); await db.collection('userProfiles').doc(user.uid).delete(); await auth.deleteUser(user.uid).catch(() => {});
+    }
   }
 })().catch(error => { console.error(error); process.exitCode = 1; });
