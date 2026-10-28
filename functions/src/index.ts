@@ -19,14 +19,13 @@ import { legalRouter } from './legal-pages';
 export { ticketingFinancialWorker, ticketingFinancialBackfillWorker, ticketingMaintenance, ticketingWebhookWorker, ticketingEmailWorker, ticketingCampaignWorker, ticketingRecoveryWorker, ticketingCommunicationMaintenance, ticketingEmailMaintenance } from './ticketing/workers';
 import { normalizeRental, groupRentals, rentalContactEmail, type PublicRental } from './rentals-data';
 import { seedRentals } from './rentals-seed';
+import { loadHomepageEvents } from './public-events';
 import {
   docsForLinks,
   fallbackEvents,
   mergeLinks,
-  normalizeEvent,
   publicHtmlCacheControl,
   serializeJsonLd,
-  sortEvents,
   type PublicEvent,
   type PublicLink,
 } from "./public-data";
@@ -64,13 +63,9 @@ app.set("view engine", "njk");
 async function loadEvents(): Promise<PublicEvent[]> {
   if (process.env.PUBLIC_SITE_PREVIEW === "true") return fallbackEvents;
   try {
-    const snapshot = await db.collection("currentEvents").get();
-    const events = snapshot.docs
-      .map((doc) => normalizeEvent(doc.id, doc.data()))
-      .filter((event): event is PublicEvent => event !== null);
-    return events.length ? sortEvents(events) : fallbackEvents;
+    return await loadHomepageEvents(db, deploymentConfig().baseUrl);
   } catch (error) {
-    console.error("Unable to load currentEvents", error);
+    console.error("Unable to load homepage events", error);
     return fallbackEvents;
   }
 }
