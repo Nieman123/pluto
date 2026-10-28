@@ -139,8 +139,12 @@ export function isManaFestTitle(title: string): boolean {
   return title.toLowerCase().replace(/[^a-z0-9]/g, "").startsWith("manafest");
 }
 
-export function normalizeEvent(id: string, data: DocumentData): PublicEvent | null {
+export function normalizeEvent(id: string, data: DocumentData, now = Date.now()): PublicEvent | null {
   if (data.isActive === false) return null;
+  if (data.endAt) {
+    const endAt = typeof data.endAt === 'string' ? Date.parse(data.endAt) : timestampMs(data.endAt);
+    if (!Number.isFinite(endAt) || endAt <= now) return null;
+  }
   const title = asString(data.title) || "Upcoming Event";
   const isManaFest = isManaFestTitle(title);
   const flyerImageUrl =
