@@ -54,7 +54,7 @@ export class Operations extends Communications {
       const created = await this.db.runTransaction(async tx => {
         if ((await tx.getAll(...lookups)).some(doc => doc.exists)) return false;
         tx.create(lookup, { pinId });
-        tx.create(ref, { eventId, label, ...expiringGrant(expiresAt), lookupKeyId, createdAt: Date.now(), createdBy: uid, loginCount: 0 });
+        tx.create(ref, { eventId, label, expiresAt, lookupKeyId, createdAt: Date.now(), createdBy: uid, loginCount: 0 });
         tx.create(this.event(eventId).collection('audit').doc(), { action: 'scanner-pin-created', pinId, label, expiresAt, uid, at: Date.now() });
         return true;
       });

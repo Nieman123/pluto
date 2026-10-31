@@ -56,5 +56,7 @@ export const ticketingEmailMaintenance = onSchedule({ ...recoveryOptions, secret
 export const ticketingHealthMaintenance = onSchedule({ ...serial, cpu: policy.healthCpu, timeoutSeconds: 120, maxInstances: 1,
   schedule: 'every 5 minutes', retryCount: 3 }, async () => {
   deploymentConfig();
-  await refreshHealthSnapshot(getFirestore());
+  // Scheduler arrival jitter must not turn a five-minute audit into ten minutes.
+  // The shared lease still prevents concurrent scheduled/manual audits.
+  await refreshHealthSnapshot(getFirestore(), true);
 });

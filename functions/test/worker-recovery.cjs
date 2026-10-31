@@ -34,6 +34,31 @@ test('empty recovery does not create cursor writes and successful lanes leave th
   assert.equal((await lease.get()).data().leaseId,'other-auditor');
 }));
 
+test('background payment fulfillment and receipt delivery do not need signing credentials', () => isolated(async h => {
+  const eid=await h.event(),checkout=await h.service.checkout(h.request(eid),null);
+  await h.paidSession(checkout.orderId);
+  h.service.signing=()=>{throw Error('Signing credentials are intentionally not bound to this worker');};
+  await h.service.verifySession(checkout.orderId);
+  global.fetch=async()=>({ok:true,json:async()=>({id:randomUUID()})});
+  await h.service.emailJob(`receipt_${checkout.orderId}`);
+  assert.equal((await h.db.collection('ticketingEmailJobs').doc(`receipt_${checkout.orderId}`).get()).data().status,'sent');
+  assert.equal((await h.service.maintenance('communications')).errors,0);
+}));
+
+test('failed due checks keep the admission hold and retry deadline until verification recovers', () => isolated(async h => {
+  const eid=await h.event(),checkout=await h.service.checkout(h.request(eid),null);await h.pay(checkout.orderId);
+  const ref=h.service.order(checkout.orderId),list=h.fake.disputes.list;
+  await ref.update({nextFinancialCheckAt:Date.now()-1});
+  h.fake.disputes.list=async()=>{throw Error('Temporary provider outage');};
+  assert.equal((await h.service.reconcileDueOrders()).errors,1);
+  const blocked=(await ref.get()).data();assert.equal(blocked.financialBlocked,true);
+  assert.ok(blocked.nextFinancialCheckAt>Date.now() && blocked.nextFinancialCheckAt<=Date.now()+5*60000);
+  h.fake.disputes.list=list;await ref.update({nextFinancialCheckAt:Date.now()-1});
+  assert.equal((await h.service.reconcileDueOrders()).errors,0);
+  assert.equal((await ref.get()).data().financialBlocked,false);
+  assert.equal((await h.service.tickets().where('orderId','==',checkout.orderId).get()).size,1);
+}));
+
 test('manual requests retry busy lanes and completion deliveries are idempotent', () => isolated(async h => {
   await h.service.requestMaintenance();
   const request=(await h.db.collection('ticketingRecoveryRequests').where('lane','==','payments').get()).docs[0];
