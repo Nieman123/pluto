@@ -1,0 +1,787 @@
+{
+  "runId": "0368a67c75244166b6f507ab6c37875d",
+  "project": "pluto-staging-92eb7",
+  "startedAt": "2026-10-31T00:18:35.053569+00:00",
+  "samples": {
+    "full": [
+      {
+        "label": "full",
+        "elapsedMs": 2531.4185210000005,
+        "cold": true,
+        "rssBytes": 180441088,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 2699.47
+      },
+      {
+        "label": "full",
+        "elapsedMs": 1966.654219,
+        "cold": false,
+        "rssBytes": 185450496,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 2108.9896999999987
+      },
+      {
+        "label": "full",
+        "elapsedMs": 1330.9377079999995,
+        "cold": false,
+        "rssBytes": 187695104,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 1486.5712999999978
+      },
+      {
+        "label": "full",
+        "elapsedMs": 1252.7217799999999,
+        "cold": false,
+        "rssBytes": 188211200,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 1389.4087999999983
+      },
+      {
+        "label": "full",
+        "elapsedMs": 1093.1169740000005,
+        "cold": false,
+        "rssBytes": 186462208,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 1220.5455000000002
+      },
+      {
+        "label": "full",
+        "elapsedMs": 1204.000844000002,
+        "cold": false,
+        "rssBytes": 184504320,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 1392.2324000000046
+      },
+      {
+        "label": "full",
+        "elapsedMs": 1221.8924350000016,
+        "cold": false,
+        "rssBytes": 186023936,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 1356.3911000000032
+      },
+      {
+        "label": "full",
+        "elapsedMs": 901.1460309999966,
+        "cold": false,
+        "rssBytes": 189456384,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 1032.4408000000035
+      },
+      {
+        "label": "full",
+        "elapsedMs": 757.3999160000021,
+        "cold": false,
+        "rssBytes": 189456384,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 875.2471999999968
+      },
+      {
+        "label": "full",
+        "elapsedMs": 1072.9567009999955,
+        "cold": false,
+        "rssBytes": 181125120,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 1208.9647999999968
+      },
+      {
+        "label": "full",
+        "elapsedMs": 928.8468689999936,
+        "cold": false,
+        "rssBytes": 183455744,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 1064.0598000000025
+      },
+      {
+        "label": "full",
+        "elapsedMs": 869.7390490000034,
+        "cold": false,
+        "rssBytes": 185921536,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 1003.9246000000048
+      },
+      {
+        "label": "full",
+        "elapsedMs": 1000.8258790000036,
+        "cold": false,
+        "rssBytes": 187236352,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 1137.9445000000032
+      },
+      {
+        "label": "full",
+        "elapsedMs": 844.5715150000033,
+        "cold": false,
+        "rssBytes": 188293120,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 988.3939999999996
+      },
+      {
+        "label": "full",
+        "elapsedMs": 829.5229049999907,
+        "cold": false,
+        "rssBytes": 188465152,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 957.3634999999996
+      },
+      {
+        "label": "full",
+        "elapsedMs": 915.1139079999994,
+        "cold": false,
+        "rssBytes": 188100608,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 1035.6510000000014
+      },
+      {
+        "label": "full",
+        "elapsedMs": 787.8459270000021,
+        "cold": false,
+        "rssBytes": 186765312,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 922.3141000000084
+      },
+      {
+        "label": "full",
+        "elapsedMs": 918.1114059999964,
+        "cold": false,
+        "rssBytes": 187195392,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 1041.835599999999
+      },
+      {
+        "label": "full",
+        "elapsedMs": 894.1157579999999,
+        "cold": false,
+        "rssBytes": 187281408,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 1026.8720999999914
+      },
+      {
+        "label": "full",
+        "elapsedMs": 773.2779750000045,
+        "cold": false,
+        "rssBytes": 188002304,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 911.0943999999961
+      },
+      {
+        "label": "full",
+        "elapsedMs": 794.192973000012,
+        "cold": false,
+        "rssBytes": 188002304,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 927.3437000000087
+      },
+      {
+        "label": "full",
+        "elapsedMs": 829.5617429999984,
+        "cold": false,
+        "rssBytes": 188264448,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 961.8143000000003
+      },
+      {
+        "label": "full",
+        "elapsedMs": 866.5608680000005,
+        "cold": false,
+        "rssBytes": 188784640,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 991.2677000000087
+      },
+      {
+        "label": "full",
+        "elapsedMs": 865.0211299999937,
+        "cold": false,
+        "rssBytes": 188588032,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 984.698999999992
+      },
+      {
+        "label": "full",
+        "elapsedMs": 916.6138970000029,
+        "cold": false,
+        "rssBytes": 189448192,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 1049.3895000000039
+      }
+    ],
+    "fractional": [
+      {
+        "label": "fractional",
+        "elapsedMs": 2066.9987739999997,
+        "cold": true,
+        "rssBytes": 181641216,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 2234.2957000000006
+      },
+      {
+        "label": "fractional",
+        "elapsedMs": 1504.7275229999996,
+        "cold": false,
+        "rssBytes": 184193024,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 1648.394500000002
+      },
+      {
+        "label": "fractional",
+        "elapsedMs": 4019.2207089999993,
+        "cold": false,
+        "rssBytes": 186773504,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 4260.694600000001
+      },
+      {
+        "label": "fractional",
+        "elapsedMs": 3469.9847150000023,
+        "cold": false,
+        "rssBytes": 185929728,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 3601.1855999999975
+      },
+      {
+        "label": "fractional",
+        "elapsedMs": 3307.344595999999,
+        "cold": false,
+        "rssBytes": 187191296,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 3581.258199999997
+      },
+      {
+        "label": "fractional",
+        "elapsedMs": 4214.260237999999,
+        "cold": false,
+        "rssBytes": 188014592,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 4344.407000000004
+      },
+      {
+        "label": "fractional",
+        "elapsedMs": 3336.159378000004,
+        "cold": false,
+        "rssBytes": 187473920,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 3542.0040999999997
+      },
+      {
+        "label": "fractional",
+        "elapsedMs": 3716.481458000002,
+        "cold": false,
+        "rssBytes": 188469248,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 3850.2823999999973
+      },
+      {
+        "label": "fractional",
+        "elapsedMs": 3100.825735999999,
+        "cold": false,
+        "rssBytes": 188776448,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 3310.701900000005
+      },
+      {
+        "label": "fractional",
+        "elapsedMs": 3266.365402000003,
+        "cold": false,
+        "rssBytes": 188997632,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 3414.3549000000066
+      },
+      {
+        "label": "fractional",
+        "elapsedMs": 4117.822544000002,
+        "cold": false,
+        "rssBytes": 188735488,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 4341.210599999997
+      },
+      {
+        "label": "fractional",
+        "elapsedMs": 3116.7402900000016,
+        "cold": false,
+        "rssBytes": 188964864,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 3251.333699999989
+      },
+      {
+        "label": "fractional",
+        "elapsedMs": 3203.649838999998,
+        "cold": false,
+        "rssBytes": 190337024,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 3465.8121999999876
+      },
+      {
+        "label": "fractional",
+        "elapsedMs": 3767.0167629999996,
+        "cold": false,
+        "rssBytes": 190885888,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 3894.8556999999937
+      },
+      {
+        "label": "fractional",
+        "elapsedMs": 3001.3553570000076,
+        "cold": false,
+        "rssBytes": 191148032,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 3155.9328000000023
+      },
+      {
+        "label": "fractional",
+        "elapsedMs": 3407.48315,
+        "cold": false,
+        "rssBytes": 191410176,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 3551.005200000006
+      },
+      {
+        "label": "fractional",
+        "elapsedMs": 3416.768576000002,
+        "cold": false,
+        "rssBytes": 191139840,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 3706.0483000000063
+      },
+      {
+        "label": "fractional",
+        "elapsedMs": 2798.9054570000008,
+        "cold": false,
+        "rssBytes": 191139840,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 2935.069999999996
+      },
+      {
+        "label": "fractional",
+        "elapsedMs": 3412.4753460000065,
+        "cold": false,
+        "rssBytes": 191504384,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 3690.733899999998
+      },
+      {
+        "label": "fractional",
+        "elapsedMs": 3008.857493999996,
+        "cold": false,
+        "rssBytes": 191504384,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 3184.807000000006
+      },
+      {
+        "label": "fractional",
+        "elapsedMs": 2802.8630879999982,
+        "cold": false,
+        "rssBytes": 191504384,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 2980.3098999999947
+      },
+      {
+        "label": "fractional",
+        "elapsedMs": 4048.661380000005,
+        "cold": false,
+        "rssBytes": 191504384,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 4185.011599999996
+      },
+      {
+        "label": "fractional",
+        "elapsedMs": 3198.6094290000037,
+        "cold": false,
+        "rssBytes": 191504384,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 3453.7897999999955
+      },
+      {
+        "label": "fractional",
+        "elapsedMs": 3769.5527169999987,
+        "cold": false,
+        "rssBytes": 190898176,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 3890.530500000011
+      },
+      {
+        "label": "fractional",
+        "elapsedMs": 2623.5417279999965,
+        "cold": false,
+        "rssBytes": 190898176,
+        "checkedPaidOrders": 50,
+        "critical": 0,
+        "requestMs": 2814.100400000001
+      }
+    ]
+  },
+  "configuration": {
+    "full": {
+      "availableCpu": "1",
+      "availableMemory": "256Mi",
+      "maxInstanceCount": 1,
+      "maxInstanceRequestConcurrency": 1,
+      "firstRequestMs": 2383.5735
+    },
+    "fractional": {
+      "availableCpu": "0.1666",
+      "availableMemory": "256Mi",
+      "maxInstanceCount": 1,
+      "maxInstanceRequestConcurrency": 1,
+      "firstRequestMs": 2539.7218000000007
+    }
+  },
+  "cleanup": {
+    "full": {
+      "removed": true,
+      "functionRemoved": true
+    },
+    "fractional": {
+      "removed": true,
+      "functionRemoved": true
+    }
+  },
+  "scope": "Actual collectHealth code; 50 synthetic paid orders and tickets in a separate Firestore path. No provider calls. Setup latency is first-request latency, not a guaranteed cold start.",
+  "completedAt": "2026-10-31T00:20:38.001285+00:00",
+  "summary": {
+    "full": {
+      "audits": 25,
+      "medianMs": 915.1139079999994,
+      "p95Ms": 1966.654219,
+      "maxRssMiB": 180.6796875,
+      "modeledAllocatedCpuSeconds": 26.366166931000002
+    },
+    "fractional": {
+      "audits": 25,
+      "medianMs": 3307.344595999999,
+      "p95Ms": 4117.822544000002,
+      "maxRssMiB": 182.6328125,
+      "modeledAllocatedCpuSeconds": 13.610665503054205
+    }
+  },
+  "cloudMetrics": {
+    "full": {
+      "container/billable_instance_time": {
+        "timeSeries": [
+          {
+            "metric": {
+              "type": "run.googleapis.com/container/billable_instance_time"
+            },
+            "resource": {
+              "type": "cloud_run_revision",
+              "labels": {
+                "location": "us-central1",
+                "revision_name": "costhealthbenchmarkfull-00001-quh",
+                "service_name": "costhealthbenchmarkfull",
+                "project_id": "pluto-staging-92eb7",
+                "configuration_name": "costhealthbenchmarkfull"
+              }
+            },
+            "metricKind": "DELTA",
+            "valueType": "DOUBLE",
+            "points": [
+              {
+                "interval": {
+                  "startTime": "2026-10-31T00:15:32.030234Z",
+                  "endTime": "2026-10-31T00:25:32.030234Z"
+                },
+                "value": {
+                  "doubleValue": 20.168524306854447
+                }
+              }
+            ]
+          }
+        ],
+        "unit": "s"
+      },
+      "request_count": {
+        "timeSeries": [
+          {
+            "metric": {
+              "labels": {
+                "response_code": "200",
+                "response_code_class": "2xx",
+                "route": ""
+              },
+              "type": "run.googleapis.com/request_count"
+            },
+            "resource": {
+              "type": "cloud_run_revision",
+              "labels": {
+                "location": "us-central1",
+                "project_id": "pluto-staging-92eb7",
+                "revision_name": "costhealthbenchmarkfull-00001-quh",
+                "configuration_name": "costhealthbenchmarkfull",
+                "service_name": "costhealthbenchmarkfull"
+              }
+            },
+            "metricKind": "DELTA",
+            "valueType": "INT64",
+            "points": [
+              {
+                "interval": {
+                  "startTime": "2026-10-31T00:15:32.030234Z",
+                  "endTime": "2026-10-31T00:25:32.030234Z"
+                },
+                "value": {
+                  "int64Value": "22"
+                }
+              }
+            ]
+          }
+        ],
+        "unit": "1"
+      },
+      "container/startup_latencies": {
+        "timeSeries": [
+          {
+            "metric": {
+              "type": "run.googleapis.com/container/startup_latencies"
+            },
+            "resource": {
+              "type": "cloud_run_revision",
+              "labels": {
+                "configuration_name": "costhealthbenchmarkfull",
+                "service_name": "costhealthbenchmarkfull",
+                "location": "us-central1",
+                "revision_name": "costhealthbenchmarkfull-00001-quh",
+                "project_id": "pluto-staging-92eb7"
+              }
+            },
+            "metricKind": "GAUGE",
+            "valueType": "DOUBLE",
+            "points": [
+              {
+                "interval": {
+                  "startTime": "2026-10-31T00:25:32.030234Z",
+                  "endTime": "2026-10-31T00:25:32.030234Z"
+                },
+                "value": {
+                  "doubleValue": 1168.5725809387898
+                }
+              }
+            ]
+          }
+        ],
+        "unit": "ms"
+      },
+      "container/memory/utilizations": {
+        "timeSeries": [
+          {
+            "metric": {
+              "type": "run.googleapis.com/container/memory/utilizations"
+            },
+            "resource": {
+              "type": "cloud_run_revision",
+              "labels": {
+                "location": "us-central1",
+                "configuration_name": "costhealthbenchmarkfull",
+                "service_name": "costhealthbenchmarkfull",
+                "revision_name": "costhealthbenchmarkfull-00001-quh",
+                "project_id": "pluto-staging-92eb7"
+              }
+            },
+            "metricKind": "GAUGE",
+            "valueType": "DOUBLE",
+            "points": [
+              {
+                "interval": {
+                  "startTime": "2026-10-31T00:25:32.030234Z",
+                  "endTime": "2026-10-31T00:25:32.030234Z"
+                },
+                "value": {
+                  "doubleValue": 0.61925
+                }
+              }
+            ]
+          }
+        ],
+        "unit": "10^2.%"
+      }
+    },
+    "fractional": {
+      "container/billable_instance_time": {
+        "timeSeries": [
+          {
+            "metric": {
+              "type": "run.googleapis.com/container/billable_instance_time"
+            },
+            "resource": {
+              "type": "cloud_run_revision",
+              "labels": {
+                "location": "us-central1",
+                "service_name": "costhealthbenchmarkfractional",
+                "configuration_name": "costhealthbenchmarkfractional",
+                "project_id": "pluto-staging-92eb7",
+                "revision_name": "costhealthbenchmarkfractional-00001-faf"
+              }
+            },
+            "metricKind": "DELTA",
+            "valueType": "DOUBLE",
+            "points": [
+              {
+                "interval": {
+                  "startTime": "2026-10-31T00:15:32.030234Z",
+                  "endTime": "2026-10-31T00:25:32.030234Z"
+                },
+                "value": {
+                  "doubleValue": 88.20000000000002
+                }
+              }
+            ]
+          }
+        ],
+        "unit": "s"
+      },
+      "request_count": {
+        "timeSeries": [
+          {
+            "metric": {
+              "labels": {
+                "route": "",
+                "response_code": "200",
+                "response_code_class": "2xx"
+              },
+              "type": "run.googleapis.com/request_count"
+            },
+            "resource": {
+              "type": "cloud_run_revision",
+              "labels": {
+                "configuration_name": "costhealthbenchmarkfractional",
+                "revision_name": "costhealthbenchmarkfractional-00001-faf",
+                "location": "us-central1",
+                "project_id": "pluto-staging-92eb7",
+                "service_name": "costhealthbenchmarkfractional"
+              }
+            },
+            "metricKind": "DELTA",
+            "valueType": "INT64",
+            "points": [
+              {
+                "interval": {
+                  "startTime": "2026-10-31T00:15:32.030234Z",
+                  "endTime": "2026-10-31T00:25:32.030234Z"
+                },
+                "value": {
+                  "int64Value": "27"
+                }
+              }
+            ]
+          }
+        ],
+        "unit": "1"
+      },
+      "container/startup_latencies": {
+        "timeSeries": [
+          {
+            "metric": {
+              "type": "run.googleapis.com/container/startup_latencies"
+            },
+            "resource": {
+              "type": "cloud_run_revision",
+              "labels": {
+                "location": "us-central1",
+                "revision_name": "costhealthbenchmarkfractional-00001-faf",
+                "project_id": "pluto-staging-92eb7",
+                "service_name": "costhealthbenchmarkfractional",
+                "configuration_name": "costhealthbenchmarkfractional"
+              }
+            },
+            "metricKind": "GAUGE",
+            "valueType": "DOUBLE",
+            "points": [
+              {
+                "interval": {
+                  "startTime": "2026-10-31T00:25:32.030234Z",
+                  "endTime": "2026-10-31T00:25:32.030234Z"
+                },
+                "value": {
+                  "doubleValue": 1285.429839032669
+                }
+              }
+            ]
+          }
+        ],
+        "unit": "ms"
+      },
+      "container/memory/utilizations": {
+        "timeSeries": [
+          {
+            "metric": {
+              "type": "run.googleapis.com/container/memory/utilizations"
+            },
+            "resource": {
+              "type": "cloud_run_revision",
+              "labels": {
+                "revision_name": "costhealthbenchmarkfractional-00001-faf",
+                "service_name": "costhealthbenchmarkfractional",
+                "project_id": "pluto-staging-92eb7",
+                "location": "us-central1",
+                "configuration_name": "costhealthbenchmarkfractional"
+              }
+            },
+            "metricKind": "GAUGE",
+            "valueType": "DOUBLE",
+            "points": [
+              {
+                "interval": {
+                  "startTime": "2026-10-31T00:25:32.030234Z",
+                  "endTime": "2026-10-31T00:25:32.030234Z"
+                },
+                "value": {
+                  "doubleValue": 0.638
+                }
+              }
+            ]
+          }
+        ],
+        "unit": "10^2.%"
+      }
+    }
+  },
+  "cloudMetricsCollectedAt": "2026-10-31T00:25:34.442721+00:00",
+  "cloudMetricsComplete": false
+}

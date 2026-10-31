@@ -16,7 +16,7 @@ import { androidLinkStatements } from './android-links';
 import { iosLinkAssociation } from './ios-links';
 export { accountDeletionWorker, accountDeletionMaintenance } from './account-deletion-workers';
 import { legalRouter } from './legal-pages';
-export { ticketingFinancialWorker, ticketingFinancialBackfillWorker, ticketingMaintenance, ticketingWebhookWorker, ticketingEmailWorker, ticketingCampaignWorker, ticketingRecoveryWorker, ticketingCommunicationMaintenance, ticketingEmailMaintenance } from './ticketing/workers';
+export { ticketingFinancialWorker, ticketingFinancialBackfillWorker, ticketingMaintenance, ticketingWebhookWorker, ticketingEmailWorker, ticketingCampaignWorker, ticketingRecoveryRequestWorker, ticketingCommunicationMaintenance, ticketingEmailMaintenance, ticketingHealthMaintenance } from './ticketing/workers';
 import { normalizeRental, groupRentals, rentalContactEmail, type PublicRental } from './rentals-data';
 import { seedRentals } from './rentals-seed';
 import { loadHomepageEvents } from './public-events';
@@ -294,6 +294,6 @@ app.use((_request: Request, response: Response) => {
 
 export { app };
 export const publicSite = onRequest(
-  { region: "us-central1", memory: "512MiB", maxInstances: 10, concurrency: 8, secrets: [...ticketingSecrets, ...walletSecrets, ...resendWebhookSecrets] },
+  { region: "us-central1", memory: "512MiB", cpu: 1, minInstances: 0, maxInstances: 10, concurrency: 8, secrets: [...ticketingSecrets, ...walletSecrets, ...resendWebhookSecrets] },
   app,
 );

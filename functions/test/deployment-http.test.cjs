@@ -24,6 +24,7 @@ test('staging SSR and release identity use staging Auth, no Analytics and noinde
     for (const path of ['/', '/tickets/admin']) {
       const response = await fetch(`${base}${path}`), body = await response.text();
       assert.equal(response.status, 200); assert.match(response.headers.get('x-robots-tag'), /noindex/);
+      assert.equal(response.headers.get('cache-control'), path === '/' ? 'public, max-age=0, s-maxage=60, stale-while-revalidate=300' : 'private, no-store');
       const embedded = body.match(/<script[^>]+id="firebase-config"[^>]*>([\s\S]*?)<\/script>/);
       assert.ok(embedded); const config = JSON.parse(embedded[1]);
       assert.equal(config.projectId, projects.staging); assert.equal(config.authDomain, `${projects.staging}.firebaseapp.com`);
@@ -31,6 +32,26 @@ test('staging SSR and release identity use staging Auth, no Analytics and noinde
     }
     const response = await fetch(`${base}/tickets/api/order`, { method: 'POST', headers: { Origin: projects.productionBaseUrl, 'Content-Type': 'application/json' }, body: '{}' });
     assert.equal(response.status, 403);
+    assert.equal(response.headers.get('cache-control'), 'private, no-store');
     assert.ok(allowedSiteOrigins().has(projects.stagingBaseUrl)); assert.ok(!allowedSiteOrigins().has(projects.productionBaseUrl));
   } finally { await new Promise(done => server.close(done)); }
+});
+
+test('public pages keep CDN caching while sensitive and deployment responses remain uncached', async () => {
+  const server = app.listen(0, '127.0.0.1');
+  await new Promise(done => server.once('listening', done));
+  try {
+    const base = `http://127.0.0.1:${server.address().port}`;
+    for (const path of ['/manafest', '/links', '/rentals']) {
+      const response = await fetch(`${base}${path}`);
+      assert.equal(response.status, 200, path);
+      assert.equal(response.headers.get('cache-control'), 'public, max-age=0, s-maxage=60, stale-while-revalidate=300', path);
+      await response.text();
+    }
+    for (const path of ['/tickets/admin', '/TICKETS/admin', '/tickets/staff', '/tickets/checkout-return', '/manafest-waiver', '/__deployment']) {
+      const response = await fetch(`${base}${path}`);
+      assert.match(response.headers.get('cache-control'), /no-store/, path);
+      await response.text();
+    }
+  } finally { server.closeAllConnections(); await new Promise(done => server.close(done)); }
 });

@@ -225,6 +225,9 @@ test('A1/A7: paid-order reconciliation catches missing webhooks and late provide
     const charge = h.charges.get(`ch_${result.orderId}`); charge.balance_transaction = { id: `txn_${h.prefix}`, fee: 660, currency: 'usd', net: order.total - 660 };
     const rid = `re_${h.prefix}`, first = (await h.service.view(result.orderId, raw.accessKey, null)).tickets[0];
     h.refunds.set(rid, { id: rid, payment_intent: order.paymentIntentId, charge: charge.id, metadata: {}, amount: first.amount, status: 'succeeded', currency: 'usd' });
+    assert.ok(order.nextFinancialCheckAt <= Date.now() + 5 * 60000, 'unconfirmed fees retain a five-minute recovery deadline');
+    // Advance this record to its due time without sleeping through a scheduler interval.
+    await h.service.order(result.orderId).update({ nextFinancialCheckAt: Date.now() - 1 });
     assert.equal((await h.service.maintenance('payments')).errors, 0);
     order = (await h.service.order(result.orderId).get()).data();
     assert.equal(order.stripeFee, 660); assert.equal(order.stripeFeeStatus, 'confirmed'); assert.equal(order.externalRefundAmount, first.amount); assert.equal(order.financialBlocked, true);

@@ -5,6 +5,7 @@ const { getFirestore } = require('firebase-admin/firestore');
 const { harness } = require('./ticketing-harness.cjs');
 const { campaignNeedsWork } = require('../lib/ticketing/campaign-policy');
 const { WorkBudget, processBatch } = require('../lib/ticketing/worker-batch');
+const { refreshHealthSnapshot } = require('../lib/ticketing/health');
 
 async function isolated(run) {
   const projectId = `demo-recovery-${randomUUID()}`, app = initializeApp({ projectId }, projectId), h = harness(getFirestore(app));
@@ -19,6 +20,105 @@ async function isolated(run) {
     await deleteApp(app);
   }
 }
+
+test('empty recovery does not create cursor writes and successful lanes leave the broad audit to its schedule', () => isolated(async h => {
+  await processBatch(h.db, 'emptyQueue', ['pending'], 10, async () => assert.fail('empty'));
+  assert.equal((await h.db.collection('ticketingWorkerCursors').get()).size, 0);
+  await h.service.maintenance('emails');
+  assert.equal((await h.db.collection('ticketingHealth').doc('latest').get()).exists, false);
+  const first = await refreshHealthSnapshot(h.db);
+  assert.equal((await refreshHealthSnapshot(h.db)).checkedAt, first.checkedAt);
+  const lease = h.db.collection('ticketingHealth').doc('audit-lease');
+  await lease.set({leaseId:'other-auditor',leaseUntil:Date.now()+60000});
+  assert.equal((await refreshHealthSnapshot(h.db,true)).refreshInProgress, true);
+  assert.equal((await lease.get()).data().leaseId,'other-auditor');
+}));
+
+test('background payment fulfillment and receipt delivery do not need signing credentials', () => isolated(async h => {
+  const eid=await h.event(),checkout=await h.service.checkout(h.request(eid),null);
+  await h.paidSession(checkout.orderId);
+  h.service.signing=()=>{throw Error('Signing credentials are intentionally not bound to this worker');};
+  await h.service.verifySession(checkout.orderId);
+  global.fetch=async()=>({ok:true,json:async()=>({id:randomUUID()})});
+  await h.service.emailJob(`receipt_${checkout.orderId}`);
+  assert.equal((await h.db.collection('ticketingEmailJobs').doc(`receipt_${checkout.orderId}`).get()).data().status,'sent');
+  assert.equal((await h.service.maintenance('communications')).errors,0);
+}));
+
+test('failed due checks keep the admission hold and retry deadline until verification recovers', () => isolated(async h => {
+  const eid=await h.event(),checkout=await h.service.checkout(h.request(eid),null);await h.pay(checkout.orderId);
+  const ref=h.service.order(checkout.orderId),list=h.fake.disputes.list;
+  await ref.update({nextFinancialCheckAt:Date.now()-1});
+  h.fake.disputes.list=async()=>{throw Error('Temporary provider outage');};
+  assert.equal((await h.service.reconcileDueOrders()).errors,1);
+  const blocked=(await ref.get()).data();assert.equal(blocked.financialBlocked,true);
+  assert.ok(blocked.nextFinancialCheckAt>Date.now() && blocked.nextFinancialCheckAt<=Date.now()+5*60000);
+  h.fake.disputes.list=list;await ref.update({nextFinancialCheckAt:Date.now()-1});
+  assert.equal((await h.service.reconcileDueOrders()).errors,0);
+  assert.equal((await ref.get()).data().financialBlocked,false);
+  assert.equal((await h.service.tickets().where('orderId','==',checkout.orderId).get()).size,1);
+}));
+
+test('manual requests retry busy lanes and completion deliveries are idempotent', () => isolated(async h => {
+  await h.service.requestMaintenance();
+  const request=(await h.db.collection('ticketingRecoveryRequests').where('lane','==','payments').get()).docs[0];
+  let attempts=0;
+  h.service.maintenance=async () => (++attempts===1 ? {busy:1,errors:0} : {errors:0});
+  await assert.rejects(()=>h.service.processRecoveryRequest(request.id), /retry/);
+  assert.equal((await request.ref.get()).data().status,'pending');
+  await h.service.processRecoveryRequest(request.id);
+  await h.service.processRecoveryRequest(request.id);
+  assert.equal(attempts,2); assert.equal((await request.ref.get()).data().status,'done');
+  assert.ok((await request.ref.get()).data().deleteAfter.toMillis()>Date.now());
+}));
+
+test('due reconciliation skips settled history, migrates legacy orders once and recovers missed webhooks', () => isolated(async h => {
+  const eid=await h.event(), checkout=await h.service.checkout(h.request(eid),null); await h.pay(checkout.orderId);
+  const ref=h.service.order(checkout.orderId), {FieldValue}=require('firebase-admin/firestore');
+  await ref.update({nextFinancialCheckAt:FieldValue.delete()});
+  await h.service.seedFinancialSchedule();
+  assert.ok((await ref.get()).data().nextFinancialCheckAt<=Date.now());
+  assert.equal((await h.service.reconcileDueOrders()).processed,1);
+  assert.equal((await h.service.reconcileDueOrders()).processed,0);
+  const state=h.db.collection('ticketingWorkerCursors').doc('financial-schedule-v1'), prior=(await state.get()).updateTime;
+  await h.service.seedFinancialSchedule(); assert.ok(prior.isEqual((await state.get()).updateTime));
+  // A payment finished by a draining old revision must also be picked up.
+  await h.db.collection('ticketingOrders').doc('legacy-late').set({status:'paid',method:'stripe',total:100});
+  await state.update({verifyAfter:Date.now()-1}); await h.service.seedFinancialSchedule();
+  assert.ok((await h.db.collection('ticketingOrders').doc('legacy-late').get()).data().nextFinancialCheckAt<=Date.now());
+  assert.equal((await state.get()).data().done,true);
+  await h.db.collection('ticketingOrders').doc('legacy-late').delete();
+  const order=(await ref.get()).data();
+  h.refunds.set('missed-dashboard-refund',{id:'missed-dashboard-refund',payment_intent:order.paymentIntentId,amount:order.total,status:'succeeded'});
+  await ref.update({nextFinancialCheckAt:Date.now()-1000});
+  assert.equal((await h.service.reconcileDueOrders()).errors,0);
+  assert.equal((await ref.get()).data().refundedAmount,order.total);
+  assert.equal((await h.service.tickets().where('orderId','==',checkout.orderId).get()).docs[0].data().status,'refunded');
+}));
+
+test('overdue reconciliation remains visible even when the payment heartbeat is current', () => isolated(async h => {
+  const eid=await h.event(), checkout=await h.service.checkout(h.request(eid),null); await h.pay(checkout.orderId);
+  await h.service.order(checkout.orderId).update({nextFinancialCheckAt:Date.now()-16*60000});
+  await h.db.collection('ticketingHealth').doc('maintenance').set({completedAt:Date.now()});
+  assert.ok((await h.service.health(h.staff,true)).issues.some(i=>i.id==='financial-backlog'));
+}));
+
+test('retention migration is bounded, resumable and leaves unresolved work and financial records intact', () => isolated(async h => {
+  const {migrate}=require('../../scripts/migrate-cost-retention.cjs');
+  const expiry=Date.now()-8*86400000;
+  await h.db.collection('ticketingAccess').doc('old').set({expiresAt:expiry});
+  await h.db.collection('ticketingWebhookInbox').doc('pending').set({status:'pending',completedAt:expiry});
+  await h.db.collection('ticketingWebhookInbox').doc('done').set({status:'done',completedAt:expiry});
+  await h.db.collection('ticketingOrders').doc('ledger').set({expiresAt:expiry});
+  await migrate(h.db,{apply:false,pages:1});
+  assert.equal((await h.db.collection('ticketingAccess').doc('old').get()).data().deleteAfter,undefined);
+  await migrate(h.db,{apply:true,pages:1});
+  assert.equal((await h.db.collection('ticketingAccess').doc('old').get()).data().deleteAfter.toMillis(),expiry+7*86400000);
+  assert.equal((await h.db.collection('ticketingWebhookInbox').doc('pending').get()).data().deleteAfter,undefined);
+  assert.equal((await h.db.collection('ticketingOrders').doc('ledger').get()).data().deleteAfter,undefined);
+  assert.ok((await h.db.collection('ticketingWebhookInbox').doc('done').get()).data().deleteAfter);
+  assert.ok((await migrate(h.db,{apply:true,pages:1})).every(r=>r.changed===0));
+}));
 
 test('festival campaign continues across pages with duplicate deliveries and deduplicates recipients', () => isolated(async h => {
   const eid = await h.event(), order = await h.service.checkout(h.request(eid), null); await h.pay(order.orderId);
@@ -149,10 +249,10 @@ test('one bad record does not block later rows and its failure remains actionabl
 test('manual recovery queues durable requests and provider retry-after is respected', () => isolated(async h => {
   h.service.maintenance = async () => { throw Error('The HTTP action must not run recovery inline'); };
   assert.deepEqual(await h.service.requestMaintenance(), { queued: true });
-  for (const id of ['maintenance', 'maintenance-emails', 'maintenance-communications']) {
-    const state = (await h.db.collection('ticketingHealth').doc(id).get()).data();
-    assert.ok(state.requestId); assert.ok(state.requestedAt); assert.equal(state.completedAt, undefined);
-  }
+  const requests = await h.db.collection('ticketingRecoveryRequests').get();
+  assert.deepEqual(requests.docs.map(d => d.data().lane).sort(), ['communications', 'emails', 'payments']);
+  for (const doc of requests.docs) { assert.equal(doc.data().status, 'pending'); assert.ok(doc.data().requestedAt); }
+  assert.equal((await h.db.collection('ticketingHealth').get()).size, 0, 'health writes do not enqueue work');
   const eid = await h.event(), order = await h.service.checkout(h.request(eid), null); await h.pay(order.orderId);
   let sends = 0;
   global.fetch = async () => { sends++; return { ok: false, headers: { get: key => key === 'retry-after' ? '120' : null } }; };

@@ -1,0 +1,463 @@
+{
+  "start": "2026-10-23T17:07:48.827399+00:00",
+  "end": "2026-10-30T17:07:48.827399+00:00",
+  "projects": {
+    "pluto-staging-92eb7": {
+      "functions": [
+        {
+          "name": "ticketingEmailMaintenance",
+          "state": "ACTIVE",
+          "availableCpu": "1",
+          "availableMemory": "256Mi",
+          "minInstanceCount": null,
+          "maxInstanceCount": 1,
+          "maxInstanceRequestConcurrency": 1,
+          "timeoutSeconds": 540
+        },
+        {
+          "name": "ticketingCommunicationMaintenance",
+          "state": "ACTIVE",
+          "availableCpu": "1",
+          "availableMemory": "256Mi",
+          "minInstanceCount": null,
+          "maxInstanceCount": 1,
+          "maxInstanceRequestConcurrency": 1,
+          "timeoutSeconds": 540
+        },
+        {
+          "name": "ticketingFinancialWorker",
+          "state": "ACTIVE",
+          "availableCpu": "1",
+          "availableMemory": "256Mi",
+          "minInstanceCount": null,
+          "maxInstanceCount": 3,
+          "maxInstanceRequestConcurrency": 1,
+          "timeoutSeconds": 120
+        },
+        {
+          "name": "ticketingCampaignWorker",
+          "state": "ACTIVE",
+          "availableCpu": "1",
+          "availableMemory": "256Mi",
+          "minInstanceCount": null,
+          "maxInstanceCount": 3,
+          "maxInstanceRequestConcurrency": 1,
+          "timeoutSeconds": 120
+        },
+        {
+          "name": "publicSite",
+          "state": "ACTIVE",
+          "availableCpu": "1",
+          "availableMemory": "512Mi",
+          "minInstanceCount": null,
+          "maxInstanceCount": 10,
+          "maxInstanceRequestConcurrency": 8,
+          "timeoutSeconds": 60
+        },
+        {
+          "name": "accountDeletionWorker",
+          "state": "ACTIVE",
+          "availableCpu": "1",
+          "availableMemory": "256Mi",
+          "minInstanceCount": null,
+          "maxInstanceCount": 1,
+          "maxInstanceRequestConcurrency": 1,
+          "timeoutSeconds": 540
+        },
+        {
+          "name": "ticketingMaintenance",
+          "state": "ACTIVE",
+          "availableCpu": "1",
+          "availableMemory": "256Mi",
+          "minInstanceCount": null,
+          "maxInstanceCount": 1,
+          "maxInstanceRequestConcurrency": 1,
+          "timeoutSeconds": 540
+        },
+        {
+          "name": "ticketingEmailWorker",
+          "state": "ACTIVE",
+          "availableCpu": "1",
+          "availableMemory": "256Mi",
+          "minInstanceCount": null,
+          "maxInstanceCount": 2,
+          "maxInstanceRequestConcurrency": 1,
+          "timeoutSeconds": 540
+        },
+        {
+          "name": "accountDeletionMaintenance",
+          "state": "ACTIVE",
+          "availableCpu": "1",
+          "availableMemory": "256Mi",
+          "minInstanceCount": null,
+          "maxInstanceCount": 1,
+          "maxInstanceRequestConcurrency": 1,
+          "timeoutSeconds": 540
+        },
+        {
+          "name": "ticketingRecoveryWorker",
+          "state": "ACTIVE",
+          "availableCpu": "1",
+          "availableMemory": "256Mi",
+          "minInstanceCount": null,
+          "maxInstanceCount": 3,
+          "maxInstanceRequestConcurrency": 1,
+          "timeoutSeconds": 540
+        },
+        {
+          "name": "ticketingWebhookWorker",
+          "state": "ACTIVE",
+          "availableCpu": "1",
+          "availableMemory": "256Mi",
+          "minInstanceCount": null,
+          "maxInstanceCount": 20,
+          "maxInstanceRequestConcurrency": 80,
+          "timeoutSeconds": 60
+        },
+        {
+          "name": "ticketingFinancialBackfillWorker",
+          "state": "ACTIVE",
+          "availableCpu": "1",
+          "availableMemory": "256Mi",
+          "minInstanceCount": null,
+          "maxInstanceCount": 2,
+          "maxInstanceRequestConcurrency": 1,
+          "timeoutSeconds": 120
+        }
+      ],
+      "container/billable_instance_time": [
+        {
+          "service": "accountdeletionmaintenance",
+          "total": 381.4799303492425
+        },
+        {
+          "service": "accountdeletionworker",
+          "total": 1.1476941630499242
+        },
+        {
+          "service": "publicsite",
+          "total": 277.9865989848847
+        },
+        {
+          "service": "ticketingcampaignworker",
+          "total": 4.700000000000001
+        },
+        {
+          "service": "ticketingcommunicationmaintenance",
+          "total": 17950.18874489767
+        },
+        {
+          "service": "ticketingemailmaintenance",
+          "total": 16105.510854424232
+        },
+        {
+          "service": "ticketingemailworker",
+          "total": 4.7
+        },
+        {
+          "service": "ticketingfinancialbackfillworker",
+          "total": 4.6
+        },
+        {
+          "service": "ticketingfinancialworker",
+          "total": 17223.144934119817
+        },
+        {
+          "service": "ticketingmaintenance",
+          "total": 35956.77478659582
+        },
+        {
+          "service": "ticketingrecoveryworker",
+          "total": 8766.86782788785
+        },
+        {
+          "service": "ticketingwebhookworker",
+          "total": 4.7
+        }
+      ],
+      "request_count": [
+        {
+          "service": "accountdeletionmaintenance",
+          "total": 2016.0
+        },
+        {
+          "service": "publicsite",
+          "total": 192.0
+        },
+        {
+          "service": "ticketingcommunicationmaintenance",
+          "total": 10077.0
+        },
+        {
+          "service": "ticketingemailmaintenance",
+          "total": 10079.0
+        },
+        {
+          "service": "ticketingfinancialworker",
+          "total": 78588.0
+        },
+        {
+          "service": "ticketingmaintenance",
+          "total": 2016.0
+        },
+        {
+          "service": "ticketingrecoveryworker",
+          "total": 88693.0
+        }
+      ],
+      "schedules": [
+        {
+          "name": "firebase-schedule-ticketingMaintenance-us-central1",
+          "schedule": "every 5 minutes",
+          "state": "ENABLED"
+        },
+        {
+          "name": "firebase-schedule-ticketingCommunicationMaintenance-us-central1",
+          "schedule": "every 1 minutes",
+          "state": "ENABLED"
+        },
+        {
+          "name": "firebase-schedule-accountDeletionMaintenance-us-central1",
+          "schedule": "every 5 minutes",
+          "state": "ENABLED"
+        },
+        {
+          "name": "firebase-schedule-ticketingEmailMaintenance-us-central1",
+          "schedule": "every 1 minutes",
+          "state": "ENABLED"
+        }
+      ],
+      "appEngineServices": {
+        "error": 404,
+        "message": "Resource 'applications/pluto-staging-92eb7' was not found"
+      }
+    },
+    "pluto-9b6ca": {
+      "functions": [
+        {
+          "name": "ticketingEmailMaintenance",
+          "state": "ACTIVE",
+          "availableCpu": "1",
+          "availableMemory": "256Mi",
+          "minInstanceCount": null,
+          "maxInstanceCount": 1,
+          "maxInstanceRequestConcurrency": 1,
+          "timeoutSeconds": 540
+        },
+        {
+          "name": "ticketingCommunicationMaintenance",
+          "state": "ACTIVE",
+          "availableCpu": "1",
+          "availableMemory": "256Mi",
+          "minInstanceCount": null,
+          "maxInstanceCount": 1,
+          "maxInstanceRequestConcurrency": 1,
+          "timeoutSeconds": 540
+        },
+        {
+          "name": "ticketingFinancialWorker",
+          "state": "ACTIVE",
+          "availableCpu": "1",
+          "availableMemory": "256Mi",
+          "minInstanceCount": null,
+          "maxInstanceCount": 3,
+          "maxInstanceRequestConcurrency": 1,
+          "timeoutSeconds": 120
+        },
+        {
+          "name": "ticketingCampaignWorker",
+          "state": "ACTIVE",
+          "availableCpu": "1",
+          "availableMemory": "256Mi",
+          "minInstanceCount": null,
+          "maxInstanceCount": 3,
+          "maxInstanceRequestConcurrency": 1,
+          "timeoutSeconds": 120
+        },
+        {
+          "name": "publicSite",
+          "state": "ACTIVE",
+          "availableCpu": "1",
+          "availableMemory": "512Mi",
+          "minInstanceCount": null,
+          "maxInstanceCount": 10,
+          "maxInstanceRequestConcurrency": 8,
+          "timeoutSeconds": 60
+        },
+        {
+          "name": "accountDeletionWorker",
+          "state": "ACTIVE",
+          "availableCpu": "1",
+          "availableMemory": "256Mi",
+          "minInstanceCount": null,
+          "maxInstanceCount": 1,
+          "maxInstanceRequestConcurrency": 1,
+          "timeoutSeconds": 540
+        },
+        {
+          "name": "ticketingMaintenance",
+          "state": "ACTIVE",
+          "availableCpu": "1",
+          "availableMemory": "256Mi",
+          "minInstanceCount": null,
+          "maxInstanceCount": 1,
+          "maxInstanceRequestConcurrency": 1,
+          "timeoutSeconds": 540
+        },
+        {
+          "name": "ticketingEmailWorker",
+          "state": "ACTIVE",
+          "availableCpu": "1",
+          "availableMemory": "256Mi",
+          "minInstanceCount": null,
+          "maxInstanceCount": 2,
+          "maxInstanceRequestConcurrency": 1,
+          "timeoutSeconds": 540
+        },
+        {
+          "name": "accountDeletionMaintenance",
+          "state": "ACTIVE",
+          "availableCpu": "1",
+          "availableMemory": "256Mi",
+          "minInstanceCount": null,
+          "maxInstanceCount": 1,
+          "maxInstanceRequestConcurrency": 1,
+          "timeoutSeconds": 540
+        },
+        {
+          "name": "ticketingRecoveryWorker",
+          "state": "ACTIVE",
+          "availableCpu": "1",
+          "availableMemory": "256Mi",
+          "minInstanceCount": null,
+          "maxInstanceCount": 3,
+          "maxInstanceRequestConcurrency": 1,
+          "timeoutSeconds": 540
+        },
+        {
+          "name": "ticketingWebhookWorker",
+          "state": "ACTIVE",
+          "availableCpu": "1",
+          "availableMemory": "256Mi",
+          "minInstanceCount": null,
+          "maxInstanceCount": 20,
+          "maxInstanceRequestConcurrency": 80,
+          "timeoutSeconds": 60
+        },
+        {
+          "name": "ticketingFinancialBackfillWorker",
+          "state": "ACTIVE",
+          "availableCpu": "1",
+          "availableMemory": "256Mi",
+          "minInstanceCount": null,
+          "maxInstanceCount": 2,
+          "maxInstanceRequestConcurrency": 1,
+          "timeoutSeconds": 120
+        }
+      ],
+      "container/billable_instance_time": [
+        {
+          "service": "accountdeletionmaintenance",
+          "total": 418.32580631457995
+        },
+        {
+          "service": "accountdeletionworker",
+          "total": 4.54772538080069
+        },
+        {
+          "service": "publicsite",
+          "total": 1572.8703406660045
+        },
+        {
+          "service": "ticketingcampaignworker",
+          "total": 7.8
+        },
+        {
+          "service": "ticketingcommunicationmaintenance",
+          "total": 10465.895545872807
+        },
+        {
+          "service": "ticketingemailmaintenance",
+          "total": 10109.571670430365
+        },
+        {
+          "service": "ticketingemailworker",
+          "total": 5.254201201954007
+        },
+        {
+          "service": "ticketingfinancialbackfillworker",
+          "total": 7.5
+        },
+        {
+          "service": "ticketingfinancialworker",
+          "total": 2.080524149435133
+        },
+        {
+          "service": "ticketingmaintenance",
+          "total": 2383.583027648268
+        },
+        {
+          "service": "ticketingrecoveryworker",
+          "total": 9280.409751970663
+        },
+        {
+          "service": "ticketingwebhookworker",
+          "total": 16.47290592317273
+        }
+      ],
+      "request_count": [
+        {
+          "service": "accountdeletionmaintenance",
+          "total": 2011.0
+        },
+        {
+          "service": "publicsite",
+          "total": 1038.0
+        },
+        {
+          "service": "ticketingcampaignworker",
+          "total": 3.0
+        },
+        {
+          "service": "ticketingcommunicationmaintenance",
+          "total": 10055.0
+        },
+        {
+          "service": "ticketingemailmaintenance",
+          "total": 10049.0
+        },
+        {
+          "service": "ticketingmaintenance",
+          "total": 2011.0
+        },
+        {
+          "service": "ticketingrecoveryworker",
+          "total": 88460.0
+        }
+      ],
+      "schedules": [
+        {
+          "name": "firebase-schedule-ticketingMaintenance-us-central1",
+          "schedule": "every 5 minutes",
+          "state": "ENABLED"
+        },
+        {
+          "name": "firebase-schedule-ticketingCommunicationMaintenance-us-central1",
+          "schedule": "every 1 minutes",
+          "state": "ENABLED"
+        },
+        {
+          "name": "firebase-schedule-accountDeletionMaintenance-us-central1",
+          "schedule": "every 5 minutes",
+          "state": "ENABLED"
+        },
+        {
+          "name": "firebase-schedule-ticketingEmailMaintenance-us-central1",
+          "schedule": "every 1 minutes",
+          "state": "ENABLED"
+        }
+      ],
+      "appEngineServices": []
+    }
+  }
+}

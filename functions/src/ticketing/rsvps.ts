@@ -8,6 +8,7 @@ import { randomInt } from 'node:crypto';
 import { secret } from './domain';
 import { waitlistHold, withoutWaitlistHold } from './waitlist-hold';
 import { approvedRsvpParent } from './rsvp-upgrade';
+import { expiringGrant } from './retention';
 
 export class Rsvps extends Guests {
   async requestRsvpVerification(raw: any, actor: DecodedIdToken | null, purpose = 'rsvp') {
@@ -16,7 +17,7 @@ export class Rsvps extends Guests {
     if (actor?.email_verified && actor.email?.toLowerCase() === target) return { verified: true };
     const token = secret(), code = String(randomInt(1000000)).padStart(6, '0'), expiresAt = Date.now() + 15 * 60000;
     const batch = this.db.batch(), verificationId = hash(token);
-    batch.create(this.db.collection('ticketingRsvpVerification').doc(verificationId), { eventId, email: target, purpose, codeHash: hash(`${token}:${code}`), expiresAt, attempts: 0, used: false });
+    batch.create(this.db.collection('ticketingRsvpVerification').doc(verificationId), { eventId, email: target, purpose, codeHash: hash(`${token}:${code}`), ...expiringGrant(expiresAt), attempts: 0, used: false });
     batch.create(this.db.collection('ticketingEmailJobs').doc(`verify_${verificationId}`), { type: purpose === 'waitlist' ? 'waitlist-verification' : 'rsvp-verification', verificationId, eventId, eventTitle: draft.title, to: target, code, status: 'pending', attempts: 0, createdAt: Date.now() });
     await batch.commit(); return { verificationToken: token, expiresAt };
   }
@@ -46,7 +47,7 @@ export class Rsvps extends Guests {
       if (!approvedRsvpParent(parent, ticket, linked)) fail('Your RSVP must be approved before purchasing VIP. Check its status in My tickets.', 409);
       const proof = proofRef ? (await tx.get(proofRef)).data() : null;
       if (proofRef && (!proof || proof.used || proof.purpose !== 'upgrade' || proof.eventId !== eventId || proof.email !== target || proof.expiresAt <= Date.now())) fail('Your email code expired or was already used. Request a new code.', 403, 'rsvp-email-verification');
-      tx.create(this.db.collection('ticketingRsvpUpgradeAccess').doc(hash(token)), { ...linked, name: parent!.name, ownerUid: parent!.ownerUid || actor?.uid || '', parentAccessRevision: parent!.accessRevision || 0, expiresAt, usedBy: '' });
+      tx.create(this.db.collection('ticketingRsvpUpgradeAccess').doc(hash(token)), { ...linked, name: parent!.name, ownerUid: parent!.ownerUid || actor?.uid || '', parentAccessRevision: parent!.accessRevision || 0, ...expiringGrant(expiresAt), usedBy: '' });
       if (proofRef) tx.update(proofRef, { used: true, usedAt: Date.now() });
       return { rsvpUpgradeToken: token, expiresAt, name: parent!.name, email: target };
     });

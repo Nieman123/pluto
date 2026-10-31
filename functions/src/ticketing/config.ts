@@ -18,6 +18,10 @@ export const resendWebhookKey = process.env.TICKETING_RESEND_WEBHOOK_ENABLED ===
 // Delivery tracking is opt-in; existing deployments do not need another secret.
 export const resendWebhookSecrets = resendWebhookKey ? [resendWebhookKey] : [];
 export const ticketingSecrets = [stripeKey, webhookKey, signingKey, resendKey, ...(verificationKeyring && scannerPinKeys ? [verificationKeyring, scannerPinKeys] : [])];
+// Background workers issue ledger records, not signed customer credentials.
+// Email recovery can reconcile an expired checkout, so it also needs Stripe.
+export const paymentWorkerSecrets = [stripeKey];
+export const emailWorkerSecrets = [stripeKey, resendKey];
 export const apiVersion = '2026-09-30.endive' as const;
 export const baseUrl = () => deploymentConfig().baseUrl;
 export const appTicketsUrl = () => `${baseUrl()}/app/tickets`;

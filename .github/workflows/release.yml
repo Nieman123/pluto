@@ -22,6 +22,11 @@ on:
         description: Confirm real payment, bank, policies and launch acceptance before enabling live sales
         type: boolean
         default: false
+      worker_mode:
+        description: Staging quiet mode saves idle costs; active mode is required for production acceptance
+        type: choice
+        options: [quiet, active]
+        default: quiet
 permissions:
   contents: read
 # Never cancel a release halfway through deployment.
@@ -73,6 +78,8 @@ jobs:
       DEPLOY_RESEND_WEBHOOK_ENABLED: ${{ vars.TICKETING_RESEND_WEBHOOK_ENABLED }}
       DEPLOY_KEY_ROTATION_ENABLED: ${{ vars.TICKETING_KEY_ROTATION_ENABLED }}
       DEPLOY_APPROVAL_POLICY: ${{ vars.PRODUCTION_APPROVAL_POLICY || 'two-person' }}
+      DEPLOY_WORKER_MODE: ${{ inputs.worker_mode || 'quiet' }}
+      DEPLOY_HEALTH_CPU: ${{ vars.TICKETING_HEALTH_CPU || 'gcf_gen1' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -116,12 +123,18 @@ jobs:
         # Non-interactive defaults decline deletion of cloud-only indexes/field overrides.
         # Keep this separate from --force, which acknowledges worker retry policies below.
         run: npx --yes firebase-tools@15.32.1 deploy --config firebase.release.json --only firestore:indexes --project "$DEPLOY_PROJECT_ID" --non-interactive
+      - name: Wait for the due-payment query index
+        run: node scripts/release/wait-cost-index.cjs
       - name: Deploy coordinated backend, workers, client and access rules
         # Acknowledge the webhook/email workers' intentional retry policies in CI.
         # Keep function targets explicit; --force also accepts implicit deletions.
-        run: npx --yes firebase-tools@15.32.1 deploy --config firebase.release.json --only firestore:rules,storage,functions:publicSite,functions:accountDeletionWorker,functions:accountDeletionMaintenance,functions:ticketingWebhookWorker,functions:ticketingEmailWorker,functions:ticketingFinancialWorker,functions:ticketingFinancialBackfillWorker,functions:ticketingCampaignWorker,functions:ticketingRecoveryWorker,functions:ticketingMaintenance,functions:ticketingCommunicationMaintenance,functions:ticketingEmailMaintenance,hosting --project "$DEPLOY_PROJECT_ID" --non-interactive --force
+        run: npx --yes firebase-tools@15.32.1 deploy --config firebase.release.json --only firestore:rules,storage,functions:publicSite,functions:accountDeletionWorker,functions:accountDeletionMaintenance,functions:ticketingWebhookWorker,functions:ticketingEmailWorker,functions:ticketingFinancialWorker,functions:ticketingFinancialBackfillWorker,functions:ticketingCampaignWorker,functions:ticketingRecoveryRequestWorker,functions:ticketingMaintenance,functions:ticketingCommunicationMaintenance,functions:ticketingEmailMaintenance,functions:ticketingHealthMaintenance,hosting --project "$DEPLOY_PROJECT_ID" --non-interactive --force
       - name: Verify deployed identity, pages and environment isolation
         run: node scripts/release/smoke.mjs
+      - name: Migrate recovery requests and retire the old health-write trigger
+        run: node scripts/release/migrate-cost-controls.mjs
+      - name: Backfill bounded expiration metadata for old temporary records
+        run: node scripts/migrate-cost-retention.cjs --project="$DEPLOY_PROJECT_ID" --pages=100 --apply
       - name: Mark deployment successful
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -134,6 +147,7 @@ jobs:
           path: |
             tmp/release/manifest.json
             tmp/release/smoke.json
+            tmp/release/cost-migration.json
           if-no-files-found: ignore
           retention-days: 90
       - name: Mark failed or cancelled release
