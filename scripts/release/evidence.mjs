@@ -8,7 +8,8 @@ if (action === 'start') {
   const deployment = await api('/deployments', { ref: manifest.revision, environment: manifest.environment,
     auto_merge: false, required_contexts: [], production_environment: manifest.environment === 'production',
     description: 'Validated Pluto release', payload: { kind: 'pluto-validated-release', revision: manifest.revision,
-      projectId: manifest.projectId, runId: process.env.GITHUB_RUN_ID, runAttempt: process.env.GITHUB_RUN_ATTEMPT } });
+      projectId: manifest.projectId, workerMode: manifest.workerMode, workerCpu: manifest.workerCpu, healthCpu: manifest.healthCpu,
+      runId: process.env.GITHUB_RUN_ID, runAttempt: process.env.GITHUB_RUN_ATTEMPT } });
   if (!deployment.id || deployment.sha !== manifest.revision) throw new Error('GitHub did not create evidence for the requested commit.');
   await writeFile('tmp/release/deployment-id', String(deployment.id));
   await api(`/deployments/${deployment.id}/statuses`, { state: 'in_progress', log_url: logUrl, environment_url: manifest.baseUrl });

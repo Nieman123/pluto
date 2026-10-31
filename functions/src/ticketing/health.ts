@@ -1,6 +1,8 @@
 import type { Firestore } from 'firebase-admin/firestore';
 import { FieldPath } from 'firebase-admin/firestore';
 import { reconciliationPending } from './reconciliation-state';
+import { randomUUID } from 'node:crypto';
+import { error as logError, warn as logWarning } from 'firebase-functions/logger';
 
 export interface HealthIssue { id: string; kind: string; severity: 'warning' | 'critical'; title: string; orderId: string; jobId?: string; at: number; detail: string; }
 const age = (now: number, at: number, minutes: number) => now - at >= minutes * 60000;
@@ -14,13 +16,20 @@ export async function collectHealth(db: Firestore, now = Date.now()) {
     db.collection('ticketingCampaigns').where('status', '==', 'pending').limit(501),
     db.collection('ticketingWaitlist').where('status', '==', 'offered').limit(501),
   ];
-  const [[orders, refunds, webhooks, emails, delivery, campaigns, offers], heartbeat, blocked] = await Promise.all([Promise.all(queries.map(q => q.get())), db.collection('ticketingHealth').doc('maintenance').get(), db.collection('ticketingOrders').where('financialBlocked', '==', true).limit(501).get()]);
+  const [[orders, refunds, webhooks, emails, delivery, campaigns, offers], heartbeat, blocked, overdue] = await Promise.all([
+    Promise.all(queries.map(q => q.get())), db.collection('ticketingHealth').doc('maintenance').get(),
+    db.collection('ticketingOrders').where('financialBlocked', '==', true).limit(501).get(),
+    db.collection('ticketingOrders').where('status', '==', 'paid').where('nextFinancialCheckAt', '<=', now - 15 * 60000)
+      .orderBy('nextFinancialCheckAt').limit(1).get(),
+  ]);
   const cursorRef = db.collection('ticketingHealth').doc('issuance-cursor'), cursor = (await cursorRef.get()).data();
   const paidQuery = db.collection('ticketingOrders').where('status', '==', 'paid').orderBy(FieldPath.documentId()).limit(51);
   let paid = await (cursor?.after ? paidQuery.startAfter(cursor.after) : paidQuery).get();
   if (paid.empty && cursor?.after) paid = await paidQuery.get();
   const issues: HealthIssue[] = [];
   const add = (id: string, kind: string, title: string, orderId: string, at: number, detail: string, severity: HealthIssue['severity'] = 'warning', jobId?: string) => issues.push({ id, kind, severity, title, orderId, at, detail, ...(jobId ? { jobId } : {}) });
+  if (!overdue.empty) add('financial-backlog', 'maintenance', 'Payment reconciliation is overdue', overdue.docs[0].id,
+    overdue.docs[0].data().nextFinancialCheckAt, 'The oldest due payment check is over 15 minutes late. Check payment worker throughput and errors.', 'critical');
   let checkedPaidOrders = 0;
   const paidIds = new Set(paid.docs.slice(0, 50).map(d => d.id));
   // Reads are bounded. A partial check is explicitly reported, never presented as all-clear.
@@ -37,7 +46,7 @@ export async function collectHealth(db: Firestore, now = Date.now()) {
       if (tickets.data().count !== o.units.length) add(`issuance_${doc.id}`, 'issuance', 'Confirmed order has missing tickets', doc.id, o.paidAt || at, 'Compare issued tickets with the order allocation. No automatic tickets are minted from this alert.', 'critical');
     }
   }
-  await cursorRef.set({ after: paid.size > 50 ? paid.docs[49].id : '', checkedAt: now });
+  if (paid.size || cursor?.after) await cursorRef.set({ after: paid.size > 50 ? paid.docs[49].id : '', checkedAt: now });
   for (const doc of refunds.docs.slice(0, 500)) { const r = doc.data(); if (age(now, r.createdAt || now, 15)) add(`refund_${doc.id}`, 'refund', 'Refund is unresolved', r.orderId, r.createdAt, 'Review its provider reference and original approved ticket allocation.', 'critical', doc.id); }
   for (const doc of webhooks.docs.slice(0, 500)) { const w = doc.data(); if (age(now, w.receivedAt || now, 10) || w.attempts >= 3) add(`webhook_${doc.id}`, 'webhook', 'Payment event is retrying', w.orderId || '', w.receivedAt || now, w.lastError || 'Provider reconciliation has not completed.', 'critical', doc.id); }
   const emailDocs = [...new Map([...emails.docs.slice(0, 500), ...delivery.docs.slice(0, 500)].map(d => [d.id, d])).values()];
@@ -65,4 +74,35 @@ export async function collectHealth(db: Firestore, now = Date.now()) {
   // Keep the cached Firestore document and response bounded even during a large outage.
   return { checkedAt: now, maintenance, truncated: truncated || issues.length > 200, checkedPaidOrders, issues: issues.slice(0, 200), counts: { critical: issues.filter(i => i.severity === 'critical').length, warning: issues.filter(i => i.severity === 'warning').length,
     pendingCampaigns: campaigns.size, waitlistOffers: offers.size, pendingRefunds: refunds.size, pendingWebhooks: webhooks.size, pendingEmails: emails.docs.filter(d => d.data().status === 'pending').length } };
+}
+
+export async function refreshHealthSnapshot(db: Firestore, force = false) {
+  const ref = db.collection('ticketingHealth').doc('latest');
+  const lease = db.collection('ticketingHealth').doc('audit-lease'), leaseId = randomUUID();
+  const claim = await db.runTransaction(async tx => {
+    const [lock, snapshot] = await tx.getAll(lease, ref), cached = snapshot.data();
+    const now = Date.now();
+    if (lock.data()?.leaseUntil > now) return { claimed: false, cached, busy: true };
+    if (!force && cached?.checkedAt > now - 5 * 60000) return { claimed: false, cached, busy: false };
+    tx.set(lease, { leaseId, leaseUntil: now + 180000 });
+    return { claimed: true, cached, busy: false };
+  });
+  if (!claim.claimed) return claim.cached ? { ...claim.cached, ...(claim.busy ? { refreshInProgress: true } : {}) } : null;
+  try {
+    const result = await collectHealth(db);
+    const saved = await db.runTransaction(async tx => {
+      if ((await tx.get(lease)).data()?.leaseId !== leaseId) return false;
+      tx.set(ref, result); tx.set(lease, { leaseId, leaseUntil: 0 }); return true;
+    });
+    if (!saved) throw new Error('Health audit lease was superseded.');
+    const actionable = (issues: any[] = []) => issues.filter(i => i.kind !== 'coverage').map(i => `${i.severity}:${i.id}`).sort();
+    const active = actionable(result.issues);
+    if (active.length && JSON.stringify(active) !== JSON.stringify(actionable(claim.cached?.issues)))
+      (result.counts.critical ? logError : logWarning)('Ticketing needs operator attention', { event: 'ticketing-health-alert',
+        criticalCount: result.counts.critical, warningCount: result.counts.warning, issueIds: active });
+    return result;
+  } catch (error) {
+    await db.runTransaction(async tx => { if ((await tx.get(lease)).data()?.leaseId === leaseId) tx.update(lease, { leaseUntil: 0 }); });
+    throw error;
+  }
 }

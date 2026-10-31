@@ -1,0 +1,182 @@
+{
+  "verifiedAt": "2026-10-31T00:20:25.981Z",
+  "projects": {
+    "pluto-9b6ca": {
+      "budget": {
+        "displayName": "Pluto production monthly alert",
+        "amount": {
+          "specifiedAmount": {
+            "currencyCode": "USD",
+            "units": "50"
+          }
+        },
+        "filter": {
+          "projects": [
+            "projects/763906028056"
+          ],
+          "creditTypesTreatment": "INCLUDE_ALL_CREDITS",
+          "calendarPeriod": "MONTH"
+        },
+        "thresholds": [
+          {
+            "thresholdPercent": 0.5,
+            "spendBasis": "CURRENT_SPEND"
+          },
+          {
+            "thresholdPercent": 0.9,
+            "spendBasis": "CURRENT_SPEND"
+          },
+          {
+            "thresholdPercent": 1,
+            "spendBasis": "CURRENT_SPEND"
+          },
+          {
+            "thresholdPercent": 1,
+            "spendBasis": "FORECASTED_SPEND"
+          }
+        ],
+        "notifications": {}
+      },
+      "artifactCleanup": [
+        {
+          "name": "projects/pluto-9b6ca/locations/us-central1/repositories/gcf-artifacts",
+          "policies": {
+            "firebase-functions-cleanup": {
+              "id": "firebase-functions-cleanup",
+              "action": "DELETE",
+              "condition": {
+                "tagState": "ANY",
+                "olderThan": "604800s"
+              }
+            },
+            "pluto-build-retention": {
+              "id": "pluto-build-retention",
+              "action": "DELETE",
+              "condition": {
+                "tagState": "ANY",
+                "olderThan": "604800s"
+              }
+            }
+          },
+          "dryRun": false
+        }
+      ],
+      "ttl": []
+    },
+    "pluto-staging-92eb7": {
+      "budget": {
+        "displayName": "Pluto staging monthly alert",
+        "amount": {
+          "specifiedAmount": {
+            "currencyCode": "USD",
+            "units": "20"
+          }
+        },
+        "filter": {
+          "projects": [
+            "projects/702489323300"
+          ],
+          "creditTypesTreatment": "INCLUDE_ALL_CREDITS",
+          "calendarPeriod": "MONTH"
+        },
+        "thresholds": [
+          {
+            "thresholdPercent": 0.5,
+            "spendBasis": "CURRENT_SPEND"
+          },
+          {
+            "thresholdPercent": 0.9,
+            "spendBasis": "CURRENT_SPEND"
+          },
+          {
+            "thresholdPercent": 1,
+            "spendBasis": "CURRENT_SPEND"
+          },
+          {
+            "thresholdPercent": 1,
+            "spendBasis": "FORECASTED_SPEND"
+          }
+        ],
+        "notifications": {}
+      },
+      "artifactCleanup": [
+        {
+          "name": "projects/pluto-staging-92eb7/locations/us-central1/repositories/gcf-artifacts",
+          "policies": {
+            "pluto-build-retention": {
+              "id": "pluto-build-retention",
+              "action": "DELETE",
+              "condition": {
+                "tagState": "ANY",
+                "olderThan": "604800s"
+              }
+            }
+          },
+          "dryRun": false
+        }
+      ],
+      "ttl": [
+        {
+          "name": "projects/pluto-staging-92eb7/databases/(default)/collectionGroups/ticketingAccess/fields/deleteAfter",
+          "state": "ACTIVE"
+        },
+        {
+          "name": "projects/pluto-staging-92eb7/databases/(default)/collectionGroups/ticketingEmailDelivery/fields/deleteAfter",
+          "state": "ACTIVE"
+        },
+        {
+          "name": "projects/pluto-staging-92eb7/databases/(default)/collectionGroups/ticketingNativeCheckouts/fields/expiresAt",
+          "state": "ACTIVE"
+        },
+        {
+          "name": "projects/pluto-staging-92eb7/databases/(default)/collectionGroups/ticketingOfflineLeases/fields/expiresAt",
+          "state": "ACTIVE"
+        },
+        {
+          "name": "projects/pluto-staging-92eb7/databases/(default)/collectionGroups/ticketingRateLimits/fields/expiresAt",
+          "state": "ACTIVE"
+        },
+        {
+          "name": "projects/pluto-staging-92eb7/databases/(default)/collectionGroups/ticketingRecovery/fields/deleteAfter",
+          "state": "ACTIVE"
+        },
+        {
+          "name": "projects/pluto-staging-92eb7/databases/(default)/collectionGroups/ticketingRecoveryRequests/fields/deleteAfter",
+          "state": "ACTIVE"
+        },
+        {
+          "name": "projects/pluto-staging-92eb7/databases/(default)/collectionGroups/ticketingRsvpUpgradeAccess/fields/deleteAfter",
+          "state": "ACTIVE"
+        },
+        {
+          "name": "projects/pluto-staging-92eb7/databases/(default)/collectionGroups/ticketingRsvpVerification/fields/deleteAfter",
+          "state": "ACTIVE"
+        },
+        {
+          "name": "projects/pluto-staging-92eb7/databases/(default)/collectionGroups/ticketingScannerSessions/fields/deleteAfter",
+          "state": "ACTIVE"
+        },
+        {
+          "name": "projects/pluto-staging-92eb7/databases/(default)/collectionGroups/ticketingTransfers/fields/deleteAfter",
+          "state": "ACTIVE"
+        },
+        {
+          "name": "projects/pluto-staging-92eb7/databases/(default)/collectionGroups/ticketingWaitlistTokens/fields/deleteAfter",
+          "state": "ACTIVE"
+        },
+        {
+          "name": "projects/pluto-staging-92eb7/databases/(default)/collectionGroups/ticketingWalletDownloads/fields/expiresAt",
+          "state": "ACTIVE"
+        },
+        {
+          "name": "projects/pluto-staging-92eb7/databases/(default)/collectionGroups/ticketingWebhookInbox/fields/deleteAfter",
+          "state": "ACTIVE"
+        },
+        {
+          "name": "projects/pluto-staging-92eb7/databases/(default)/collectionGroups/waiverRateLimits/fields/expiresAt",
+          "state": "ACTIVE"
+        }
+      ]
+    }
+  }
+}

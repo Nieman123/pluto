@@ -1,4 +1,5 @@
 import type { Firestore } from 'firebase-admin/firestore';
+import { Timestamp } from 'firebase-admin/firestore';
 import { fail, hash } from './domain';
 
 const statuses = new Set(['sent', 'delivered', 'delivery_delayed', 'bounced', 'failed', 'complained', 'suppressed']);
@@ -27,7 +28,7 @@ export async function recordDelivery(db: Firestore, eventId: string, event: any)
   // Persist before correlation: a webhook can arrive before the send response.
   const ref = db.collection('ticketingEmailDelivery').doc(hash(eventId));
   await db.runTransaction(async tx => {
-    if (!(await tx.get(ref)).exists) tx.create(ref, { providerMessageId: messageId, status, at, receivedAt: Date.now() });
+    if (!(await tx.get(ref)).exists) tx.create(ref, { providerMessageId: messageId, status, at, receivedAt: Date.now(), deleteAfter: Timestamp.fromMillis(Date.now() + 90 * 86400000) });
   });
   const jobs = await db.collection('ticketingEmailJobs').where('providerMessageId', '==', messageId).limit(5).get();
   for (const job of jobs.docs) await applyDelivery(db, job.id, messageId);

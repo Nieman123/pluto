@@ -1,7 +1,6 @@
 import { randomInt, randomUUID } from 'node:crypto';
-import { NativeCheckout } from './native-checkout';
 import { setTimeout as sleep } from 'node:timers/promises';
-import { FieldPath } from 'firebase-admin/firestore';
+import { FieldPath, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { error as logError, warn as logWarning } from 'firebase-functions/logger';
 import type Stripe from 'stripe';
 import { type Order } from './orders';
@@ -12,7 +11,8 @@ import { pinLookupHashes } from './pin-keys';
 import { scannerAccess } from './scanner-access';
 import { deploymentConfig } from '../deployment-config';
 import { legacyTicketingEmail, renderTicketingEmail, type EmailKind, type TicketingEmailInput } from './email';
-import { collectHealth } from './health';
+import { refreshHealthSnapshot } from './health';
+import { expiringGrant } from './retention';
 import { applyDelivery } from './delivery';
 import { processBatch, WorkBudget } from './worker-batch';
 import { financialRecovery } from './financial-projection';
@@ -54,7 +54,7 @@ export class Operations extends Communications {
       const created = await this.db.runTransaction(async tx => {
         if ((await tx.getAll(...lookups)).some(doc => doc.exists)) return false;
         tx.create(lookup, { pinId });
-        tx.create(ref, { eventId, label, expiresAt, lookupKeyId, createdAt: Date.now(), createdBy: uid, loginCount: 0 });
+        tx.create(ref, { eventId, label, ...expiringGrant(expiresAt), lookupKeyId, createdAt: Date.now(), createdBy: uid, loginCount: 0 });
         tx.create(this.event(eventId).collection('audit').doc(), { action: 'scanner-pin-created', pinId, label, expiresAt, uid, at: Date.now() });
         return true;
       });
@@ -94,7 +94,7 @@ export class Operations extends Communications {
       // Migrate a legacy PIN on successful use; never store the plaintext PIN.
       if (!lookups[0].exists) tx.create(lookupRefs[0], { pinId: pinRef.id });
       const expiresAt = Math.min(p.expiresAt, Date.now() + 24 * 3600000);
-      tx.create(sessionRef, { pinId: pinRef.id, eventId: p.eventId, expiresAt, createdAt: Date.now() });
+      tx.create(sessionRef, { pinId: pinRef.id, eventId: p.eventId, ...expiringGrant(expiresAt), createdAt: Date.now() });
       tx.update(pinRef, { loginCount: (p.loginCount || 0) + 1, lastUsedAt: Date.now(), ...(lookupKeyId ? { lookupKeyId, lookupMigratedAt: Date.now() } : {}) });
       tx.create(this.event(p.eventId).collection('audit').doc(), { action: 'scanner-pin-login', pinId: pinRef.id, sessionId: sessionRef.id, label: p.label, at: Date.now() });
       return { uid: `scanner_${pinRef.id}`, eventId: p.eventId, eventTitle: (event.liveDraft || event.draft).title, label: p.label, expiresAt };
@@ -295,7 +295,7 @@ export class Operations extends Communications {
         (intent.metadata?.pluto_event_id && intent.metadata.pluto_event_id !== order.eventId) ||
         (charge && (charge.livemode !== order.livemode || charge.currency !== order.currency || charge.amount !== order.total)) ||
         (charge?.metadata?.pluto_order_id && charge.metadata.pluto_order_id !== orderId)) fail('Provider ownership does not match the reserved order.', 409);
-      tx.update(ref, { paymentIntentId: intent.id, financialBlocked: true, financialCheckId: randomUUID() });
+      tx.update(ref, { paymentIntentId: intent.id, financialBlocked: true, financialCheckId: randomUUID(), nextFinancialCheckAt: Date.now() });
     });
     return orderId;
   }
@@ -325,8 +325,16 @@ export class Operations extends Communications {
           if (orderId && !await this.verifySession(orderId)) fail('Payment checkout linkage is not available yet.', 409);
         }
       }
-      await ref.update({ status: orderId ? 'done' : 'ignored', ...(orderId ? {} : { ignoredReason: 'No authoritative Pluto payment ownership.' }), completedAt: Date.now(), orderId });
-    } catch (error: any) { await ref.update({ status: 'pending', attempts: (entry.attempts || 0) + 1, lastError: error instanceof Error ? error.name : 'unavailable', retryAt: Date.now() + Math.min(3600000, 1000 * 2 ** Math.min(entry.attempts || 0, 12)) }); throw error; }
+      await ref.update({ status: orderId ? 'done' : 'ignored', ...(orderId ? {} : { ignoredReason: 'No authoritative Pluto payment ownership.' }), completedAt: Date.now(), orderId, deleteAfter: Timestamp.fromMillis(Date.now() + 90 * 86400000) });
+    } catch (error: any) {
+      await this.db.runTransaction(async tx => {
+        const current = (await tx.get(ref)).data();
+        if (!current || ['done', 'ignored'].includes(current.status)) return;
+        tx.update(ref, { status: 'pending', deleteAfter: FieldValue.delete(), attempts: (current.attempts || 0) + 1,
+          lastError: error instanceof Error ? error.name : 'unavailable', retryAt: Date.now() + Math.min(3600000, 1000 * 2 ** Math.min(current.attempts || 0, 12)) });
+      });
+      throw error;
+    }
   }
   async emailJob(jobId: string) {
     jobId = emailJobId(jobId);
@@ -385,7 +393,7 @@ export class Operations extends Communications {
           // Email grants financial order access only to the original payer; transferred QR credentials are filtered in view().
           const token = job.token || secret(), recoveryRef = this.db.collection('ticketingRecovery').doc(hash(token));
           if (!job.token) await ref.update({ token });
-          await this.db.runTransaction(async tx => { if (!(await tx.get(recoveryRef)).exists) tx.create(recoveryRef, { orderId: job.orderId, accessRevision: (order as any).accessRevision || 0, expiresAt: Date.now() + 30 * 86400000, used: false }); });
+          await this.db.runTransaction(async tx => { if (!(await tx.get(recoveryRef)).exists) tx.create(recoveryRef, { orderId: job.orderId, accessRevision: (order as any).accessRevision || 0, ...expiringGrant(Date.now() + 30 * 86400000), used: false }); });
           actionUrl += `#recovery=${token}`;
           if (order.method === 'rsvp') kind = job.type === 'rsvp-pending' ? 'rsvp-pending' : job.type === 'rsvp-declined' ? 'rsvp-declined' : 'rsvp-confirmed';
         }
@@ -433,10 +441,19 @@ export class Operations extends Communications {
   }
   async requestMaintenance() {
     const batch = this.db.batch(), requestId = randomUUID();
-    for (const name of ['maintenance', 'maintenance-communications', 'maintenance-emails'])
-      batch.set(this.db.collection('ticketingHealth').doc(name), { requestId, requestedAt: Date.now() }, { merge: true });
+    for (const lane of ['payments', 'communications', 'emails'])
+      batch.create(this.db.collection('ticketingRecoveryRequests').doc(`${requestId}_${lane}`), { lane, status: 'pending', requestedAt: Date.now() });
     await batch.commit();
     return { queued: true };
+  }
+  async processRecoveryRequest(requestId: string) {
+    const ref = this.db.collection('ticketingRecoveryRequests').doc(id(requestId)), request = (await ref.get()).data();
+    if (!request || request.status === 'done') return;
+    if (!['payments', 'communications', 'emails'].includes(request.lane)) throw new Error('Invalid recovery lane.');
+    const result = await this.maintenance(request.lane);
+    // Eventarc retries a busy lane instead of silently consuming the request.
+    if (result.busy || result.errors) throw new Error('Requested recovery has not completed; retry.');
+    await ref.update({ status: 'done', completedAt: Date.now(), deleteAfter: Timestamp.fromMillis(Date.now() + 7 * 86400000) });
   }
   async maintenance(lane?: MaintenanceLane) {
     if (!lane) {
@@ -459,7 +476,8 @@ export class Operations extends Communications {
     try {
       const summary = await this.maintenancePass(lane);
       await this.db.runTransaction(async tx => { if ((await tx.get(heartbeat)).data()?.leaseId === leaseId) tx.set(heartbeat, { completedAt: Date.now(), summary, failedAt: null, leaseUntil: 0 }, { merge: true }); });
-      await this.refreshHealth(); return summary;
+      if (summary.errors) await this.refreshHealth();
+      return summary;
     } catch (error) {
       await this.db.runTransaction(async tx => { if ((await tx.get(heartbeat)).data()?.leaseId === leaseId) tx.set(heartbeat, { failedAt: Date.now(), leaseUntil: 0 }, { merge: true }); });
       logError('Ticketing maintenance failed', { event: 'ticketing-maintenance-failed', lane }); throw error;
@@ -489,13 +507,19 @@ export class Operations extends Communications {
           }
         }
       }),
-      () => batch('ticketingOrders', ['paid'], 100, 'order', 'orders', async doc => { if (doc.data().method === 'stripe' && doc.data().total > 0) await this.verifySession(doc.id); }),
+      async () => {
+        await this.seedFinancialSchedule();
+        const result = await this.reconcileDueOrders();
+        summary.orders += result.processed; summary.errors += result.errors;
+        if (result.deferred) summary.deferred++;
+      },
       () => batch('ticketingRefunds', ['pending', 'processing'], 100, 'refund', 'refunds', async doc => { if (doc.data().external) await this.finishRefund(doc.id, 'succeeded'); else await this.processRefund(doc.id); }),
       () => batch('ticketingWebhookInbox', ['pending'], 100, 'webhook', 'webhooks', async doc => { if ((doc.data().retryAt || 0) <= Date.now()) await this.processWebhook(doc.id); }),
     ] : lane === 'emails' ? [
       () => batch('ticketingEmailJobs', ['pending'], 100, 'email', 'emails', doc => this.emailJob(doc.id)),
     ] : [
-      () => new NativeCheckout(this).cleanup(),
+      // Firestore TTL removes expired native handoffs. Access still checks the
+      // deadline synchronously; asynchronous cleanup never grants access.
       async () => { const result = await financialRecovery(this.db, this.workBudget()); summary.financialRecoveries = result.processed; },
       async () => { summary.waitlists = await this.waitlistMaintenance(this.workBudget()); },
       async () => { summary.campaigns = await this.communicationMaintenance(this.workBudget()); },
@@ -512,16 +536,54 @@ export class Operations extends Communications {
     await ref.update({ lastWorkerError: error instanceof TicketingError ? error.message : error instanceof Error ? error.name : 'Unavailable', lastWorkerErrorAt: Date.now() });
     logWarning('Ticketing worker failed', { event: 'ticketing-worker-failed', kind, recordId: ref.id });
   }
+  async seedFinancialSchedule() {
+    // One bounded migration for already-paid orders, not a recurring scan of
+    // purchase history. Persist the cursor only after the whole page succeeds.
+    const ref = this.db.collection('ticketingWorkerCursors').doc('financial-schedule-v1'), state = (await ref.get()).data();
+    if (state?.done) return;
+    if (state?.initialComplete && state.verifyAfter > Date.now()) return;
+    let query = this.db.collection('ticketingOrders').where('status', '==', 'paid').orderBy(FieldPath.documentId()).limit(100);
+    if (state?.after) query = query.startAfter(state.after);
+    const page = await query.get();
+    for (const doc of page.docs) {
+      if (doc.data().method !== 'stripe' || !(doc.data().total > 0) || Number.isFinite(doc.data().nextFinancialCheckAt)) continue;
+      await this.db.runTransaction(async tx => {
+        const order = (await tx.get(doc.ref)).data();
+        if (order?.status === 'paid' && order.method === 'stripe' && order.total > 0 && !Number.isFinite(order.nextFinancialCheckAt))
+          tx.update(doc.ref, { nextFinancialCheckAt: Date.now() });
+      });
+    }
+    // One final pass after old 540-second runtimes have drained catches payments
+    // completed by the previous revision during the coordinated rollout.
+    const end = page.size < 100;
+    await ref.set({ after: end ? '' : page.docs.at(-1)!.id, done: end && !!state?.initialComplete,
+      initialComplete: !!state?.initialComplete || end,
+      verifyAfter: state?.verifyAfter || (end ? Date.now() + 20 * 60000 : 0), updatedAt: Date.now() });
+  }
+  async reconcileDueOrders(budget = this.workBudget()) {
+    const now = Date.now(), page = await this.db.collection('ticketingOrders').where('status', '==', 'paid')
+      .where('nextFinancialCheckAt', '<=', now).orderBy('nextFinancialCheckAt').limit(100).get();
+    let processed = 0, errors = 0;
+    for (const doc of page.docs) {
+      if (!budget.available) break;
+      try {
+        if (doc.data().method === 'stripe' && doc.data().total > 0) {
+          if (!await this.verifySession(doc.id)) throw new Error('Paid order has no checkout session.');
+        } else await doc.ref.update({ nextFinancialCheckAt: now + 7 * 86400000 });
+      } catch (error) {
+        errors++; await this.workerFailure(doc.ref, 'order', error);
+        // Do not postpone a concurrent successful verifier or newer webhook.
+        await this.db.runTransaction(async tx => {
+          if ((await tx.get(doc.ref)).data()?.nextFinancialCheckAt === doc.data().nextFinancialCheckAt)
+            tx.update(doc.ref, { nextFinancialCheckAt: Date.now() + 5 * 60000 });
+        });
+      }
+      processed++;
+    }
+    return { processed, errors, deferred: processed < page.size || page.size === 100 };
+  }
   async refreshHealth() {
-    const result = await collectHealth(this.db);
-    const ref = this.db.collection('ticketingHealth').doc('latest');
-    const previous = (await ref.get()).data();
-    await ref.set(result);
-    const actionable = (issues: any[] = []) => issues.filter(i => i.kind !== 'coverage').map(i => `${i.severity}:${i.id}`).sort();
-    const active = actionable(result.issues);
-    if (active.length && JSON.stringify(active) !== JSON.stringify(actionable(previous?.issues)))
-      (result.counts.critical ? logError : logWarning)('Ticketing needs operator attention', { event: 'ticketing-health-alert', criticalCount: result.counts.critical, warningCount: result.counts.warning, issueIds: active });
-    return result;
+    return await refreshHealthSnapshot(this.db, true) || fail('Health audit is already in progress. Try again shortly.', 503);
   }
   async health(uid: string, refresh = false) {
     await this.admin(uid);

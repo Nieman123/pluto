@@ -7,6 +7,13 @@ export const financialSchema = 1;
 export const financialKeys = ['orderCount', 'paidOrders', 'tickets', 'gross', 'discounts', 'tax', 'refunds', 'fees', 'pendingFees', 'reviews', 'cash', 'comps', 'revenueGross', 'legacyDates', 'missingDates', 'rsvpTotal', 'rsvpPending', 'rsvpApproved', 'rsvpDeclined', 'rsvpWithdrawn'] as const;
 const empty = () => Object.fromEntries(financialKeys.map(key => [key, 0])) as Record<string, number>;
 const amount = (value: any) => Number.isSafeInteger(value) ? value : 0;
+export function financialOrderNeedsWork(before: any, after: any) {
+  // Compare only financial inputs. The transaction still reads the CURRENT
+  // ledger, so delayed/duplicate deliveries cannot overwrite newer totals.
+  const signature = (order: any) => order ? JSON.stringify([order.eventId,
+    order.paidAt ?? null, order.createdAt ?? null, orderContribution(order, 'UTC')]) : '';
+  return signature(before) !== signature(after);
+}
 export function financialTotals(totals: Record<string, number>) {
   return { ...totals, provisional: totals.pendingFees > 0 || totals.reviews > 0, proceeds: totals.gross - totals.refunds - totals.tax - totals.fees };
 }

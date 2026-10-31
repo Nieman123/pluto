@@ -79,7 +79,7 @@ test('solo-maintainer production requires explicit selection and the triggering 
 });
 
 const deployment = { id: 42, sha, environment: 'staging', creator: { login: 'github-actions[bot]' }, payload: {
-  kind: 'pluto-validated-release', projectId: projects.staging, revision: sha, runId: '1234', runAttempt: '1' } };
+  kind: 'pluto-validated-release', projectId: projects.staging, revision: sha, workerMode: 'active', healthCpu: 'gcf_gen1', runId: '1234', runAttempt: '1' } };
 const completed = { path: '.github/workflows/release.yml', event: 'workflow_dispatch', head_branch: 'main', status: 'completed', conclusion: 'success' };
 function fakeApi(record = deployment, state = 'success', run = completed) {
   return async path => path.startsWith('/deployments?') ? [record] : path.includes('/statuses') ? [{ state }] : run;
@@ -89,6 +89,9 @@ test('production accepts only completed staging release evidence for the exact c
   const changes = [{ sha: 'b'.repeat(40) }, { environment: 'production' }, { creator: { login: 'someone' } },
     { payload: {} }, { payload: { ...deployment.payload, projectId: projects.production } }, { payload: { ...deployment.payload, revision: 'b'.repeat(40) } }];
   for (const change of changes) await assert.rejects(verifyStagingEvidence(fakeApi({ ...deployment, ...change }), { revision: sha }));
+  await assert.rejects(verifyStagingEvidence(fakeApi({ ...deployment, payload:{...deployment.payload,workerMode:'quiet'} }), { revision:sha,workerMode:'active' }));
+  assert.equal(await verifyStagingEvidence(fakeApi(), {revision:sha,workerMode:'active'}),42);
+  await assert.rejects(verifyStagingEvidence(fakeApi(), {revision:sha,workerMode:'active',healthCpu:'1'}));
   for (const state of ['failure', 'in_progress', 'inactive']) await assert.rejects(verifyStagingEvidence(fakeApi(deployment, state), { revision: sha }));
   for (const change of [{ status: 'in_progress' }, { conclusion: 'failure' }, { path: '.github/workflows/build.yml' }, { head_branch: 'native-ticketing' }, { event: 'pull_request' }]) {
     await assert.rejects(verifyStagingEvidence(fakeApi(deployment, 'success', { ...completed, ...change }), { revision: sha }));
@@ -151,7 +154,7 @@ test('release adds required indexes without forcing deletion of existing indexes
   const indexDeploys = deployments.filter(command => command.includes('firestore:indexes'));
   assert.equal(indexDeploys.length, 1); assert.match(indexDeploys[0], /--non-interactive/); assert.doesNotMatch(indexDeploys[0], /--force/);
   assert.ok(deployments.some(command => command.includes('functions:ticketingMaintenance') && command.includes('--force')));
-  for (const name of ['ticketingFinancialWorker', 'ticketingFinancialBackfillWorker', 'ticketingCampaignWorker', 'ticketingRecoveryWorker', 'ticketingCommunicationMaintenance', 'ticketingEmailMaintenance']) {
+  for (const name of ['ticketingFinancialWorker', 'ticketingFinancialBackfillWorker', 'ticketingCampaignWorker', 'ticketingRecoveryRequestWorker', 'ticketingCommunicationMaintenance', 'ticketingEmailMaintenance', 'ticketingHealthMaintenance']) {
     assert.ok(deployments.some(command => command.includes(`functions:${name}`)), `Release includes ${name}`);
   }
 });

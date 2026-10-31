@@ -1,4 +1,5 @@
 import { Waitlists } from './waitlists';
+import { expiringGrant } from './retention';
 import { email, fail, hash, integer, secret, text } from './domain';
 
 export class Support extends Waitlists {
@@ -43,7 +44,7 @@ export class Support extends Waitlists {
     await this.db.runTransaction(async tx => {
       const latest = (await tx.get(this.order(orderId))).data()!;
       tx.create(this.db.collection('ticketingRecovery').doc(hash(token)), { orderId, accessRevision: latest.accessRevision || 0,
-        expiresAt: Date.now() + 30 * 60000, used: false });
+        ...expiringGrant(Date.now() + 30 * 60000), used: false });
       tx.create(ref, { type: 'recovery', orderId, to: latest.email, token, accessRevision: latest.accessRevision || 0,
         status: 'pending', attempts: 0, createdAt: Date.now() });
       tx.create(this.event(latest.eventId).collection('audit').doc(), { action: 'support-access-resent', orderId, uid, note, at: Date.now() });

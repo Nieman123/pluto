@@ -1,5 +1,6 @@
 {
   "indexes": [
+    { "collectionGroup": "ticketingOrders", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "status", "order": "ASCENDING" }, { "fieldPath": "nextFinancialCheckAt", "order": "ASCENDING" }] },
     { "collectionGroup": "ticketingOrders", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "email", "order": "ASCENDING" }, { "fieldPath": "ownerUid", "order": "ASCENDING" }] },
     { "collectionGroup": "ticketingOrders", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "eventId", "order": "ASCENDING" }, { "fieldPath": "email", "order": "ASCENDING" }] },
     { "collectionGroup": "ticketingCampaigns", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "eventId", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" }] },
@@ -14,5 +15,23 @@
     { "collectionGroup": "ticketingOrders", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "eventId", "order": "ASCENDING" }, { "fieldPath": "method", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" }] },
     { "collectionGroup": "ticketingOrders", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "eventId", "order": "ASCENDING" }, { "fieldPath": "status", "order": "ASCENDING" }, { "fieldPath": "method", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" }] }
   ],
-  "fieldOverrides": []
+  "fieldOverrides": [
+    { "collectionGroup": "ticketingRateLimits", "fieldPath": "expiresAt", "ttl": true, "indexes": [] },
+    { "collectionGroup": "waiverRateLimits", "fieldPath": "expiresAt", "ttl": true, "indexes": [] },
+    { "collectionGroup": "ticketingNativeCheckouts", "fieldPath": "expiresAt", "ttl": true, "indexes": [
+      { "order": "ASCENDING", "queryScope": "COLLECTION" }, { "order": "DESCENDING", "queryScope": "COLLECTION" }
+    ] },
+    { "collectionGroup": "ticketingWalletDownloads", "fieldPath": "expiresAt", "ttl": true, "indexes": [] },
+    { "collectionGroup": "ticketingOfflineLeases", "fieldPath": "expiresAt", "ttl": true, "indexes": [] },
+    { "collectionGroup": "ticketingRsvpVerification", "fieldPath": "deleteAfter", "ttl": true, "indexes": [] },
+    { "collectionGroup": "ticketingRsvpUpgradeAccess", "fieldPath": "deleteAfter", "ttl": true, "indexes": [] },
+    { "collectionGroup": "ticketingRecovery", "fieldPath": "deleteAfter", "ttl": true, "indexes": [] },
+    { "collectionGroup": "ticketingAccess", "fieldPath": "deleteAfter", "ttl": true, "indexes": [] },
+    { "collectionGroup": "ticketingTransfers", "fieldPath": "deleteAfter", "ttl": true, "indexes": [] },
+    { "collectionGroup": "ticketingWaitlistTokens", "fieldPath": "deleteAfter", "ttl": true, "indexes": [] },
+    { "collectionGroup": "ticketingScannerSessions", "fieldPath": "deleteAfter", "ttl": true, "indexes": [] },
+    { "collectionGroup": "ticketingRecoveryRequests", "fieldPath": "deleteAfter", "ttl": true, "indexes": [] },
+    { "collectionGroup": "ticketingWebhookInbox", "fieldPath": "deleteAfter", "ttl": true, "indexes": [] },
+    { "collectionGroup": "ticketingEmailDelivery", "fieldPath": "deleteAfter", "ttl": true, "indexes": [] }
+  ]
 }

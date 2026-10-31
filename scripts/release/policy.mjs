@@ -23,7 +23,13 @@ export function releaseSettings(env) {
   if (mode === 'live' && env.RELEASE_LIVE_APPROVED !== 'true') throw new Error('Live payments require explicit approval after launch acceptance.');
   const approvalPolicy = env.DEPLOY_APPROVAL_POLICY || 'two-person';
   if (!['two-person', 'solo-maintainer'].includes(approvalPolicy)) throw new Error('Unknown production approval policy.');
-  return { environment, projectId, web, mode, approvalPolicy, revision: env.RELEASE_SHA,
+  const workerMode = environment === 'production' ? 'active' : env.DEPLOY_WORKER_MODE || 'quiet';
+  if (!['quiet', 'active'].includes(workerMode)) throw new Error('Unknown worker mode.');
+  // Keep a full CPU until the checked-in staging benchmark supports a change.
+  const workerCpu = '1';
+  const healthCpu = env.DEPLOY_HEALTH_CPU || 'gcf_gen1';
+  if (!['1','gcf_gen1'].includes(healthCpu)) throw new Error('Unknown health worker CPU.');
+  return { environment, projectId, web, mode, approvalPolicy, workerMode, workerCpu, healthCpu, revision: env.RELEASE_SHA,
     baseUrl: environment === 'staging' ? projects.stagingBaseUrl : projects.productionBaseUrl };
 }
 
@@ -69,6 +75,8 @@ export async function verifyStagingEvidence(api, settings) {
     const payload = deployment.payload || {};
     if (deployment.sha !== settings.revision || deployment.environment !== 'staging' || deployment.creator?.login !== 'github-actions[bot]' ||
         payload.kind !== 'pluto-validated-release' || payload.projectId !== projects.staging || payload.revision !== settings.revision ||
+        (settings.workerMode === 'active' && payload.workerMode !== 'active') ||
+        (settings.healthCpu && payload.healthCpu !== settings.healthCpu) ||
         !/^\d+$/.test(String(payload.runId || '')) || !/^\d+$/.test(String(payload.runAttempt || ''))) continue;
     const statuses = await api(`/deployments/${deployment.id}/statuses?per_page=1`);
     if (statuses[0]?.state !== 'success') continue;

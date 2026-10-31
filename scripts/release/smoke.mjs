@@ -11,6 +11,9 @@ for (const path of ['/__deployment', '/', '/events', '/past-events', '/privacy',
     assert.equal(identity.projectId, manifest.projectId); assert.equal(identity.environment, manifest.environment);
     assert.equal(identity.revision, manifest.revision); assert.equal(identity.paymentMode, manifest.mode);
   }
+  if (['/__deployment','/tickets/admin'].includes(path)) assert.match(response.headers.get('cache-control') || '', /no-store/);
+  if (path === '/') assert.match(response.headers.get('cache-control') || '', /public.*s-maxage=60/);
+  if (['/events','/past-events'].includes(path)) assert.equal(response.headers.get('cache-control'), 'public, max-age=0, s-maxage=60, must-revalidate');
   if (path === '/assets/firebase-public-config.js') {
     assert.ok(body.includes(`"projectId":"${manifest.projectId}"`));
     if (manifest.environment === 'staging') assert.ok(!body.includes('pluto-9b6ca'));

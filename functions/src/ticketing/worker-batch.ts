@@ -29,7 +29,7 @@ export async function processBatch(db: Firestore, collection: string, statuses: 
     // may repeat one record; existing provider/ledger idempotency makes it safe.
     await cursor.set({ after: doc.id, updatedAt: Date.now() });
   }
-  if (processed === batch.size && batch.size < size) await cursor.set({ after: '', updatedAt: Date.now() });
+  if (processed === batch.size && batch.size < size && (processed > 0 || state?.after)) await cursor.set({ after: '', updatedAt: Date.now() });
   if (failures) throw new Error(`${failures} ${collection} records need another recovery pass.`);
   return { processed, deferred: processed < batch.size || batch.size === size };
 }
@@ -38,6 +38,7 @@ export async function rotatingBatch(db: Firestore, collection: string, statuses:
   const cursor = db.collection('ticketingWorkerCursors').doc(`${collection}_${[...statuses].sort().join('_')}`), state = (await cursor.get()).data();
   const query = db.collection(collection).where('status', statuses.length === 1 ? '==' : 'in', statuses.length === 1 ? statuses[0] : statuses).orderBy(FieldPath.documentId()).limit(size);
   let batch = await (state?.after ? query.startAfter(state.after) : query).get(); if (batch.empty && state?.after) batch = await query.get();
-  await cursor.set({ after: batch.size === size ? batch.docs[batch.docs.length - 1].id : '', updatedAt: Date.now() });
+  const after = batch.size === size ? batch.docs[batch.docs.length - 1].id : '';
+  if (after !== (state?.after || '')) await cursor.set({ after, updatedAt: Date.now() });
   return batch;
 }

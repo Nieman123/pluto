@@ -21,6 +21,12 @@ import { discoveryEvents, activeAppEventCards } from './event-discovery';
 import { AccountDeletion } from '../account-deletion';
 import { NativeCheckout } from './native-checkout';
 
+// Availability is indicative for up to one minute; checkout always validates
+// inventory. Published artwork can remain cached for at most five minutes
+// after removal. Drafts, errors and all customer capabilities stay private.
+const publicEventCache = 'public, max-age=0, s-maxage=60, must-revalidate';
+const publicArtworkCache = 'public, max-age=300, s-maxage=300, must-revalidate';
+
 export function ticketingRouter(context: (path: string) => Record<string, unknown>, service = new Operations()) {
   const router = express.Router();
   const rewards = new Rewards(service.db);
@@ -29,7 +35,10 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   const deletion = new AccountDeletion(service.db);
   const nativeCheckout = new NativeCheckout(service);
   router.use((req, res, next) => {
-    res.set({ 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY',
+    // This router is mounted at the root. Do not disable the public site's CDN
+    // cache for unrelated routes that fall through to the homepage/rentals/etc.
+    if (/^\/(?:tickets|events|past-events|sitemap\.xml)(?:\/|$)/i.test(req.path)) res.set('Cache-Control', 'private, no-store');
+    res.set({ 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY',
       'Content-Security-Policy': "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'" });
     if (req.path.startsWith('/tickets')) res.set('X-Robots-Tag', 'noindex, nofollow');
     next();
@@ -94,12 +103,12 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
     const events = discoveryEvents((await service.db.collection('publishedEvents').get()).docs.map(d => d.data()), past).map(e => ({ ...e,
       dateLabel: new Intl.DateTimeFormat('en-US', { timeZone: e.timezone, month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(e.startAt)),
       saleLabel: e.status === 'cancelled' ? 'Cancelled' : past ? 'Past event' : e.registrationMode === 'free' ? 'Free entry · Just show up' : e.registrationMode === 'rsvp-approval' ? 'Request RSVP' : e.registrationMode === 'rsvp' ? 'RSVP now' : 'Explore & get tickets' }));
-    res.render('native-events', { ...context(path), meta: { title: `${past ? 'Past' : 'Upcoming'} events | Pluto Events`, description: 'Dance music, community and late nights with Pluto Events.', canonical: `${baseUrl()}${path}` }, events, past });
+    res.set('Cache-Control', publicEventCache).render('native-events', { ...context(path), meta: { title: `${past ? 'Past' : 'Upcoming'} events | Pluto Events`, description: 'Dance music, community and late nights with Pluto Events.', canonical: `${baseUrl()}${path}` }, events, past });
   });
   router.get('/sitemap.xml', async (_req, res) => {
     const events = (await service.db.collection('publishedEvents').get()).docs.map(d => `/events/${d.data().slug}`);
     const routes = ['/', '/manafest', '/links', '/rentals', '/events', '/past-events', '/privacy', '/terms', '/delete-account', ...events];
-    res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${routes.map(path => `<url><loc>${baseUrl()}${path}</loc></url>`).join('')}</urlset>`);
+    res.set('Cache-Control', publicEventCache).type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${routes.map(path => `<url><loc>${baseUrl()}${path}</loc></url>`).join('')}</urlset>`);
   });
   async function renderEvent(event: any, req: Request, res: Response, preview = false) {
     const media = (m: any) => m ? { ...m, url: `/events/${event.slug}/media/${m.assetId}` } : null;
@@ -132,17 +141,19 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
       // Authenticated previews carry sanitized embedded images, never public draft URLs.
       for (const m of [mapped.hero, mapped.flyer, ...mapped.gallery, ...mapped.lineup.map((a: any) => a.image)].filter(Boolean)) m.url = `data:image/webp;base64,${(await service.media(event.id, m.assetId, res.locals.actor.uid)).toString('base64')}`;
       res.json({ html: res.app.get('nunjucksEnv').render('native-event.njk', view) });
-    } else res.render('native-event', view);
+    } else res.set('Cache-Control', publicEventCache).render('native-event', view);
   }
   router.get('/events/:slug/media/:assetId', async (req, res) => {
     const slug = (await service.db.collection('eventSlugs').doc(id(req.params.slug)).get()).data(); if (!slug) fail('Image not found.', 404);
-    res.type('webp').send(await service.media(slug.eventId, id(req.params.assetId)));
+    const artwork = await service.media(slug.eventId, id(req.params.assetId));
+    res.set('Cache-Control', publicArtworkCache).type('webp').send(artwork);
   });
   router.get('/events/:slug/calendar.ics', async (req, res) => {
     const slug = (await service.db.collection('eventSlugs').doc(id(req.params.slug)).get()).data();
     const event = slug ? (await service.db.collection('publishedEvents').doc(slug.eventId).get()).data() : null;
     if (!event) fail('Event not found.', 404);
-    res.type('text/calendar; charset=utf-8').set('Content-Disposition', 'inline; filename="pluto-event.ics"').send(eventCalendar(event as any, baseUrl()));
+    const calendar = eventCalendar(event as any, baseUrl());
+    res.set('Cache-Control', publicEventCache).type('text/calendar; charset=utf-8').set('Content-Disposition', 'inline; filename="pluto-event.ics"').send(calendar);
   });
   router.get('/events/:slug', async (req, res) => {
     const slug = (await service.db.collection('eventSlugs').doc(id(req.params.slug)).get()).data(); if (!slug) fail('Event not found.', 404);
@@ -334,7 +345,8 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   router.post('/tickets/api/staff/manifest', async (req, res) => res.json(await service.manifest(bodyId(req), admissionIdentity(req, res))));
   router.post('/tickets/api/staff/scan-review', async (req, res) => res.json(await service.reviewScan(bodyId(req), req.body.scanId, req.body.note, admissionIdentity(req, res))));
   router.use((error: any, req: Request, res: Response, next: express.NextFunction) => {
-    if (!req.path.startsWith('/tickets') && !req.path.startsWith('/events')) return next(error);
+    if (!/^\/(?:tickets|events|past-events|sitemap\.xml)(?:\/|$)/i.test(req.path)) return next(error);
+    res.set('Cache-Control', 'private, no-store');
     const status = error instanceof TicketingError ? error.status : error.type === 'entity.too.large' ? 413 : error.type === 'entity.parse.failed' ? 400 : 503;
     if (status === 503) console.error('Ticketing request failed', { kind: error.name || 'unavailable', code: error.code || '' });
     if (req.path.includes('/api') || req.path.endsWith('/webhook')) res.status(status).json({ error: error instanceof TicketingError ? error.message : 'This request could not be confirmed. Keep this page open and retry.', ...(error instanceof TicketingError && error.code ? { code: error.code } : {}) });

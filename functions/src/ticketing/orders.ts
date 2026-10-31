@@ -20,6 +20,8 @@ import { approvedRsvpParent, assertRsvpPayment } from './rsvp-upgrade';
 import { plutoCheckoutBranding } from './checkout-branding';
 import { assertVenueRegistration, prepareVenueTax } from './venue-tax';
 import { checkInRewardPoints, prepareCheckInRewards } from './check-in-rewards';
+import { nextFinancialCheckAt } from './cost-policy';
+import { expiringGrant } from './retention';
 
 export interface Order {
   eventId: string; eventTitle: string; eventSlug: string; ownerUid: string; email: string; name: string; accessHash: string; inputHash: string;
@@ -27,6 +29,7 @@ export interface Order {
   tax: EventDraft['tax']; currency: string; livemode: boolean; createdAt: number; expiresAt: number; promoterId: string;
   sessionId?: string; clientSecret?: string; paymentIntentId?: string; receiptUrl?: string; stripeFee?: number | null; taxAmount?: number;
   stripeFeeStatus?: 'pending' | 'confirmed'; financialBlocked?: boolean; financialCheckId?: string; financialReviewReason?: string;
+  nextFinancialCheckAt?: number;
   providerState?: string; provisioningLeaseUntil?: number; provisioningAttemptId?: string; expiredAt?: number;
   checkoutBranding?: Stripe.Checkout.SessionCreateParams.BrandingSettings;
   nativeApp?: boolean;
@@ -361,7 +364,7 @@ export class Orders extends Catalog {
       const checkId = randomUUID();
       // Fail closed while the provider's financial state is checked, including before first issuance.
       // A newer verifier owns the fence; a delayed worker cannot clear its hold.
-      await this.order(orderId).update({ financialCheckId: checkId, financialCheckStartedAt: Date.now(), financialBlocked: true });
+      await this.order(orderId).update({ financialCheckId: checkId, financialCheckStartedAt: Date.now(), financialBlocked: true, nextFinancialCheckAt: Date.now() + 5 * 60000 });
       const refunds = await this.stripe().refunds.list({ payment_intent: paymentIntentId, limit: 100 });
       const disputes = await this.stripe().disputes.list({ payment_intent: paymentIntentId, limit: 100 });
       const feeKnown = !!balance && Number.isSafeInteger(balance.fee) && balance.fee >= 0 && balance.currency === 'usd';
@@ -377,7 +380,10 @@ export class Orders extends Catalog {
         const dispute = disputes.data.find(d => !['won', 'warning_closed'].includes(d.status));
         const unresolved = refunds.data.some(r => !['failed', 'canceled'].includes(r.status || '') && (r.status !== 'succeeded' || !settled.has(r.id)));
         const reason = dispute ? 'Payment dispute requires staff review.' : refunds.has_more || disputes.has_more ? 'Payment history exceeds the automatic review limit.' : unresolved ? 'A provider refund is pending or needs ticket mapping.' : '';
-        tx.update(ref, { financialBlocked: !!reason, financialReviewReason: reason, financialReconciledAt: Date.now(), disputeId: dispute?.id || '', disputeStatus: dispute?.status || '' });
+        const reconciledAt = Date.now();
+        tx.update(ref, { financialBlocked: !!reason, financialReviewReason: reason, financialReconciledAt: reconciledAt,
+          nextFinancialCheckAt: nextFinancialCheckAt({ ...current, financialBlocked: !!reason, financialReviewReason: reason }, reconciledAt),
+          disputeId: dispute?.id || '', disputeStatus: dispute?.status || '' });
       });
     } else if (session.status === 'expired') await this.release(orderId);
     else if (session.status === 'complete') {
@@ -404,7 +410,9 @@ export class Orders extends Catalog {
         ...(order.rsvpOrderId ? { rsvpOrderId: order.rsvpOrderId, rsvpTicketId: order.rsvpTicketId, rsvpTicketVersion: order.rsvpTicketVersion } : {}),
         ownerUid: order.ownerUid, holderEmail: (order as any).accountDeletedAt ? '' : order.email, holderName: (order as any).accountDeletedAt ? 'Deleted account' : order.name,
         ...((order as any).accountDeletedAt ? { accountDeletedAt: (order as any).accountDeletedAt } : {}), transferCutoff: order.transferCutoff || unit.validFrom, version: 1, status: 'valid', admission: null, refunded: false, index }));
-      tx.update(ref, { status: 'paid', paidAt: Date.now(), stripeFee: null, stripeFeeStatus: 'pending', ...payment, ...(verifiedUnits ? { units: verifiedUnits } : {}), clientSecret: null });
+      tx.update(ref, { status: 'paid', paidAt: Date.now(), stripeFee: null, stripeFeeStatus: 'pending', ...payment,
+        ...(order.method === 'stripe' && order.total > 0 ? { nextFinancialCheckAt: Date.now() + 5 * 60000 } : {}),
+        ...(verifiedUnits ? { units: verifiedUnits } : {}), clientSecret: null });
       tx.set(this.db.collection('ticketingEmailJobs').doc(`receipt_${orderId}`), { type: 'receipt', orderId, to: order.email, status: 'pending', createdAt: Date.now(), attempts: 0 });
     });
   }
@@ -547,7 +555,7 @@ export class Orders extends Catalog {
       if (doc.data().accountDeletedAt) continue;
       const token = secret();
       const batch = this.db.batch();
-      batch.set(this.db.collection('ticketingRecovery').doc(hash(token)), { orderId: doc.id, accessRevision: doc.data().accessRevision || 0, expiresAt: Date.now() + 30 * 60000, used: false });
+      batch.set(this.db.collection('ticketingRecovery').doc(hash(token)), { orderId: doc.id, accessRevision: doc.data().accessRevision || 0, ...expiringGrant(Date.now() + 30 * 60000), used: false });
       batch.set(this.db.collection('ticketingEmailJobs').doc(`recovery_${hash(token)}`), { type: 'recovery', orderId: doc.id, to: target, token, status: 'pending', attempts: 0, createdAt: Date.now() });
       await batch.commit();
     }
@@ -559,7 +567,7 @@ export class Orders extends Catalog {
       const record = (await tx.get(ref)).data(); if (!record || record.used || record.expiresAt < Date.now()) fail('This recovery link is expired or already used.', 403);
       const order = (await tx.get(this.order(record.orderId))).data();
       if (!order || order.accountDeletedAt || (record.accessRevision || 0) !== (order.accessRevision || 0)) fail('This order link was replaced. Request a new recovery email.', 403);
-      tx.update(ref, { used: true }); tx.create(this.db.collection('ticketingAccess').doc(hash(accessKey)), { orderId: record.orderId, accessRevision: order.accessRevision || 0, expiresAt: Date.now() + 24 * 3600000 });
+      tx.update(ref, { used: true }); tx.create(this.db.collection('ticketingAccess').doc(hash(accessKey)), { orderId: record.orderId, accessRevision: order.accessRevision || 0, ...expiringGrant(Date.now() + 24 * 3600000) });
       return record.orderId;
     });
     return { orderId, accessKey };
@@ -586,7 +594,7 @@ export class Orders extends Catalog {
       const ticket = (await tx.get(ticketRef)).data();
       if ((await tx.get(this.order(orderId))).data()?.financialBlocked) fail('Payment needs staff review before transferring.', 409);
       if (!ticket || ticket.rsvp || ticket.rsvpOrderId || ticket.orderId !== orderId || !(holderAccess && ticket.version === heldTicket.version || ticket.ownerUid === actor?.uid || ticket.holderEmail === order.email) || ticket.status !== 'valid' || ticket.admission || event.status === 'cancelled' || Date.now() >= this.transferDeadline(ticket, event)) fail('This ticket cannot be transferred.', 409);
-      tx.create(this.db.collection('ticketingTransfers').doc(hash(token)), { ticketId: ticketKey, orderId, email: targetEmail, ticketVersion: ticket.version, expiresAt: this.transferDeadline(ticket, event), accepted: false });
+      tx.create(this.db.collection('ticketingTransfers').doc(hash(token)), { ticketId: ticketKey, orderId, email: targetEmail, ticketVersion: ticket.version, ...expiringGrant(this.transferDeadline(ticket, event)), accepted: false });
       tx.set(this.db.collection('ticketingEmailJobs').doc(`transfer_${hash(token)}`), { type: 'transfer', to: targetEmail, token, orderId, status: 'pending', attempts: 0, createdAt: Date.now() });
     });
     return { queued: true };

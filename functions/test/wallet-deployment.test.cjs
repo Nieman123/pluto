@@ -4,6 +4,18 @@ const { spawnSync } = require('node:child_process');
 const { resolve } = require('node:path');
 
 const ticketingSecrets = ['RESEND_API_KEY', 'STRIPE_RESTRICTED_KEY', 'STRIPE_WEBHOOK_SECRET', 'TICKETING_SIGNING_KEY'];
+const workerSecrets = {
+  ticketingWebhookWorker: ['STRIPE_RESTRICTED_KEY'], ticketingMaintenance: ['STRIPE_RESTRICTED_KEY'],
+  ticketingEmailWorker: ['RESEND_API_KEY', 'STRIPE_RESTRICTED_KEY'],
+  ticketingEmailMaintenance: ['RESEND_API_KEY', 'STRIPE_RESTRICTED_KEY'],
+  ticketingRecoveryRequestWorker: ['RESEND_API_KEY', 'STRIPE_RESTRICTED_KEY'],
+  ticketingCampaignWorker: [], ticketingCommunicationMaintenance: [], ticketingHealthMaintenance: [],
+  ticketingFinancialWorker: [], ticketingFinancialBackfillWorker: [],
+};
+function checkWorkers(manifest) {
+  for (const [endpoint, secrets] of Object.entries(workerSecrets)) assert.deepEqual(manifest.endpoints[endpoint], secrets, endpoint);
+  assert.equal(manifest.endpoints.ticketingRecoveryWorker, undefined);
+}
 
 function discover(walletFlag, deliveryFlag, rotationFlag) {
   const env = { ...process.env, GCLOUD_PROJECT: 'pluto-staging-92eb7', PLUTO_ENVIRONMENT: 'staging',
@@ -44,20 +56,17 @@ test('Firebase discovery does not require wallet credentials when wallet exports
   for (const flag of ['false', undefined]) {
     const manifest = discover(flag);
     assert.deepEqual(manifest.params, ticketingSecrets);
-    for (const endpoint of ['ticketingFinancialWorker', 'ticketingFinancialBackfillWorker']) assert.deepEqual(manifest.endpoints[endpoint], [], `${endpoint} requires no payment/email credentials`);
-    for (const endpoint of ['publicSite', 'ticketingWebhookWorker', 'ticketingEmailWorker', 'ticketingCampaignWorker', 'ticketingRecoveryWorker', 'ticketingMaintenance', 'ticketingCommunicationMaintenance', 'ticketingEmailMaintenance']) {
-      assert.deepEqual(manifest.endpoints[endpoint], ticketingSecrets);
-    }
+    checkWorkers(manifest);
+    assert.deepEqual(manifest.endpoints.publicSite, ticketingSecrets);
   }
 });
 
-test('rotation discovery binds both optional migration secrets to every ticketing runtime', () => {
+test('rotation discovery binds optional migration secrets only to the credential-serving runtime', () => {
   const manifest = discover('false', undefined, 'true');
   const withRotation = [...ticketingSecrets, 'TICKETING_VERIFICATION_KEYRING', 'TICKETING_SCANNER_PIN_KEYS'].sort();
   assert.deepEqual(manifest.params, withRotation);
-  for (const [endpoint, secrets] of Object.entries(manifest.endpoints)) {
-    if (endpoint === 'publicSite' || endpoint.startsWith('ticketing') && !endpoint.startsWith('ticketingFinancial')) assert.deepEqual(secrets, withRotation, endpoint);
-  }
+  assert.deepEqual(manifest.endpoints.publicSite, withRotation);
+  checkWorkers(manifest);
 });
 
 test('Firebase discovery requires enabled wallet credentials only on the public site function', () => {
@@ -65,12 +74,10 @@ test('Firebase discovery requires enabled wallet credentials only on the public 
   const withWallet = [...ticketingSecrets, 'TICKETING_WALLET_CREDENTIALS'].sort();
   assert.deepEqual(manifest.params, withWallet);
   assert.deepEqual(manifest.endpoints.publicSite, withWallet);
-  for (const endpoint of ['ticketingWebhookWorker', 'ticketingEmailWorker', 'ticketingCampaignWorker', 'ticketingRecoveryWorker', 'ticketingMaintenance', 'ticketingCommunicationMaintenance', 'ticketingEmailMaintenance']) {
-    assert.deepEqual(manifest.endpoints[endpoint], ticketingSecrets);
-  }
+  checkWorkers(manifest);
 });
 test('Resend webhook secret is declared only when delivery tracking is enabled', () => {
   const manifest = discover('false', 'true'), withDelivery = [...ticketingSecrets, 'RESEND_WEBHOOK_SECRET'].sort();
   assert.deepEqual(manifest.params, withDelivery); assert.deepEqual(manifest.endpoints.publicSite, withDelivery);
-  for (const endpoint of ['ticketingWebhookWorker', 'ticketingEmailWorker', 'ticketingCampaignWorker', 'ticketingRecoveryWorker', 'ticketingMaintenance', 'ticketingCommunicationMaintenance', 'ticketingEmailMaintenance']) assert.deepEqual(manifest.endpoints[endpoint], ticketingSecrets);
+  checkWorkers(manifest);
 });

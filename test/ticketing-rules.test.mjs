@@ -4,8 +4,10 @@ import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebas
 import { doc, getDoc, getDocs, setDoc, deleteDoc, collection } from 'firebase/firestore';
 import { ref, getBytes, uploadBytes, deleteObject } from 'firebase/storage';
 let env;
+// Durable recovery requests must be writable only by trusted server code.
 const privateCollections = ['ticketingEvents', 'ticketingOrders', 'ticketingTickets', 'ticketingTransfers', 'ticketingHolderAccess', 'ticketingRecovery', 'ticketingAccess', 'ticketingRefunds', 'ticketingStaff', 'ticketingEmailJobs', 'ticketingWebhookInbox', 'ticketingScannerPins', 'ticketingScannerPinLookup', 'ticketingScannerSessions', 'ticketingOfflineLeases', 'ticketingRateLimits', 'ticketingWalletDownloads', 'ticketingNativeCheckouts', 'ticketingHealth', 'ticketingHealthAudit', 'ticketingEmailDelivery', 'ticketingRsvpVerification', 'ticketingRsvpUpgradeAccess', 'ticketingCampaigns', 'ticketingWaitlist', 'ticketingWaitlistTokens', 'ticketingWorkerCursors', 'ticketingFinancialSummaries', 'ticketingOrderSummaries', 'ticketingFinancialBackfills', 'ticketingTaxLocations', 'ticketingTaxProducts'];
 before(async () => {
+  privateCollections.push('ticketingRecoveryRequests');
   if (!process.env.FIRESTORE_EMULATOR_HOST || !process.env.FIREBASE_STORAGE_EMULATOR_HOST) throw new Error('Local emulators required');
   env = await initializeTestEnvironment({ projectId: 'demo-pluto-ticketing', firestore: { host: '127.0.0.1', port: Number(process.env.FIRESTORE_EMULATOR_HOST.split(':').pop()), rules: await readFile('firestore.rules', 'utf8') }, storage: { host: '127.0.0.1', port: Number(process.env.FIREBASE_STORAGE_EMULATOR_HOST.split(':').pop()), rules: await readFile('storage.rules', 'utf8') } });
   await env.withSecurityRulesDisabled(async c => {

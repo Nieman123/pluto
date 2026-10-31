@@ -1,6 +1,7 @@
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import { FieldPath } from 'firebase-admin/firestore';
 import { Rsvps } from './rsvps';
+import { expiringGrant } from './retention';
 import { cart, email, fail, hash, id, integer, receipt, secret, text, type EventDraft } from './domain';
 import { currentWaitlistOffer, waitlistEligible } from './waitlist-hold';
 import { processBatch, WorkBudget } from './worker-batch';
@@ -83,7 +84,7 @@ export class Waitlists extends Rsvps {
       const attempt = (entry.offerAttempt || 0) + 1;
       pools.forEach(pool => tx.update(pool.ref, { held: pool.data()!.held + priced.consumption[pool.id] }));
       tx.update(ref, { status: 'offered', consumption: priced.consumption, offerHash: hash(JSON.stringify(priced)), inviteHash: hash(token), offerExpiresAt, offeredAt: now, offerAttempt: attempt, registrationMode: draft.registrationMode });
-      tx.create(this.db.collection('ticketingWaitlistTokens').doc(hash(token)), { entryId, expiresAt: offerExpiresAt });
+      tx.create(this.db.collection('ticketingWaitlistTokens').doc(hash(token)), { entryId, ...expiringGrant(offerExpiresAt) });
       tx.create(this.db.collection('ticketingEmailJobs').doc(`waitlist_${entryId}_${attempt}`), { type: 'waitlist-offer', eventId: entry.eventId, entryId, token, to: entry.email, offerExpiresAt, status: 'pending', attempts: 0, createdAt: now });
       return true;
     });
