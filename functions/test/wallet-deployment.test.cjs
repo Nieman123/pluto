@@ -14,6 +14,9 @@ const workerSecrets = {
 };
 function checkWorkers(manifest) {
   for (const [endpoint, secrets] of Object.entries(workerSecrets)) assert.deepEqual(manifest.endpoints[endpoint], secrets, endpoint);
+  // An omitted field leaves legacy cloud bindings unchanged during updates.
+  for (const endpoint of ['ticketingCampaignWorker', 'ticketingCommunicationMaintenance'])
+    assert.deepEqual(manifest.explicitSecrets[endpoint], [], `${endpoint} must explicitly clear old secrets`);
   assert.equal(manifest.endpoints.ticketingRecoveryWorker, undefined);
 }
 
@@ -44,6 +47,8 @@ function discover(walletFlag, deliveryFlag, rotationFlag) {
     const { loadStack } = require(join(dirname(require.resolve('firebase-functions/params')), '..', 'runtime', 'loader.js'));
     loadStack(process.cwd()).then(stack => process.stdout.write(JSON.stringify({
       params: (stack.params || []).map(param => param.name).sort(),
+      explicitSecrets: Object.fromEntries(Object.entries(stack.endpoints).map(([name, endpoint]) =>
+        [name, endpoint.secretEnvironmentVariables])),
       endpoints: Object.fromEntries(Object.entries(stack.endpoints).map(([name, endpoint]) =>
         [name, (endpoint.secretEnvironmentVariables || []).map(secret => secret.key).sort()]))
     }), () => process.exit(0))).catch(error => { console.error(error.message); process.exit(1); });
