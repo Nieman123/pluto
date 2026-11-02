@@ -27,7 +27,8 @@ export const ticketingEmailWorker = onDocumentCreated({ ...serial, document: 'ti
   deploymentConfig();
   await new Operations().emailJob(event.params.jobId);
 });
-export const ticketingCampaignWorker = onDocumentWritten({ ...serial, document: 'ticketingCampaigns/{campaignId}', retry: true, timeoutSeconds: 120, maxInstances: 3 }, async event => {
+// Explicitly clear legacy bindings; omitting secrets preserves deployed values.
+export const ticketingCampaignWorker = onDocumentWritten({ ...serial, secrets: [], document: 'ticketingCampaigns/{campaignId}', retry: true, timeoutSeconds: 120, maxInstances: 3 }, async event => {
   if (!campaignNeedsWork(event.data?.before.data(), event.data?.after.data())) return;
   deploymentConfig();
   await new Operations().campaignPage(event.params.campaignId);
@@ -42,7 +43,7 @@ export const ticketingMaintenance = onSchedule({ ...recoveryOptions, secrets: pa
   deploymentConfig();
   console.info('Ticketing payment recovery', await new Operations().maintenance('payments'));
 });
-export const ticketingCommunicationMaintenance = onSchedule({ ...recoveryOptions, schedule: policy.recoverySchedule }, async () => {
+export const ticketingCommunicationMaintenance = onSchedule({ ...recoveryOptions, secrets: [], schedule: policy.recoverySchedule }, async () => {
   deploymentConfig();
   console.info('Ticketing communication recovery', await new Operations().maintenance('communications'));
 });
