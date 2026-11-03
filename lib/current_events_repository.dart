@@ -130,20 +130,17 @@ Uint8List? decodeFlyerDataUrl(String dataUrl) {
 }
 
 class CurrentEventsRepository {
-  CurrentEventsRepository(
-      {FirebaseFirestore? firestore,
-      http.Client? client,
-      Uri? baseUri,
-      DateTime Function()? now,
-      Future<String?> Function()? tokenProvider,
-      Future<bool> Function()? reviewEnrollment,
-      this.refreshInterval = const Duration(minutes: 1)})
-      : _providedFirestore = firestore,
-        _get = client?.get ?? http.get,
-        _baseUri = baseUri,
-        _tokenProvider = tokenProvider,
-        _reviewEnrollment = reviewEnrollment,
-        _now = now ?? DateTime.now;
+  CurrentEventsRepository({
+    FirebaseFirestore? firestore,
+    http.Client? client,
+    this._baseUri,
+    DateTime Function()? now,
+    this._tokenProvider,
+    this._reviewEnrollment,
+    this.refreshInterval = const Duration(minutes: 1),
+  }) : _providedFirestore = firestore,
+       _get = client?.get ?? http.get,
+       _now = now ?? DateTime.now;
 
   final Future<String?> Function()? _tokenProvider;
   final Future<bool> Function()? _reviewEnrollment;
