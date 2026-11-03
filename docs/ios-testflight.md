@@ -1,7 +1,7 @@
 # iOS builds and TestFlight from GitHub Actions
 
 You do not need a local Mac. **iOS TestFlight** uses a GitHub macOS runner with
-Xcode 26.3, the iOS 26 SDK and Flutter 3.47.5 to build, sign, verify and upload
+Xcode 26.3, the iOS 26 SDK and Flutter 3.47.8 to build, sign, verify and upload
 an iPhone/iPad `.ipa`. Uploads become available in App Store Connect after
 Apple processes them; choose the processed build for TestFlight or your App
 Review submission. This workflow does not submit or publish an App Store release.

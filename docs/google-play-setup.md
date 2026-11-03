@@ -40,7 +40,7 @@ Its Web application OAuth client supplies `PLUTO_GOOGLE_SERVER_CLIENT_ID`.
 
 ## Install the staging development build
 
-Use Flutter 3.47.5, JDK 21, Android command-line tools, Android platform 36 and
+Use Flutter 3.47.8 with Dart 3.13.7, JDK 21, Android command-line tools, Android platform 36 and
 build-tools 36.0.0. Review and accept the SDK licenses. This machine's isolated
 SDK/JDK live under ignored `tmp/`; the generated debug keystore is also ignored.
 Never delete that keystore casually: a new debug certificate needs Firebase and
