@@ -5,7 +5,7 @@ const { resolve } = require('node:path');
 
 const ticketingSecrets = ['RESEND_API_KEY', 'STRIPE_RESTRICTED_KEY', 'STRIPE_WEBHOOK_SECRET', 'TICKETING_SIGNING_KEY'];
 const workerSecrets = {
-  ticketingWebhookWorker: ['STRIPE_RESTRICTED_KEY'], ticketingMaintenance: ['STRIPE_RESTRICTED_KEY'],
+  ticketingWebhookWorker: ['STRIPE_RESTRICTED_KEY'], ticketingMaintenance: ['STRIPE_RESTRICTED_KEY'], ticketingCheckoutExpiry: ['STRIPE_RESTRICTED_KEY'],
   ticketingEmailWorker: ['RESEND_API_KEY', 'STRIPE_RESTRICTED_KEY'],
   ticketingEmailMaintenance: ['RESEND_API_KEY', 'STRIPE_RESTRICTED_KEY'],
   ticketingRecoveryRequestWorker: ['RESEND_API_KEY', 'STRIPE_RESTRICTED_KEY'],

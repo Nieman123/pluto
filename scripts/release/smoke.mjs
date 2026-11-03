@@ -3,7 +3,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { smokeRequest } from './smoke-request.mjs';
 const manifest = JSON.parse(await readFile('tmp/release/manifest.json', 'utf8'));
 const results = [];
-for (const path of ['/__deployment', '/', '/events', '/past-events', '/privacy', '/terms', '/delete-account', '/tickets/admin', '/app/', '/assets/firebase-public-config.js', '/firebase-messaging-sw.js']) {
+for (const path of ['/__deployment', '/', '/events', '/past-events', '/privacy', '/terms', '/delete-account', '/tickets/admin', '/tickets/api/public/event-feed', '/tickets/api/public/events', '/app/', '/assets/firebase-public-config.js', '/firebase-messaging-sw.js']) {
   const { response, body, attempts } = await smokeRequest(manifest.baseUrl, path, manifest.revision);
   if (manifest.environment === 'staging') assert.match(response.headers.get('x-robots-tag') || '', /noindex/);
   if (path === '/__deployment') {
@@ -13,7 +13,9 @@ for (const path of ['/__deployment', '/', '/events', '/past-events', '/privacy',
   }
   if (['/__deployment','/tickets/admin'].includes(path)) assert.match(response.headers.get('cache-control') || '', /no-store/);
   if (path === '/') assert.match(response.headers.get('cache-control') || '', /public.*s-maxage=60/);
-  if (['/events','/past-events'].includes(path)) assert.equal(response.headers.get('cache-control'), 'public, max-age=0, s-maxage=60, must-revalidate');
+  if (['/events','/past-events','/tickets/api/public/event-feed'].includes(path)) assert.equal(response.headers.get('cache-control'), 'public, max-age=0, s-maxage=60, must-revalidate');
+  if (path === '/tickets/api/public/events') assert.match(response.headers.get('cache-control') || '', /private.*no-store/);
+  if (path === '/tickets/api/public/event-feed') assert.ok(JSON.parse(body).events.every(event => !event.demo));
   if (path === '/assets/firebase-public-config.js') {
     assert.ok(body.includes(`"projectId":"${manifest.projectId}"`));
     if (manifest.environment === 'staging') assert.ok(!body.includes('pluto-9b6ca'));

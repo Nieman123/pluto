@@ -13,7 +13,7 @@ export function initCheckout() {
   const openTickets = orderId => { location.href = checkoutDestination(orderId, nativeApp); };
   if (nativeApp) form.querySelector('a[href="/app/tickets"]')?.setAttribute('href', `${config.nativeAppScheme}://tickets`);
   const initiallyClosed = form.querySelector('[type=submit]').disabled;
-  let checkout, result, frozen, countdown, checkingSaved = false;
+  let checkout, result, frozen, countdown, checkingSaved = false, closing = false;
   let account = null, profileName = '';
   const nativeContext = !!handoff && nativeApp;
   let nativePending = nativeContext;
@@ -112,14 +112,24 @@ export function initCheckout() {
     if (freeRsvp(frozen) || result.status === 'paid') { localStorage.removeItem(storageKey); openTickets(result.orderId); return; }
     if (['expired', 'cancelled'].includes(result.status)) { localStorage.removeItem(storageKey); frozen = null; lockCart(); throw new Error('The previous reservation has closed. Choose your tickets again.'); }
     document.querySelector('#checkout-cancel').hidden = false;
+    if (result.expiresAt <= Date.now()) { await closeReservation(); return; }
     if (!result.clientSecret || !result.publishableKey) throw new Error('Payment setup is incomplete. Your cart is saved; retry once checkout is configured.');
     if (!window.Stripe) await new Promise((resolve, reject) => { const script = document.createElement('script'); script.src = 'https://js.stripe.com/endive/stripe.js'; script.onload = resolve; script.onerror = () => reject(new Error('The payment form could not load. Check your connection and retry.')); document.head.append(script); });
-    checkout = await window.Stripe(result.publishableKey).createEmbeddedCheckoutPage({ fetchClientSecret: async () => result.clientSecret,
-      onComplete: () => { clearSavedCart(); openTickets(result.orderId); } });
+    const current = result;
+    const embedded = await window.Stripe(current.publishableKey).createEmbeddedCheckoutPage({ fetchClientSecret: async () => current.clientSecret,
+      onComplete: () => { if (frozen === request) { clearSavedCart(); openTickets(current.orderId); } } });
+    if (frozen !== request || closing) { embedded.destroy(); return; }
+    if (current.expiresAt <= Date.now()) { embedded.destroy(); await closeReservation(); return; }
+    checkout = embedded;
     checkout.mount('#stripe-checkout'); form.hidden = true; document.querySelector('#checkout-cancel').hidden = false;
     document.querySelector('.native-event').classList.add('checkout-active'); document.querySelector('.native-layout').classList.add('checkout-active');
     document.querySelector('#tickets').scrollIntoView({ block: 'start' }); message('Complete your payment below. Your tickets will appear in the Pluto app.');
-    countdown = setInterval(() => { const remaining = Math.max(0, Math.ceil((result.expiresAt - Date.now()) / 1000)); document.querySelector('#checkout-countdown').textContent = remaining ? `Ticket reservation: ${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}` : 'Reservation expired. Refresh to choose tickets again.'; }, 1000);
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((current.expiresAt - Date.now()) / 1000));
+      document.querySelector('#checkout-countdown').textContent = remaining ? `Ticket reservation: ${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}` : 'Reservation ended. Checking payment status…';
+      if (!remaining) closeReservation().catch(error => message(error.message));
+    };
+    countdown = setInterval(tick, 1000); tick();
   }
   form.addEventListener('submit', event => {
     event.preventDefault(); if (config.preview || config.status !== 'published') return;
@@ -142,11 +152,20 @@ export function initCheckout() {
       lockCart(); message(freeRsvp(frozen) ? 'Submitting your RSVP…' : 'Preparing your reserved checkout…'); await mount(frozen);
     });
   });
-  bind('#checkout-cancel', async () => {
-    const closed = await api('cancel', { orderId: result.orderId, accessKey: frozen.accessKey });
-    if (closed.status === 'paid') { localStorage.removeItem(storageKey); openTickets(result.orderId); return; }
-    checkout?.destroy(); clearInterval(countdown); localStorage.removeItem(storageKey); frozen = null; result = null; lockCart(); form.hidden = false; document.querySelector('#checkout-cancel').hidden = true; document.querySelector('#checkout-countdown').textContent = ''; document.querySelector('.native-event').classList.remove('checkout-active'); document.querySelector('.native-layout').classList.remove('checkout-active'); message('Your reservation is closed. You can choose another cart.');
-  });
+  async function closeReservation() {
+    if (closing || !result || !frozen) return;
+    const request = frozen, orderId = result.orderId;
+    closing = true;
+    checkout?.destroy(); checkout = null; clearInterval(countdown);
+    try {
+      const closed = await api('cancel', { orderId, accessKey: request.accessKey });
+      if (frozen !== request) return;
+      clearSavedCart();
+      if (closed.status === 'paid') openTickets(orderId);
+      else message('Your reservation is closed. You can choose another cart.');
+    } finally { closing = false; }
+  }
+  bind('#checkout-cancel', closeReservation);
   function clearSavedCart() {
     checkout?.destroy(); checkout = null; clearInterval(countdown);
     localStorage.removeItem(storageKey); frozen = null; checkingSaved = false;
@@ -170,7 +189,9 @@ export function initCheckout() {
       if (['paid', 'refunded', 'partially-refunded', 'pending-approval', 'declined', 'withdrawn', 'expired', 'cancelled'].includes(attempt.status)) {
         if (attempt.orderId) localStorage.setItem(`pluto-order-${attempt.orderId}`, previous.accessKey);
         clearSavedCart();
-        message(['expired', 'cancelled'].includes(attempt.status) ? 'Your previous reservation closed. Choose tickets for a new checkout.' : 'Your previous checkout is complete. Your tickets and order are in the Pluto app.');
+        message(['expired', 'cancelled'].includes(attempt.status) ? 'Your previous reservation closed. Choose tickets for a new checkout.'
+          : attempt.issuanceWithheld ? 'Payment was received after checkout closed. View the payment in My tickets.'
+          : 'Your previous checkout is complete. Your tickets and order are in the Pluto app.');
       } else message('Your previous cart is saved. Continue to resume the same payment attempt.');
     } catch { message('Your saved checkout could not be checked. Resume the same attempt to avoid a duplicate purchase.'); }
     finally { checkingSaved = false; lockCart(); }

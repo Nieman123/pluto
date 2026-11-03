@@ -140,7 +140,7 @@ async function makeRsvp(page, draft, name, email) {
     const latest = await api(admin, 'staff/get', { eventId: approval.eventId });
     latest.draft.promos.push({ code: 'VIPCOMP', type: 'percent', value: 100, limit: 10, startsAt: latest.draft.offers[0].salesStart, endsAt: latest.draft.endAt, offerIds: [approval.vip.id] });
     const revision = await api(admin, 'staff/save', { eventId: approval.eventId, draft: latest.draft, revision: latest.revision });
-    await api(admin, 'staff/publish', { eventId: approval.eventId, revision: revision.revision, action: 'publish' });
+    await api(admin, 'staff/publish', { eventId: approval.eventId, revision: revision.revision, publicationVersion: latest.calendarSequence || 0, action: 'publish' });
     const issued = await api(admin, 'checkout', { ...purchases[1], promoCode: 'VIPCOMP' });
     assert.equal(issued.status, 'paid'); assert.equal(issued.total, 0);
     const vipOrder = await api(admin, 'order', { orderId: issued.orderId, accessKey: purchases[1].accessKey });

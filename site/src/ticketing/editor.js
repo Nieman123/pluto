@@ -409,7 +409,7 @@ function render() {
       if (command === 'preview') { const result = await api('staff/preview', { eventId: eid }); const content = dialog('<h2>Private event preview</h2><iframe title="Event landing page preview" sandbox="allow-same-origin"></iframe>'); content.querySelector('iframe').srcdoc = result.html; return; }
       if (command === 'duplicate') { const result = await api('staff/duplicate', { eventId: eid }); await loadEvents(); document.querySelector('#staff-event').value = result.id; await selectEvent(result.id, true); return; }
       const currentView = studio;
-      await api('staff/publish', { eventId: eid, revision: record.revision, action: command }); await loadEvents(); document.querySelector('#staff-event').value = eid; await selectEvent(eid, currentView); message(`Event ${command === 'publish' ? 'published' : command === 'unpublish' ? 'unpublished' : command === 'archive' ? 'archived' : 'cancelled'}.`);
+      await api('staff/publish', { eventId: eid, revision: record.revision, publicationVersion: record.calendarSequence || 0, action: command }); await loadEvents(); document.querySelector('#staff-event').value = eid; await selectEvent(eid, currentView); message(`Event ${command === 'publish' ? 'published' : command === 'unpublish' ? 'unpublished' : command === 'archive' ? 'archived' : 'cancelled'}.`);
     } finally { if (command === 'publish') { publishing = false; root.inert = false; root.removeAttribute('aria-busy'); syncSaveState(); } }
   }));
   root.querySelectorAll('[data-save-ticket-types]').forEach(button => button.onclick = () => action(button, async () => {

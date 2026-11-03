@@ -41,7 +41,7 @@ async function accessible(page, screenshot) {
     for (const name of ['Shared arrivals', 'Second event']) {
       const eid = randomUUID(), draft = fixture(true); eids.push(eid); draft.title = `${name} · ${prefix.slice(-8)}`; draft.slug = `${prefix}-${eids.length}`;
       await api(page, 'staff/save', { eventId: eid, draft, revision: 0 });
-      await api(page, 'staff/publish', { eventId: eid, revision: 1, action: 'publish' });
+      await api(page, 'staff/publish', { eventId: eid, revision: 1, publicationVersion: 0, action: 'publish' });
     }
     for (const [index, eid] of [eids[0], eids[1], eids[1]].entries()) {
       const quantity = index === 0 ? 2 : 1, comp = index === 1;

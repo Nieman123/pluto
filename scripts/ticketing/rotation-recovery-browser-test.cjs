@@ -64,7 +64,7 @@ async function mockedRequests(page, path) {
       return retained;
     }), true, 'a stale close event must preserve a reopened review form');
     const eventId = randomUUID(), draft = fixture(true); draft.slug += `-${eventId}`;
-    await api(admin, 'staff/save', { eventId, draft, revision: 0 }); await api(admin, 'staff/publish', { eventId, action: 'publish', revision: 1 });
+    await api(admin, 'staff/save', { eventId, draft, revision: 0 }); await api(admin, 'staff/publish', { eventId, publicationVersion: 0, action: 'publish', revision: 1 });
     const accessKey = randomBytes(32).toString('hex'), order = await api(admin, 'staff/cash', { eventId, accessKey, items: [{ offerId: 'weekend', quantity: 1 }], name: 'Recovery attendee', email: 'rotation@preview.invalid', comp: true, reason: 'Rotation recovery test' });
     const ticket = (await api(admin, 'order', { orderId: order.orderId, accessKey })).tickets[0];
     const pin = await api(admin, 'staff/scanner-pins/create', { eventId, label: 'Emergency recovery door' });

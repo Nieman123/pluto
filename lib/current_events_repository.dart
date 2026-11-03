@@ -136,14 +136,18 @@ class CurrentEventsRepository {
       Uri? baseUri,
       DateTime Function()? now,
       Future<String?> Function()? tokenProvider,
+      Future<bool> Function()? reviewEnrollment,
       this.refreshInterval = const Duration(minutes: 1)})
       : _providedFirestore = firestore,
         _get = client?.get ?? http.get,
         _baseUri = baseUri,
         _tokenProvider = tokenProvider,
+        _reviewEnrollment = reviewEnrollment,
         _now = now ?? DateTime.now;
 
   final Future<String?> Function()? _tokenProvider;
+  final Future<bool> Function()? _reviewEnrollment;
+  bool? _enrolled;
 
   final FirebaseFirestore? _providedFirestore;
   FirebaseFirestore get _firestore =>
@@ -155,12 +159,25 @@ class CurrentEventsRepository {
   final Duration refreshInterval;
 
   Future<List<CurrentEvent>> loadActiveEvents() async {
-    final token = await _tokenProvider?.call();
-    final response = await _get(
-            (_baseUri ?? ticketingBaseUri())
-                .resolve('/tickets/api/public/events'),
+    final tokenProvider = _tokenProvider;
+    final privateFeed = tokenProvider != null &&
+        (_enrolled ??= await _reviewEnrollment?.call() ?? true);
+    final token = privateFeed ? await tokenProvider() : null;
+    if (privateFeed && token == null) {
+      throw StateError('Sign in again to load upcoming events.');
+    }
+    final base = _baseUri ?? ticketingBaseUri();
+    final legacyFeed = base.resolve('/tickets/api/public/events');
+    const timeout = Duration(seconds: 20);
+    var response = await _get(
+            privateFeed
+                ? legacyFeed
+                : base.resolve('/tickets/api/public/event-feed'),
             headers: token == null ? null : {'Authorization': 'Bearer $token'})
-        .timeout(const Duration(seconds: 20));
+        .timeout(timeout);
+    if (!privateFeed && [404, 405].contains(response.statusCode)) {
+      response = await _get(legacyFeed).timeout(timeout);
+    }
     if (response.statusCode != 200)
       throw StateError('Upcoming events could not be loaded.');
     final data = jsonDecode(response.body) as Map<String, dynamic>;

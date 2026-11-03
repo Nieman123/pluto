@@ -18,9 +18,27 @@ export function selectRelease(env) {
   return { environment, revision };
 }
 
+const releaseFiles = [
+  'scripts/release/prepare.mjs', 'scripts/release/evidence.mjs', 'scripts/release/policy.mjs',
+  'scripts/release/wait-cost-index.cjs', 'scripts/release/smoke.mjs', 'scripts/release/smoke-request.mjs',
+  'scripts/release/migrate-cost-controls.mjs', 'scripts/migrate-cost-retention.cjs',
+  'firebase.json', 'firestore.indexes.json', 'firestore.rules', 'storage.rules',
+];
+
+export function verifyReleaseTarget(revision, hasFile = path => {
+  try {
+    execFileSync('git', ['cat-file', '-e', `${revision}:${path}`], { stdio: 'ignore' });
+    return true;
+  } catch { return false; }
+}) {
+  const missing = releaseFiles.filter(path => !hasFile(path));
+  if (missing.length) throw new Error(`Revision ${revision} is incompatible with this release workflow. Missing ${missing.join(', ')}. Select a compatible revision and verify it in staging.`);
+}
+
 export function main(env = process.env) {
   const selection = selectRelease(env);
   execFileSync('git', ['merge-base', '--is-ancestor', selection.revision, 'origin/main']);
+  verifyReleaseTarget(selection.revision);
   appendFileSync(env.GITHUB_OUTPUT, `revision=${selection.revision}\nenvironment=${selection.environment}\n`);
   console.log(`Selected ${selection.environment} release ${selection.revision} (${env.GITHUB_EVENT_NAME}).`);
 }

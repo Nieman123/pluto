@@ -39,7 +39,7 @@ export async function collectHealth(db: Firestore, now = Date.now()) {
     const checkingPayment = reconciliationPending(o) && o.financialCheckStartedAt && !age(now, o.financialCheckStartedAt, 10);
     if (!checkingPayment && (o.financialBlocked || o.financialReviewReason || o.reviewReason)) add(`order_${doc.id}`, 'order-review', 'Order needs review', doc.id, at, o.financialReviewReason || o.reviewReason || 'Admission is held pending payment reconciliation.', 'critical');
     else if (['provisioning', 'processing', 'open'].includes(o.status) && age(now, o.expiresAt || at, 10)) add(`order_${doc.id}`, 'checkout', 'Checkout reservation is stalled', doc.id, at, 'Verify the provider outcome before releasing inventory.');
-    if (o.status === 'paid' && paidIds.has(doc.id)) {
+    if (o.status === 'paid' && !o.issuanceWithheld && paidIds.has(doc.id)) {
       checkedPaidOrders++;
       if (!Array.isArray(o.units)) { add(`issuance_${doc.id}`, 'issuance', 'Confirmed order allocation needs review', doc.id, o.paidAt || at, 'The order has no valid ticket allocation. Review the original payment and order record.', 'critical'); continue; }
       const tickets = await db.collection('ticketingTickets').where('orderId', '==', doc.id).count().get();

@@ -32,7 +32,7 @@ export function orderContribution(order: any, timezone: string) {
     if (key) totals[key] = 1;
   }
   if (order.status !== 'paid') return { totals, day: '', dayGross: 0, dayOrders: 0 };
-  totals.paidOrders = 1; totals.tickets = order.units?.length || 0;
+  totals.paidOrders = 1; totals.tickets = order.issuanceWithheld ? 0 : order.units?.length || 0;
   totals.gross = amount(order.total); totals.discounts = amount(order.discount);
   totals.tax = amount(order.taxAmount) - amount(order.refundedTaxAmount);
   totals.refunds = amount(order.refundedAmount) + amount(order.externalRefundAmount);

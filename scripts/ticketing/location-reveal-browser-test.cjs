@@ -73,7 +73,7 @@ async function api(page, path, data) {
     await page.getByText('Saved · Revision 2', { exact: true }).first().waitFor();
     const record = await api(page, 'staff/get', { eventId: eid });
     assert.equal(record.draft.venueRevealScheduled, true); assert.ok(Math.abs(Date.parse(record.draft.venueRevealAt) - at) < 60000, 'local editor time is saved as event-timezone UTC');
-    await api(page, 'staff/publish', { eventId: eid, revision: 2, action: 'publish' });
+    await api(page, 'staff/publish', { eventId: eid, revision: 2, publicationVersion: record.calendarSequence || 0, action: 'publish' });
     await page.goto(`${base}/events/${draft.slug}`);
     assert.match(await page.locator('.native-location-notice').innerText(), /ticket holders only[\s\S]*Location reveal:/);
     for (const value of [draft.venueName, draft.address, draft.directions]) assert.ok(!(await page.content()).includes(value));

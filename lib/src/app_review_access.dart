@@ -6,6 +6,9 @@ class AppReviewAccess {
   AppReviewAccess(this.firestore);
   final FirebaseFirestore firestore;
 
+  Future<bool> isEnrolled(String uid) async =>
+      (await firestore.collection('appReviewAccounts').doc(uid).get()).exists;
+
   Future<CollectionReference<Map<String, dynamic>>> collection(
       String name, String uid) async {
     final registry = firestore.collection('appReviewAccounts').doc(uid);

@@ -97,7 +97,7 @@ async function submit(page, slug, name) {
     await guest.getByRole('button', { name: 'Refresh tickets' }).click(); await guest.getByText('RSVP · Declined', { exact: true }).waitFor();
     assert.equal(await guest.getByRole('button', { name: /Admission QR for/ }).count(), 0);
     stage = 'open RSVP'; const openEvent = randomUUID(), openDraft = fixture(true); openDraft.slug += `-${openEvent}`; openDraft.title = 'Open RSVP rehearsal'; openDraft.registrationMode = 'rsvp'; openDraft.offers = [{ ...openDraft.offers[0], unitAmount: 0, maxPerOrder: 1 }];
-    await api(admin, 'staff/save', { eventId: openEvent, draft: openDraft, revision: 0 }); await api(admin, 'staff/publish', { eventId: openEvent, revision: 1, action: 'publish' });
+    await api(admin, 'staff/save', { eventId: openEvent, draft: openDraft, revision: 0 }); await api(admin, 'staff/publish', { eventId: openEvent, revision: 1, publicationVersion: 0, action: 'publish' });
     await guest.goto(`${base}/events/${openDraft.slug}`); await guest.setViewportSize({ width: 1280, height: 900 }); await surface(guest, 'rsvp-open-landing-desktop');
     const open = await submit(guest, openDraft.slug, 'Open RSVP Guest'); await guest.getByText('RSVP · Approved', { exact: true }).waitFor(); await revealText(guest, guest.getByRole('button', { name: /Admission QR for/ }));
     const stored = await guest.evaluate(id => localStorage.getItem(`pluto-order-${id}`), open.orderId);

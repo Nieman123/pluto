@@ -28,7 +28,9 @@ void main() {
     final repository = CurrentEventsRepository(
         baseUri: Uri.parse('http://127.0.0.1:4173'),
         tokenProvider: () async => 'member-token',
+        reviewEnrollment: () async => true,
         client: MockClient((request) async {
+          expect(request.url.path, '/tickets/api/public/events');
           expect(request.headers['Authorization'], 'Bearer member-token');
           return http.Response(
               jsonEncode({
@@ -46,6 +48,28 @@ void main() {
     final events = await repository.loadActiveEvents();
     expect(events.single.demo, isTrue);
     expect(events.single.ticketUrl, '/app/tickets?event=sample');
+  });
+
+  test('ordinary members use the public feed and can fall back after rollback',
+      () async {
+    final paths = <String>[];
+    final client = MockClient((request) async {
+      paths.add(request.url.path);
+      expect(request.headers['Authorization'], isNull);
+      return paths.length == 1
+          ? http.Response('', 405)
+          : http.Response('{"events":[{"id":"live"}]}', 200);
+    });
+    addTearDown(client.close);
+    final repository = CurrentEventsRepository(
+        client: client,
+        baseUri: Uri.parse('https://pluto.example'),
+        tokenProvider: () async =>
+            throw StateError('Public feed needs no token'),
+        reviewEnrollment: () async => false);
+    expect((await repository.loadActiveEvents()).single.id, 'live');
+    expect(paths,
+        ['/tickets/api/public/event-feed', '/tickets/api/public/events']);
   });
 
   test('active discovery recovers after an initial network failure', () async {
@@ -87,7 +111,7 @@ void main() {
     ];
     final client = MockClient((request) async {
       expect(request.url.toString(),
-          'https://pluto.example/tickets/api/public/events');
+          'https://pluto.example/tickets/api/public/event-feed');
       return http.Response(jsonEncode({'events': records}), 200);
     });
     addTearDown(client.close);

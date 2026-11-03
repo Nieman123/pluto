@@ -149,15 +149,17 @@ export class Catalog {
       if ([draft.address, draft.venueName].some(v => v.length > 5 && visible.toLowerCase().includes(v.toLowerCase()))) fail('Private venue details appear in public content. Remove them before publishing.');
     }
   }
-  async publish(eventId: string, action: string, expected: number, uid: string) {
+  async publish(eventId: string, action: string, expected: number, uid: string, expectedPublication?: number) {
     await this.role(uid, eventId);
     if (!['publish', 'unpublish', 'archive', 'cancel'].includes(action)) fail('Invalid publication action.');
     const ref = this.event(eventId), before = (await ref.get()).data(); if (!before) fail('Event not found.', 404);
+    const publication = expectedPublication ?? (before.calendarSequence || 0);
+    if ((before.calendarSequence || 0) !== publication || before.revision !== expected) fail('Event changed. Reload before publishing.', 409);
     const draft = action === 'publish' ? await this.preparePublication(eventId, validateDraft(before.draft)) : validateDraft(before.draft);
     if (action === 'publish') await this.validatePublication(eventId, draft, expected);
     await this.db.runTransaction(async tx => {
       const current = (await tx.get(ref)).data();
-      if (current?.revision !== expected || current?.revision !== before.revision) fail('Event changed. Reload before publishing.', 409);
+      if (current?.revision !== expected || (current.calendarSequence || 0) !== publication) fail('Event changed. Reload before publishing.', 409);
       const releasedDraft = action === 'publish' ? draft : (current?.liveDraft || draft) as EventDraft;
       const slugRef = this.db.collection('eventSlugs').doc(releasedDraft.slug), slug = (await tx.get(slugRef)).data();
       if (slug && slug.eventId !== eventId) fail('This event URL is already in use.', 409);
@@ -170,7 +172,12 @@ export class Catalog {
       const status = action === 'publish' ? 'published' : action === 'unpublish' ? 'draft' : action === 'cancel' ? 'cancelled' : 'archived';
       const published = publicEvent(eventId, releasedDraft, status, action === 'publish' ? expected : current!.publishedRevision || expected);
       const calendarSequence = (current!.calendarSequence || current!.publishedRevision || 0) + 1;
-      tx.update(ref, { status, calendarSequence, publishedSlug: releasedDraft.slug, ...(action === 'publish' ? { draft, publishedRevision: expected, liveDraft: draft, hasUnpublishedChanges: false } : {}), updatedAt: Date.now() });
+      const closesSales = current.status === 'published' && status !== 'published';
+      const saleGeneration = (current.saleGeneration || 0) + Number(closesSales);
+      const updatedAt = Date.now();
+      tx.update(ref, { status, calendarSequence, saleGeneration, publishedSlug: releasedDraft.slug, ...(action === 'publish' ? { draft, publishedRevision: expected, liveDraft: draft, hasUnpublishedChanges: false } : {}), updatedAt });
+      if (closesSales) tx.create(this.db.collection('ticketingRecoveryRequests').doc(`checkout_${hash(`${eventId}:${saleGeneration}`)}`),
+        { lane: 'checkout-closure', eventId, saleGeneration, status: 'pending', requestedAt: updatedAt });
       if (action === 'publish') {
         draft.pools.forEach((p, i) => tx.set(ref.collection('pools').doc(p.id), { ...p, held: poolSnapshots[i].data()?.held || 0, sold: poolSnapshots[i].data()?.sold || 0 }));
         draft.promos.forEach((p, i) => tx.set(ref.collection('promos').doc(p.code), { ...p, held: promoSnapshots[i].data()?.held || 0, used: promoSnapshots[i].data()?.used || 0 }));
