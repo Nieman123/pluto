@@ -49,10 +49,11 @@ follow [the Windows-compatible setup guide](ios-testflight.md).
 
 ## Build on a Mac
 
-Use Flutter 3.47.8 with Dart 3.13.7, Xcode and CocoaPods. CocoaPods is selected
-explicitly for the current plugin set. Verify that the generated `ios/Podfile.lock`
-resolves `FirebaseFirestore` to `12.19.3` for the eMudhra security patch. Run from
-the repository root:
+Use Flutter 3.47.8 with Dart 3.13.7, Xcode and CocoaPods. The app uses the
+FlutterFire 4.20.1 plugin versions. Verify that the generated `ios/Podfile.lock`
+resolves `FirebaseFirestore` to `12.19.3` for the eMudhra security patch.
+Firebase Analytics allows its own `12.19.x` pod in this backport. Run from the
+repository root:
 
 ```sh
 flutter pub get --enforce-lockfile
