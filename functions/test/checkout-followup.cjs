@@ -65,7 +65,14 @@ test('delivery rechecks purchases, current checkouts, late payments and event av
       if (scenario === 'recipient-corrected') await h.service.order(e.orderId).update({ email: 'corrected@example.test' });
       let sends = 0; global.fetch = async () => { sends++; throw new Error('Unexpected email delivery'); };
       await h.service.emailJob(e.ref.id); assert.equal(sends, 0); assert.equal((await e.ref.get()).data().status, 'cancelled');
-      if (scenario === 'late-payment') { const order = (await h.service.order(e.orderId).get()).data(); assert.ok(order.paymentIntentId); assert.match(order.reviewReason, /Payment received after stock was released/); }
+      if (scenario === 'late-payment') {
+        const order = (await h.service.order(e.orderId).get()).data();
+        assert.ok(order.paymentIntentId);
+        assert.equal(order.status, 'paid');
+        assert.equal(order.financialBlocked, true);
+        assert.match(order.financialReviewReason, /Payment arrived after inventory was released/);
+        assert.equal((await h.service.tickets().where('orderId', '==', e.orderId).get()).size, 0);
+      }
     } finally { global.fetch = oldFetch; await h.cleanup(); }
   });
 });
