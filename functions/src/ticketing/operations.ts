@@ -12,6 +12,7 @@ import { scannerAccess } from './scanner-access';
 import { deploymentConfig } from '../deployment-config';
 import { legacyTicketingEmail, renderTicketingEmail, type EmailKind, type TicketingEmailInput } from './email';
 import { refreshHealthSnapshot } from './health';
+import { pendingCheckoutStatuses, saleClosed } from './checkout-policy';
 import { expiringGrant } from './retention';
 import { applyDelivery } from './delivery';
 import { processBatch, WorkBudget } from './worker-batch';
@@ -227,6 +228,15 @@ export class Operations extends Communications {
     const unmatchedIds: string[] = [];
     for (const refund of refunds.data) {
       if (refund.status === 'succeeded' && !mapped.has(refund.id)) { unmatched += refund.amount; unmatchedIds.push(refund.id); }
+    }
+    if (order.issuanceWithheld) {
+      // No tickets exist to map. Retain the provider-confirmed refund against the payment ledger.
+      await this.db.runTransaction(async tx => {
+        const ref = this.order(orderId), current = (await tx.get(ref)).data();
+        if (!current?.issuanceWithheld || checkId && current.financialCheckId !== checkId) return;
+        tx.update(ref, { externalRefundAmount: unmatched, externalStripeRefundIds: unmatchedIds });
+      });
+      return;
     }
     if (unmatched) {
       await this.db.runTransaction(async tx => {
@@ -449,11 +459,59 @@ export class Operations extends Communications {
   async processRecoveryRequest(requestId: string) {
     const ref = this.db.collection('ticketingRecoveryRequests').doc(id(requestId)), request = (await ref.get()).data();
     if (!request || request.status === 'done') return;
+    if (request.lane === 'checkout-closure') {
+      await this.processCheckoutClosure(ref);
+      return;
+    }
     if (!['payments', 'communications', 'emails'].includes(request.lane)) throw new Error('Invalid recovery lane.');
     const result = await this.maintenance(request.lane);
     // Eventarc retries a busy lane instead of silently consuming the request.
     if (result.busy || result.errors) throw new Error('Requested recovery has not completed; retry.');
     await ref.update({ status: 'done', completedAt: Date.now(), deleteAfter: Timestamp.fromMillis(Date.now() + 7 * 86400000) });
+  }
+  private async processCheckoutClosure(ref: FirebaseFirestore.DocumentReference) {
+    const budget = this.workBudget();
+    while (budget.available) {
+      const request = (await ref.get()).data();
+      if (!request || request.status === 'done') return;
+      let query = this.db.collection('ticketingOrders').where('eventId', '==', id(request.eventId))
+        .where('method', '==', 'stripe').where('status', 'in', pendingCheckoutStatuses).orderBy(FieldPath.documentId()).limit(12);
+      if (request.after) query = query.startAfter(request.after);
+      const page = await query.get();
+      await Promise.all(page.docs.filter(doc => doc.data().total > 0 && (doc.data().saleGeneration || 0) < request.saleGeneration)
+        .map(doc => this.closeWithRetry(doc.id)));
+      const done = page.size < 12;
+      const advanced = await this.db.runTransaction(async tx => {
+        const latest = (await tx.get(ref)).data();
+        if (!latest || latest.status === 'done') return true;
+        if (latest.after !== request.after) return false;
+        tx.update(ref, done ? { status: 'done', completedAt: Date.now(), deleteAfter: Timestamp.fromMillis(Date.now() + 7 * 86400000) }
+          : { after: page.docs[page.size - 1].id });
+        return true;
+      });
+      if (done && advanced) return;
+    }
+    throw new Error('Checkout closure will resume on the next delivery.');
+  }
+  private async closeWithRetry(orderId: string) {
+    let status: string | undefined;
+    try { status = await this.closeCheckout(orderId); }
+    catch (error) { await this.workerFailure(this.order(orderId), 'checkout-closure', error); }
+    if (status && !pendingCheckoutStatuses.includes(status)) return;
+    await this.db.runTransaction(async tx => {
+      const ref = this.order(orderId), order = (await tx.get(ref)).data();
+      if (order && pendingCheckoutStatuses.includes(order.status)) tx.update(ref, { nextCheckoutCloseAt: Date.now() + 60_000 });
+    });
+  }
+  async expireDueCheckouts() {
+    const budget = this.workBudget();
+    const due = this.db.collection('ticketingOrders').where('status', 'in', pendingCheckoutStatuses)
+      .where('nextCheckoutCloseAt', '<=', Date.now()).orderBy('nextCheckoutCloseAt').limit(20);
+    for (let page = 0; page < 5 && budget.available; page++) {
+      const batch = await due.get();
+      await Promise.all(batch.docs.map(doc => this.closeWithRetry(doc.id)));
+      if (batch.size < 20) return;
+    }
   }
   async maintenance(lane?: MaintenanceLane) {
     if (!lane) {
@@ -498,13 +556,10 @@ export class Operations extends Communications {
         const order = doc.data() as Order;
         if (order.method !== 'stripe' || order.total === 0) { await this.fulfillNonCard(doc.id, order); }
         else {
-          if (!order.sessionId) await this.provision(doc.id, order);
-          const session = await this.verifySession(doc.id);
           const event = (await this.event(order.eventId).get()).data();
-          if (session?.status === 'open' && (order.expiresAt <= Date.now() || event?.status !== 'published')) {
-            try { await this.stripe().checkout.sessions.expire(session.id); } catch { /* A concurrent successful payment can win; retrieve before releasing. */ }
-            await this.verifySession(doc.id);
-          }
+          if (order.expiresAt <= Date.now() || saleClosed(order, event)) { await this.closeCheckout(doc.id); return; }
+          if (!order.sessionId) await this.provision(doc.id, order);
+          await this.verifySession(doc.id);
         }
       }),
       async () => {

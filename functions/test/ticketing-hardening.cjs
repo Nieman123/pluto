@@ -12,6 +12,107 @@ async function inbox(h, oid, type, objectId, extra = {}) {
   await ref.set({ orderId: oid, type, objectId, livemode: false, status: 'pending', ...extra }); return ref;
 }
 
+test('one unpaid cart per buyer survives concurrent requests across events and releases on Stripe expiry', async () => {
+  const h = harness();
+  try {
+    const first = await h.event(), second = await h.event();
+    const carts = [h.request(first), h.request(second, { email: `${h.prefix.toUpperCase()}@EXAMPLE.TEST` })];
+    const results = await Promise.allSettled(carts.map(cart => h.service.checkout(cart, null)));
+    const winner = results.findIndex(result => result.status === 'fulfilled');
+    assert.ok(winner >= 0);
+    const rejected = results[1 - winner];
+    assert.equal(rejected.status, 'rejected');
+    assert.match(rejected.reason.message, /already have an unpaid cart/);
+    const { orderId, expiresAt } = results[winner].value;
+    const ref = h.service.order(orderId), order = (await ref.get()).data();
+    assert.equal(expiresAt - order.createdAt, 600000);
+    assert.equal(h.sessions.get(order.sessionId).expires_at, Math.floor((order.createdAt + 35 * 60000) / 1000));
+    assert.equal((await h.service.checkout(carts[winner], null)).orderId, orderId);
+    await ref.update({ nextCheckoutCloseAt: Date.now() - 1 });
+    await h.service.expireDueCheckouts();
+    assert.equal((await ref.get()).data().status, 'expired');
+    assert.equal(h.sessions.get(order.sessionId).status, 'expired');
+    assert.equal((await h.service.checkout(carts[1 - winner], null)).status, 'open');
+    const actor = { uid: `${h.prefix}-account`, email: `${h.prefix}-account@example.test`, email_verified: true };
+    assert.equal((await h.service.checkout(h.request(first, { email: actor.email }), actor)).status, 'open');
+    await assert.rejects(h.service.checkout(h.request(second, { email: `${h.prefix}-different@example.test` }), actor), /already have an unpaid cart/);
+  } finally { await h.cleanup(); }
+});
+
+test('stale publication is rejected and a previous sale cannot issue tickets after reopening', async () => {
+  const h = harness();
+  try {
+    const eid = await h.event(), old = h.request(eid), unpaid = h.request(eid, { email: `${h.prefix}-other@example.test` });
+    const [paidCheckout, unpaidCheckout] = await Promise.all([h.service.checkout(old, null), h.service.checkout(unpaid, null)]);
+    const before = (await h.service.event(eid).get()).data();
+    await h.service.publish(eid, 'cancel', before.revision, h.staff, before.calendarSequence);
+    await assert.rejects(h.service.publish(eid, 'publish', before.revision, h.staff, before.calendarSequence), /Event changed/);
+    const cancelled = (await h.service.event(eid).get()).data();
+    await h.service.publish(eid, 'publish', cancelled.revision, h.staff, cancelled.calendarSequence);
+    await h.paidSession(paidCheckout.orderId);
+    const fresh = await h.service.checkout(h.request(eid, { email: `${h.prefix}-fresh@example.test` }), null);
+    const closure = `checkout_${hash(`${eid}:${cancelled.saleGeneration}`)}`;
+    await h.service.processRecoveryRequest(closure);
+    const paid = (await h.service.order(paidCheckout.orderId).get()).data();
+    assert.match(paid.issuanceWithheld, /closed for this event/);
+    assert.equal(paid.financialBlocked, true);
+    assert.equal((await h.service.tickets().where('orderId', '==', paidCheckout.orderId).get()).size, 0);
+    assert.equal((await h.service.order(unpaidCheckout.orderId).get()).data().status, 'expired');
+    assert.equal((await h.service.order(fresh.orderId).get()).data().status, 'open');
+    h.refunds.set('re_late', { id: 're_late', payment_intent: paid.paymentIntentId, amount: paid.total, currency: 'usd', status: 'succeeded' });
+    await h.service.verifySession(paidCheckout.orderId);
+    const refunded = (await h.service.order(paidCheckout.orderId).get()).data();
+    assert.equal(refunded.externalRefundAmount, paid.total);
+    assert.equal(refunded.financialBlocked, false);
+  } finally { await h.cleanup(); }
+});
+
+test('receipt recovery skips newer unpaid orders and resend preserves an existing delivery job', async () => {
+  const h = harness();
+  try {
+    const eid = await h.event(), raw = h.request(eid), { orderId } = await h.service.checkout(raw, null);
+    await h.pay(orderId);
+    const batch = h.db.batch();
+    for (let i = 0; i < 26; i++) {
+      const attempt = h.request(eid), ref = h.service.order(hash(attempt.accessKey));
+      batch.set(ref, { email: raw.email, status: 'expired', createdAt: Date.now() + i });
+    }
+    await batch.commit();
+    await h.service.recover(raw.email);
+    const jobs = h.db.collection('ticketingEmailJobs');
+    assert.equal((await jobs.where('orderId', '==', orderId).where('type', '==', 'recovery').get()).size, 1);
+    const now = Date.now;
+    const minute = Math.floor(now() / 60000);
+    Date.now = () => minute * 60000 + 15000;
+    try {
+      await h.service.resend(orderId, raw.accessKey, null);
+      const job = jobs.doc(`resend_${orderId}_${minute}`);
+      await job.update({ status: 'sent', attempts: 1 });
+      await h.service.resend(orderId, raw.accessKey, null);
+      assert.deepEqual((await job.get()).data(), { type: 'receipt', orderId, to: raw.email, status: 'sent', attempts: 1, createdAt: Date.now() });
+    } finally { Date.now = now; }
+  } finally { await h.cleanup(); }
+});
+
+test('a delayed confirmation honors the Stripe charge time and withholds payments after the deadline', async () => {
+  const h = harness();
+  try {
+    const eid = await h.event();
+    for (const late of [false, true]) {
+      const { orderId } = await h.service.checkout(h.request(eid), null);
+      const deadline = Math.floor(Date.now() / 1000) * 1000 - 2000;
+      const session = await h.paidSession(orderId);
+      session.payment_intent.latest_charge.created = deadline / 1000 + (late ? 1 : -1);
+      await h.service.order(orderId).update({ checkoutDeadline: deadline, expiresAt: deadline, nextCheckoutCloseAt: deadline });
+      await h.service.expireDueCheckouts();
+      const order = (await h.service.order(orderId).get()).data();
+      assert.equal(order.status, 'paid');
+      assert.equal(!!order.issuanceWithheld, late);
+      assert.equal((await h.service.tickets().where('orderId', '==', orderId).get()).size, late ? 0 : 1);
+    }
+  } finally { await h.cleanup(); }
+});
+
 test('Checkout branding is server-controlled and survives an uncertain creation retry without changing the Stripe request', async () => {
   const h = harness();
   try {

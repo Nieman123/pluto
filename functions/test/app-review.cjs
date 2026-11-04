@@ -83,6 +83,9 @@ test('HTTP demo selection requires a verified, enrolled identity and intercepts 
     }
     assert.equal((await call('/account/navigation', {}, demo.idToken)).data.admin, false);
     const publicEvents = await fetch(`${base}/tickets/api/public/events`).then(r => r.json());
+    const sharedFeed = await fetch(`${base}/tickets/api/public/event-feed`, { headers: { Authorization: `Bearer ${demo.idToken}` } });
+    assert.equal(sharedFeed.headers.get('cache-control'), 'public, max-age=0, s-maxage=60, must-revalidate');
+    assert.deepEqual(await sharedFeed.json(), publicEvents);
     assert.ok(publicEvents.events.every(e => e.demo !== true));
     const ownEvents = await fetch(`${base}/tickets/api/public/events`, { headers: { Authorization: `Bearer ${demo.idToken}` } }).then(r => r.json());
     assert.equal(ownEvents.events.length, 2); assert.ok(ownEvents.events.every(e => e.demo === true));

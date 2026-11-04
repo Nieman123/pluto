@@ -83,6 +83,18 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   });
   router.get(['/tickets/admin', '/tickets/staff'], page);
   router.get('/tickets/admission-sw.js', (_req, res) => res.type('application/javascript').set('Service-Worker-Allowed', '/tickets/').send(readFileSync(join(__dirname, 'admission-sw.js'), 'utf8')));
+  async function publicAppEvents(res: Response, cache: boolean) {
+    const now = Date.now();
+    const [published, legacy] = await Promise.all([
+      service.db.collection('publishedEvents').where('endAt', '>', new Date(now).toISOString()).get(),
+      service.db.collection('currentEvents').get(),
+    ]);
+    if (cache) res.set('Cache-Control', publicEventCache);
+    return res.type('application/json').json({ events: activeAppEventCards(published.docs.map(d => d.data()),
+      legacy.docs.map(d => ({ ...d.data(), id: d.id })), baseUrl(), now) });
+  }
+  // The shared endpoint always returns public data. Keep older clients and review accounts isolated.
+  router.get('/tickets/api/public/event-feed', (_req, res) => publicAppEvents(res, true));
   router.get('/tickets/api/public/events', async (req, res) => {
     const authorization = req.get('authorization');
     const user = authorization ? await service.actor(authorization.replace(/^Bearer /, ''), true) : null;
@@ -90,13 +102,7 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
       await review.requireEnabled(user.uid);
       return res.json({ demo: true, events: review.events() });
     }
-    const now = Date.now();
-    const [published, legacy] = await Promise.all([
-      service.db.collection('publishedEvents').where('endAt', '>', new Date(now).toISOString()).get(),
-      service.db.collection('currentEvents').get(),
-    ]);
-    res.json({ events: activeAppEventCards(published.docs.map(d => d.data()),
-      legacy.docs.map(d => ({ ...d.data(), id: d.id })), baseUrl(), now) });
+    return publicAppEvents(res, false);
   });
   router.get(['/events', '/past-events'], async (req, res) => {
     const past = req.path === '/past-events', path = past ? '/past-events' : '/events';
@@ -284,7 +290,11 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   router.post('/tickets/api/staff/get', async (req, res) => res.json(await service.get(bodyId(req), actor(res).uid)));
   router.post('/tickets/api/staff/save', async (req, res) => res.json(await service.save(bodyId(req), req.body.draft, req.body.revision, actor(res).uid)));
   router.post('/tickets/api/staff/ticket-settings', async (req, res) => res.json(await service.save(bodyId(req), req.body.draft, req.body.revision, actor(res).uid, true)));
-  router.post('/tickets/api/staff/publish', async (req, res) => res.json(await service.publish(bodyId(req), req.body.action, integer(req.body.revision, 'revision'), actor(res).uid)));
+  router.post('/tickets/api/staff/publish', async (req, res) => {
+    if (req.body.publicationVersion === undefined) fail('Reload Event Studio before changing publication.', 409);
+    res.json(await service.publish(bodyId(req), req.body.action, integer(req.body.revision, 'revision'), actor(res).uid,
+      integer(req.body.publicationVersion, 'publication version', 0)));
+  });
   router.post('/tickets/api/staff/duplicate', async (req, res) => res.json(await service.duplicate(bodyId(req), actor(res).uid)));
   router.post('/tickets/api/staff/revisions', async (req, res) => res.json(await service.revisions(bodyId(req), actor(res).uid)));
   router.post('/tickets/api/staff/restore', async (req, res) => res.json(await service.restore(bodyId(req), req.body.restoreRevision, req.body.revision, actor(res).uid)));

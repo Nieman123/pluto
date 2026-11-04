@@ -14,7 +14,9 @@ The HTML uses presentation tables, inline styles, system fonts and an Outlook ta
 
 ## Delivery behavior
 
-Stripe ticket reservations currently last 35 minutes from order creation. Webhooks and the five-minute maintenance worker reconcile the provider before releasing inventory; an overdue open order is not expired solely by its local clock. Expired records are retained in All Orders and CSV exports, but hidden from the per-event dashboard order list.
+Paid Stripe reservations have a 10-minute checkout deadline from the time stock is reserved. The browser requests closure at the deadline, and the minute worker closes unattended checkouts. Stripe's scheduled expiry remains a 35-minute backstop. Stock is released after Stripe confirms expiry or failed payment, or when no provider request could have started. Uncertain outcomes retain stock for reconciliation. Expired records remain in All Orders and CSV exports and are hidden from the per-event dashboard order list.
+
+Receipt recovery looks up the newest 25 paid orders for the submitted email before creating secure links. Repeated resend requests for the same order within a minute reuse the existing email job and preserve its delivery state.
 
 Maintenance queues one branded checkout follow-up per event and buyer email, one hour after confirmed expiry, while the expiry is less than 24 hours old. This also covers recent expired checkouts after deployment without emailing historical abandoned orders. The event must still be published, running or upcoming, with an available paid offer inside its sales window. Completed paid purchases, payment review flags, other active checkouts and newer expired attempts suppress the reminder. A free confirmed RSVP does not suppress an eligible paid VIP reminder, but an approval-required VIP still needs its valid approved RSVP.
 

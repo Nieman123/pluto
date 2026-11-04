@@ -31,7 +31,30 @@ const base = 'http://127.0.0.1:4173';
     failed = true; await restore();
     await page.getByRole('button', { name: 'Resume reserved checkout', exact: true }).waitFor();
     assert.ok(await page.evaluate(id => localStorage.getItem(`pluto-checkout-${id}`), saved.eventId), 'unknown outcomes retain the same idempotent attempt');
+    failed = false; status = 'open';
+    await page.addInitScript(() => {
+      window.Stripe = () => ({ createEmbeddedCheckoutPage: async () => ({
+        mount: target => { document.querySelector(target).textContent = 'Mock payment form'; },
+        destroy: () => { document.querySelector('#stripe-checkout').textContent = ''; },
+      }) });
+    });
+    await page.route('**/tickets/api/checkout', route => route.fulfill({ json: {
+      orderId: 'paid-order', status: 'open', clientSecret: 'fixture', publishableKey: 'fixture', expiresAt: Date.now() + 4000,
+    } }));
+    let closeAttempts = 0;
+    await page.route('**/tickets/api/cancel', route => ++closeAttempts === 1
+      ? route.fulfill({ status: 409, json: { error: 'Payment is still being confirmed.' } })
+      : route.fulfill({ json: { status: 'expired' } }));
+    await restore();
+    await page.getByRole('button', { name: 'Resume reserved checkout', exact: true }).click();
+    await page.getByText('Mock payment form', { exact: true }).waitFor();
+    await page.getByText('Payment is still being confirmed.', { exact: true }).waitFor();
+    assert.equal(await page.locator('#stripe-checkout').textContent(), '');
+    assert.ok(await page.evaluate(id => localStorage.getItem(`pluto-checkout-${id}`), saved.eventId));
+    await page.locator('#checkout-cancel').click();
+    await page.getByRole('button', { name: 'Continue to payment', exact: true }).waitFor();
+    assert.equal(await page.evaluate(id => localStorage.getItem(`pluto-checkout-${id}`), saved.eventId), null);
     await context.close();
-    console.log('Saved checkout regressions passed: completed and expired carts clear, bfcache restores reconcile, unknown outcomes retain the original attempt.');
+    console.log('Saved checkout regressions passed: completed and expired carts clear, the timer closes payment, and unknown outcomes retain the original attempt.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

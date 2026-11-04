@@ -28,7 +28,7 @@ async function semantics(page) { await page.locator('flt-semantics-placeholder')
     const admin = await context.newPage(); active = admin;
     await admin.goto(`${base}/tickets/admin`); await admin.locator('#preview-staff-sign-in').click(); await admin.locator('#staff-controls:not([hidden])').waitFor();
     eid = randomUUID(); const draft = fixture(true); draft.slug += `-${eid}`; draft.title = 'Operations & offline rehearsal';
-    await api(admin, 'staff/save', { eventId: eid, draft, revision: 0 }); await api(admin, 'staff/publish', { eventId: eid, revision: 1, action: 'publish' });
+    await api(admin, 'staff/save', { eventId: eid, draft, revision: 0 }); await api(admin, 'staff/publish', { eventId: eid, revision: 1, publicationVersion: 0, action: 'publish' });
     const accessKey = randomBytes(32).toString('hex');
     ({ orderId } = await api(admin, 'staff/cash', { eventId: eid, accessKey, name: 'Browser Guest', email: 'browser-support@preview.invalid', items: [{ offerId: 'weekend', quantity: 1 }], comp: true, reason: 'Offline rehearsal', cashReceived: 0 }));
     await db.collection('ticketingEmailJobs').doc(`health_${orderId}`).set({ orderId, to: 'browser-support@preview.invalid', type: 'recovery', status: 'review', attempts: 1, createdAt: Date.now() - 3600000, lastError: 'Provider outcome requires review.' });

@@ -31,12 +31,12 @@ async function api(page, path, data) {
     const media = await api(page, 'staff/media', { eventId: eid, image: image.toString('base64') });
     draft.flyer = { assetId: media.assetId, alt: 'Test artist flyer', focalX: 50, focalY: 50, caption: '' };
     await api(page, 'staff/save', { eventId: eid, draft, revision: 1 });
-    await api(page, 'staff/publish', { eventId: eid, revision: 2, action: 'publish' });
+    await api(page, 'staff/publish', { eventId: eid, revision: 2, publicationVersion: 0, action: 'publish' });
     // The index includes every accessible event, including fixtures left by
     // earlier CI suites. Keep another refunded event even in standalone runs.
     const otherDraft = fixture(); otherDraft.slug = `revenue-${otherEventId}`; otherDraft.title = 'Other event revenue';
     await api(page, 'staff/save', { eventId: otherEventId, draft: otherDraft, revision: 0 });
-    await api(page, 'staff/publish', { eventId: otherEventId, revision: 1, action: 'publish' });
+    await api(page, 'staff/publish', { eventId: otherEventId, revision: 1, publicationVersion: 0, action: 'publish' });
     await db.collection('ticketingOrders').doc(otherOrderId).set({ eventId: otherEventId, status: 'paid', total: 10000, paidAt: Date.now(), createdAt: Date.now(), units: [], method: 'cash', taxAmount: 0, refundedAmount: 1500, stripeFee: 0 });
     await db.collection('ticketingOrders').doc(oid).set({ eventId: eid, status: 'paid', total: 470000, paidAt: Date.now(), createdAt: Date.now(), units: [], method: 'cash', taxAmount: 0, refundedAmount: 50000, externalRefundAmount: 10000, stripeFee: 0, name: 'Test', email: 'browser@example.test' });
     // Derive the expected global totals independently from the raw test ledger,

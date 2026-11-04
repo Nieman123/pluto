@@ -43,7 +43,7 @@ async function scan(target, qr, expected) {
     const admin = await adminContext.newPage(); page = admin;
     await admin.goto(`${base}/tickets/admin`); await admin.locator('#preview-staff-sign-in').click(); await admin.locator('#staff-controls:not([hidden])').waitFor();
     const eventId = randomUUID(), draft = fixture(true); draft.slug += `-${eventId}`; draft.title = 'Scanner PIN rehearsal';
-    await api(admin, 'staff/save', { eventId, draft, revision: 0 }); await api(admin, 'staff/publish', { eventId, action: 'publish', revision: 1 });
+    await api(admin, 'staff/save', { eventId, draft, revision: 0 }); await api(admin, 'staff/publish', { eventId, publicationVersion: 0, action: 'publish', revision: 1 });
     const accessKey = randomBytes(32).toString('hex');
     const order = await api(admin, 'staff/cash', { eventId, accessKey, items: [{ offerId: 'weekend', quantity: 3 }], name: 'PIN test guest', email: 'pin-door@preview.invalid', comp: true, reason: 'Scanner PIN browser test' });
     const tickets = (await api(admin, 'order', { orderId: order.orderId, accessKey })).tickets;

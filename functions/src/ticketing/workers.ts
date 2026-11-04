@@ -43,6 +43,10 @@ export const ticketingMaintenance = onSchedule({ ...recoveryOptions, secrets: pa
   deploymentConfig();
   console.info('Ticketing payment recovery', await new Operations().maintenance('payments'));
 });
+export const ticketingCheckoutExpiry = onSchedule({ ...serial, secrets: paymentWorkerSecrets, schedule: policy.recoverySchedule, timeoutSeconds: 180, maxInstances: 1 }, async () => {
+  deploymentConfig();
+  await new Operations().expireDueCheckouts();
+});
 export const ticketingCommunicationMaintenance = onSchedule({ ...recoveryOptions, secrets: [], schedule: policy.recoverySchedule }, async () => {
   deploymentConfig();
   console.info('Ticketing communication recovery', await new Operations().maintenance('communications'));

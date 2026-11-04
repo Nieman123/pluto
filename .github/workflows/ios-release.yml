@@ -69,7 +69,7 @@ jobs:
           python3 scripts/ios/release-signing.py toolchain
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
-          flutter-version: '3.47.5'
+          flutter-version: '3.47.8'
           channel: stable
           cache: true
       - name: Install locked app dependencies

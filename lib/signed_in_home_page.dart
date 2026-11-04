@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'current_events_repository.dart';
 import 'festival_visibility.dart';
+import 'src/app_review_access.dart';
 import 'src/event_checkout_link.dart';
 import 'src/theme/pluto_ui.dart';
 import 'user_profile_repository.dart';
@@ -32,8 +34,12 @@ class SignedInHomePage extends StatelessWidget {
   }) : super(key: key);
 
   final User user;
-  late final CurrentEventsRepository _eventsRepository =
-      CurrentEventsRepository(tokenProvider: () => user.getIdToken());
+  late final Stream<List<CurrentEvent>> _upcomingEvents =
+      CurrentEventsRepository(
+    tokenProvider: () => user.getIdToken(),
+    reviewEnrollment: () =>
+        AppReviewAccess(FirebaseFirestore.instance).isEnrolled(user.uid),
+  ).watchEvents(onlyActive: true);
   final UserProfileRepository _profileRepository = UserProfileRepository();
   late final Future<void> _ensureProfileFuture =
       _profileRepository.ensureProfileForUser(user);
@@ -426,7 +432,7 @@ class SignedInHomePage extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         StreamBuilder<List<CurrentEvent>>(
-          stream: _eventsRepository.watchEvents(onlyActive: true),
+          stream: _upcomingEvents,
           builder: (BuildContext context,
               AsyncSnapshot<List<CurrentEvent>> snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {

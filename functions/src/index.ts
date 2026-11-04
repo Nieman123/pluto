@@ -16,7 +16,7 @@ import { androidLinkStatements } from './android-links';
 import { iosLinkAssociation } from './ios-links';
 export { accountDeletionWorker, accountDeletionMaintenance } from './account-deletion-workers';
 import { legalRouter } from './legal-pages';
-export { ticketingFinancialWorker, ticketingFinancialBackfillWorker, ticketingMaintenance, ticketingWebhookWorker, ticketingEmailWorker, ticketingCampaignWorker, ticketingRecoveryRequestWorker, ticketingCommunicationMaintenance, ticketingEmailMaintenance, ticketingHealthMaintenance } from './ticketing/workers';
+export { ticketingFinancialWorker, ticketingFinancialBackfillWorker, ticketingMaintenance, ticketingCheckoutExpiry, ticketingWebhookWorker, ticketingEmailWorker, ticketingCampaignWorker, ticketingRecoveryRequestWorker, ticketingCommunicationMaintenance, ticketingEmailMaintenance, ticketingHealthMaintenance } from './ticketing/workers';
 import { normalizeRental, groupRentals, rentalContactEmail, type PublicRental } from './rentals-data';
 import { seedRentals } from './rentals-seed';
 import { loadHomepageEvents } from './public-events';

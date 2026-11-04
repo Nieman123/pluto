@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { readFile } from 'node:fs/promises';
 import { releaseSettings, verifyServiceAccount, verifyProductionProtection, verifyStagingEvidence, projects, dotenvParameters } from '../scripts/release/policy.mjs';
 import { browserEnvironment, ciStripeFixture } from '../scripts/ci/browser-suite.mjs';
-import { selectRelease } from '../scripts/release/select.mjs';
+import { selectRelease, verifyReleaseTarget } from '../scripts/release/select.mjs';
 
 const sha = 'a'.repeat(40);
 const web = { apiKey: 'staging-public-key', appId: '1:987654:web:abcdef123', messagingSenderId: '987654', projectId: projects.staging,
@@ -148,15 +148,21 @@ test('PR workflow has no deployment, credential inheritance or privileged PR tri
   const flutter = await readFile('lib/firebase_options.dart', 'utf8');
   assert.ok(flutter.includes(projects.staging));
 });
+test('release selection rejects a revision missing required deployment tooling', () => {
+  assert.doesNotThrow(() => verifyReleaseTarget(sha, () => true));
+  assert.throws(() => verifyReleaseTarget(sha, path => path !== 'scripts/release/wait-cost-index.cjs'), /incompatible.*wait-cost-index/);
+});
+
 test('release adds required indexes without forcing deletion of existing indexes or TTL overrides', async () => {
   const release = await readFile('.github/workflows/release.yml', 'utf8');
-  const deployments = [...release.matchAll(/run: ([^\n]*firebase-tools[^\n]* deploy[^\n]*)/g)].map(m => m[1]);
+  const deployments = [...release.matchAll(/npx --yes firebase-tools[^\n]* deploy[^\n]*/g)].map(m => m[0]);
   const indexDeploys = deployments.filter(command => command.includes('firestore:indexes'));
   assert.equal(indexDeploys.length, 1); assert.match(indexDeploys[0], /--non-interactive/); assert.doesNotMatch(indexDeploys[0], /--force/);
   assert.ok(deployments.some(command => command.includes('functions:ticketingMaintenance') && command.includes('--force')));
   for (const name of ['ticketingFinancialWorker', 'ticketingFinancialBackfillWorker', 'ticketingCampaignWorker', 'ticketingRecoveryRequestWorker', 'ticketingCommunicationMaintenance', 'ticketingEmailMaintenance', 'ticketingHealthMaintenance']) {
     assert.ok(deployments.some(command => command.includes(`functions:${name}`)), `Release includes ${name}`);
   }
+  assert.match(release, /if grep -q 'export const ticketingCheckoutExpiry'.*\r?\n\s+expiry_target=',functions:ticketingCheckoutExpiry'/);
 });
 
 test('current and past events reach the server through Firebase Hosting and release probes', async () => {

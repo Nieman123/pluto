@@ -9,6 +9,7 @@ This implements the recommendations in [the October 30 audit](cloud-cost-audit-2
 - Paid Stripe orders have an indexed `nextFinancialCheckAt`. Uncertain payments, pending fees and review cases retry after five minutes; settled first-day purchases after one hour; older settled purchases daily; purchases more than 180 days beyond payment and ticket validity weekly. Signed financial webhooks reconcile immediately. Pending refunds retain their existing recovery queue. A one-time, bounded historical migration performs a final pass after a 20-minute old-revision drain window.
 - Financial projections ignore bookkeeping-only order updates while still detecting money, ticket-count, event, date and admission-hold changes. Their transactions continue reading the current ledger, preserving duplicate/out-of-order safety.
 - Production recovery remains every minute for email and communications, and every five minutes for payments. Staging defaults to `quiet` (all three every five minutes); `active` restores production-equivalent cadence for acceptance. Public/API and webhook concurrency remain unchanged; scale-to-zero and webhook maximum 20 are explicit.
+- Checkout expiry runs a bounded indexed query every minute in production and active staging, and every five minutes in quiet staging. It calls Stripe only for due carts and does not write an idle heartbeat. Measure this job alongside payment maintenance when comparing releases.
 - The five known disposable staging load-test runs already have zero remaining synthetic events, orders or tickets, verified against live Firestore; see [the cleanup receipt](benchmarks/load-cleanup-2026-10-30.json). No unrelated staging purchases were removed.
 - Provider secrets are bound only where used. Payment workers get Stripe; email/recovery workers get Stripe and Resend; campaign, financial and health workers need neither. Signing/rotation/wallet secrets remain on the API that serves credentials.
 - Only the independent health worker uses fractional CPU (`gcf_gen1`, 256 MiB, concurrency 1). The [staging benchmark](benchmarks/health-cpu-benchmark-2026-10-30.md) supports this setting; other workers remain at one CPU. Set the environment's `TICKETING_HEALTH_CPU` release variable to `1` to restore full CPU, then validate that same allocation in active staging before production.
@@ -16,6 +17,8 @@ This implements the recommendations in [the October 30 audit](cloud-cost-audit-2
 ## Public cache policy
 
 Homepage, links, rentals and ManaFest regain their existing 60-second shared cache and up to 300 seconds stale-while-revalidate. Published event pages, listings, calendars and sitemap use a 60-second shared cache without stale-while-revalidate. Approved public artwork caches for five minutes. Removed public content can therefore remain visible for that interval; urgent removal needs a Hosting cache invalidation/release. Draft previews, private ticket APIs, wallets, waivers, errors and deployment identity remain private or no-store. Checkout always validates current inventory and prices in the database; cached availability is informational.
+
+The public mobile event feed shares the 60-second cache and accepts requests without account credentials. Enrolled reviewers keep the authenticated, uncached discovery route so sample events never enter the shared cache. Older native app versions continue using the legacy route. The mobile savings begin as updated app versions are installed.
 
 ## Retention
 
@@ -27,6 +30,7 @@ Homepage, links, rentals and ManaFest regain their existing 60-second shared cac
 | Offline scanner leases | Existing `expiresAt`, seven days after offline validity; replay allowance remains unchanged |
 | RSVP verification/upgrade grants, recovery/access links, transfers, waitlist tokens, scanner sessions | New timestamp `deleteAfter`, seven days after the numeric authorization deadline |
 | Completed manual recovery requests | Seven days after completion |
+| Buyer checkout locks | 24 hours after reservation |
 | Completed/ignored payment webhook inbox records | 90 days after completion |
 | Email delivery callback records | 90 days after receipt |
 
@@ -37,7 +41,7 @@ TTL is asynchronous cleanup, not authorization. Existing deadline checks remain 
 ## Deployment order and acceptance
 
 1. Run the repository checks and merge the reviewed commit. The normal main push deploys quiet staging. Use the Release workflow's `worker_mode: active` on that exact merged SHA for production acceptance.
-2. Release deploys indexes/TTL without `--force`, preserving unrelated cloud indexes. It waits until the due-payment query is executable before deploying dependent code.
+2. Release deploys indexes/TTL without `--force`, preserving unrelated cloud indexes. It verifies that the required payment, checkout and receipt-recovery queries are executable before deploying dependent code.
 3. Release deploys the API, new `ticketingRecoveryRequestWorker`, independent health schedule, workers, access rules and client together. It verifies project/revision identity and public/private cache headers.
 4. On the first cutover, the migration waits 545 seconds for old 540-second workers to finish. It transfers any legacy manual request idempotently, verifies the replacements are active on the selected SHA, and deletes **only** the old `ticketingRecoveryWorker` after confirming its audited trigger. Later releases skip the drain when the old function is absent. Expiration metadata backfill follows the drain.
 5. Confirm a sandbox purchase, receipt, refund/dispute reconciliation, missing-webhook recovery, manual recovery and admission; confirm all lane heartbeats and the independent health snapshot advance. Confirm the financial schedule's final migration pass finishes after its 20-minute window, and retention checkpoints finish. Check new worker secrets and effective resource settings.

@@ -26,6 +26,16 @@ Revenue preparation refreshes the index's figures in place, preserving loaded fl
 
 ## Campaign delivery and recovery workers
 
+### Checkout reservations and closed sales
+
+One unpaid Stripe cart is allowed per normalized checkout email and signed-in buyer account across events. Resume the original cart or close it before starting a new one. New paid carts have 10 minutes from inventory reservation. The browser closes the payment form at the deadline and asks the server to confirm the outcome. The minute worker closes unattended carts, so inventory can take an additional scheduler tick and provider round trip to become available. Existing carts keep their recorded deadlines.
+
+Cancelling, archiving or unpublishing a published event queues its open checkouts for closure. Republishing opens a new sale and leaves earlier carts closed. Studio rejects publication commands based on an older draft or publication version. Reload the event and review its current status before retrying.
+
+If Stripe confirms a charge after the deadline or after the sale closed, the paid order and provider reference stay in the ledger without tickets. Find the order in **All Orders** or **System health**, verify the charge in Stripe and issue any required refund there. Reconciliation records confirmed refunds against the order. If Stripe cannot confirm the outcome, the reservation stays held for review. Preserve the order and Stripe reference when investigating.
+
+### Worker cadence
+
 Campaign creation and committed page progress trigger `ticketingCampaignWorker` immediately. Each page handles up to 100 ticket/order records; stable recipient job IDs deduplicate holders across pages, duplicate triggers and retries. Lease tokens fence stale workers. Communication maintenance wakes pending campaigns whose leases expired, including jobs created before this release. Normal pagination does not wait for a scheduled tick.
 
 Recovery runs independently:
@@ -33,7 +43,8 @@ Recovery runs independently:
 - `ticketingMaintenance`: payment/order/refund/webhook reconciliation every five minutes.
 - `ticketingCommunicationMaintenance`: notice creation, campaign recovery, waitlists and checkout follow-up scheduling every minute.
 - `ticketingEmailMaintenance`: pending email recovery every minute.
-- `ticketingRecoveryWorker`: executes durable administrator-requested recovery for each lane. **Retry pending jobs** queues this work and returns immediately.
+- `ticketingRecoveryRequestWorker` executes durable administrator-requested recovery and closes carts for sales that have ended. **Retry pending jobs** queues recovery and returns immediately.
+- `ticketingCheckoutExpiry` checks due checkout reservations every minute in production and active staging, and every five minutes in quiet staging.
 
 Each lane has its own lease and health heartbeat. Phases stop starting records after a 60-second soft budget, checkpoint only visited records and await in-flight work. Function timeouts retain substantial headroom for provider calls; this is not a promise that an unavailable dependency will recover within 60 seconds. One failed record is logged, the rest of its page can proceed, and the phase remains visibly failed for operator review. Payment checks and message delivery can overlap: temporary payment reconciliation defers attendee emails instead of discarding recipients. Admission still respects financial holds.
 
@@ -41,7 +52,7 @@ Email triggers have bounded concurrency. A shared per-project delivery limiter s
 
 Reminders use the actual event date, time and timezone. New 24-hour reminders expire when the four-hour reminder window begins, four-hour reminders expire at the start, and location notices expire at the end. Legacy reminders/location jobs without explicit deadlines are also checked against event times. Expired notices that have never been attempted are cancelled. An expired notice with an uncertain earlier provider attempt goes to **review**, preserving its original payload; inspect the provider outcome instead of sending another copy. Cancellation notices and organizer announcements remain available after an event.
 
-Deployment uses the existing Firebase project and secrets. The release workflow includes all four added functions (`ticketingCampaignWorker`, `ticketingRecoveryWorker`, `ticketingCommunicationMaintenance`, `ticketingEmailMaintenance`); do not deploy only the website or the old maintenance function. After staging deployment, verify all three recovery heartbeats, run a controlled announcement, confirm queued recipient counts stop changing at the expected audience size, and check that retries retain the original provider references. Monitor the new Scheduler jobs alongside the original one. A successful local test does not verify cloud trigger delivery or external alert routing.
+The coordinated release includes the API, the workers listed above and the campaign trigger. After staging deployment, verify all three recovery heartbeats, expire a test checkout, run a controlled announcement and confirm that retries retain the original provider references. Check Cloud Scheduler and external alerts as part of staging acceptance.
 
 The public `/events` page shows upcoming and ongoing events until their end time. Completed and archived events appear at `/past-events`, linked below the event grid; that page links back to upcoming events. Historical cards use **View event** rather than a purchase/RSVP call to action.
 
@@ -93,7 +104,7 @@ The dashboard and logs work without new secrets. Email/text notifications requir
    ```
 
 3. Name it `Pluto ticketing operations`, select the verified channel, and set a 15-minute notification limit. Test it in staging using a controlled failed job and confirm that it reaches the operator. Restore the fixture afterward.
-4. Separately monitor the `ticketingMaintenance`, `ticketingCommunicationMaintenance` and `ticketingEmailMaintenance` Cloud Scheduler jobs for failed executions and prolonged missing executions. An application cannot emit a failure log while its scheduler or runtime is completely stopped. The dashboard checks the three heartbeats independently when opened, but this does not replace external missing-execution alerts.
+4. Monitor the payment, communications, email and checkout-expiry Cloud Scheduler jobs for failures and prolonged missing executions. The dashboard checks the three maintenance heartbeats independently. Checkout expiry uses Scheduler execution monitoring.
 
 An API-compatible log alert template is provided in [ticketing-alert-policy.json](ticketing-alert-policy.json). Replace its notification channel resource name with the verified channel in the selected project before creating the policy. Check existing policies first to avoid duplicates. Google documents [log alert policy fields](https://docs.cloud.google.com/monitoring/api/ref_v3/rest/v3/projects.alertPolicies) and [creating policies](https://docs.cloud.google.com/sdk/gcloud/reference/monitoring/policies/create).
 

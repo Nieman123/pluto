@@ -50,8 +50,8 @@ async function pay(result) { const order = (await service.order(result.orderId).
 async function main() {
   await db.collection('adminUsers').doc(staff).set({ role: 'admin' });
   const eventId = await makeEvent(false, d => { d.pools[0].capacity = 2; d.pools[1].capacity = 2; });
-  const attempts = Array.from({ length: 5 }, () => request(eventId, { nativeApp: true }));
-  const results = await Promise.allSettled(attempts.map(r => service.checkout(r, buyer)));
+  const attempts = Array.from({ length: 5 }, (_, i) => request(eventId, { nativeApp: true, email: `capacity-${i}-${buyer.email}` }));
+  const results = await Promise.allSettled(attempts.map(r => service.checkout(r, null)));
   const winners = results.flatMap((r, i) => r.status === 'fulfilled' ? [{ request: attempts[i], result: r.value }] : []);
   assert.equal(winners.length, 2, 'shared pools cannot oversell under concurrent checkout');
   for (const winner of winners) {
@@ -60,11 +60,11 @@ async function main() {
     assert.equal(sessions.get(order.sessionId).return_url, `http://127.0.0.1:4173/tickets/checkout-return?order=${winner.result.orderId}`);
   }
   const pool = (await service.event(eventId).collection('pools').doc('friday').get()).data(); assert.equal(pool.held, 2); assert.equal(pool.sold, 0);
-  const first = winners[0]; await service.checkout(first.request, buyer); assert.equal(sessions.size, 2, 'request retry creates no second Session');
+  const first = winners[0]; await service.checkout(first.request, null); assert.equal(sessions.size, 2, 'request retry creates no second Session');
   await pay(first.result); await pay(first.result); let view = await service.view(first.result.orderId, first.request.accessKey, null);
   assert.equal(view.tickets.length, 1, 'fulfillment is idempotent'); assert.equal(view.venue.address, '123 Hidden Lane');
   await assert.rejects(() => service.view(first.result.orderId, newKey(), null), /secure order link/);
-  await assert.rejects(() => service.checkout({ ...first.request, name: 'Changed' }, buyer), /different details/);
+  await assert.rejects(() => service.checkout({ ...first.request, name: 'Changed' }, null), /different details/);
   await service.cancel(winners[1].result.orderId, winners[1].request.accessKey, null);
   assert.equal((await service.event(eventId).collection('pools').doc('friday').get()).data().held, 0);
   const qr = view.tickets[0].qr; await service.transfer(first.result.orderId, first.request.accessKey, null, view.tickets[0].id, 'recipient@example.test');
@@ -76,7 +76,7 @@ async function main() {
   assert.equal((await service.event(eventId).collection('pools').doc('friday').get()).data().sold, 0, 'unused refunded stock reopens'); assert.equal(refunds.size, 1);
   await assert.rejects(() => service.holder(transfer.token, null), /no longer valid/);
   const promoEvent = await makeEvent(false, d => { d.promos[0].limit = 1; });
-  const promoAttempts = await Promise.allSettled([service.checkout(request(promoEvent, { promoCode: 'SAVE' }), buyer), service.checkout(request(promoEvent, { promoCode: 'SAVE' }), buyer)]);
+  const promoAttempts = await Promise.allSettled([1, 2].map(i => service.checkout(request(promoEvent, { promoCode: 'SAVE', email: `promo-${i}-${buyer.email}` }), null)));
   assert.equal(promoAttempts.filter(r => r.status === 'fulfilled').length, 1, 'promo cap includes concurrent reservations');
   const active = await makeEvent(true); const activeRequest = request(active); const activeOrder = await service.checkout(activeRequest, buyer); await pay(activeOrder);
   const activeView = await service.view(activeOrder.orderId, activeRequest.accessKey, null), ticket = activeView.tickets[0];
@@ -173,12 +173,12 @@ async function main() {
     await db.collection('ticketingRateLimits').doc(hash(`60000:${Math.floor(throttleAt / 60000)}:scanner-login-ip:${throttleIp}:0`)).set({ count: 40 });
     await assert.rejects(() => service.scannerLogin(scannerPin.pin, throttleIp), e => e.status === 429);
   } finally { Date.now = realNow; }
-  const recoverRequest = request(await makeEvent()), recoverOrder = await service.checkout(recoverRequest, buyer);
+  const recoverRequest = request(await makeEvent(), { email: `recover-${buyer.email}` }), recoverOrder = await service.checkout(recoverRequest, null);
   const recoverRef = service.order(recoverOrder.orderId), recoverSnapshot = (await recoverRef.get()).data();
   await recoverRef.update({ status: 'provisioning', sessionId: null, createdAt: Date.now() - 6 * 60000 });
   await service.provision(recoverOrder.orderId, (await recoverRef.get()).data());
   assert.equal((await recoverRef.get()).data().sessionId, recoverSnapshot.sessionId, 'late provisioning recovers the same Stripe Session');
-  const longAttempt = request(await makeEvent()), longOrder = await service.checkout(longAttempt, buyer);
+  const longAttempt = request(await makeEvent(), { email: `uncertain-${buyer.email}` }), longOrder = await service.checkout(longAttempt, null);
   const longRef = service.order(longOrder.orderId); await longRef.update({ status: 'provisioning', sessionId: null, createdAt: Date.now() - 24 * 3600000 });
   await assert.rejects(async () => service.provision(longOrder.orderId, (await longRef.get()).data()), /staff review/);
   assert.equal((await longRef.get()).data().status, 'provisioning', 'uncertain outcome retains capacity');

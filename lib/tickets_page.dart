@@ -624,16 +624,23 @@ class _TicketsPageState extends State<TicketsPage> with WidgetsBindingObserver {
           _body(data['method'] == 'rsvp'
               ? 'This event has been cancelled. Your RSVP no longer grants admission.'
               : 'This event has been cancelled. Contact Pluto about your order and refund approval.'),
+        if (data['issuanceWithheld'] == true)
+          _body(data['financialBlocked'] == true
+              ? 'Payment was received after checkout closed. No tickets were issued. Contact Pluto about this payment.'
+              : 'No tickets were issued for this payment. Your refund is shown below.'),
         if ((data['discount'] as num? ?? 0) > 0)
           _body('Discounts: ${_money(data['discount'])}'),
         if ((data['taxAmount'] as num? ?? 0) > 0)
           _body('Applicable tax included: ${_money(data['taxAmount'])}'),
         if ((data['externalRefundAmount'] as num? ?? 0) > 0)
-          _body(
-              'An additional ${_money(data['externalRefundAmount'])} refund is awaiting ticket review.'),
+          _body(data['issuanceWithheld'] == true
+              ? 'Stripe refund: ${_money(data['externalRefundAmount'])}'
+              : 'An additional ${_money(data['externalRefundAmount'])} refund is awaiting ticket review.'),
         const SizedBox(height: 10),
         Wrap(spacing: 12, runSpacing: 8, children: <Widget>[
-          if (data['status'] == 'paid' && data['demo'] != true)
+          if (data['status'] == 'paid' &&
+              data['demo'] != true &&
+              data['issuanceWithheld'] != true)
             TextButton(
                 onPressed: _busy || data['offline'] == true
                     ? null

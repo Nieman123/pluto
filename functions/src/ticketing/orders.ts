@@ -22,6 +22,7 @@ import { assertVenueRegistration, prepareVenueTax } from './venue-tax';
 import { checkInRewardPoints, prepareCheckInRewards } from './check-in-rewards';
 import { nextFinancialCheckAt } from './cost-policy';
 import { expiringGrant } from './retention';
+import { checkoutHoldMs, pendingCheckoutStatuses, saleClosed } from './checkout-policy';
 
 export interface Order {
   eventId: string; eventTitle: string; eventSlug: string; ownerUid: string; email: string; name: string; accessHash: string; inputHash: string;
@@ -30,6 +31,7 @@ export interface Order {
   sessionId?: string; clientSecret?: string; paymentIntentId?: string; receiptUrl?: string; stripeFee?: number | null; taxAmount?: number;
   stripeFeeStatus?: 'pending' | 'confirmed'; financialBlocked?: boolean; financialCheckId?: string; financialReviewReason?: string;
   nextFinancialCheckAt?: number;
+  checkoutDeadline?: number; saleGeneration?: number; issuanceWithheld?: string;
   providerState?: string; provisioningLeaseUntil?: number; provisioningAttemptId?: string; expiredAt?: number;
   checkoutBranding?: Stripe.Checkout.SessionCreateParams.BrandingSettings;
   nativeApp?: boolean;
@@ -65,7 +67,8 @@ export class Orders extends Catalog {
   }
   async checkoutAttempt(key: unknown) {
     const proof = receipt(key), order = (await this.order(hash(proof)).get()).data();
-    return order ? { exists: true, orderId: hash(proof), eventId: order.eventId, status: order.status, expiresAt: order.expiresAt } : { exists: false };
+    return order ? { exists: true, orderId: hash(proof), eventId: order.eventId, status: order.status, expiresAt: order.expiresAt,
+      ...(order.issuanceWithheld ? { issuanceWithheld: true } : {}) } : { exists: false };
   }
   async authorize(orderId: string, key: unknown, actor: DecodedIdToken | null) {
     const order = (await this.order(orderId).get()).data() as Order | undefined;
@@ -190,6 +193,31 @@ export class Orders extends Catalog {
       const taxCustomerAddress = method === 'cash' && draft.tax.mode === 'automatic' && priced.total > 0 ? { country: 'US', state: text(raw.taxState, 'billing state', 2, true).toUpperCase(), postal_code: text(raw.taxPostalCode, 'billing ZIP', 10, true), line1: text(raw.taxLine1, 'billing street', 500, true), city: text(raw.taxCity, 'billing city', 100, true) } : null;
       if (taxCustomerAddress && (!/^[A-Z]{2}$/.test(taxCustomerAddress.state) || !/^\d{5}(?:-\d{4})?$/.test(taxCustomerAddress.postal_code))) fail('Check the US billing state and ZIP for the cash tax calculation.');
       const hold = await waitlistHold(tx, this.db, raw, eventId, contact.email, draft, now);
+      const cardCheckout = method === 'stripe' && priced.total > 0;
+      const buyerLocks: FirebaseFirestore.DocumentReference[] = [];
+      if (cardCheckout) {
+        const uids = [...new Set([contact.ownerUid, actor?.uid].filter(Boolean))];
+        const buyers = [`email:${contact.email}`, ...uids.map(uid => `uid:${uid}`)]
+          .map(key => this.db.collection('ticketingCheckoutBuyers').doc(hash(key)));
+        // Shared document locks serialize concurrent checkouts even across different events.
+        const locks = await tx.getAll(...buyers);
+        // A VIP buyer can be signed in separately from the RSVP's ticket owner.
+        const linkedIds = new Set<string>();
+        for (const lock of locks) {
+          const linkedId = lock.data()?.orderId;
+          if (linkedId) linkedIds.add(linkedId);
+        }
+        const pending = this.db.collection('ticketingOrders').where('method', '==', 'stripe').where('status', 'in', pendingCheckoutStatuses);
+        const active = await Promise.all([
+          tx.get(pending.where('email', '==', contact.email).limit(1)),
+          ...uids.map(uid => tx.get(pending.where('ownerUid', '==', uid).limit(1))),
+        ]);
+        const linked = linkedIds.size ? await tx.getAll(...[...linkedIds].map(orderId => this.order(orderId))) : [];
+        if (active.some(result => !result.empty) || linked.some(order => pendingCheckoutStatuses.includes(order.data()?.status)))
+          fail('You already have an unpaid cart. Finish or cancel it before starting another.', 409, 'checkout-already-open');
+        // Write after the inventory and promotion reads below.
+        buyerLocks.push(...buyers);
+      }
       const poolSnapshots = await Promise.all(Object.keys(priced.consumption).map(key => tx.get(this.event(eventId).collection('pools').doc(key))));
       const pools: Record<string, any> = Object.fromEntries(poolSnapshots.map(s => [s.id, s.data()])); assertCapacity(priced.consumption, withoutWaitlistHold(pools, hold));
       const promoRef = priced.promoCode ? this.event(eventId).collection('promos').doc(priced.promoCode) : null;
@@ -201,6 +229,7 @@ export class Orders extends Catalog {
         if (promoter?.active === true) promoterId = id(raw.promoterId);
       }
       for (const [key, count] of Object.entries(priced.consumption)) tx.update(this.event(eventId).collection('pools').doc(key), { held: pools[key].held + count - (hold?.entry.consumption[key] || 0) });
+      for (const buyer of buyerLocks) tx.set(buyer, { orderId, expiresAt: Timestamp.fromMillis(now + 24 * 3600000) });
       if (hold) tx.update(hold.ref, { status: 'claimed', orderId, claimedAt: now });
       if (promoRef) tx.update(promoRef, { held: promotion!.held + 1 });
       if (upgradeGrant && rsvpLink) {
@@ -208,20 +237,28 @@ export class Orders extends Catalog {
         // Serialize a new checkout against RSVP withdrawal, including concurrent requests.
         tx.update(this.order(rsvpLink.rsvpOrderId), { rsvpUpgradeRevision: (upgradeParent!.rsvpUpgradeRevision || 0) + 1 });
       }
+      const reservedAt = Date.now(), deadline = reservedAt + checkoutHoldMs;
       tx.create(ref, { eventId, eventTitle: draft.title, eventSlug: draft.slug, ...contact, accessHash: hash(accessKey), inputHash: requestHash,
         ...(method === 'stripe' && raw.nativeApp === true ? { nativeApp: true } : {}),
         ...(rsvpLink || {}),
         ...(method === 'stripe' && priced.total > 0 ? { checkoutBranding: { ...plutoCheckoutBranding } } : {}),
-        ...priced, tax: draft.tax, taxCustomerAddress, currency: 'usd', livemode: isLive(), status: 'provisioning', method, createdAt: now, expiresAt: now + 35 * 60000,
+        ...priced, tax: draft.tax, taxCustomerAddress, currency: 'usd', livemode: isLive(), status: 'provisioning', method, createdAt: reservedAt, expiresAt: deadline,
+        saleGeneration: event.saleGeneration || 0, ...(cardCheckout ? { checkoutDeadline: deadline, nextCheckoutCloseAt: deadline } : {}),
         promoterId, staffUid, transferCutoff: draft.admissionStartsAt, cashReceived: method === 'cash' ? raw.cashReceived : 0, compReason: method === 'comp' ? raw.reason : '', refundedAmount: 0, revision: event.publishedRevision, apiVersion, providerState: method === 'stripe' ? 'not-sent' : 'not-required' });
     });
     let order = (await ref.get()).data() as Order;
     if (order.status === 'provisioning') {
       if (order.total === 0 || method !== 'stripe') {
         await this.fulfillNonCard(orderId, order);
-      } else await this.provision(orderId, order);
+      } else if (order.checkoutDeadline && order.checkoutDeadline <= Date.now()) await this.closeCheckout(orderId);
+      else await this.provision(orderId, order);
     }
     order = (await ref.get()).data() as Order;
+    if (order.status === 'open' && (order.expiresAt <= Date.now() || saleClosed(order, (await this.event(order.eventId).get()).data()))) {
+      await this.closeCheckout(orderId);
+      order = (await ref.get()).data() as Order;
+      if (order.status === 'open') fail('This checkout is closing. Wait for Stripe confirmation before starting another.', 409, 'checkout-closing');
+    }
     return { orderId, status: order.status, total: order.total, discount: order.discount, expiresAt: order.expiresAt,
       clientSecret: order.status === 'open' ? order.clientSecret : undefined, publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '', livemode: order.livemode };
   }
@@ -265,6 +302,8 @@ export class Orders extends Catalog {
       const attemptId = randomUUID();
       const previouslySent = await this.db.runTransaction(async tx => {
         const current = (await tx.get(this.order(orderId))).data() as Order;
+        const event = (await tx.get(this.event(current.eventId))).data();
+        if (saleClosed(current, event) || current.checkoutDeadline && current.checkoutDeadline <= Date.now()) fail('This checkout has closed.', 409, 'checkout-closing');
         if (current.status !== 'provisioning' || (current.provisioningLeaseUntil || 0) > Date.now()) fail('Checkout is already being confirmed. Retry the original attempt shortly.', 409);
         const prior = current.providerState !== 'not-sent';
         tx.update(this.order(orderId), { providerState: 'sending', provisioningAttemptId: attemptId, provisioningLeaseUntil: Date.now() + 120000 }); return prior;
@@ -285,7 +324,7 @@ export class Orders extends Catalog {
     if (session.metadata?.pluto_order_id !== orderId || session.client_reference_id !== orderId || session.livemode !== order.livemode || session.currency !== 'usd' || session.amount_total !== order.total) fail('Checkout totals or environment do not match the reserved order.', 503);
     await this.db.runTransaction(async tx => {
       const ref = this.order(orderId), latest = (await tx.get(ref)).data() as Order;
-      if (latest.status === 'provisioning') tx.update(ref, { status: 'open', providerState: 'created', provisioningLeaseUntil: 0, sessionId: session!.id, clientSecret: session!.client_secret, expiresAt: session!.expires_at * 1000 });
+      if (latest.status === 'provisioning') tx.update(ref, { status: 'open', providerState: 'created', provisioningLeaseUntil: 0, sessionId: session!.id, clientSecret: session!.client_secret, expiresAt: latest.checkoutDeadline ?? session!.expires_at * 1000 });
       else if (latest.sessionId && latest.sessionId !== session.id) fail('Checkout attempt mismatch.', 409);
     });
     return session;
@@ -344,7 +383,7 @@ export class Orders extends Catalog {
     const session = await this.stripe().checkout.sessions.retrieve(sid, { expand: ['payment_intent.latest_charge.balance_transaction'] });
     if (session.metadata?.pluto_order_id !== orderId || session.client_reference_id !== orderId || session.livemode !== order.livemode || session.currency !== 'usd' || session.amount_total !== order.total || (order.sessionId && order.sessionId !== sid)) fail('Payment does not match this order.', 409);
     // Recover a webhook arriving before Session creation was attached to Firestore.
-    if (!order.sessionId) await this.order(orderId).update({ sessionId: sid, expiresAt: session.expires_at * 1000 });
+    if (!order.sessionId) await this.order(orderId).update({ sessionId: sid, expiresAt: order.checkoutDeadline ?? session.expires_at * 1000 });
     if (session.payment_status === 'paid') {
       const lineItems = await this.stripe().checkout.sessions.listLineItems(sid, { limit: 100 });
       if (lineItems.has_more || lineItems.data.length !== order.units.length) fail('Payment line items do not match the reserved ticket units.', 409);
@@ -370,16 +409,18 @@ export class Orders extends Catalog {
       const feeKnown = !!balance && Number.isSafeInteger(balance.fee) && balance.fee >= 0 && balance.currency === 'usd';
       await this.fulfill(orderId, { paymentIntentId, receiptUrl: charge?.receipt_url || '',
         ...(feeKnown ? { stripeFee: balance.fee, stripeFeeStatus: 'confirmed', stripeBalanceTransactionId: balance.id, stripeFeeConfirmedAt: Date.now() } : {}),
-        taxAmount: session.total_details?.amount_tax || 0 }, verifiedUnits);
+        taxAmount: session.total_details?.amount_tax || 0 }, verifiedUnits, charge?.created);
       await this.paymentVerified(orderId, checkId);
       await this.db.runTransaction(async tx => {
         const ref = this.order(orderId), current = (await tx.get(ref)).data()!;
         if (current.financialCheckId !== checkId) return;
         const mapped = await tx.get(this.db.collection('ticketingRefunds').where('orderId', '==', orderId));
         const settled = new Set(mapped.docs.filter(d => d.data().status === 'succeeded').flatMap(d => [...d.data().externalStripeRefundIds || [], ...(d.data().stripeRefundId ? [d.data().stripeRefundId] : [])]));
+        if (current.issuanceWithheld) for (const refundId of current.externalStripeRefundIds || []) settled.add(refundId);
         const dispute = disputes.data.find(d => !['won', 'warning_closed'].includes(d.status));
         const unresolved = refunds.data.some(r => !['failed', 'canceled'].includes(r.status || '') && (r.status !== 'succeeded' || !settled.has(r.id)));
-        const reason = dispute ? 'Payment dispute requires staff review.' : refunds.has_more || disputes.has_more ? 'Payment history exceeds the automatic review limit.' : unresolved ? 'A provider refund is pending or needs ticket mapping.' : '';
+        const withheld = current.issuanceWithheld && (current.externalRefundAmount || 0) + (current.refundedAmount || 0) < current.total;
+        const reason = dispute ? 'Payment dispute requires staff review.' : refunds.has_more || disputes.has_more ? 'Payment history exceeds the automatic review limit.' : unresolved ? 'A provider refund is pending or needs ticket mapping.' : withheld ? current.issuanceWithheld : '';
         const reconciledAt = Date.now();
         tx.update(ref, { financialBlocked: !!reason, financialReviewReason: reason, financialReconciledAt: reconciledAt,
           nextFinancialCheckAt: nextFinancialCheckAt({ ...current, financialBlocked: !!reason, financialReviewReason: reason }, reconciledAt),
@@ -389,17 +430,35 @@ export class Orders extends Catalog {
     else if (session.status === 'complete') {
       const intent = typeof session.payment_intent === 'object' ? session.payment_intent : null;
       if (intent?.status === 'canceled' || intent?.status === 'requires_payment_method') await this.release(orderId);
-      else await this.order(orderId).update({ status: 'processing' });
+      else await this.db.runTransaction(async tx => {
+        const ref = this.order(orderId), latest = (await tx.get(ref)).data();
+        if (latest && pendingCheckoutStatuses.includes(latest.status)) tx.update(ref, { status: 'processing' });
+      });
     }
     return session;
   }
   protected async paymentVerified(_orderId: string, _checkId: string) { /* Operations reconciles refund allocations before admission is unlocked. */ }
-  async fulfill(orderId: string, payment: Record<string, unknown>, verifiedUnits?: Unit[]) {
+  async fulfill(orderId: string, payment: Record<string, unknown>, verifiedUnits?: Unit[], chargeCreatedSeconds?: number) {
     await this.db.runTransaction(async tx => {
       const ref = this.order(orderId), order = (await tx.get(ref)).data() as Order;
       if (order.status === 'paid') { tx.update(ref, { ...(order.stripeFeeStatus !== 'confirmed' ? { stripeFee: null, stripeFeeStatus: 'pending' } : {}), ...payment, paymentVerifiedAt: Date.now() }); return; }
       if (order.method === 'rsvp') fail('RSVP admission requires the RSVP approval flow.', 409);
-      if (order.status === 'expired') { tx.update(ref, { reviewReason: 'Payment received after stock was released. Staff review required.', ...payment }); return; }
+      const cardCheckout = order.method === 'stripe' && order.total > 0;
+      const event = cardCheckout ? (await tx.get(this.event(order.eventId))).data() : undefined;
+      const expired = order.status === 'expired';
+      const late = order.checkoutDeadline !== undefined && (chargeCreatedSeconds !== undefined && Number.isFinite(chargeCreatedSeconds)
+        ? chargeCreatedSeconds * 1000 >= order.checkoutDeadline : Date.now() >= order.checkoutDeadline);
+      const issuanceWithheld = !cardCheckout ? '' : expired ? 'Payment arrived after inventory was released. Refund in Stripe.'
+        : saleClosed(order, event) ? 'Payment arrived after checkout closed for this event. Refund in Stripe.'
+        : late ? 'Payment arrived after the reservation deadline. Refund in Stripe.' : '';
+      if (issuanceWithheld) {
+        if (!expired && !pendingCheckoutStatuses.includes(order.status)) return;
+        if (!expired) await this.releaseInventory(tx, order);
+        tx.update(ref, { status: 'paid', paidAt: Date.now(), clientSecret: null, ...payment, issuanceWithheld, reviewReason: '',
+          financialBlocked: true, financialReviewReason: issuanceWithheld, nextFinancialCheckAt: Date.now() + 5 * 60000 });
+        return;
+      }
+      if (!pendingCheckoutStatuses.includes(order.status)) return;
       if (!await this.validUpgradeParent(tx, order)) { tx.update(ref, { status: 'review', reviewReason: 'VIP payment received but its approved RSVP is no longer valid. Staff review required.', clientSecret: null, ...payment }); return; }
       const pools = await Promise.all(Object.keys(order.consumption).map(key => tx.get(this.event(order.eventId).collection('pools').doc(key))));
       const promoRef = order.promoCode ? this.event(order.eventId).collection('promos').doc(order.promoCode) : null;
@@ -416,36 +475,43 @@ export class Orders extends Catalog {
       tx.set(this.db.collection('ticketingEmailJobs').doc(`receipt_${orderId}`), { type: 'receipt', orderId, to: order.email, status: 'pending', createdAt: Date.now(), attempts: 0 });
     });
   }
+  private async releaseInventory(tx: Transaction, order: Order) {
+    const pools = await Promise.all(Object.keys(order.consumption).map(key => tx.get(this.event(order.eventId).collection('pools').doc(key))));
+    const promoRef = order.promoCode ? this.event(order.eventId).collection('promos').doc(order.promoCode) : null;
+    const promo = promoRef ? (await tx.get(promoRef)).data() : null;
+    for (const pool of pools) { const data = pool.data()!; tx.update(pool.ref, { held: Math.max(0, data.held - order.consumption[pool.id]) }); }
+    if (promoRef) tx.update(promoRef, { held: Math.max(0, promo!.held - 1) });
+  }
   async release(orderId: string, onlyProviderStates?: string[], audit?: { uid: string; note: string }) {
     await this.db.runTransaction(async tx => {
       const ref = this.order(orderId), order = (await tx.get(ref)).data() as Order;
       if (!['open', 'provisioning', 'processing'].includes(order.status)) return;
       if (onlyProviderStates && (!onlyProviderStates.includes(order.providerState || '') || order.sessionId || order.paymentIntentId)) fail('Provider creation may already have started. Keep the reservation for reconciliation.', 409);
-      const pools = await Promise.all(Object.keys(order.consumption).map(key => tx.get(this.event(order.eventId).collection('pools').doc(key))));
-      const promoRef = order.promoCode ? this.event(order.eventId).collection('promos').doc(order.promoCode) : null;
-      const promo = promoRef ? (await tx.get(promoRef)).data() : null;
-      for (const pool of pools) { const data = pool.data()!; tx.update(pool.ref, { held: Math.max(0, data.held - order.consumption[pool.id]) }); }
-      if (promoRef) tx.update(promoRef, { held: Math.max(0, promo!.held - 1) });
+      await this.releaseInventory(tx, order);
       tx.update(ref, { status: 'expired', clientSecret: null, expiredAt: Date.now() });
       if (audit) tx.create(this.event(order.eventId).collection('audit').doc(), { action: 'checkout-resolved-without-provider-request', orderId, ...audit, at: Date.now() });
     });
   }
   async cancel(orderId: string, key: unknown, actor: DecodedIdToken | null) {
-    const order = await this.authorize(orderId, key, actor);
-    if (order.status === 'paid') return { status: 'paid' };
+    await this.authorize(orderId, key, actor);
+    const status = await this.closeCheckout(orderId);
+    if (status === 'paid' || status === 'expired') return { status };
+    return fail('Payment is still being confirmed. Keep the original attempt open.', 409);
+  }
+  async closeCheckout(orderId: string) {
+    const order = (await this.order(orderId).get()).data() as Order;
+    if (!order || !pendingCheckoutStatuses.includes(order.status)) return order?.status;
     if (order.method === 'stripe' && order.total > 0) {
       if (!order.sessionId && ['not-sent', 'rejected'].includes(order.providerState || '')) {
-        await this.release(orderId, ['not-sent', 'rejected']); return { status: 'expired' };
+        await this.release(orderId, ['not-sent', 'rejected']); return 'expired';
       }
+      if (!order.sessionId && (order.provisioningLeaseUntil || 0) > Date.now()) return order.status;
       const sid = order.sessionId || (await this.findCheckout(orderId, order))?.id;
       if (!sid) fail('Payment creation has not been resolved. Reserved inventory is retained for staff review; cancellation will not create another payment attempt.', 409);
       try { await this.stripe().checkout.sessions.expire(sid); } catch { /* Retrieve authoritative status below. */ }
       await this.verifySession(orderId, sid);
     } else await this.release(orderId);
-    const latest = (await this.order(orderId).get()).data()!;
-    if (latest.status === 'paid') return { status: 'paid' };
-    if (latest.status !== 'expired') fail('Payment is still being confirmed. Keep the original attempt open.', 409);
-    return { status: 'expired' };
+    return (await this.order(orderId).get()).data()?.status as string | undefined;
   }
   async findCheckout(orderId: string, order: Order) {
     const matches: Stripe.Checkout.Session[] = [];
@@ -486,16 +552,20 @@ export class Orders extends Catalog {
   transferDeadline(ticket: any, event: any) { return Math.min(Date.parse(ticket.transferCutoff || ticket.validFrom), Date.parse((event.liveDraft || event.draft).admissionStartsAt)); }
   async view(orderId: string, accessKey: unknown, actor: DecodedIdToken | null, refresh = false) {
     let order = await this.authorize(orderId, accessKey, actor);
-    if (refresh && order.sessionId && order.status !== 'paid') { await this.verifySession(orderId); order = (await this.order(orderId).get()).data() as Order; }
-    const tickets = (await this.tickets().where('orderId', '==', orderId).get()).docs;
     const event = (await this.event(order.eventId).get()).data();
+    if (refresh && order.sessionId && order.status !== 'paid') {
+      if (pendingCheckoutStatuses.includes(order.status) && (order.expiresAt <= Date.now() || saleClosed(order, event))) await this.closeCheckout(orderId);
+      else await this.verifySession(orderId);
+      order = (await this.order(orderId).get()).data() as Order;
+    }
+    const tickets = (await this.tickets().where('orderId', '==', orderId).get()).docs;
     const upgradeValid = await this.db.runTransaction(tx => this.validUpgradeParent(tx, order));
     const held = tickets.filter(t => upgradeValid && !order.financialBlocked && t.data().status === 'valid' && (!t.data().rsvp || order.rsvpStatus === 'approved') && (t.data().ownerUid === actor?.uid || t.data().holderEmail === order.email));
     const venue = held.length ? holderVenue(event?.liveDraft || event?.draft) : null;
     return { orderId, eventId: order.eventId, eventTitle: order.eventTitle, eventSlug: order.eventSlug, calendarUrl: this.calendarUrl(event), calendarLinks: this.calendarOptions(event), eventStatus: event?.status, status: order.status, method: order.method, total: order.total,
       rsvpStatus: order.rsvpStatus || '', approvalRequired: order.approvalRequired === true, decisionNote: order.decisionNote || '',
       rsvpOrderId: order.rsvpOrderId || '', upgradeValid, upgradeUrl: order.method === 'rsvp' && order.rsvpStatus === 'approved' && event?.status === 'published' && (event.liveDraft || event.draft).offers.some((o: any) => o.active && o.kind === 'upgrade' && o.unitAmount > 0) ? `${baseUrl()}/events/${encodeURIComponent(event.publishedSlug || order.eventSlug)}#tickets` : '',
-      providerState: order.providerState || 'unknown',
+      providerState: order.providerState || 'unknown', issuanceWithheld: !!order.issuanceWithheld,
       discount: order.discount, taxAmount: order.taxAmount || 0, refundedAmount: order.refundedAmount || 0, externalRefundAmount: (order as any).externalRefundAmount || 0, reviewReason: order.financialReviewReason || order.reviewReason || '', financialBlocked: !!order.financialBlocked, name: order.name, email: order.email, createdAt: order.createdAt, receiptUrl: order.receiptUrl || '',
       tickets: tickets.map(t => { const d = t.data(), canUse = held.includes(t); return { id: t.id, name: d.name, holderName: d.holderName, status: d.status, validFrom: d.validFrom, validUntil: d.validUntil, admission: d.admission,
         amount: d.amount, calendarUrl: this.calendarUrl(event), calendarLinks: this.calendarOptions(event), venue: canUse ? venue : null, transferable: !d.rsvp && !d.rsvpOrderId && canUse && d.status === 'valid' && !d.admission && event?.status !== 'cancelled' && Date.now() < this.transferDeadline(d, event), qr: canUse && d.status === 'valid' && event?.status !== 'cancelled' ? this.credential(d, t.id) : null }; }), venue };
@@ -550,15 +620,18 @@ export class Orders extends Catalog {
         qr: usable ? this.credential(d, t.id) : null }; })) };
   }
   async recover(rawEmail: unknown) {
-    const target = email(rawEmail), docs = await this.db.collection('ticketingOrders').where('email', '==', target).get();
-    for (const doc of docs.docs.slice(0, 25)) {
+    const target = email(rawEmail), docs = await this.db.collection('ticketingOrders').where('email', '==', target)
+      .where('status', '==', 'paid').orderBy('createdAt', 'desc').limit(25).get();
+    const batch = this.db.batch();
+    let queued = 0;
+    for (const doc of docs.docs) {
       if (doc.data().accountDeletedAt) continue;
       const token = secret();
-      const batch = this.db.batch();
       batch.set(this.db.collection('ticketingRecovery').doc(hash(token)), { orderId: doc.id, accessRevision: doc.data().accessRevision || 0, ...expiringGrant(Date.now() + 30 * 60000), used: false });
       batch.set(this.db.collection('ticketingEmailJobs').doc(`recovery_${hash(token)}`), { type: 'recovery', orderId: doc.id, to: target, token, status: 'pending', attempts: 0, createdAt: Date.now() });
-      await batch.commit();
+      queued++;
     }
+    if (queued) await batch.commit();
     return { message: 'If we found matching orders, a secure recovery link will be emailed to you.' };
   }
   async acceptRecovery(rawToken: unknown) {
@@ -574,8 +647,15 @@ export class Orders extends Catalog {
   }
   async resend(orderId: string, key: unknown, actor: DecodedIdToken | null) {
     const order = await this.authorize(orderId, key, actor);
-    if (order.status !== 'paid') fail('Tickets are not available yet.', 409);
-    await this.db.collection('ticketingEmailJobs').doc(`resend_${orderId}_${Math.floor(Date.now() / 60000)}`).set({ type: 'receipt', orderId, to: order.email, status: 'pending', attempts: 0, createdAt: Date.now() });
+    if (order.status !== 'paid' || order.issuanceWithheld) fail('Tickets are not available.', 409);
+    const ref = this.db.collection('ticketingEmailJobs').doc(`resend_${orderId}_${Math.floor(Date.now() / 60000)}`);
+    await this.db.runTransaction(async tx => {
+      if ((await tx.get(ref)).exists) return;
+      const latest = (await tx.get(this.order(orderId))).data();
+      if (!latest || latest.accountDeletedAt || latest.email !== order.email || (latest.accessRevision || 0) !== ((order as any).accessRevision || 0))
+        fail('Order access changed. Request a new recovery link.', 409);
+      tx.create(ref, { type: 'receipt', orderId, to: latest.email, status: 'pending', attempts: 0, createdAt: Date.now() });
+    });
     return { queued: true };
   }
   async transfer(orderId: string, key: unknown, actor: DecodedIdToken | null, ticketKey: string, target: unknown, holderToken?: unknown) {
@@ -819,7 +899,7 @@ export class Orders extends Catalog {
       stripeFee: order.stripeFee ?? null, stripeFeeStatus: order.stripeFeeStatus || 'pending', createdAt: order.createdAt, paidAt: order.paidAt || null, expiresAt: order.expiresAt,
       promoCode: order.promoCode || '', promoterId: order.promoterId || '', financialBlocked: !!order.financialBlocked, reviewReason: order.financialReviewReason || order.reviewReason || '',
       providerState: order.providerState || 'unknown', sessionId: order.sessionId || '', paymentIntentId: order.paymentIntentId || '', receiptUrl: order.receiptUrl || '', livemode: order.livemode,
-      supportRevision: order.supportRevision || 0,
+      supportRevision: order.supportRevision || 0, issuanceWithheld: !!order.issuanceWithheld,
       rsvpOrderId: order.rsvpOrderId || '',
       emails: emails.docs.map(d => { const e = d.data(); return { id: d.id, type: e.type, to: e.to, status: e.status, deliveryStatus: e.deliveryStatus || '', createdAt: e.createdAt, sentAt: e.sentAt || null, lastError: e.lastError || '' }; }).sort((a, b) => b.createdAt - a.createdAt).slice(0, 20),
       permissions: { canRefund: roles.includes('refund'), canCheckIn: canAdmit, canResolve: roles.includes('manager'), canSupport: roles.includes('manager') },
