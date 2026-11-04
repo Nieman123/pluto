@@ -111,8 +111,10 @@ async function field(page, path, value) {
     const appContext = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1280, height: 900 } });
     // The dashboard previews only three events. Earlier suites publish their own
     // events, so verify the real feed includes this fixture, then scope the preview.
-    await appContext.route('**/tickets/api/public/events', async route => {
+    await appContext.route('**/tickets/api/public/event-feed', async route => {
+      assert.equal(route.request().headers().authorization, undefined, 'ordinary accounts use the shared feed without a token');
       const response = await route.fetch(); assert.equal(response.status(), 200);
+      assert.match(response.headers()['cache-control'], /public.*s-maxage=60/);
       const feed = await response.json(), event = feed.events.find(e => e.id === `native-${eventId}`);
       assert.ok(event, 'published free event is present in the active app feed');
       assert.equal(event.registrationMode, 'free');
