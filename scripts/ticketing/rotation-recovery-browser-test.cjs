@@ -94,7 +94,13 @@ async function mockedRequests(page, path) {
     assert.equal(await page.locator('#admission-archive-reviewed').isVisible(), false, 'PIN staff cannot archive organizer reviews');
     await page.getByRole('button', { name: 'End scanner session' }).click(); await page.locator('#scanner-login:not([hidden])').waitFor();
     await page.locator('#preview-staff-sign-in').click(); await page.locator('#ticketing-message').filter({ hasText: 'Your assigned events are ready.' }).waitFor(); await page.locator('#staff-event').selectOption(eventId);
-    await page.locator('#admission-sync').click(); await page.locator('#admission-archive-reviewed:not([hidden])').waitFor();
+    await page.locator('#admission-sync').click();
+    // Replay exposes the archive button before sync's final manifest refresh.
+    // Wait for sync to finish so that refresh cannot consume the denial intended
+    // for the archive submission below.
+    await page.locator('#ticketing-message').filter({ hasText: 'Admission is prepared for offline use. 1 previous scan is retained' }).waitFor();
+    await page.locator('#admission-sync:not([disabled])').waitFor();
+    await page.locator('#admission-archive-reviewed:not([hidden])').waitFor();
     await page.locator('#admission-archive-reviewed').click();
     await page.getByRole('button', { name: 'Review order', exact: true }).click(); await page.locator('#ticketing-dialog').getByText('Recovery attendee', { exact: true }).first().waitFor();
     await page.locator('#ticketing-dialog-close').click(); await page.locator('#admission-archive-reviewed').click();
