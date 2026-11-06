@@ -167,10 +167,10 @@ Use **build-only** to test signing and download a signed IPA without uploading;
 it still requires a merged main SHA and production environment approval.
 
 Once Apple processing completes, open **App Store Connect → Pluto Events →
-TestFlight**. For App Review, select that processed build in the app's version
-page. The current app version in `pubspec.yaml` is **1.0.0**; use the corresponding
-App Store version record. TestFlight distribution and final review submission
-are separate actions from the upload.
+TestFlight**. For App Review, select that processed build in the App Store
+version record that matches the version in the selected revision's
+`pubspec.yaml` (the part before `+`). TestFlight distribution and final review
+submission are separate actions from the upload.
 
 ## Checks and troubleshooting
 
