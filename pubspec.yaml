@@ -3,7 +3,7 @@ description: private underground events
 
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 1.0.1+1
 
 environment:
   sdk: ">=3.13.7 <4.0.0"

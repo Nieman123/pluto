@@ -35,8 +35,11 @@ def profile(value):
 
 def archive(value):
     firebase = plistlib.loads((signing.ROOT / f"ios/Firebase/{value['environment']}/GoogleService-Info.plist").read_bytes())
+    pubspec = (signing.ROOT / 'pubspec.yaml').read_text(encoding='utf-8')
+    version_line = next(line for line in pubspec.splitlines() if line.startswith('version:'))
+    version = version_line.split(':', 1)[1].split('+', 1)[0].strip()
     info = {'CFBundleIdentifier': value['bundleId'], 'CFBundleVersion': value['buildNumber'],
-            'CFBundleShortVersionString': '1.0.0', 'CFBundleSupportedPlatforms': ['iPhoneOS'], 'UIDeviceFamily': [1, 2],
+            'CFBundleShortVersionString': version, 'CFBundleSupportedPlatforms': ['iPhoneOS'], 'UIDeviceFamily': [1, 2],
             'DTSDKName': 'iphoneos26.2', 'DTXcode': '2630', 'CFBundleURLTypes': [{'CFBundleURLSchemes': [value['bundleId'], firebase['REVERSED_CLIENT_ID']]}]}
     ent = profile(value)['Entitlements']
     ent['com.apple.developer.associated-domains'] = ['applinks:' + value['host']]
@@ -129,7 +132,7 @@ class ReleaseSigningTests(unittest.TestCase):
             config = root / 'ios/Firebase/production'
             config.mkdir(parents=True)
             (config / 'GoogleService-Info.plist').write_bytes(plistlib.dumps(firebase))
-            (root / 'pubspec.yaml').write_text('version: 1.0.0+1\n')
+            (root / 'pubspec.yaml').write_text(f"version: {info['CFBundleShortVersionString']}+1\n", encoding='utf-8')
             (root / 'tmp/ios-release').mkdir(parents=True)
             ipa = root / 'build/ios/ipa/Runner.ipa'
             ipa.parent.mkdir(parents=True)
