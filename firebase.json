@@ -77,6 +77,7 @@
       { "source": "/", "function": { "functionId": "publicSite", "region": "us-central1" } },
       { "source": "/manafest", "function": { "functionId": "publicSite", "region": "us-central1" } },
       { "source": "/links", "function": { "functionId": "publicSite", "region": "us-central1" } },
+      { "source": "/download", "function": { "functionId": "publicSite", "region": "us-central1" } },
       { "source": "/rentals", "function": { "functionId": "publicSite", "region": "us-central1" } },
       { "source": "/privacy", "function": { "functionId": "publicSite", "region": "us-central1" } },
       { "source": "/terms", "function": { "functionId": "publicSite", "region": "us-central1" } },

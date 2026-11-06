@@ -1,0 +1,33 @@
+{% extends "base.njk" %}
+
+{% block content %}
+  <section class="app-landing-hero" aria-labelledby="app-landing-title">
+    <div class="app-landing-content">
+      <div class="app-landing-copy">
+        <img class="app-install-icon" src="/assets/images/pluto-logo.webp" width="72" height="72" alt="">
+        <p class="eyebrow">THE FREE PLUTO EVENTS APP</p>
+        <h1 id="app-landing-title">Pluto in <span>your pocket.</span></h1>
+        <p>Find Pluto gatherings, pull up your ticket at the door, and earn rewards along the way. All in one place.</p>
+        {% include "app-store-buttons.njk" %}
+        <a class="text-link" href="/app/">Open Pluto in your browser <span aria-hidden="true">→</span></a>
+      </div>
+      <figure class="app-landing-screens">
+        <div class="app-landing-phones">
+          <img class="app-phone-profile" src="/assets/images/app/profile.png" width="1320" height="2868" alt="Pluto profile showing points, rewards progress and badges" decoding="async">
+          <img class="app-phone-home" src="/assets/images/app/home.png" width="1320" height="2868" alt="Pluto home showing a points balance, ticket access and an upcoming event" decoding="async">
+        </div>
+      </figure>
+    </div>
+  </section>
+
+  <section class="section app-landing-features" aria-labelledby="app-features-title">
+    <p class="eyebrow">MANAGE YOUR TICKETS AND MORE</p>
+    <h2 id="app-features-title">Get ready for the next event.</h2>
+    <div class="app-feature-grid">
+      <article><span aria-hidden="true">01</span><h3>Find your next event</h3><p>See what’s coming up and check the details before you head out.</p></article>
+      <article><span aria-hidden="true">02</span><h3>Keep your passes handy</h3><p>Open tickets and confirmed RSVPs in one place. Show the admission QR code when you arrive.</p></article>
+      <article><span aria-hidden="true">03</span><h3>Earn Pluto Points</h3><p>Join participating events and scavenger hunts, then use your points to redeem rewards.</p></article>
+    </div>
+    <a class="text-link" href="/events">Browse upcoming events <span aria-hidden="true">→</span></a>
+  </section>
+{% endblock %}

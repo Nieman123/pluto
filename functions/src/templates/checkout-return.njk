@@ -8,6 +8,11 @@
   <a id="native-checkout-return" class="button button-primary" href="{{ nativeUrl }}">Open my tickets in Pluto</a>
   <p>If the app didn’t open automatically, tap the button above.</p>
   <a class="button button-quiet" href="{{ webUrl }}">Continue in browser</a>
+  <div class="checkout-install">
+    <h2>Get the Pluto app</h2>
+    {% include "app-store-buttons.njk" %}
+    <a class="text-link" href="/download">Explore the app <span aria-hidden="true">→</span></a>
+  </div>
 </section>
 <script src="/assets/ticketing.js?v={{ assetVersion }}" defer></script>
 {% endblock %}
