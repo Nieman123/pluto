@@ -33,6 +33,10 @@ import {
 if (!getApps().some((app) => app.name === '[DEFAULT]')) initializeApp();
 
 const db = getFirestore();
+const appStores = {
+  googlePlay: 'https://play.google.com/store/apps/details?id=events.pluto.app&pcampaignid=web_share',
+  appStore: 'https://apps.apple.com/us/app/pluto-events/id6821441318',
+};
 const runtimeRoot = __dirname;
 const templates = join(runtimeRoot, "templates");
 const manaFest = JSON.parse(
@@ -82,6 +86,14 @@ async function loadLinks(): Promise<PublicLink[]> {
 }
 
 function pageMeta(path: string) {
+  if (path === '/download') {
+    return {
+      title: 'Get the Pluto Events App | Pluto Events',
+      description: 'Discover Pluto events, keep tickets and RSVPs on your phone, and earn Pluto Points. Get the free Pluto Events app.',
+      canonical: 'https://pluto.events/download',
+      image: 'https://pluto.events/assets/images/pluto-preview.jpg',
+    };
+  }
   if (path === '/rentals') {
     return {
       title: 'Equipment Rentals | Pluto Events',
@@ -125,6 +137,7 @@ function commonContext(path: string) {
   };
   return {
     path,
+    appStores,
     assetVersion: deployment.revision,
     meta: Object.fromEntries(Object.entries(pageMeta(path)).map(([key, value]) => [key, typeof value === 'string' ? value.replaceAll('https://pluto.events', deployment.baseUrl) : value])),
     googleAnalyticsId,
@@ -249,6 +262,10 @@ app.get("/links", async (_request: Request, response: Response) => {
       url: "https://pluto.events/",
     }),
   });
+});
+
+app.get('/download', (_request, response) => {
+  response.render('download', commonContext('/download'));
 });
 
 app.get('/__deployment', (_request, response) => {

@@ -1,0 +1,21 @@
+.links-hero { width: min(760px, calc(100% - 40px)); margin: 0 auto; padding: 90px 0 54px; text-align: center; }
+.links-hero img { margin: 0 auto; object-fit: contain; }
+.links-hero h1 { margin: 0; }
+.links-sections { width: min(820px, calc(100% - 40px)); margin: 0 auto; padding-bottom: 24px; }
+.links-group { margin-bottom: 50px; }
+.links-group:last-child { margin-bottom: 0; }
+.links-group h2 { font-size: 1rem; color: var(--orange); font-family: "Source Code Pro", monospace; text-transform: uppercase; }
+.link-list { margin: 0; padding: 0; border-top: 1px solid var(--line); list-style: none; }
+.link-list li { margin: 0; padding: 0; }
+.link-row { min-height: 88px; padding: 12px 4px; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 64px 1fr 40px; align-items: center; gap: 20px; color: var(--text); text-decoration: none; }
+.link-row:hover { color: var(--orange); }
+.link-row img { width: 64px; height: 64px; border-radius: 6px; object-fit: cover; }
+.link-row img.circular { border-radius: 50%; }
+.link-icon { width: 50px; height: 50px; border: 1px solid var(--line); border-radius: 50%; display: grid; place-items: center; }
+.link-arrow { text-align: center; font-size: 1.2rem; }
+
+@media (max-width: 680px) {
+  .links-hero { padding-top: 60px; }
+  .link-row { grid-template-columns: 52px 1fr 28px; gap: 12px; }
+  .link-row img { width: 52px; height: 52px; }
+}

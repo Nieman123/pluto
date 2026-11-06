@@ -27,4 +27,9 @@
 <p id="ticket-checkout-message" role="status" aria-live="polite"></p><div id="stripe-checkout"></div><p id="checkout-countdown" role="status"></p><button id="checkout-cancel" class="button button-quiet" hidden type="button">Return to tickets</button>
 {% endif %}</aside></div><a class="native-sticky-cta button button-primary" href="{% if event.free %}#event-info{% else %}#tickets{% endif %}">{{ state }} ↗</a>
 </div>{% if not event.free %}<script type="application/json" id="native-checkout-config">{{ checkoutJson | safe }}</script><dialog id="ticketing-dialog" aria-label="Ticketing actions"><button id="ticketing-dialog-close" class="button button-quiet" type="button">Close</button><div id="ticketing-dialog-content"></div></dialog><script src="/assets/ticketing.js?v={{ assetVersion }}" defer></script>{% endif %}
+{% if not preview %}
+  {% set installTitle = 'Get Pluto on your phone.' if event.free else 'Keep your pass handy.' %}
+  {% set installCopy = 'See what’s coming up and earn rewards at participating events.' if event.free else 'Open your tickets and confirmed RSVPs in the Pluto app before you head to the door.' %}
+  {% include "app-install-cta.njk" %}
+{% endif %}
 {% endblock %}

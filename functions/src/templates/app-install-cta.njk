@@ -1,0 +1,10 @@
+<section class="app-install-band" aria-labelledby="app-install-title">
+  <img class="app-install-icon" src="/assets/images/pluto-logo.webp" width="72" height="72" alt="" loading="lazy">
+  <div class="app-install-copy">
+    <p class="eyebrow">THE FREE PLUTO EVENTS APP</p>
+    <h2 id="app-install-title">{{ installTitle or 'Take Pluto with you.' }}</h2>
+    <p>{{ installCopy or 'Find our next event, keep tickets handy, and earn Pluto Points.' }}</p>
+    <a class="text-link" href="/download">Explore the app <span aria-hidden="true">→</span></a>
+  </div>
+  {% include "app-store-buttons.njk" %}
+</section>

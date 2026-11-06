@@ -113,7 +113,7 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   });
   router.get('/sitemap.xml', async (_req, res) => {
     const events = (await service.db.collection('publishedEvents').get()).docs.map(d => `/events/${d.data().slug}`);
-    const routes = ['/', '/manafest', '/links', '/rentals', '/events', '/past-events', '/privacy', '/terms', '/delete-account', ...events];
+    const routes = ['/', '/manafest', '/links', '/download', '/rentals', '/events', '/past-events', '/privacy', '/terms', '/delete-account', ...events];
     res.set('Cache-Control', publicEventCache).type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${routes.map(path => `<url><loc>${baseUrl()}${path}</loc></url>`).join('')}</urlset>`);
   });
   async function renderEvent(event: any, req: Request, res: Response, preview = false) {

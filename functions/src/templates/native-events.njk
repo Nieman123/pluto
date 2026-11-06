@@ -11,4 +11,5 @@
 </article>{% else %}<div class="empty-state"><span class="empty-orbit" aria-hidden="true">✦</span>{% if past %}<h2>Our next memories are ahead.</h2><p>Completed events will appear here.</p>{% else %}<h2>The next night is on its way.</h2><p>New gatherings are taking shape. Keep an eye on Pluto for the next announcement.</p><a class="button button-quiet" href="/links">Stay connected ↗</a>{% endif %}</div>{% endfor %}</div>
 <nav class="discover-history-link" aria-label="More events">{% if past %}<a class="button button-quiet" href="/events">Explore upcoming events <span aria-hidden="true">↗</span></a>{% else %}<a class="button button-quiet" href="/past-events">View past events <span aria-hidden="true">↗</span></a>{% endif %}</nav>
 </section>
+{% include "app-install-cta.njk" %}
 {% endblock %}

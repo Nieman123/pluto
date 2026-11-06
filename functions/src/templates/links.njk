@@ -2,10 +2,7 @@
 
 {% block content %}
   <section class="links-hero" aria-labelledby="links-title">
-    <img src="/assets/images/pluto-logo.webp" width="150" height="150" alt="Pluto Events">
-    <p class="eyebrow">THE OFFICIAL CHANNELS</p>
-    <h1 id="links-title">Find Pluto</h1>
-    <p>Tickets, announcements, artists, and all the places we show up online.</p>
+    <h1 id="links-title"><img src="/assets/images/pluto-logo.webp" width="150" height="150" alt="Pluto Events links"></h1>
   </section>
 
   <div class="links-sections">
@@ -26,4 +23,6 @@
       </section>
     {% endfor %}
   </div>
+
+  {% include "app-install-cta.njk" %}
 {% endblock %}
