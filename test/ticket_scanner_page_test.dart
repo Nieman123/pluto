@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:pluto/src/legal_links.dart';
 import 'package:pluto/src/scanner/scanner_pin_entry.dart';
 import 'package:pluto/ticket_scanner_page.dart';
 
@@ -44,42 +45,60 @@ class _Camera extends MobileScannerPlatform {
 
 void main() {
   testWidgets(
-    'PIN entry validates locally and carries PIN outside the route URL',
+    'discreet PIN link matches Terms of Use and opens the existing PIN screen',
     (tester) async {
-      String? received;
+      final harness = ScannerHarness();
+      await harness.setup();
       Uri? scannerUri;
       final router = GoRouter(
         routes: [
           GoRoute(
             path: '/',
-            builder: (_, _) => const Scaffold(body: ScannerPinEntry()),
+            builder: (_, _) => const Scaffold(
+              body: Column(children: [LegalLinks(), ScannerPinEntry()]),
+            ),
           ),
           GoRoute(
             path: '/ticket-scanner',
             builder: (_, state) {
-              received = state.extra as String?;
               scannerUri = state.uri;
-              return const Scaffold(body: Text('Scanner opened'));
+              expect(state.extra, isNull);
+              return TicketScannerPage(scanner: harness.scanner());
             },
           ),
         ],
       );
       addTearDown(router.dispose);
       await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      expect(find.byType(TextField), findsNothing);
+      final entry = tester.widget<TextButton>(
+        find.widgetWithText(TextButton, 'Enter Scanner PIN'),
+      );
+      final terms = tester.widget<TextButton>(
+        find.widgetWithText(TextButton, 'Terms of Use'),
+      );
+      expect(
+        entry.style!.foregroundColor!.resolve({}),
+        terms.style!.foregroundColor!.resolve({}),
+      );
+      await tester.tap(find.text('Enter Scanner PIN'));
+      await tester.pumpAndSettle();
+      expect(find.text('Ticket scanner PIN'), findsOneWidget);
+      await tester.enterText(find.byType(TextField), '1234');
       await tester.tap(find.text('Open ticket scanner'));
       await tester.pumpAndSettle();
       expect(find.text('Enter your 8-digit scanner PIN.'), findsOneWidget);
+      expect(harness.calls, isEmpty);
       await tester.enterText(find.byType(TextField), '1234 5678');
       await tester.tap(find.text('Open ticket scanner'));
       await tester.pumpAndSettle();
-      expect(received, '12345678');
+      expect(find.text('First show'), findsOneWidget);
+      expect(harness.calls.first['body'], {'pin': '12345678'});
       expect(scannerUri.toString(), '/ticket-scanner');
       router.pop();
       await tester.pumpAndSettle();
-      expect(
-        tester.widget<TextField>(find.byType(TextField)).controller!.text,
-        isEmpty,
-      );
+      expect(find.text('Enter Scanner PIN'), findsOneWidget);
+      expect(find.byType(TextField), findsNothing);
     },
   );
   testWidgets(
@@ -135,7 +154,7 @@ void main() {
         const MaterialApp(home: Scaffold(body: ScannerPinEntry())),
       );
       expect(
-        find.text('8-digit scanner PIN'),
+        find.text('Enter Scanner PIN'),
         defaultTargetPlatform == TargetPlatform.iOS
             ? findsOneWidget
             : findsNothing,
@@ -177,6 +196,10 @@ void main() {
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       camera.permission.complete();
       await tester.pumpAndSettle();
+      expect(
+        tester.getSize(find.byType(MobileScanner)).height,
+        greaterThan(280),
+      );
       camera.frames.add(
         BarcodeCapture(barcodes: [Barcode(rawValue: harness.qr)]),
       );
