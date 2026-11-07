@@ -10,6 +10,7 @@ import 'src/google_auth.dart';
 import 'src/legal_links.dart';
 import 'src/nav_bar/nav_bar.dart';
 import 'src/profile_identity_card.dart';
+import 'src/scanner/scanner_pin_entry.dart';
 import 'src/theme/pluto_ui.dart';
 import 'user_profile_repository.dart';
 
@@ -372,6 +373,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   includeDeletion: true,
                   onDeleteAccount: () => context.go('/delete-account')),
               const AppBuildInfo(),
+              const ScannerPinEntry(),
             ],
           );
         }
@@ -395,6 +397,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           includeDeletion: true,
                           onDeleteAccount: () => context.go('/delete-account')),
                       const AppBuildInfo(),
+                      const ScannerPinEntry(),
                     ],
                   ),
                 ),

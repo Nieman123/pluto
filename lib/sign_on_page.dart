@@ -9,6 +9,7 @@ import 'src/background/pluto_background.dart';
 import 'src/email_verification.dart';
 import 'src/google_auth.dart';
 import 'src/nav_bar/nav_bar.dart';
+import 'src/scanner/scanner_pin_entry.dart';
 import 'src/ticket_access_store.dart';
 import 'src/ticket_account_flow.dart';
 
@@ -601,6 +602,10 @@ class _SignOnPageState extends State<SignOnPage> {
                                         ),
                                     ],
                                   ),
+                                ],
+                                if (nativeTicketScanningSupported) ...[
+                                  const SizedBox(height: 20),
+                                  const ScannerPinEntry(),
                                 ],
                               ],
                             );
