@@ -73,7 +73,7 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSCameraUsageDescription</key>
-	<string>Scan Pluto scavenger-hunt QR codes to collect points at events.</string>
+	<string>Scan tickets for event admission and Pluto event QR codes to collect points.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Choose a photo for your Pluto profile.</string>
 	<key>FirebaseMessagingAutoInitEnabled</key>

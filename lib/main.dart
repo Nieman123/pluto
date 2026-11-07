@@ -27,10 +27,12 @@ import 'src/deferred_widget.dart';
 import 'src/native_back_scope.dart';
 import 'src/native_environment.dart';
 import 'src/native_links.dart';
+import 'src/scanner/scanner_pin_entry.dart';
 import 'src/signed_in/signed_in_app_shell.dart';
 import 'src/theme/config.dart';
 import 'src/theme/custom_theme.dart';
 import 'src/ticket_access_store.dart';
+import 'ticket_scanner_page.dart' deferred as ticket_scanner_page;
 import 'tickets_page.dart' deferred as tickets_page;
 
 Future<void> main() async {
@@ -99,7 +101,7 @@ class _MyAppState extends State<MyApp> {
 
   bool get _shouldShowNotificationPrompt {
     return !_isCheckingNotificationSupport &&
-        !<String>['/tickets', '/sign-up', '/sign-on']
+        !<String>['/tickets', '/sign-up', '/sign-on', '/ticket-scanner']
             .contains(_router.routeInformationProvider.value.uri.path) &&
         _notificationsSupported &&
         !_hasNotificationPermission &&
@@ -344,6 +346,15 @@ class _MyAppState extends State<MyApp> {
             ),
           );
         },
+      ),
+      GoRoute(
+        path: '/ticket-scanner',
+        redirect: (context, state) =>
+            nativeTicketScanningSupported ? null : '/sign-on',
+        builder: (context, state) => _buildDeferredPage(
+            loadLibrary: ticket_scanner_page.loadLibrary,
+            builder: (_) => ticket_scanner_page.TicketScannerPage(
+                initialPin: state.extra is String ? state.extra as String : null)),
       ),
       GoRoute(
         path: '/scan-qr',
