@@ -4,7 +4,7 @@ const { resolve } = require('node:path');
 const { createRequire } = require('node:module');
 const { chromium } = require('playwright');
 const { default: AxeBuilder } = require('@axe-core/playwright');
-const { QRCodeWriter, QRCodeReader, BarcodeFormat, EncodeHintType, RGBLuminanceSource, HybridBinarizer, BinaryBitmap } = require('@zxing/library');
+const { cameraQrImage } = require('./camera-qr-fixture.cjs');
 const backend = createRequire(resolve(__dirname, '../../functions/package.json'));
 process.env.GCLOUD_PROJECT = 'demo-pluto-ticketing';
 process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8185';
@@ -143,22 +143,7 @@ async function scan(target, qr, expected) {
     const cameraKey = randomBytes(32).toString('hex'), cameraOrder = await api(admin, 'staff/cash', { eventId, accessKey: cameraKey, items: [{ offerId: 'weekend', quantity: 1 }, { offerId: 'friday', quantity: 1 }], name: 'Camera <attendee>', email: 'camera@preview.invalid', comp: true, reason: 'Real QR camera feedback test' });
     const cameraOrderTickets = (await api(admin, 'order', { orderId: cameraOrder.orderId, accessKey: cameraKey })).tickets;
     const cameraTickets = ['Weekend', 'Friday'].map(name => cameraOrderTickets.find(t => t.name === name));
-    const images = await Promise.all(cameraTickets.map(async t => {
-      const matrix = new QRCodeWriter().encode(t.qr, BarcodeFormat.QR_CODE, 640, 640, new Map([[EncodeHintType.MARGIN, 5], [EncodeHintType.ERROR_CORRECTION, 'M']])), pixels = Buffer.alloc(640 * 640, 255);
-      for (let y = 0; y < 640; y++) for (let x = 0; x < 640; x++) if (matrix.get(x, y)) pixels[y * 640 + x] = 0;
-      const png = await backend('sharp')(pixels, { raw: { width: 640, height: 640, channels: 1 } }).png().toBuffer();
-      // Random signed payloads can confuse ZXing's alignment detection at one orientation.
-      // Choose a decodable frame for this UI test; branded QR coverage runs separately.
-      let decodeError;
-      for (const angle of [0, 90, 180, 270]) {
-        const frame = await backend('sharp')(png).rotate(angle).greyscale().raw().toBuffer();
-        try {
-          assert.equal(new QRCodeReader().decode(new BinaryBitmap(new HybridBinarizer(new RGBLuminanceSource(new Uint8ClampedArray(frame), 640, 640)))).getText(), t.qr, 'camera fixture decodes before it enters the video stream');
-          return `data:image/png;base64,${(await backend('sharp')(png).rotate(angle).png().toBuffer()).toString('base64')}`;
-        } catch (error) { decodeError = error; }
-      }
-      throw decodeError;
-    }));
+    const images = await Promise.all(cameraTickets.map(t => cameraQrImage(t.qr)));
     const cameraScans = [];
     door.on('request', request => { if (request.url().endsWith('/staff/scan') && cameraTickets.some(t => request.postDataJSON()?.qr === t.qr)) cameraScans.push(request.postDataJSON().qr); });
     await door.evaluate(async image => {

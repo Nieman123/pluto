@@ -497,7 +497,10 @@ class _TicketScannerPageState extends State<TicketScannerPage>
             child: ClipRRect(
               borderRadius: BorderRadius.circular(16),
               child: SizedBox(
-                height: 280,
+                height: (MediaQuery.sizeOf(context).height * .5).clamp(
+                  320.0,
+                  520.0,
+                ),
                 child: Stack(
                   fit: StackFit.expand,
                   children: [

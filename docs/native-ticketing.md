@@ -6,7 +6,7 @@ Admission tickets live at `/app/tickets`. Emails contain secure confirmation, re
 
 ## Native door scanner
 
-On iOS and Android, door staff can enter an 8-digit scanner PIN below email/SSO on the sign-in screen or at the bottom of My Profile. PIN access opens a separate admission session at `/ticket-scanner`; it does not sign in to Firebase or change an existing Pluto account. Resume scanner session restores saved access, with online revalidation or an unexpired prepared offline lease. Flutter web hides both entry points and redirects the native scanner route to sign-in; browser door staff continue to use `/tickets/staff`.
+On iOS and Android, door staff tap the discreet **Enter Scanner PIN** text link below email/SSO on the sign-in screen or at the bottom of My Profile. The link matches the profile's legal links and opens the existing 8-digit PIN entry screen at `/ticket-scanner`, or resumes saved scanner access with online revalidation or an unexpired prepared offline lease. PIN access does not sign in to Firebase or change an existing Pluto account. Flutter web hides both entry points and redirects the native scanner route to sign-in; browser door staff continue to use `/tickets/staff`.
 
 The native scanner uses the same admission APIs as the website: camera QR scanning (including flashlight/camera switching), manual QR text, attendee/type feedback, duplicate detection, guest search/filter/arrival, live paginated attendance, exits/re-entry, and free-event walk-up counts. Start camera requests permission; backgrounding stops the camera. PIN expiration, revocation, event scope, and admission permissions remain enforced by the server on every online operation.
 

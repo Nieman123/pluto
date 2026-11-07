@@ -14,7 +14,7 @@ void main() {
         const MaterialApp(home: Scaffold(body: ScannerPinEntry())),
       );
       expect(find.byType(TextField), findsNothing);
-      expect(find.text('Open ticket scanner'), findsNothing);
+      expect(find.text('Enter Scanner PIN'), findsNothing);
       await tester.pumpWidget(
         const MaterialApp(home: TicketScannerPage(initialPin: '12345678')),
       );
