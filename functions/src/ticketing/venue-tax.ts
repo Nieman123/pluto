@@ -1,3 +1,4 @@
+import { isWalkInEvent } from './admission';
 import type Stripe from 'stripe';
 import type { Firestore } from 'firebase-admin/firestore';
 import { fail, hash, type EventDraft } from './domain';
@@ -27,7 +28,7 @@ export async function assertVenueRegistration(stripe: Stripe, state: string, liv
   fail(`Stripe needs an active ${state} sales-tax registration in this payment environment. Add your registration in Stripe Tax, then save again.`, 409);
 }
 export async function prepareVenueTax(db: Firestore, stripe: Stripe, eventId: string, draft: EventDraft, livemode: boolean): Promise<EventDraft> {
-  if (draft.tax.mode !== 'automatic' || !draft.tax.autoConfigure || draft.registrationMode === 'free') return draft;
+  if (draft.tax.mode !== 'automatic' || !draft.tax.autoConfigure || isWalkInEvent(draft.registrationMode)) return draft;
   const paid = draft.offers.filter(o => o.active && o.unitAmount > 0);
   if (!paid.length) return draft;
   if (!draft.tax.confirmed) fail('Confirm the venue address and ticket tax categories before saving automatic tax.');

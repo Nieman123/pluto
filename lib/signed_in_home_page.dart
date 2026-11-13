@@ -336,11 +336,13 @@ class SignedInHomePage extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                           Text(
-                              event.isFree
-                                  ? 'FREE GATHERING'
-                                  : event.isRsvp
-                                      ? 'RSVP'
-                                      : 'PLUTO EVENTS',
+                              event.isDoor
+                                  ? 'PAY AT THE DOOR'
+                                  : event.isFree
+                                      ? 'FREE GATHERING'
+                                      : event.isRsvp
+                                          ? 'RSVP'
+                                          : 'PLUTO EVENTS',
                               style: const TextStyle(
                                   color: PlutoColors.orange,
                                   fontFamily: 'SourceCodePro',
@@ -366,10 +368,10 @@ class SignedInHomePage extends StatelessWidget {
                                     fontSize: 13,
                                     height: 1.4)),
                           ],
-                          if (event.isFree) ...[
+                          if (event.isWalkIn) ...[
                             const SizedBox(height: 7),
-                            const Text('Free entry · No RSVP required',
-                                style: TextStyle(
+                            Text(event.admissionLabel,
+                                style: const TextStyle(
                                     color: PlutoColors.mint, fontSize: 12)),
                           ],
                           const SizedBox(height: 10),

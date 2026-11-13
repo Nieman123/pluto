@@ -1,3 +1,4 @@
+import { isWalkInEvent } from './admission';
 import { createHash, randomBytes } from 'node:crypto';
 import sanitizeHtml from 'sanitize-html';
 
@@ -68,7 +69,8 @@ export interface Offer {
 }
 export interface Promotion { code: string; type: 'percent' | 'fixed'; value: number; limit: number; startsAt: string; endsAt: string; offerIds: string[] }
 export interface EventDraft {
-  registrationMode: 'tickets' | 'rsvp' | 'rsvp-approval' | 'free';
+  registrationMode: 'tickets' | 'rsvp' | 'rsvp-approval' | 'free' | 'door';
+  doorPrice?: number; admissionNotes?: string;
   remindersEnabled?: boolean; waitlistEnabled?: boolean; waitlistOfferMinutes?: number;
   title: string; slug: string; subtitle: string; descriptionHtml: string; startAt: string; endAt: string; admissionStartsAt: string;
   timezone: string; city: string; region: string; venueName: string; address: string; postalCode?: string; directions: string; venueVisibility: 'public' | 'holders';
@@ -128,7 +130,7 @@ export function validateDraft(raw: any): EventDraft {
   const taxMode = raw.tax?.mode || 'sandbox';
   if (!['sandbox', 'manual', 'automatic'].includes(taxMode)) fail('Invalid tax mode.');
   const registrationMode = raw.registrationMode || 'tickets';
-  if (!['tickets', 'rsvp', 'rsvp-approval', 'free'].includes(registrationMode)) fail('Choose a valid registration type.');
+  if (!['tickets', 'rsvp', 'rsvp-approval', 'free', 'door'].includes(registrationMode)) fail('Choose a valid registration type.');
   if (['rsvp', 'rsvp-approval'].includes(registrationMode)) {
     for (const offer of offers.filter(o => o.active)) {
       const kind = offer.unitAmount > 0 && registrationMode === 'rsvp-approval' ? 'upgrade' : 'admission';
@@ -139,12 +141,14 @@ export function validateDraft(raw: any): EventDraft {
     const admissionPools = new Set(offers.filter(o => o.active && o.unitAmount === 0).flatMap(o => Object.keys(o.pools)));
     if (offers.some(o => o.active && o.kind === 'upgrade' && Object.keys(o.pools).some(pool => admissionPools.has(pool)))) fail('VIP upgrades need a separate capacity pool from RSVP admission. Add a VIP pool so admission capacity is counted once.');
   } else if (offers.some(o => o.active && o.kind === 'upgrade')) fail('VIP upgrade passes require an approval-required RSVP event. Use Admission for a ticket that includes entry.');
-  if (registrationMode === 'free' && offers.some(o => o.active)) fail('Free events do not issue tickets. Deactivate ticket types before saving.');
-  if (registrationMode === 'free' && raw.venueVisibility !== 'public') fail('Free events need a public venue so guests can find the event without a ticket or RSVP.');
+  const walkInLabel = registrationMode === 'door' ? 'Pay-at-the-door events' : 'Free events';
+  if (isWalkInEvent(registrationMode) && offers.some(o => o.active)) fail(`${walkInLabel} do not issue tickets. Deactivate ticket types before saving.`);
+  if (isWalkInEvent(registrationMode) && raw.venueVisibility !== 'public') fail(`${walkInLabel} need a public venue so guests can find the event without a ticket or RSVP.`);
   const venueRevealScheduled = raw.venueVisibility === 'holders' && raw.venueRevealScheduled === true;
   const venueRevealAt = venueRevealScheduled ? date(raw.venueRevealAt, 'location reveal time') : null;
   if (venueRevealAt && venueRevealAt >= endAt) fail('Location reveal must be before the event ends.');
-  return { registrationMode, remindersEnabled: raw.remindersEnabled !== false, waitlistEnabled: raw.waitlistEnabled === true && registrationMode !== 'free', waitlistOfferMinutes: integer(raw.waitlistOfferMinutes ?? 30, 'waitlist offer minutes', 15, 120), title: text(raw.title, 'title', 200, true), slug, subtitle: text(raw.subtitle || '', 'subtitle', 400), descriptionHtml: html(raw.descriptionHtml || ''),
+  return { registrationMode, doorPrice: registrationMode === 'door' ? integer(raw.doorPrice, 'door price in USD', 1, 1000000) : 0,
+    admissionNotes: registrationMode === 'door' ? text(raw.admissionNotes ?? '', 'admission notes', 1000) : '', remindersEnabled: raw.remindersEnabled !== false, waitlistEnabled: raw.waitlistEnabled === true && !isWalkInEvent(registrationMode), waitlistOfferMinutes: integer(raw.waitlistOfferMinutes ?? 30, 'waitlist offer minutes', 15, 120), title: text(raw.title, 'title', 200, true), slug, subtitle: text(raw.subtitle || '', 'subtitle', 400), descriptionHtml: html(raw.descriptionHtml || ''),
     startAt, endAt, admissionStartsAt, timezone, city: text(raw.city || '', 'city', 100), region: text(raw.region || '', 'state', 100),
     venueName: text(raw.venueName || '', 'venue', 200), address: text(raw.address || '', 'address', 500), postalCode: text(raw.postalCode || '', 'venue ZIP code', 10), directions: text(raw.directions || '', 'directions', 3000),
     venueVisibility: raw.venueVisibility === 'holders' ? 'holders' : 'public', venueRevealScheduled, venueRevealAt, hero: media(raw.hero), flyer: media(raw.flyer),
@@ -160,7 +164,7 @@ export function allMedia(draft: EventDraft): Media[] {
 export function publicEvent(eventId: string, draft: EventDraft, status: string, revision: number) {
   const { pools, promos, tax, address, postalCode, venueName, directions, ...content } = draft;
   return { ...content, id: eventId, status, revision,
-    offers: (draft.registrationMode === 'free' ? [] : draft.offers.filter(o => o.active)).map(({ stripeProductId, stripeTaxRateIds, taxCode, pools, ...offer }) => offer),
+    offers: (isWalkInEvent(draft.registrationMode) ? [] : draft.offers.filter(o => o.active)).map(({ stripeProductId, stripeTaxRateIds, taxCode, pools, ...offer }) => offer),
     ...(draft.venueVisibility === 'public' ? { venueName, address, postalCode: postalCode || '', directions } : {}),
   };
 }
@@ -174,6 +178,7 @@ export function holderVenue(draft: EventDraft | undefined, now = Date.now()) {
 }
 export interface Unit { offerId: string; name: string; kind: string; originalAmount: number; amount: number; discount: number; pools: Record<string, number>; validFrom: string; validUntil: string; taxCode: string; stripeProductId: string; stripeTaxRateIds: string[]; taxAmount?: number; stripeLineItemId?: string; stripeTaxLineItemId?: string }
 export function cart(draft: EventDraft, items: any, code: unknown, now = Date.now()) {
+  if (isWalkInEvent(draft.registrationMode)) fail('This event does not offer online tickets or RSVPs.', 409);
   const lines = list(items, 'cart', 30), units: Unit[] = [], consumption: Record<string, number> = {};
   unique(lines.map(l => id(l.offerId)), 'cart items');
   if (!lines.length) fail('Choose at least one ticket.');

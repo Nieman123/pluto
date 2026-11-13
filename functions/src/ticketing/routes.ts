@@ -1,3 +1,4 @@
+import { isWalkInEvent, doorPriceLabel } from './admission';
 import express, { type Request, type Response } from 'express';
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import { readFileSync } from 'node:fs';
@@ -108,7 +109,7 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
     const past = req.path === '/past-events', path = past ? '/past-events' : '/events';
     const events = discoveryEvents((await service.db.collection('publishedEvents').get()).docs.map(d => d.data()), past).map(e => ({ ...e,
       dateLabel: new Intl.DateTimeFormat('en-US', { timeZone: e.timezone, month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(e.startAt)),
-      saleLabel: e.status === 'cancelled' ? 'Cancelled' : past ? 'Past event' : e.registrationMode === 'free' ? 'Free entry · Just show up' : e.registrationMode === 'rsvp-approval' ? 'Request RSVP' : e.registrationMode === 'rsvp' ? 'RSVP now' : 'Explore & get tickets' }));
+      saleLabel: e.status === 'cancelled' ? 'Cancelled' : past ? 'Past event' : e.registrationMode === 'door' ? `${doorPriceLabel(e.doorPrice)} at the door` : e.registrationMode === 'free' ? 'Free entry · Just show up' : e.registrationMode === 'rsvp-approval' ? 'Request RSVP' : e.registrationMode === 'rsvp' ? 'RSVP now' : 'Explore & get tickets' }));
     res.set('Cache-Control', publicEventCache).render('native-events', { ...context(path), meta: { title: `${past ? 'Past' : 'Upcoming'} events | Pluto Events`, description: 'Dance music, community and late nights with Pluto Events.', canonical: `${baseUrl()}${path}` }, events, past });
   });
   router.get('/sitemap.xml', async (_req, res) => {
@@ -118,29 +119,29 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
   });
   async function renderEvent(event: any, req: Request, res: Response, preview = false) {
     const media = (m: any) => m ? { ...m, url: `/events/${event.slug}/media/${m.assetId}` } : null;
-    const rsvp = ['rsvp', 'rsvp-approval'].includes(event.registrationMode), free = event.registrationMode === 'free';
-    const mapped = { ...event, rsvp, free, calendar: calendarLinks(event, baseUrl()), hero: media(event.hero), flyer: media(event.flyer), gallery: event.gallery.map(media), lineup: event.lineup.map((a: any) => ({ ...a, image: media(a.image) })) };
-    const pools = free ? [] : (await service.event(event.id).collection('pools').get()).docs.map(d => d.data());
-    const privateEvent = free ? undefined : (await service.event(event.id).get()).data();
+    const rsvp = ['rsvp', 'rsvp-approval'].includes(event.registrationMode), free = event.registrationMode === 'free', door = event.registrationMode === 'door', walkIn = isWalkInEvent(event.registrationMode);
+    const mapped = { ...event, rsvp, free, door, walkIn, doorPriceLabel: door ? doorPriceLabel(event.doorPrice) : '', calendar: calendarLinks(event, baseUrl()), hero: media(event.hero), flyer: media(event.flyer), gallery: event.gallery.map(media), lineup: event.lineup.map((a: any) => ({ ...a, image: media(a.image) })) };
+    const pools = walkIn ? [] : (await service.event(event.id).collection('pools').get()).docs.map(d => d.data());
+    const privateEvent = walkIn ? undefined : (await service.event(event.id).get()).data();
     const offerPools = privateEvent?.liveDraft?.offers || privateEvent?.draft.offers || [];
     const now = Date.now();
     if (event.venueVisibility === 'holders' && event.venueRevealScheduled && event.venueRevealAt) mapped.locationRevealLabel = `${new Intl.DateTimeFormat('en-US', { timeZone: event.timezone, dateStyle: 'full', timeStyle: 'short' }).format(new Date(event.venueRevealAt))} (${event.timezone})`;
-    mapped.offers = (free ? [] : event.offers).map((o: any) => {
+    mapped.offers = (walkIn ? [] : event.offers).map((o: any) => {
       const remaining = Math.max(0, Math.min(...Object.entries(offerPools.find((p: any) => p.id === o.id)?.pools || {}).map(([key, count]) => { const p = pools.find(p => p.id === key); return p ? Math.floor((p.capacity - p.sold - p.held) / (count as number)) : 0; }), 1000000));
       const availability = Date.parse(o.salesStart) > now ? 'Coming soon' : Date.parse(o.salesEnd) <= now ? 'Sales closed' : remaining <= 0 ? 'Sold out' : 'Available';
       return { ...o, remaining, availability, available: availability === 'Available', waitlistAllowed: !!event.waitlistEnabled && event.status === 'published' && availability === 'Sold out' && o.kind === 'admission' && !o.requiresOfferIds.length, quantityLimit: Math.min(o.maxPerOrder, remaining), priceLabel: (o.unitAmount / 100).toFixed(2) };
     });
     mapped.hasPaidOffers = mapped.offers.some((o: any) => o.unitAmount > 0);
     const dateLabel = new Intl.DateTimeFormat('en-US', { timeZone: event.timezone, dateStyle: 'full', timeStyle: 'short' });
-    const state = event.status === 'cancelled' ? 'Cancelled' : event.status === 'archived' || Date.parse(event.endAt) <= now ? 'Past event' : free ? 'Free entry' : mapped.offers.some((o: any) => o.available) ? rsvp ? 'RSVPs open' : 'Tickets available' : mapped.offers.some((o: any) => o.availability === 'Coming soon') ? 'Coming soon' : mapped.offers.some((o: any) => o.availability === 'Sold out') ? 'Sold out' : rsvp ? 'RSVPs closed' : 'Sales closed';
+    const state = event.status === 'cancelled' ? 'Cancelled' : event.status === 'archived' || Date.parse(event.endAt) <= now ? 'Past event' : door ? 'Pay at the door' : free ? 'Free entry' : mapped.offers.some((o: any) => o.available) ? rsvp ? 'RSVPs open' : 'Tickets available' : mapped.offers.some((o: any) => o.availability === 'Coming soon') ? 'Coming soon' : mapped.offers.some((o: any) => o.availability === 'Sold out') ? 'Sold out' : rsvp ? 'RSVPs closed' : 'Sales closed';
     const rgb = event.theme.accent.slice(1).match(/../g).map((c: string) => parseInt(c, 16) / 255).map((c: number) => c <= .04045 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4);
     const luminance = .2126 * rgb[0] + .7152 * rgb[1] + .0722 * rgb[2];
     const accentText = (luminance + .05) / .05 >= 1.05 / (luminance + .05) ? '#000000' : '#ffffff';
     const jsonLd = serializeJson({ '@context': 'https://schema.org', '@type': 'MusicEvent', name: event.title, startDate: event.startAt, endDate: event.endAt,
       eventStatus: event.status === 'cancelled' ? 'https://schema.org/EventCancelled' : 'https://schema.org/EventScheduled',
-      eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode', isAccessibleForFree: free || rsvp ? true : undefined, location: { '@type': 'Place', name: event.venueName || `${event.city}, ${event.region}`, ...(event.address ? { address: event.address } : {}) },
+      eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode', isAccessibleForFree: door ? false : free || rsvp ? true : undefined, location: { '@type': 'Place', name: event.venueName || `${event.city}, ${event.region}`, ...(event.address ? { address: event.address } : {}) },
       image: event.hero ? `${baseUrl()}/events/${event.slug}/media/${event.hero.assetId}` : undefined,
-      offers: free ? undefined : mapped.offers.map((o: any) => ({ '@type': 'Offer', name: o.name, price: (o.unitAmount / 100).toFixed(2), priceCurrency: 'USD', url: `${baseUrl()}/events/${event.slug}#tickets`, availability: o.available ? 'https://schema.org/InStock' : o.availability === 'Coming soon' ? 'https://schema.org/PreSale' : 'https://schema.org/SoldOut' })) });
+      offers: walkIn ? undefined : mapped.offers.map((o: any) => ({ '@type': 'Offer', name: o.name, price: (o.unitAmount / 100).toFixed(2), priceCurrency: 'USD', url: `${baseUrl()}/events/${event.slug}#tickets`, availability: o.available ? 'https://schema.org/InStock' : o.availability === 'Coming soon' ? 'https://schema.org/PreSale' : 'https://schema.org/SoldOut' })) });
     const view = { ...context(`/events/${event.slug}`), googleAnalyticsId: '', meta: { title: `${event.title} | Pluto Events`, description: event.subtitle, canonical: `${baseUrl()}/events/${event.slug}`, image: event.hero ? `${baseUrl()}/events/${event.slug}/media/${event.hero.assetId}` : `${baseUrl()}/assets/images/pluto-preview.jpg` },
       event: mapped, accentText, state, preview, sandbox: !isLive(), dateLabel: `${dateLabel.format(new Date(event.startAt))} – ${dateLabel.format(new Date(event.endAt))}`, jsonLd, checkoutJson: serializeJson({ eventId: event.id, nativeAppScheme: checkoutAppScheme(deploymentConfig().environment), registrationMode: event.registrationMode || 'tickets', offers: mapped.offers, preview, status: event.status, endAt: event.endAt }) };
     if (preview) {

@@ -1,3 +1,4 @@
+import { isWalkInEvent } from './admission';
 import Stripe from 'stripe';
 import { randomUUID } from 'node:crypto';
 import { type DecodedIdToken } from 'firebase-admin/auth';
@@ -47,7 +48,7 @@ export class Orders extends Catalog {
   constructor(db?: Firestore, private dependencies: Dependencies = {}) { super(db); }
   stripe() { return this.dependencies.stripe || stripeClient(); }
   override async preparePublication(eventId: string, draft: EventDraft) {
-    if (draft.tax.mode !== 'automatic' || !draft.tax.autoConfigure || draft.registrationMode === 'free' || !draft.offers.some(o => o.active && o.unitAmount > 0)) return draft;
+    if (draft.tax.mode !== 'automatic' || !draft.tax.autoConfigure || isWalkInEvent(draft.registrationMode) || !draft.offers.some(o => o.active && o.unitAmount > 0)) return draft;
     return prepareVenueTax(this.db, this.stripe(), eventId, draft, isLive());
   }
   signing() { return this.dependencies.signingKey; }
@@ -147,7 +148,7 @@ export class Orders extends Catalog {
       const event = (await this.event(eventId).get()).data();
       if (!event || event.status !== 'published') fail('Ticket sales are not open for this event.', 409);
       const draft = (event.liveDraft || event.draft) as EventDraft;
-      if (draft.registrationMode === 'free') fail('This event has free entry. No ticket or RSVP is required.', 409);
+      if (isWalkInEvent(draft.registrationMode)) fail(draft.registrationMode === 'door' ? 'Pay at the door. No online tickets or RSVP are available.' : 'This event has free entry. No ticket or RSVP is required.', 409);
       const priced = cart(draft, raw.items, raw.promoCode, now);
       assertRsvpPayment(draft, priced.units, method);
       if (draft.registrationMode === 'rsvp-approval' && !raw.rsvpUpgradeToken) fail('Verify your approved RSVP before purchasing VIP.', 403);
@@ -162,7 +163,7 @@ export class Orders extends Catalog {
       if (!event || event.status !== 'published') fail('Ticket sales are not open for this event.', 409);
       if (preflightRevision !== undefined && event.publishedRevision !== preflightRevision) fail('Ticket settings changed during checkout. Retry to use the current settings.', 409);
       const draft = (event.liveDraft || event.draft) as EventDraft;
-      if (draft.registrationMode === 'free') fail('This event has free entry. No ticket or RSVP is required.', 409);
+      if (isWalkInEvent(draft.registrationMode)) fail(draft.registrationMode === 'door' ? 'Pay at the door. No online tickets or RSVP are available.' : 'This event has free entry. No ticket or RSVP is required.', 409);
       if (now >= Date.parse(draft.endAt)) fail('This event has ended.', 409);
       if (isLive() && (!draft.tax.confirmed || draft.tax.mode === 'sandbox')) fail('Live sales need confirmed event taxes.', 503);
       const priced = cart(draft, raw.items, raw.promoCode, now);

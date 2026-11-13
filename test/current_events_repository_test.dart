@@ -22,6 +22,30 @@ CurrentEvent _eventWithTitle(String title,
 }
 
 void main() {
+  test('door listings keep their price and notes without offering tickets', () {
+    for (final price in [500, 750]) {
+      final event = CurrentEvent.fromData('native-door', {
+        'registrationMode': 'door',
+        'doorPrice': price,
+        'admissionNotes': 'Cash only. Admission handled by the venue.',
+      });
+      expect(event.isDoor, isTrue);
+      expect(event.isFree, isFalse);
+      expect(event.isRsvp, isFalse);
+      expect(event.isWalkIn, isTrue);
+      expect(event.actionLabel, 'View event');
+      expect(
+        event.admissionLabel,
+        price == 500
+            ? r'$5 at the door · No online sales'
+            : r'$7.50 at the door · No online sales',
+      );
+      expect(
+        event.admissionNotes,
+        'Cash only. Admission handled by the venue.',
+      );
+    }
+  });
   test(
       'authenticated discovery passes identity and preserves sample event marker',
       () async {
