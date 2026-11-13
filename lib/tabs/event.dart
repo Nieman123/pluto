@@ -92,7 +92,7 @@ class Event extends StatelessWidget {
     required Widget flyer,
     required bool showManaFestDetails,
     String actionLabel = 'Click For Tickets',
-    bool free = false,
+    String admissionLabel = '',
   }) {
     final Color textColor =
         Theme.of(context).primaryColorLight.withValues(alpha: 0.9);
@@ -128,10 +128,11 @@ class Event extends StatelessWidget {
               child: flyer,
             ),
             const SizedBox(height: 10),
-            if (free)
-              const Center(
-                  child: Text('Free entry · No RSVP required',
-                      style: TextStyle(color: Colors.white70))),
+            if (admissionLabel.isNotEmpty)
+              Center(
+                  child: Text(admissionLabel,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white70))),
             Center(
               child: Wrap(
                 alignment: WrapAlignment.center,
@@ -193,7 +194,7 @@ class Event extends StatelessWidget {
                       flyer: _buildFlyer(context: context, event: event),
                       showManaFestDetails: event.isManaFest,
                       actionLabel: event.actionLabel,
-                      free: event.isFree,
+                      admissionLabel: event.admissionLabel,
                     ),
                   ))
               .toList(),

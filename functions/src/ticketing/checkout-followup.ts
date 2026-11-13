@@ -1,3 +1,4 @@
+import { isWalkInEvent } from './admission';
 import type { EventDraft } from './domain';
 import type { Order } from './orders';
 
@@ -13,7 +14,7 @@ export function expiredCheckoutDue(order: Order, now: number) {
 }
 
 export function followupEventSelling(draft: EventDraft, status: string, pools: Record<string, { held: number; sold: number }>, now: number) {
-  return status === 'published' && draft.registrationMode !== 'free' && Date.parse(draft.endAt) > now &&
+  return status === 'published' && !isWalkInEvent(draft.registrationMode) && Date.parse(draft.endAt) > now &&
     draft.offers.some(offer => offer.active && offer.unitAmount > 0 && Date.parse(offer.salesStart) <= now &&
       Date.parse(offer.salesEnd) > now && Date.parse(offer.validUntil) > now && Object.entries(offer.pools).every(([key, units]) => {
         const capacity = draft.pools.find(pool => pool.id === key)?.capacity, usage = pools[key];

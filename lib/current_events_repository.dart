@@ -16,6 +16,8 @@ class CurrentEvent {
     this.flyerImageUrl = '',
     this.flyerStoragePath = '',
     this.registrationMode = 'tickets',
+    this.doorPrice = 0,
+    this.admissionNotes = '',
     this.demo = false,
     this.startAt,
     this.endAt,
@@ -42,6 +44,8 @@ class CurrentEvent {
       flyerImageUrl: (data['flyerImageUrl'] as String? ?? '').trim(),
       flyerStoragePath: (data['flyerStoragePath'] as String? ?? '').trim(),
       registrationMode: data['registrationMode'] as String? ?? 'tickets',
+      doorPrice: _parseInt(data['doorPrice']),
+      admissionNotes: (data['admissionNotes'] as String? ?? '').trim(),
       demo: data['demo'] == true,
       startAt: _parseTimestamp(data['startAt']),
       endAt: _parseTimestamp(data['endAt']),
@@ -60,6 +64,8 @@ class CurrentEvent {
   final String flyerImageUrl;
   final String flyerStoragePath;
   final String registrationMode;
+  final int doorPrice;
+  final String admissionNotes;
   final bool demo;
   final DateTime? startAt;
   final DateTime? endAt;
@@ -71,11 +77,18 @@ class CurrentEvent {
   Uint8List? get flyerBytes => decodeFlyerDataUrl(flyerDataUrl);
 
   bool get isFree => registrationMode == 'free';
+  bool get isDoor => registrationMode == 'door';
+  bool get isWalkIn => isFree || isDoor;
+  String get admissionLabel => isDoor
+      ? '\$${(doorPrice / 100).toStringAsFixed(doorPrice % 100 == 0 ? 0 : 2)} at the door · No online sales'
+      : isFree
+          ? 'Free entry · No RSVP required'
+          : '';
   bool isCurrentAt(DateTime now) =>
       isActive && (endAt == null || endAt!.isAfter(now));
   bool get isRsvp =>
       registrationMode == 'rsvp' || registrationMode == 'rsvp-approval';
-  String get actionLabel => isFree
+  String get actionLabel => isWalkIn
       ? 'View event'
       : isRsvp
           ? 'RSVP'

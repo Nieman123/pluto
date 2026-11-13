@@ -10,7 +10,7 @@ export function discoveryEvents(events: Record<string, any>[], past: boolean, no
 export function activeAppEventCards(published: Record<string, any>[], legacy: Record<string, any>[], origin: string, now = Date.now()) {
   const current = discoveryEvents(published, false, now).filter(e => e.status === 'published').map(e => ({
     id: `native-${e.id}`, title: e.title, details: `${e.subtitle || ''}\n${e.city}, ${e.region}`,
-    ticketUrl: `${origin}/events/${e.slug}`, registrationMode: e.registrationMode || 'tickets',
+    ticketUrl: `${origin}/events/${e.slug}`, registrationMode: e.registrationMode || 'tickets', doorPrice: e.doorPrice || 0, admissionNotes: e.admissionNotes || '',
     flyerImageUrl: e.flyer || e.hero ? `${origin}/events/${e.slug}/media/${(e.flyer || e.hero).assetId}` : '',
     isActive: true, startAt: e.startAt, endAt: e.endAt, sortOrder: 0,
   }));
@@ -18,7 +18,7 @@ export function activeAppEventCards(published: Record<string, any>[], legacy: Re
     (!e.endAt || Number.isFinite(Date.parse(e.endAt)) && Date.parse(e.endAt) > now)).map(e => ({
     id: e.id, title: e.title || '', details: e.details || '', ticketUrl: e.ticketUrl || '',
     flyerDataUrl: e.flyerDataUrl || '', flyerImageUrl: e.flyerImageUrl || '', flyerStoragePath: e.flyerStoragePath || '',
-    registrationMode: e.registrationMode || 'tickets', isActive: true, sortOrder: e.sortOrder || 0,
+    registrationMode: e.registrationMode || 'tickets', doorPrice: e.doorPrice || 0, admissionNotes: e.admissionNotes || '', isActive: true, sortOrder: e.sortOrder || 0,
     startAt: e.startAt || null, endAt: e.endAt || null,
   }));
   return [...current, ...old];

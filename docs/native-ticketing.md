@@ -2,6 +2,8 @@
 
 This guide describes ticketing for Pluto's website and Flutter app. The requirement audit records the original `native-ticketing` implementation. See the [release guide](staging-and-releases.md) for current staging, production and rollback procedures.
 
+For venue-collected admission without online sales, use a [pay-at-the-door event listing](pay-at-door-events.md) with a door price and optional admission notes.
+
 Admission tickets live at `/app/tickets`. Emails contain secure confirmation, recovery and transfer links back to the app, with no ticket PDF or QR attachment. The receipt PDF API produces financial receipts only. Accepted transfers revoke the old credential, and online duplicate scans are rejected. A current QR can still be screenshotted, so admission relies on the server's first accepted scan and the offline procedure.
 
 ## Native door scanner

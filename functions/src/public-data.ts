@@ -1,3 +1,4 @@
+import { doorPriceLabel } from './ticketing/admission';
 import type { DocumentData, QueryDocumentSnapshot, Timestamp } from "firebase-admin/firestore";
 
 export const publicHtmlCacheControl =
@@ -8,7 +9,8 @@ export interface PublicEvent {
   title: string;
   details: string;
   ticketUrl: string;
-  registrationMode?: 'tickets' | 'rsvp' | 'rsvp-approval' | 'free';
+  registrationMode?: 'tickets' | 'rsvp' | 'rsvp-approval' | 'free' | 'door';
+  doorPriceLabel?: string;
   flyerImageUrl: string;
   isManaFest: boolean;
   sortOrder: number;
@@ -157,7 +159,8 @@ export function normalizeEvent(id: string, data: DocumentData, now = Date.now())
     title,
     details: asString(data.details),
     ticketUrl: safeExternalUrl(data.ticketUrl),
-    registrationMode: ['free', 'rsvp', 'rsvp-approval'].includes(data.registrationMode) ? data.registrationMode : 'tickets',
+    registrationMode: ['free', 'door', 'rsvp', 'rsvp-approval'].includes(data.registrationMode) ? data.registrationMode : 'tickets',
+    doorPriceLabel: data.registrationMode === 'door' ? doorPriceLabel(data.doorPrice || 0) : '',
     flyerImageUrl,
     isManaFest,
     sortOrder: asInt(data.sortOrder),

@@ -1,3 +1,4 @@
+import { isWalkInEvent } from './admission';
 import { getAuth, type DecodedIdToken } from 'firebase-admin/auth';
 import { Timestamp } from 'firebase-admin/firestore';
 import type { Catalog } from './catalog';
@@ -17,7 +18,7 @@ export class NativeCheckout {
     if (!eventId) fail('Event not found.', 404);
     const event = (await this.service.event(eventId).get()).data();
     if (!event || event.status !== 'published') fail('Event not found.', 404);
-    if ((event.liveDraft || event.draft).registrationMode === 'free') return { handoff: null };
+    if (isWalkInEvent((event.liveDraft || event.draft).registrationMode)) return { handoff: null };
     const handoff = secret(), expiresAt = Math.min(Date.now() + 120000, actor.exp * 1000);
     if (expiresAt <= Date.now()) expired();
     await this.ref(handoff).create({ kind: 'handoff', eventId, actor, expiresAt: Timestamp.fromMillis(expiresAt) });
