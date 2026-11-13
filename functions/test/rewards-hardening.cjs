@@ -8,8 +8,8 @@ const { harness } = require('./ticketing-harness.cjs');
 const { Rewards } = require('../lib/rewards');
 const { ticketingRouter } = require('../lib/ticketing/routes');
 
-function setup() {
-  const h = harness(), profiles = new Set(), qrs = new Set(), items = new Set(); let time = Date.now();
+function setup(initialTime = Date.now()) {
+  const h = harness(), profiles = new Set(), qrs = new Set(), items = new Set(); let time = initialTime;
   const service = new Rewards(h.db, () => time), actor = { uid: `${h.prefix}_buyer`, email: `${h.prefix}@example.test`, name: 'Rewards Guest' };
   const profile = uid => { profiles.add(uid); return h.db.collection('userProfiles').doc(uid); };
   async function qr(overrides = {}) { const ref = h.db.collection('eventQrCodes').doc(randomUUID()); qrs.add(ref.id); await ref.set({ code: `TEST-${ref.id}`.toUpperCase(), eventName: 'Rewards Event', pointsAwarded: 100, isActive: true, totalClaims: 0, ...overrides }); return ref; }
@@ -35,7 +35,8 @@ test('A6: concurrent same-attempt awards and lost-response retries update balanc
   } finally { await h.cleanup(); }
 });
 test('A6: simultaneous QR claims enforce server cooldown and UTC daily limits', async () => {
-  const h = setup();
+  // Keep the claim sequence on one UTC day, regardless of when CI runs.
+  const h = setup(Date.parse('2026-11-11T12:00:00Z'));
   try {
     const qrs = await Promise.all(Array.from({ length: 11 }, () => h.qr()));
     const results = await Promise.allSettled([h.claim(qrs[0]), h.claim(qrs[1])]); assert.equal(results.filter(r => r.status === 'fulfilled').length, 1);
@@ -43,8 +44,13 @@ test('A6: simultaneous QR claims enforce server cooldown and UTC daily limits', 
     const winner = results[0].status === 'fulfilled' ? 0 : 1, remaining = qrs.filter((_, i) => i !== winner);
     for (let i = 0; i < 9; i++) { h.advance(30001); await h.claim(remaining[i]); }
     h.advance(30001); await rejectsCode(h.claim(remaining[9]), 'daily-claim-limit');
-    h.advance(86400000); await h.claim(remaining[9]);
+    const midnight = Date.parse('2026-11-12T00:00:00Z');
+    h.advance(midnight - h.now() - 1);
+    await rejectsCode(h.claim(remaining[9]), 'daily-claim-limit');
+    h.advance(1); await h.claim(remaining[9]);
     assert.equal((await h.profile(h.actor.uid).get()).data().eventsAttended, 11);
+    const rate = (await h.profile(h.actor.uid).collection('claimRateLimits').doc('eventQr').get()).data();
+    assert.equal(rate.dayKey, '2026-11-12'); assert.equal(rate.claimsToday, 1);
   } finally { await h.cleanup(); }
 });
 test('A6: expired, inactive, ambiguous, unopened and full QR configurations cannot award points', async () => {

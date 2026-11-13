@@ -57,6 +57,7 @@ async function surface(page, name) {
     for (const width of [390, 1280]) {
       await guest.setViewportSize({ width, height: 844 }); await guest.goto(`${base}/events/${slug}`);
       await guest.getByRole('heading', { name: '$5 entry.', exact: true }).waitFor();
+      assert.equal((await guest.locator('#event-info').innerText()).match(/pay at the door/gi)?.length, 1, 'the admission card labels door payment once');
       assert.equal(await guest.locator('#native-checkout-form, #native-checkout-config, #stripe-checkout').count(), 0);
       assert.match(await guest.locator('#event-info').innerText(), /Admission handled by the venue\.\nCash only\./);
       assert.doesNotMatch(await guest.locator('main').innerText(), /FREE ENTRY|Free entry|BUY TICKETS/);
