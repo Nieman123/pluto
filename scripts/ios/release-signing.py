@@ -279,21 +279,50 @@ def verify():
     print(f"Verified signed {selected['bundleId']} build {selected['buildNumber']}.")
 
 
+def upload_diagnostic(text):
+    # Artifact contents do not receive GitHub's automatic log masking.
+    text = re.sub(r'-----BEGIN [^-]*PRIVATE KEY-----.*?-----END [^-]*PRIVATE KEY-----',
+                  '[REDACTED PRIVATE KEY]', text, flags=re.S)
+    text = re.sub(r'\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b', '[REDACTED JWT]', text)
+    text = re.sub(r'(https?://[^\s?]+)\?[^\s]+', r'\1?[REDACTED]', text)
+    text = re.sub(r'(Authorization:\s*(?:Bearer|Basic)\s+)\S+', r'\1[REDACTED]', text, flags=re.I)
+    return text
+
+
 def upload():
     selected = settings()
     evidence = json.loads((ROOT / 'tmp/ios-release/verification.json').read_text())
     if selected['operation'] != 'upload-testflight' or not evidence.get('verified') or any(evidence.get(k) != v for k, v in selected.items()) or evidence.get('ipaSha256') != hashlib.sha256(ipa_file().read_bytes()).hexdigest():
         raise ValueError('Only the exact verified IPA can be uploaded.')
-    args = ['xcrun', 'altool', '--type', 'ios', '-f', str(ipa_file()), '--apiKey', os.environ['ASC_KEY_ID'], '--apiIssuer', os.environ['ASC_ISSUER_ID'], '--output-format', 'json']
+    # Use normal output: modern altool emits its delivery receipt on stderr.
+    args = ['xcrun', 'altool', '--type', 'ios', '-f', str(ipa_file()), '--apiKey', os.environ['ASC_KEY_ID'], '--apiIssuer', os.environ['ASC_ISSUER_ID']]
+    result_file = ROOT / 'tmp/ios-release/upload-result.json'
+    report = {'uploaded': None, 'status': 'unconfirmed', 'buildNumber': selected['buildNumber'],
+              'bundleId': selected['bundleId'], 'ipaSha256': evidence['ipaSha256'], 'steps': []}
+    result_file.write_text(json.dumps(report, indent=2), encoding='utf-8')
     for operation in ['--validate-app', '--upload-app']:
+        print(f'Running Apple {operation}.', flush=True)
         result = subprocess.run(args + [operation], capture_output=True, text=True)
+        stdout, stderr = upload_diagnostic(result.stdout), upload_diagnostic(result.stderr)
+        report['steps'].append({'operation': operation, 'exitCode': result.returncode,
+                                'stdout': stdout, 'stderr': stderr})
+        result_file.write_text(json.dumps(report, indent=2), encoding='utf-8')
+        # Preserve diagnostics even when the process exits zero without uploading.
+        for diagnostic in (stdout, stderr):
+            if diagnostic.strip():
+                print(diagnostic, flush=True)
         if result.returncode:
-            print(result.stdout, file=sys.stderr)
-            print(result.stderr, file=sys.stderr)
-            raise ValueError(f'Apple {operation} failed. No App Store review submission was made.')
+            raise ValueError(f'Apple {operation} exited {result.returncode}. See upload-result.json; delivery is unconfirmed. No App Store review submission was made.')
         if operation == '--upload-app':
-            (ROOT / 'tmp/ios-release/upload-result.json').write_text(json.dumps({'uploaded': True, 'buildNumber': selected['buildNumber'], 'bundleId': selected['bundleId'], 'response': result.stdout}))
-    print('Upload accepted. Wait for Apple processing, then select the build in TestFlight or App Review.')
+            response = stdout + '\n' + stderr
+            receipt = re.search(r'\bUPLOAD SUCCEEDED\b|\bNo errors uploading archive at\b', response)
+            if not receipt:
+                raise ValueError('Apple returned no explicit upload confirmation. Delivery is unconfirmed; inspect upload-result.json and App Store Connect before retrying.')
+            delivery = re.search(r'Delivery UUID:\s*([0-9a-fA-F-]{36})\b', response)
+            report.update(uploaded=True, status='upload-confirmed', response=response,
+                          deliveryId=delivery.group(1) if delivery else None)
+            result_file.write_text(json.dumps(report, indent=2), encoding='utf-8')
+    print('Apple confirmed the upload. Processing and TestFlight availability have not been checked; verify them in App Store Connect.')
 
 
 def cleanup():
