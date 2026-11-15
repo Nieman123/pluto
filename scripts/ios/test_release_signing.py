@@ -1,10 +1,12 @@
 import datetime as dt
+import hashlib
 import importlib.util
 import json
 import os
 import plistlib
 import shutil
 import sys
+import subprocess
 import tempfile
 import unittest
 import zipfile
@@ -45,6 +47,104 @@ def archive(value):
     ent['com.apple.developer.associated-domains'] = ['applinks:' + value['host']]
     ent['keychain-access-groups'] = [value['prefix'] + '.' + value['bundleId']]
     return info, ent, firebase
+
+
+class UploadTests(unittest.TestCase):
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        root = Path(temp.name)
+        directory = root / 'tmp/ios-release'
+        directory.mkdir(parents=True)
+        self.ipa = root / 'Pluto Events.ipa'
+        self.ipa.write_bytes(b'verified IPA fixture')
+        self.value = {**selected(), 'operation': 'upload-testflight'}
+        self.evidence = directory / 'verification.json'
+        self.evidence.write_text(json.dumps({**self.value, 'verified': True,
+            'ipaSha256': hashlib.sha256(self.ipa.read_bytes()).hexdigest()}))
+        self.report = directory / 'upload-result.json'
+        for mock in (patch.object(signing, 'ROOT', root),
+                     patch.object(signing, 'settings', return_value=self.value),
+                     patch.object(signing, 'ipa_file', return_value=self.ipa),
+                     patch.dict(os.environ, {'ASC_KEY_ID': 'KEY123', 'ASC_ISSUER_ID': 'issuer'}),
+                     patch('builtins.print')):
+            mock.start()
+            self.addCleanup(mock.stop)
+
+    def result(self, stdout='', stderr='', code=0):
+        return subprocess.CompletedProcess([], code, stdout, stderr)
+
+    def test_receipt_on_either_stream_confirms_upload_and_preserves_both_steps(self):
+        receipt = 'UPLOAD SUCCEEDED with no errors\nDelivery UUID: 8455186c-8b1a-402b-b4b7-0028e3e93dec'
+        for stream in ('stdout', 'stderr'):
+            with self.subTest(stream=stream), patch.object(signing.subprocess, 'run', side_effect=[
+                    self.result(stderr='No errors validating archive'), self.result(**{stream: receipt})]) as run:
+                signing.upload()
+                report = json.loads(self.report.read_text())
+                self.assertTrue(report['uploaded'])
+                self.assertEqual(report['deliveryId'], '8455186c-8b1a-402b-b4b7-0028e3e93dec')
+                self.assertEqual(report['steps'][0]['stderr'], 'No errors validating archive')
+                self.assertEqual(report['steps'][1][stream], receipt)
+                self.assertEqual([call[0][0][-1] for call in run.call_args_list], ['--validate-app', '--upload-app'])
+                self.assertNotIn('--output-format', run.call_args[0][0])
+
+    def test_legacy_upload_confirmation_is_supported(self):
+        with patch.object(signing.subprocess, 'run', side_effect=[self.result(),
+                self.result(stderr="No errors uploading archive at '/tmp/app.ipa'.")]):
+            signing.upload()
+        self.assertTrue(json.loads(self.report.read_text())['uploaded'])
+
+    def test_zero_exit_without_upload_receipt_is_unconfirmed(self):
+        for output in ('', 'Usage: altool --upload-app', 'ERROR: Invalid API key',
+                       'No errors validating archive', '{"product-errors": [{"message": "Rejected"}]}'):
+            with self.subTest(output=output), patch.object(signing.subprocess, 'run', side_effect=[
+                    self.result(), self.result(stderr=output)]):
+                with self.assertRaisesRegex(ValueError, 'no explicit upload confirmation'):
+                    signing.upload()
+                report = json.loads(self.report.read_text())
+                self.assertIsNone(report['uploaded'])
+                self.assertEqual(report['status'], 'unconfirmed')
+                self.assertEqual(report['steps'][1]['stderr'], output)
+
+    def test_failed_validation_never_uploads_and_keeps_diagnostics(self):
+        with patch.object(signing.subprocess, 'run', return_value=self.result(stderr='Validation failed', code=1)) as run:
+            with self.assertRaisesRegex(ValueError, '--validate-app exited 1'):
+                signing.upload()
+            self.assertEqual(run.call_count, 1)
+        report = json.loads(self.report.read_text())
+        self.assertIsNone(report['uploaded'])
+        self.assertEqual(report['steps'][0]['stderr'], 'Validation failed')
+
+    def test_nonzero_upload_exit_keeps_diagnostics_even_with_success_text(self):
+        with patch.object(signing.subprocess, 'run', side_effect=[self.result(),
+                self.result(stdout='UPLOAD SUCCEEDED', stderr='Connection lost', code=1)]):
+            with self.assertRaisesRegex(ValueError, '--upload-app exited 1'):
+                signing.upload()
+        report = json.loads(self.report.read_text())
+        self.assertIsNone(report['uploaded'])
+        self.assertEqual(report['steps'][1]['exitCode'], 1)
+        self.assertEqual(report['steps'][1]['stdout'], 'UPLOAD SUCCEEDED')
+        self.assertEqual(report['steps'][1]['stderr'], 'Connection lost')
+
+    def test_changed_ipa_is_rejected_before_contacting_apple(self):
+        self.ipa.write_bytes(b'tampered')
+        with patch.object(signing.subprocess, 'run') as run:
+            with self.assertRaisesRegex(ValueError, 'exact verified IPA'):
+                signing.upload()
+            run.assert_not_called()
+
+    def test_artifact_and_console_diagnostics_redact_authentication(self):
+        output = ('Authorization: Bearer secret-token\nAuthorization: Basic secret-basic\n'
+                  'eyJhbGciOiJFUzI1NiJ9.eyJpc3MiOiJ0ZXN0In0.signature\n'
+                  'https://apple.example/upload?signature=secret-query\n'
+                  '-----BEGIN PRIVATE KEY-----\nsecret-key\n-----END PRIVATE KEY-----')
+        with patch.object(signing.subprocess, 'run', side_effect=[self.result(), self.result(stderr=output)]), patch('builtins.print') as printed:
+            with self.assertRaises(ValueError):
+                signing.upload()
+        diagnostic = self.report.read_text() + str(printed.call_args_list)
+        for secret in ('secret-token', 'secret-basic', 'eyJhbGci', 'secret-query', 'secret-key'):
+            self.assertNotIn(secret, diagnostic)
+        self.assertIn('[REDACTED', diagnostic)
 
 
 class ReleaseSigningTests(unittest.TestCase):

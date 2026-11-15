@@ -180,9 +180,19 @@ submission are separate actions from the upload.
   runner installs Apple's public WWDR G3 intermediate for Windows-created P12s.
 - Missing staging evidence: deploy that exact SHA to staging successfully first.
 - API key error: use the App Store Connect Team key, not the Apple login key.
-- Successful upload but no visible build: wait for Apple processing and check
-  any processing email/error in App Store Connect. A successful upload alone does
-  not confirm review acceptance or public availability.
+- Missing TestFlight build: download the run's `ios-<environment>-<run>-<attempt>`
+  artifact and inspect `upload-result.json`. It records each Apple command's exit
+  code and both output streams, with authentication data redacted. The job requires
+  an explicit Apple upload confirmation before reporting `uploaded: true`; a zero
+  exit code with no receipt fails with `status: unconfirmed`. The delivery UUID is
+  retained when Apple supplies one. Check App Store Connect's **Build Uploads** and
+  processing emails before retrying an unconfirmed upload.
+- Confirmed upload but no visible build: check Apple processing status/errors.
+  Upload confirmation does not verify processing completion, tester distribution,
+  review acceptance, or public availability.
+- To use a workflow-script fix, start a new run with the merged, staging-validated
+  revision containing that fix. Re-running an older run uses the older selected
+  revision and its scripts.
 
 The first signed-device build must still be exercised on iPhone/iPad: Apple and
 Google sign-in, account deletion, tickets/QRs, browser checkout return and the
