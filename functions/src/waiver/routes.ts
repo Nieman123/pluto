@@ -3,11 +3,12 @@ import { legalView, consents, consentVersion, documentHash, electronicDisclosure
 import { receiptKey, textField, validateSubmission, WaiverError } from './validation';
 import { WaiverService } from './service';
 import { allowedSiteOrigins, deploymentConfig } from '../deployment-config';
+import { contentSecurityPolicy } from '../security-headers';
 
 export function waiverRouter(context: (path: string) => Record<string, unknown>, service = new WaiverService()) {
   const router = express.Router();
   router.use((_req, res, next) => {
-    res.set({ 'Cache-Control': 'private, no-store, max-age=0', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'DENY', 'X-Robots-Tag': 'noindex, nofollow', 'Content-Security-Policy': "frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'" });
+    res.set({ 'Cache-Control': 'private, no-store, max-age=0', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'DENY', 'X-Robots-Tag': 'noindex, nofollow', 'Content-Security-Policy': contentSecurityPolicy });
     next();
   });
   router.get(['/', '/staff'], (req, res) => {

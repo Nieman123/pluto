@@ -19,6 +19,7 @@ import { legalRouter } from './legal-pages';
 export { ticketingFinancialWorker, ticketingFinancialBackfillWorker, ticketingMaintenance, ticketingCheckoutExpiry, ticketingWebhookWorker, ticketingEmailWorker, ticketingCampaignWorker, ticketingRecoveryRequestWorker, ticketingCommunicationMaintenance, ticketingEmailMaintenance, ticketingHealthMaintenance } from './ticketing/workers';
 import { normalizeRental, groupRentals, rentalContactEmail, type PublicRental } from './rentals-data';
 import { seedRentals } from './rentals-seed';
+import { securityHeaders } from './security-headers';
 import { loadHomepageEvents } from './public-events';
 import {
   docsForLinks,
@@ -59,6 +60,7 @@ async function ensureRentalsInitialized() {
 const app = express();
 configureTrustedProxy(app);
 app.use(compression());
+app.use(securityHeaders);
 const env = nunjucks.configure(templates, { autoescape: true, noCache: true });
 env.express(app);
 app.set('nunjucksEnv', env);

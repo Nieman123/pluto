@@ -1,4 +1,5 @@
 import { isWalkInEvent, doorPriceLabel } from './admission';
+import { contentSecurityPolicy } from '../security-headers';
 import express, { type Request, type Response } from 'express';
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import { readFileSync } from 'node:fs';
@@ -41,7 +42,7 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
     // cache for unrelated routes that fall through to the homepage/rentals/etc.
     if (/^\/(?:tickets|events|past-events|sitemap\.xml)(?:\/|$)/i.test(req.path)) res.set('Cache-Control', 'private, no-store');
     res.set({ 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY',
-      'Content-Security-Policy': "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'" });
+      'Content-Security-Policy': contentSecurityPolicy });
     if (req.path.startsWith('/tickets')) res.set('X-Robots-Tag', 'noindex, nofollow');
     next();
   });
