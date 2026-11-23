@@ -140,6 +140,9 @@ class _AdminPageState extends State<AdminPage> {
   bool _isSavingReward = false;
   String? _editingEventQrId;
   bool _eventQrIsActive = true;
+  bool _eventQrTicketRequired = true;
+  String _eventQrTicketingEventId = '';
+  Future<List<_TicketedEventOption>>? _ticketedEvents;
   bool _isSavingEventQr = false;
   String? _editingLinkItemId;
   String _linkImageDataUrl = '';
@@ -720,6 +723,14 @@ class _AdminPageState extends State<AdminPage> {
       return;
     }
 
+    if (_eventQrTicketRequired && _eventQrTicketingEventId.isEmpty) {
+      setState(() {
+        _statusMessage =
+            'Choose the ticketed event, or turn off "Ticket holders only" for a walk-in event.';
+      });
+      return;
+    }
+
     setState(() {
       _isSavingEventQr = true;
       _statusMessage = '';
@@ -761,6 +772,10 @@ class _AdminPageState extends State<AdminPage> {
         'pointsAwarded': pointsAwarded,
         'notes': _eventQrNotesController.text.trim(),
         'isActive': _eventQrIsActive,
+        // The server only awards points to verified accounts holding a valid
+        // ticket for this event, unless an admin turns that off.
+        'ticketRequired': _eventQrTicketRequired,
+        'ticketingEventId': _eventQrTicketingEventId,
         'updatedAt': FieldValue.serverTimestamp(),
       };
       if (!existingSnapshot.exists) {
@@ -921,6 +936,8 @@ class _AdminPageState extends State<AdminPage> {
       _eventQrPointsController.text = eventQrCode.pointsAwarded.toString();
       _eventQrNotesController.text = eventQrCode.notes;
       _eventQrIsActive = eventQrCode.isActive;
+      _eventQrTicketRequired = eventQrCode.ticketRequired;
+      _eventQrTicketingEventId = eventQrCode.ticketingEventId;
       _statusMessage = 'Editing QR for "${eventQrCode.eventName}".';
     });
   }
@@ -933,6 +950,8 @@ class _AdminPageState extends State<AdminPage> {
       _eventQrPointsController.text = '50';
       _eventQrNotesController.clear();
       _eventQrIsActive = true;
+      _eventQrTicketRequired = true;
+      _eventQrTicketingEventId = '';
       _statusMessage = 'New event QR code form ready.';
     });
   }
@@ -2024,6 +2043,74 @@ class _AdminPageState extends State<AdminPage> {
     );
   }
 
+  Future<List<_TicketedEventOption>> _loadTicketedEvents() async {
+    final QuerySnapshot<Map<String, dynamic>> snapshot =
+        await _firestore.collection('publishedEvents').get();
+    final List<_TicketedEventOption> events = snapshot.docs
+        .map((QueryDocumentSnapshot<Map<String, dynamic>> doc) =>
+            _TicketedEventOption(
+              id: doc.id,
+              title: (doc.data()['title'] as String? ?? '').trim(),
+              startAt: DateTime.tryParse(
+                  doc.data()['startAt'] as String? ?? ''),
+            ))
+        .toList();
+    events.sort((_TicketedEventOption a, _TicketedEventOption b) =>
+        (b.startAt ?? DateTime(0)).compareTo(a.startAt ?? DateTime(0)));
+    return events;
+  }
+
+  Widget _buildTicketedEventPicker() {
+    return FutureBuilder<List<_TicketedEventOption>>(
+      future: _ticketedEvents ??= _loadTicketedEvents(),
+      builder: (BuildContext context,
+          AsyncSnapshot<List<_TicketedEventOption>> snapshot) {
+        final List<_TicketedEventOption> options =
+            List<_TicketedEventOption>.of(
+                snapshot.data ?? const <_TicketedEventOption>[]);
+        final String selected = _eventQrTicketingEventId;
+        if (selected.isNotEmpty &&
+            !options.any((_TicketedEventOption o) => o.id == selected)) {
+          options.insert(0,
+              _TicketedEventOption(id: selected, title: 'Event $selected'));
+        }
+        if (snapshot.hasError) {
+          return const Text(
+            'Ticketed events could not be loaded. Reload the page to link this QR code.',
+            style: TextStyle(color: Colors.redAccent),
+          );
+        }
+        return DropdownButtonFormField<String>(
+          key: ValueKey<String>('qr-event-${_editingEventQrId ?? 'new'}-$selected-${options.length}'),
+          initialValue: selected.isEmpty ? null : selected,
+          isExpanded: true,
+          dropdownColor: Colors.black,
+          style: const TextStyle(color: Colors.white),
+          decoration: _inputDecoration('Ticketed event'),
+          hint: Text(
+            snapshot.connectionState == ConnectionState.done
+                ? 'Choose the event attendees need a ticket for'
+                : 'Loading events...',
+            style: const TextStyle(color: Colors.white54),
+          ),
+          items: options
+              .map((_TicketedEventOption option) => DropdownMenuItem<String>(
+                    value: option.id,
+                    child: Text(option.label, overflow: TextOverflow.ellipsis),
+                  ))
+              .toList(),
+          onChanged: _isSavingEventQr
+              ? null
+              : (String? value) {
+                  setState(() {
+                    _eventQrTicketingEventId = value ?? '';
+                  });
+                },
+        );
+      },
+    );
+  }
+
   Widget _buildEventQrEditorCard() {
     final String previewCode = _eventQrCodeController.text.trim().toUpperCase();
 
@@ -2118,6 +2205,24 @@ class _AdminPageState extends State<AdminPage> {
                 });
               },
             ),
+            SwitchListTile(
+              title: const Text('Ticket holders only'),
+              subtitle: const Text(
+                'Only verified accounts with a valid ticket for the event below can claim. Turn off for walk-in events without tickets.',
+                style: TextStyle(color: Colors.white70),
+              ),
+              value: _eventQrTicketRequired,
+              onChanged: (bool value) {
+                setState(() {
+                  _eventQrTicketRequired = value;
+                });
+              },
+            ),
+            if (_eventQrTicketRequired) ...<Widget>[
+              const SizedBox(height: 8),
+              _buildTicketedEventPicker(),
+              const SizedBox(height: 8),
+            ],
             if (previewCode.isNotEmpty) ...<Widget>[
               const SizedBox(height: 10),
               Center(
@@ -2533,5 +2638,24 @@ class _AdminPageState extends State<AdminPage> {
         ),
       ),
     );
+  }
+}
+
+class _TicketedEventOption {
+  const _TicketedEventOption({
+    required this.id,
+    required this.title,
+    this.startAt,
+  });
+
+  final String id;
+  final String title;
+  final DateTime? startAt;
+
+  String get label {
+    final String name = title.isEmpty ? id : title;
+    return startAt == null
+        ? name
+        : '$name · ${DateFormat.yMMMd().format(startAt!.toLocal())}';
   }
 }

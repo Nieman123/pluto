@@ -38,6 +38,29 @@ export class Rewards {
     if (this.reviewUid && actor.uid !== this.reviewUid) fail('This demo belongs to another account.', 403, 'account-mismatch');
     return this.collection('userProfiles').doc(actor.uid);
   }
+  // Points need a verified email and, unless an organizer opted the code out,
+  // a valid ticket for the linked event. A shared photo of the venue QR is
+  // then worth nothing to throwaway accounts.
+  private async requireTicket(tx: FirebaseFirestore.Transaction, data: FirebaseFirestore.DocumentData, actor: DecodedIdToken) {
+    if (this.reviewUid) return; // Demo accounts use isolated demo QR codes and ledgers.
+    if (data.ticketRequired === false) return;
+    const eventId = typeof data.ticketingEventId === 'string' ? data.ticketingEventId.trim() : '';
+    if (!eventId) fail('This QR code is not linked to a ticketed event yet. Ask Pluto staff for help.', 409, 'qr-needs-event');
+    const tickets = this.db.collection('ticketingTickets').where('eventId', '==', eventId).where('status', '==', 'valid');
+    const email = actor.email!.toLowerCase();
+    const [owned, held] = await Promise.all([tx.get(tickets.where('ownerUid', '==', actor.uid).limit(20)), tx.get(tickets.where('holderEmail', '==', email).limit(20))]);
+    const seen = new Set<string>();
+    for (const doc of [...owned.docs, ...held.docs]) {
+      if (seen.has(doc.id)) continue;
+      seen.add(doc.id);
+      const ticket = doc.data();
+      if (ticket.accountDeletedAt || (ticket.ownerUid && ticket.ownerUid !== actor.uid) || typeof ticket.orderId !== 'string' || !ticket.orderId) continue;
+      const order = (await tx.get(this.db.collection('ticketingOrders').doc(ticket.orderId))).data();
+      if (!order || order.financialBlocked || (ticket.rsvp && order.rsvpStatus !== 'approved')) continue;
+      return;
+    }
+    fail('Pluto Points for this event are for ticket holders. Sign in with the account or email on your ticket.', 403, 'ticket-required');
+  }
   async redeem(raw: any, actor: DecodedIdToken) {
     const profile = this.profile(actor, raw), rewardId = id(raw.rewardItemId), key = attempt(raw.attempt);
     const reward = this.collection('rewardItems').doc(rewardId), request = profile.collection('redemptionRequests').doc(`reward_${key}`);
@@ -68,6 +91,7 @@ export class Rewards {
   }
   async claim(raw: any, actor: DecodedIdToken) {
     const profile = this.profile(actor, raw), normalized = code(raw.code), key = attempt(raw.attempt);
+    if (!this.reviewUid && (actor.email_verified !== true || !actor.email)) fail('Verify your account email before collecting Pluto Points.', 403, 'email-unverified');
     const receipt = profile.collection('rewardAttempts').doc(`claim_${key}`), rate = profile.collection('claimRateLimits').doc('eventQr');
     return this.db.runTransaction(async tx => {
       await this.reviewGuard(tx);
@@ -90,6 +114,7 @@ export class Rewards {
       if (expires !== null && now >= expires) fail('This event QR code has expired.', 409, 'qr-expired');
       if (starts !== null && now < starts) fail('This event QR code is not open yet.', 409, 'qr-not-open');
       if (data.maxClaims != null && totalClaims >= count(data.maxClaims, 'claim capacity')) fail('This event QR code has reached its claim limit.', 409, 'qr-full');
+      await this.requireTicket(tx, data, actor);
       const claimsToday = rateData.dayKey === dayKey ? count(rateData.claimsToday, 'daily claims') : 0;
       if (claimsToday >= dailyLimit) fail('You reached the daily event QR claim limit. Please try again tomorrow.', 429, 'daily-claim-limit');
       const lastClaim = timestamp(rateData.lastClaimAt);

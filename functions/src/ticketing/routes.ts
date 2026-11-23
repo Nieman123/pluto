@@ -21,6 +21,7 @@ import { calendarLinks, eventCalendar } from './calendar';
 import { discoveryEvents, activeAppEventCards } from './event-discovery';
 import { AccountDeletion } from '../account-deletion';
 import { NativeCheckout } from './native-checkout';
+import { appCheckGuard } from './app-check';
 
 // Availability is indicative for up to one minute; checkout always validates
 // inventory. Published artwork can remain cached for at most five minutes
@@ -178,7 +179,7 @@ export function ticketingRouter(context: (path: string) => Record<string, unknow
     if (!req.is('application/json')) return next(new TicketingError(415, 'Send JSON.'));
     if (((req as Request & { rawBody?: Buffer }).rawBody?.length || 0) > 7300000) return next(new TicketingError(413, 'The request is too large.'));
     next();
-  }, express.json({ limit: '7300kb' }), async (req, res, next) => {
+  }, express.json({ limit: '7300kb' }), appCheckGuard(), async (req, res, next) => {
     // A random deletion receipt permits completion checks after sign-in is disabled.
     if (req.path === '/account/deletion-status') {
       await service.rateLimit(req.ip || 'unknown', 'deletion-status', 600, 60000);

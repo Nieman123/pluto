@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { releaseSettings, verifyServiceAccount, verifyProductionProtection, verifyStagingEvidence, githubApi, dotenvParameters } from './policy.mjs';
 
 const settings = releaseSettings(process.env);
@@ -18,6 +19,11 @@ if (settings.environment === 'production') {
   }
   stagingDeployment = await verifyStagingEvidence(api, settings);
 }
+const { productionAppCheckSiteKey, validateAppCheckSiteKey } = createRequire(import.meta.url)('../../functions/lib/deployment-config.js');
+const appCheckSiteKey = validateAppCheckSiteKey(process.env.DEPLOY_APP_CHECK_SITE_KEY || (settings.environment === 'production' ? productionAppCheckSiteKey : ''), settings.environment === 'staging');
+const appCheckMode = process.env.DEPLOY_APP_CHECK_MODE || 'monitor';
+if (!['off', 'monitor', 'enforce'].includes(appCheckMode)) throw new Error('TICKETING_APP_CHECK must be off, monitor or enforce.');
+if (appCheckMode === 'enforce' && !appCheckSiteKey) throw new Error('App Check enforcement needs a reCAPTCHA Enterprise site key for this environment.');
 const output = resolve('tmp/release');
 await mkdir(output, { recursive: true });
 const runtime = {
@@ -29,10 +35,11 @@ const runtime = {
   TICKETING_KEY_ROTATION_ENABLED: process.env.DEPLOY_KEY_ROTATION_ENABLED === 'true' ? 'true' : 'false',
   TICKETING_WORKER_MODE: settings.workerMode, TICKETING_WORKER_CPU: settings.workerCpu,
   TICKETING_HEALTH_CPU: settings.healthCpu,
+  PLUTO_APP_CHECK_SITE_KEY: appCheckSiteKey, TICKETING_APP_CHECK: appCheckMode,
 };
 // Non-secret parameters only. Signing/provider secrets stay in this project's Secret Manager.
 await writeFile(resolve('functions', `.env.${settings.projectId}`), dotenvParameters(runtime));
-await writeFile(resolve(output, 'dart-defines.json'), JSON.stringify({ PLUTO_ENVIRONMENT: settings.environment, PLUTO_FIREBASE_WEB_CONFIG: JSON.stringify(settings.web) }));
+await writeFile(resolve(output, 'dart-defines.json'), JSON.stringify({ PLUTO_ENVIRONMENT: settings.environment, PLUTO_FIREBASE_WEB_CONFIG: JSON.stringify(settings.web), PLUTO_APP_CHECK_SITE_KEY: appCheckSiteKey }));
 const firebase = JSON.parse(await readFile('firebase.json', 'utf8'));
 firebase.hosting.headers.push({ source: '/assets/firebase-public-config.js', headers: [{ key: 'Cache-Control', value: 'no-store' }] });
 if (settings.environment === 'staging') firebase.hosting.headers.push({ source: '**', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }] });

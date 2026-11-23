@@ -197,6 +197,8 @@ class EventQrCode {
     required this.totalClaims,
     required this.createdAt,
     required this.updatedAt,
+    this.ticketRequired = true,
+    this.ticketingEventId = '',
   });
 
   factory EventQrCode.fromSnapshot(
@@ -213,11 +215,15 @@ class EventQrCode {
       totalClaims: _parseInt(data['totalClaims']),
       createdAt: _parseTimestamp(data['createdAt']),
       updatedAt: _parseTimestamp(data['updatedAt']),
+      ticketRequired: data['ticketRequired'] as bool? ?? true,
+      ticketingEventId: (data['ticketingEventId'] as String? ?? '').trim(),
     );
   }
 
   final String id;
   final String eventName;
+  final bool ticketRequired;
+  final String ticketingEventId;
   final String code;
   final int pointsAwarded;
   final bool isActive;

@@ -3,7 +3,7 @@ description: private underground events
 
 publish_to: 'none'
 
-version: 1.0.2+2
+version: 1.0.3+3
 
 environment:
   sdk: ">=3.13.7 <4.0.0"
@@ -16,6 +16,7 @@ dependencies:
     sdk: flutter
   firebase_analytics: 12.6.1
   firebase_core: 4.15.1
+  firebase_app_check: 0.4.9
   firebase_core_web: ^3.12.0
   firebase_auth: 6.7.1
   cloud_firestore: 6.10.1

@@ -16,10 +16,10 @@ let browser, page, stage;
 async function semantics() { await page.locator('flt-semantics-placeholder').evaluate(e => e.click(), { timeout: 20000 }).catch(() => {}); }
 (async () => {
   try {
-    await auth.createUser({ uid, email, password });
+    await auth.createUser({ uid, email, password, emailVerified: true });
     await profile.set({ displayName: 'Rewards browser guest', pointsBalance: 400, lifetimePoints: 400, eventsAttended: 0 });
     await reward.set({ name: `Browser reward ${uid}`, pointsCost: 1, inventory: 3, isActive: true });
-    await qr.set({ code: uid.toUpperCase(), eventName: `Browser rewards event ${uid}`, pointsAwarded: 100, totalClaims: 0, isActive: true });
+    await qr.set({ code: uid.toUpperCase(), eventName: `Browser rewards event ${uid}`, pointsAwarded: 100, totalClaims: 0, isActive: true, ticketRequired: false });
     browser = await chromium.launch(); const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1280, height: 1000 } }); page = await context.newPage();
     page.on('pageerror', error => console.error('Rewards app error:', error.message));
     stage = 'sign-in'; await page.goto('http://127.0.0.1:4173/app/sign-on'); await semantics();

@@ -21,6 +21,7 @@ import 'push_notifications.dart' deferred as push_notifications;
 import 'schedule.dart' deferred as schedule;
 import 'sign_on_page.dart' deferred as sign_on_page;
 import 'sign_up_page.dart' deferred as sign_up_page;
+import 'src/app_check.dart';
 import 'src/configure_firebase_emulators.dart';
 import 'src/configure_web.dart';
 import 'src/deferred_widget.dart';
@@ -69,6 +70,7 @@ Future<void> main() async {
           storageBucket: '$emulatorProject.appspot.com');
   await configureFirebaseEmulators(emulatorHost, options.asMap);
   await Firebase.initializeApp(options: options);
+  if (emulatorHost.isEmpty) await activateAppCheck();
   if (emulatorHost.isNotEmpty) {
     await FirebaseAuth.instance.useAuthEmulator(emulatorHost, 9095);
     FirebaseFirestore.instance.useFirestoreEmulator(emulatorHost, 8185);

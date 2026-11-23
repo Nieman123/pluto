@@ -9,6 +9,15 @@ export const productionWebConfig = {
   storageBucket: `${projects.production}.appspot.com`,
   measurementId: 'G-Y6GBW8P032',
 };
+// reCAPTCHA Enterprise site key for Firebase App Check on the production web
+// app. Site keys are public: they ship in every page. Staging needs its own key
+// from the staging project, supplied through PLUTO_APP_CHECK_SITE_KEY.
+export const productionAppCheckSiteKey = '6Lc4hy4uAAAAABQQ-w23FrJoZM5h93_up4vAz6Ds';
+export function validateAppCheckSiteKey(value: string, staging: boolean): string {
+  if (value && !/^[A-Za-z0-9_-]{30,64}$/.test(value)) throw new Error('The App Check site key is malformed.');
+  if (staging && value === productionAppCheckSiteKey) throw new Error('Staging cannot use the production App Check site key.');
+  return value;
+}
 export type WebConfig = Omit<typeof productionWebConfig, 'measurementId'> & { measurementId?: string };
 
 export function validateWebConfig(input: unknown, projectId: string, staging: boolean): WebConfig {
@@ -42,7 +51,7 @@ export function deploymentConfig(env: NodeJS.ProcessEnv = process.env) {
     }
     const web: WebConfig = { apiKey: 'demo-preview-key', appId: '1:123:web:preview', messagingSenderId: '123',
       projectId: project, authDomain: `${project}.firebaseapp.com`, storageBucket: `${project}.appspot.com` };
-    return { environment: 'emulator', web, baseUrl: env.TICKETING_BASE_URL || 'http://127.0.0.1:4173', revision: 'local' };
+    return { environment: 'emulator', web, baseUrl: env.TICKETING_BASE_URL || 'http://127.0.0.1:4173', revision: 'local', appCheckSiteKey: '' };
   }
   const environment = env.PLUTO_ENVIRONMENT || 'production';
   if (!['production', 'staging'].includes(environment)) throw new Error('Unknown deployment environment.');
@@ -56,7 +65,8 @@ export function deploymentConfig(env: NodeJS.ProcessEnv = process.env) {
   const baseUrl = (env.TICKETING_BASE_URL || (environment === 'staging' ? projects.stagingBaseUrl : projects.productionBaseUrl)).replace(/\/$/, '');
   const allowedBaseUrls = environment === 'staging' ? [projects.stagingBaseUrl] : [projects.productionBaseUrl];
   if (!allowedBaseUrls.includes(baseUrl)) throw new Error('Site URL does not match the deployment environment.');
-  return { environment, web, baseUrl, revision: env.PLUTO_RELEASE_SHA || 'unversioned' };
+  const appCheckSiteKey = validateAppCheckSiteKey(env.PLUTO_APP_CHECK_SITE_KEY ?? (environment === 'production' ? productionAppCheckSiteKey : ''), environment === 'staging');
+  return { environment, web, baseUrl, revision: env.PLUTO_RELEASE_SHA || 'unversioned', appCheckSiteKey };
 }
 
 export function storageBucket(kind: 'ticketing' | 'waiver') {

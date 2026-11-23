@@ -132,6 +132,7 @@ function commonContext(path: string) {
   const [firestoreHost, firestorePort] = (process.env.FIRESTORE_EMULATOR_HOST || "").split(":");
   const firebaseConfig = {
     ...deployment.web,
+    ...(deployment.appCheckSiteKey ? { appCheckSiteKey: deployment.appCheckSiteKey } : {}),
     ...(process.env.FIREBASE_AUTH_EMULATOR_HOST ? { authEmulatorUrl: `http://${process.env.FIREBASE_AUTH_EMULATOR_HOST}` } : {}),
     ...(firestoreHost ? { firestoreEmulator: { host: firestoreHost, port: Number(firestorePort) } } : {}),
   };
