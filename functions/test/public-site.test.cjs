@@ -70,8 +70,7 @@ test("preserved active ManaFest page is complete without client-side rendering",
   );
   assert.match(html, /application\/ld\+json/);
   assert.match(html, /rel="canonical" href="https:\/\/pluto.events\/manafest"/);
-  assert.match(html, /googletagmanager\.com\/gtag\/js\?id=G-Y6GBW8P032/);
-  assert.match(html, /gtag\("config", "G-Y6GBW8P032"\)/);
+  assert.match(html, /<script src="\/assets\/analytics\.js\?v=[^"]*" data-measurement-id="G-Y6GBW8P032"><\/script>/);
 });
 
 test("preserved active ManaFest page links day passes to Posh with shared camping details", () => {

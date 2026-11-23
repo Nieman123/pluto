@@ -25,20 +25,7 @@
     {% if path == '/links' %}<link rel="stylesheet" href="/assets/links.css?v={{ assetVersion }}">{% endif %}
     {% if legalPage %}<style>{% include "legal.css.njk" %}</style>{% endif %}
     {% if jsonLd %}<script type="application/ld+json">{{ jsonLd | safe }}</script>{% endif %}
-    {% if googleAnalyticsId %}
-      <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){window.dataLayer.push(arguments);}
-        gtag("js", new Date());
-        gtag("config", "{{ googleAnalyticsId }}");
-        window.addEventListener("load", function () {
-          var analyticsScript = document.createElement("script");
-          analyticsScript.async = true;
-          analyticsScript.src = "https://www.googletagmanager.com/gtag/js?id={{ googleAnalyticsId }}";
-          document.head.appendChild(analyticsScript);
-        }, { once: true });
-      </script>
-    {% endif %}
+    {% if googleAnalyticsId %}<script src="/assets/analytics.js?v={{ assetVersion }}" data-measurement-id="{{ googleAnalyticsId }}"></script>{% endif %}
     <script id="firebase-config" type="application/json">{{ firebaseConfigJson | safe }}</script>
     <script src="/assets/site.js?v={{ assetVersion }}" defer></script>
   </head>
