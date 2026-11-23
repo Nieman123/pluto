@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { randomUUID } = require('node:crypto');
-const { Timestamp } = require('firebase-admin/firestore');
+const { FieldValue, Timestamp } = require('firebase-admin/firestore');
 const { getAuth } = require('firebase-admin/auth');
 const express = require('express');
 const { harness } = require('./ticketing-harness.cjs');
@@ -10,9 +10,9 @@ const { ticketingRouter } = require('../lib/ticketing/routes');
 
 function setup(initialTime = Date.now()) {
   const h = harness(), profiles = new Set(), qrs = new Set(), items = new Set(); let time = initialTime;
-  const service = new Rewards(h.db, () => time), actor = { uid: `${h.prefix}_buyer`, email: `${h.prefix}@example.test`, name: 'Rewards Guest' };
+  const service = new Rewards(h.db, () => time), actor = { uid: `${h.prefix}_buyer`, email: `${h.prefix}@example.test`, email_verified: true, name: 'Rewards Guest' };
   const profile = uid => { profiles.add(uid); return h.db.collection('userProfiles').doc(uid); };
-  async function qr(overrides = {}) { const ref = h.db.collection('eventQrCodes').doc(randomUUID()); qrs.add(ref.id); await ref.set({ code: `TEST-${ref.id}`.toUpperCase(), eventName: 'Rewards Event', pointsAwarded: 100, isActive: true, totalClaims: 0, ...overrides }); return ref; }
+  async function qr(overrides = {}) { const ref = h.db.collection('eventQrCodes').doc(randomUUID()); qrs.add(ref.id); await ref.set({ code: `TEST-${ref.id}`.toUpperCase(), eventName: 'Rewards Event', pointsAwarded: 100, isActive: true, totalClaims: 0, ticketRequired: false, ...overrides }); return ref; }
   async function reward(overrides = {}) { const ref = h.db.collection('rewardItems').doc(randomUUID()); items.add(ref.id); await ref.set({ name: 'Shirt', pointsCost: 100, inventory: 1, isActive: true, ...overrides }); return ref; }
   async function claim(ref, attempt = h.newKey(), user = actor) { profile(user.uid); return service.claim({ code: (await ref.get()).data().code, attempt }, user); }
   async function cleanup() { for (const uid of profiles) await h.db.recursiveDelete(profile(uid)); for (const qr of qrs) await h.db.recursiveDelete(h.db.collection('eventQrCodes').doc(qr)); for (const item of items) await h.db.collection('rewardItems').doc(item).delete(); await h.cleanup(); }
@@ -107,12 +107,40 @@ test('A6: HTTP rewards require verified Firebase identity; anonymous and scanner
     const qr = await h.qr(), item = await h.reward(), body = { code: (await qr.get()).data().code, attempt: h.newKey(), pointsAwarded: 1000000, deviceTime: 0 };
     assert.equal((await call('claim', body)).status, 401); assert.equal((await call('claim', body, { 'X-Pluto-Scanner': h.newKey() })).status, 401);
     assert.equal((await call('claim', body, { Authorization: 'Bearer invalid' })).status, 401);
-    const signed = await fetch(`http://${process.env.FIREBASE_AUTH_EMULATOR_HOST}/identitytoolkit.googleapis.com/v1/accounts:signUp?key=demo-key`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ returnSecureToken: true }) }).then(r => r.json());
-    assert.ok(signed.idToken); uid = signed.localId; h.profile(uid);
+    const identity = `http://${process.env.FIREBASE_AUTH_EMULATOR_HOST}/identitytoolkit.googleapis.com/v1/accounts`, credentials = { email: `${h.prefix}-http@example.test`, password: 'Emulator-only-Rewards-2026!', returnSecureToken: true };
+    const post = (path, body) => fetch(`${identity}:${path}?key=demo-key`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json());
+    const unverified = await post('signUp', credentials); assert.ok(unverified.idToken); uid = unverified.localId; h.profile(uid);
+    const rejected = await call('claim', body, { Authorization: `Bearer ${unverified.idToken}` }); assert.equal(rejected.status, 403); assert.equal(rejected.body.code, 'email-unverified');
+    await getAuth().updateUser(uid, { emailVerified: true });
+    const signed = await post('signInWithPassword', credentials); assert.ok(signed.idToken);
     const headers = { Authorization: `Bearer ${signed.idToken}` };
     assert.equal((await call('claim', { ...body, uid: h.actor.uid }, headers)).status, 403);
     const claimed = await call('claim', body, headers); assert.equal(claimed.status, 200); assert.equal(claimed.body.pointsAwarded, 100);
     const redeemed = await call('redeem', { rewardItemId: item.id, attempt: h.newKey(), pointsCost: 1 }, headers); assert.equal(redeemed.status, 200); assert.equal(redeemed.body.pointsCost, 100);
     assert.equal((await h.profile(uid).get()).data().pointsBalance, 0); assert.equal((await h.profile(h.actor.uid).get()).exists, false);
   } finally { await new Promise(resolve => server.close(resolve)); if (uid) await getAuth().deleteUser(uid); await h.cleanup(); }
+});
+
+test('QR claims need a verified email and a valid ticket for the linked event', async () => {
+  const h = setup(), eventId = `${randomUUID()}`, docs = [];
+  async function ticket(overrides = {}, order = {}) {
+    const orderRef = h.db.collection('ticketingOrders').doc(randomUUID()), ref = h.db.collection('ticketingTickets').doc(randomUUID()); docs.push(orderRef, ref);
+    await orderRef.set({ eventId, email: h.actor.email, status: 'paid', ...order });
+    await ref.set({ eventId, orderId: orderRef.id, status: 'valid', ownerUid: h.actor.uid, holderEmail: h.actor.email, ...overrides });
+    return ref;
+  }
+  try {
+    await rejectsCode(h.claim(await h.qr({ ticketRequired: false }), h.newKey(), { ...h.actor, email_verified: false }), 'email-unverified');
+    await rejectsCode(h.claim(await h.qr({ ticketRequired: true })), 'qr-needs-event');
+    const unlinked = await h.qr(); await unlinked.update({ ticketRequired: FieldValue.delete() }); // Codes saved before this change.
+    await rejectsCode(h.claim(unlinked), 'qr-needs-event');
+    const linked = await h.qr({ ticketRequired: true, ticketingEventId: eventId });
+    await rejectsCode(h.claim(linked), 'ticket-required');
+    const refunded = await ticket({ status: 'refunded' }); await rejectsCode(h.claim(linked), 'ticket-required'); await refunded.delete();
+    const otherAccount = await ticket({ ownerUid: `${h.prefix}_other` }); await rejectsCode(h.claim(linked), 'ticket-required'); await otherAccount.delete();
+    const pendingRsvp = await ticket({ rsvp: true }, { rsvpStatus: 'pending' }); await rejectsCode(h.claim(linked), 'ticket-required'); await pendingRsvp.delete();
+    const blocked = await ticket({}, { financialBlocked: true }); await rejectsCode(h.claim(linked), 'ticket-required'); await blocked.delete();
+    await ticket({ ownerUid: '', holderEmail: h.actor.email }); // A guest purchase under the verified account email counts.
+    assert.equal((await h.claim(linked)).pointsAwarded, 100);
+  } finally { for (const ref of docs) await ref.delete(); await h.cleanup(); }
 });

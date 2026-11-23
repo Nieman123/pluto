@@ -32,7 +32,8 @@ def profile(value):
             'Entitlements': {'application-identifier': identifier, 'com.apple.developer.team-identifier': value['team'],
                              'get-task-allow': False, 'beta-reports-active': True,
                              'com.apple.developer.applesignin': ['Default'], 'com.apple.developer.associated-domains': ['*'],
-                             'keychain-access-groups': [value['prefix'] + '.*']}}
+                             'keychain-access-groups': [value['prefix'] + '.*'],
+                             'com.apple.developer.devicecheck.appattest-environment': 'production'}}
 
 
 def archive(value):
@@ -290,7 +291,8 @@ class ReleaseSigningTests(unittest.TestCase):
     def test_profiles_require_all_native_capabilities_and_an_exact_app_id(self):
         value = selected()
         for key, bad in [('application-identifier', 'W9Z7U26894.*'), ('get-task-allow', True), ('beta-reports-active', False),
-                         ('com.apple.developer.applesignin', []), ('com.apple.developer.associated-domains', []), ('keychain-access-groups', ['OTHER.*'])]:
+                         ('com.apple.developer.applesignin', []), ('com.apple.developer.associated-domains', []), ('keychain-access-groups', ['OTHER.*']),
+                         ('com.apple.developer.devicecheck.appattest-environment', 'development')]:
             current = profile(value)
             current['Entitlements'][key] = bad
             with self.assertRaises(ValueError): signing.validate_profile(current, value)
@@ -305,7 +307,8 @@ class ReleaseSigningTests(unittest.TestCase):
         info, ent, firebase = archive(value)
         with self.assertRaises(ValueError): signing.validate_archive(info, ent, value, {**firebase, 'PROJECT_ID': 'wrong'})
         for change in [{'application-identifier': 'OTHER.events.pluto.app'}, {'get-task-allow': True},
-                       {'com.apple.developer.associated-domains': []}, {'com.apple.developer.applesignin': []}, {'keychain-access-groups': []}]:
+                       {'com.apple.developer.associated-domains': []}, {'com.apple.developer.applesignin': []}, {'keychain-access-groups': []},
+                       {'com.apple.developer.devicecheck.appattest-environment': 'development'}]:
             with self.assertRaises(ValueError): signing.validate_archive(info, {**ent, **change}, value, firebase)
 
     def test_attempt_mismatch_is_rejected_before_signing_credentials_are_read(self):

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 
+import 'src/app_check.dart';
 import 'src/native_environment.dart';
 import 'src/ticket_client_identity.dart';
 
@@ -20,12 +21,15 @@ class TicketingRepository {
     http.Client? client,
     Uri? baseUri,
     Future<String?> Function()? tokenProvider,
-  }) : _client = client ?? http.Client(),
+    Future<Map<String, String>> Function(String path)? appCheckHeaders,
+  }) : _appCheckHeaders = appCheckHeaders ?? appCheckHeadersFor,
+       _client = client ?? http.Client(),
        _baseUri = baseUri ?? ticketingBaseUri(),
        _tokenProvider =
            tokenProvider ??
            (() async => FirebaseAuth.instance.currentUser?.getIdToken());
   final http.Client _client;
+  final Future<Map<String, String>> Function(String path) _appCheckHeaders;
   final Uri _baseUri;
   final Future<String?> Function() _tokenProvider;
 
@@ -69,6 +73,7 @@ class TicketingRepository {
     String? token,
     String? scannerToken,
   }) async {
+    final Map<String, String> appCheck = await _appCheckHeaders(path);
     final http.Response response = await _client
         .post(
           _baseUri.resolve('/tickets/api/$path'),
@@ -77,6 +82,7 @@ class TicketingRepository {
             'X-Pluto-Client': ticketClientIdentity(),
             if (scannerToken != null) 'X-Pluto-Scanner': scannerToken,
             if (token != null) 'Authorization': 'Bearer $token',
+            ...appCheck,
           },
           body: jsonEncode(body),
         )

@@ -2,6 +2,7 @@ import { initWaiver, initStaff } from './waiver.js';
 import { initCalendarPicker } from './calendar.js';
 import { initAppLinks } from './app-links.mjs';
 import { initAccountDeletion } from './account-deletion.js';
+import { firebaseApp as sharedFirebaseApp, initAppCheck } from './app-check.js';
 initAppLinks();
 initCalendarPicker();
 initWaiver();
@@ -117,14 +118,14 @@ async function enhanceAuth() {
   const configElement = document.querySelector("#firebase-config");
   if (!configElement?.textContent) return;
 
-  const [appModule, authModule] = await Promise.all([
-    import("https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js"),
+  const firebaseConfig = JSON.parse(configElement.textContent);
+  const [firebaseApp, authModule] = await Promise.all([
+    sharedFirebaseApp(firebaseConfig),
     import("https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js"),
   ]);
-  const firebaseConfig = JSON.parse(configElement.textContent);
-  const { initializeApp } = appModule;
+  // Load reCAPTCHA early on buying pages so it can observe a normal visit.
+  if (document.querySelector('#native-checkout-config')) void initAppCheck();
   const { getAuth, onAuthStateChanged } = authModule;
-  const firebaseApp = initializeApp(firebaseConfig);
   const auth = getAuth(firebaseApp);
   if (firebaseConfig.authEmulatorUrl && ['localhost', '127.0.0.1'].includes(location.hostname)) {
     authModule.connectAuthEmulator(auth, firebaseConfig.authEmulatorUrl, { disableWarnings: true });

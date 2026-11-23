@@ -1,4 +1,5 @@
 import { message, syncMessageLayer } from './messages.js';
+import { appCheckHeaders } from '../app-check.js';
 export { message, initMessages } from './messages.js';
 export let user = null;
 export let scannerSession = null;
@@ -24,7 +25,8 @@ export async function api(path, body = {}, binary = false) {
   const checkoutToken = checkoutPaths.has(path) ? checkoutSession?.token : '';
   const scannerToken = scannerPaths.has(path) ? scannerSession?.token : '', token =
     path !== 'native-checkout/redeem' && !(checkoutPaths.has(path) && checkoutSession) && !scannerToken && user ? await user.getIdToken() : '';
-  const response = await fetch(`/tickets/api/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Pluto-Client': clientIdentity(), ...(checkoutToken ? { 'X-Pluto-Checkout': checkoutToken } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(scannerToken ? { 'X-Pluto-Scanner': scannerToken } : {}) },
+  const appCheck = await appCheckHeaders(path);
+  const response = await fetch(`/tickets/api/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Pluto-Client': clientIdentity(), ...appCheck, ...(checkoutToken ? { 'X-Pluto-Checkout': checkoutToken } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(scannerToken ? { 'X-Pluto-Scanner': scannerToken } : {}) },
     body: JSON.stringify(body), credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(45000) });
   if (!response.ok) { const detail = await response.json().catch(() => ({})); const error = new Error(detail.error || 'The request could not be confirmed. Please retry.'); error.status = response.status; error.code = detail.code || '';
     if (scannerToken && [401, 403].includes(response.status)) window.dispatchEvent(new Event('pluto-scanner-denied'));

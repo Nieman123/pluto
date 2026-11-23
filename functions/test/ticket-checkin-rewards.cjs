@@ -125,7 +125,7 @@ test('scavenger-hunt QR claims remain independent of automatic ticket rewards', 
     const user = h.actor(), eid = await h.event(d => { d.offers[0].checkInPoints = 100; }), order = await h.purchase(eid, user);
     await h.service.scan(eid, order.tickets[0].qr, randomUUID(), h.staff);
     const qr = h.db.collection('eventQrCodes').doc(randomUUID()); h.qrIds.add(qr.id);
-    await qr.set({ code: `HUNT-${qr.id}`.toUpperCase(), eventName: 'Hidden treasure', pointsAwarded: 35, isActive: true, totalClaims: 0 });
+    await qr.set({ code: `HUNT-${qr.id}`.toUpperCase(), eventName: 'Hidden treasure', pointsAwarded: 35, isActive: true, totalClaims: 0, ticketingEventId: eid });
     const rewards = new Rewards(h.db), request = { code: `HUNT-${qr.id}`, attempt: h.newKey() };
     await rewards.claim(request, user); await rewards.claim(request, user);
     assert.equal((await h.profile(user).get()).data().pointsBalance, 135);

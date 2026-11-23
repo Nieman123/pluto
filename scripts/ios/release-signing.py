@@ -74,6 +74,9 @@ def validate_profile(profile, selected, certificate=None, now=None):
     domains = ent.get('com.apple.developer.associated-domains', [])
     if '*' not in domains and f"applinks:{selected['host']}" not in domains:
         raise ValueError('Enable Associated Domains before generating the profile.')
+    app_attest = ent.get('com.apple.developer.devicecheck.appattest-environment')
+    if app_attest != 'production' and 'production' not in (app_attest if isinstance(app_attest, list) else []):
+        raise ValueError('Enable App Attest on the App ID before generating the profile (Firebase App Check).')
     groups = ent.get('keychain-access-groups', [])
     if identifier not in groups and f"{selected['prefix']}.*" not in groups:
         raise ValueError('Profile does not permit the app ticket Keychain group.')
@@ -198,6 +201,8 @@ def validate_archive(info, entitlements, selected, firebase):
         raise ValueError('Archive signing identity or distribution entitlement is incorrect.')
     if entitlements.get('com.apple.developer.applesignin') != ['Default'] or f"applinks:{selected['host']}" not in entitlements.get('com.apple.developer.associated-domains', []) or identifier not in entitlements.get('keychain-access-groups', []):
         raise ValueError('Archive must retain Apple sign-in, native links and ticket Keychain access.')
+    if entitlements.get('com.apple.developer.devicecheck.appattest-environment') != 'production':
+        raise ValueError('Archive must use the production App Attest environment for Firebase App Check.')
     expected = plistlib.loads((ROOT / f"ios/Firebase/{selected['environment']}/GoogleService-Info.plist").read_bytes())
     if firebase != expected:
         raise ValueError('Archive Firebase configuration does not match this environment.')

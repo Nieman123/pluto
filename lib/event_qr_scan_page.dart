@@ -75,10 +75,7 @@ class _EventQrScanPageState extends State<EventQrScanPage> {
 
     try {
       final EventQrClaimResult result =
-          await _profileRepository.claimEventQrCode(
-        user: user,
-        scannedCode: trimmed,
-      );
+          await _claimWithFreshVerification(user, trimmed);
       if (!mounted) {
         return;
       }
@@ -112,6 +109,26 @@ class _EventQrScanPageState extends State<EventQrScanPage> {
     }
   }
 
+  /// A customer who just opened the verification link still has an ID token
+  /// that says "unverified". Refresh it once and retry before showing an error.
+  Future<EventQrClaimResult> _claimWithFreshVerification(
+      User user, String code) async {
+    try {
+      return await _profileRepository.claimEventQrCode(
+          user: user, scannedCode: code);
+    } on FirebaseException catch (error) {
+      if (error.code != 'email-unverified') rethrow;
+      await user.reload();
+      final User? current = FirebaseAuth.instance.currentUser;
+      if (current == null ||
+          current.uid != user.uid ||
+          !current.emailVerified) rethrow;
+      await current.getIdToken(true);
+      return _profileRepository.claimEventQrCode(
+          user: current, scannedCode: code);
+    }
+  }
+
   String _friendlyClaimError(FirebaseException error) {
     switch (error.code) {
       case 'invalid-code':
@@ -130,6 +147,15 @@ class _EventQrScanPageState extends State<EventQrScanPage> {
       case 'daily-claim-limit':
         return error.message ??
             "You reached today's event QR claim limit. Try again tomorrow.";
+      case 'email-unverified':
+        return 'Verify your email to collect Pluto Points. Open Profile to send the verification link, then scan again.';
+      case 'ticket-required':
+        return error.message ??
+            'Pluto Points for this event are for ticket holders. Sign in with the account or email on your ticket.';
+      case 'qr-needs-event':
+        return 'This QR code is not set up for Pluto Points yet. Ask Pluto staff for help.';
+      case 'app-check-failed':
+        return 'We could not verify this app. Update Pluto and try again.';
       default:
         return error.message ?? 'Claim failed (${error.code}).';
     }
